@@ -17,27 +17,24 @@ import dubaiImg from '../assets/images/dubai.png';
 import fantasyImg from '../assets/images/fantasy.jpg'; 
 import airportImg from '../assets/images/airport.jpg';
 
-// Destination "cities"
 const cities = [
-  { img: parisImg, name: 'Paris', slug: 'paris' },
-  { img: tokyoImg, name: 'Tokyo', slug: 'tokyo' },
-  { img: newYorkImg, name: 'New York', slug: 'new-york' },
-  { img: barcelonaImg, name: 'Barcelona', slug: 'barcelona' },
-  { img: romeImg, name: 'Rome', slug: 'rome' },
-  { img: londonImg, name: 'London', slug: 'london' },
-  { img: bangkokImg, name: 'Bangkok', slug: 'bangkok' },
-  { img: dubaiImg, name: 'Dubai', slug: 'dubai' }
+  { img: parisImg, name: 'Paris', slug: 'paris', flight: 'AF123' },
+  { img: tokyoImg, name: 'Tokyo', slug: 'tokyo', flight: 'JL456' },
+  { img: newYorkImg, name: 'New York', slug: 'new-york', flight: 'DL789' },
+  { img: barcelonaImg, name: 'Barcelona', slug: 'barcelona', flight: 'IB234' },
+  { img: romeImg, name: 'Rome', slug: 'rome', flight: 'AZ567' },
+  { img: londonImg, name: 'London', slug: 'london', flight: 'BA890' },
+  { img: bangkokImg, name: 'Bangkok', slug: 'bangkok', flight: 'TG321' },
+  { img: dubaiImg, name: 'Dubai', slug: 'dubai', flight: 'EK654' }
 ];
-
 
 const CARDS_PER_PAGE = 6;
 const AUTO_ROTATE_SECONDS = 10;
 
 const Main = () => {
   const navigate = useNavigate();
-
-  // Carousel logic
   const [carouselIdx, setCarouselIdx] = useState(0);
+  const [selectedCity, setSelectedCity] = useState(null);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -46,15 +43,15 @@ const Main = () => {
     return () => clearInterval(interval);
   }, []);
 
-  // Slice, looping if necessary
   const visibleCities = [
     ...cities,
     ...cities.slice(0, CARDS_PER_PAGE)
   ].slice(carouselIdx, carouselIdx + CARDS_PER_PAGE);
 
+  const tripDate = "2025-09-15";
+
   return (
     <div className="trips-page">
-      {/* --- Hero / Intro --- */}
       <section className="trip-intro">
         <h1 className="trip-title">Personalize your travel planning with Trips</h1>
         <p className="trip-subtitle">
@@ -82,7 +79,6 @@ const Main = () => {
         </div>
       </section>
 
-      {/* --- AI vs Manual Cards --- */}
       <section className="trip-options">
         <div className="trip-card ai-card">
           <img src={fantasyImg} alt="AI Trip Builder" />
@@ -106,19 +102,56 @@ const Main = () => {
         </div>
       </section>
 
-      {/* --- Popular Destinations Row --- */}
       <section className="popular-trips">
         <h2>Traveler-Favorite Destinations</h2>
         <div className="city-cards">
           {visibleCities.map((city, i) => (
-  <div className="city-card" key={i}>
-    <img src={city.img} alt={city.name} />
-    <p>{city.name}</p>
-  </div>
-))}
-
+            <div 
+              className="city-card" 
+              key={i} 
+              onClick={() => setSelectedCity(city)} 
+              style={{ cursor: 'pointer' }}
+            >
+              <img src={city.img} alt={city.name} />
+              <p>{city.name}</p>
+            </div>
+          ))}
         </div>
       </section>
+
+      {selectedCity && (
+        <div className="modal-overlay" onClick={() => setSelectedCity(null)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <h2>Your Trip is Ready!</h2>
+            <img src={selectedCity.img} alt={selectedCity.name} style={{ maxWidth: '100%', borderRadius: '8px', marginBottom: '1rem' }} />
+            <p><strong>Destination:</strong> {selectedCity.name}</p>
+            <p><strong>Flight Number:</strong> {selectedCity.flight}</p>
+            <p><strong>Trip Date:</strong> {tripDate}</p>
+
+            <button 
+              onClick={() => setSelectedCity(null)} 
+              style={{ marginRight: '1rem' }}
+            >
+              Close
+            </button>
+
+            <button 
+              onClick={() => {
+                navigate('/chat', {
+                  state: {
+                    onlyPayment: true,
+                    destination: selectedCity.name,
+                    flight: selectedCity.flight,
+                    date: tripDate
+                  }
+                });
+              }}
+            >
+              Close Trip
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

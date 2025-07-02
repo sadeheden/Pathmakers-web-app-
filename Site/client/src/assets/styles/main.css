@@ -243,6 +243,44 @@ body {
   color: var(--clr-text);
 }
 
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background: white;
+  padding: 1.5rem 2rem;
+  border-radius: 1rem;
+  max-width: 360px;
+  width: 90%;
+  text-align: center;
+  box-shadow: 0 0 20px rgba(0,0,0,0.3);
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+.modal-content button {
+  margin-top: 1rem;
+  padding: 0.5rem 1.2rem;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 0.3rem;
+  cursor: pointer;
+}
+
+.modal-content button:hover {
+  background-color: #0056b3;
+}
+
 /*==============================================================================
   RESPONSIVE
 ==============================================================================*/
@@ -264,3 +302,5 @@ body {
 .city-card p {
   color: var(--clr-text);
 }
+
+

@@ -1,12 +1,16 @@
 import React, { useState, useEffect } from "react";
 import { ChevronRight, MapPin, Plane, Hotel, Compass, Car, CreditCard, CheckCircle } from "lucide-react";
 import "../assets/styles/chat.css";
-
+import { useLocation, useNavigate } from "react-router-dom";
 
 
 const TravelPlannerApp = () => {
-  useEffect(() => {
+    const location = useLocation();
+    const navigate = useNavigate();
+
+    useEffect(() => {
     const token = localStorage.getItem("authToken");
+
     if (!token) {
     
       // Reset progress only if it's a new login session
@@ -24,12 +28,6 @@ const TravelPlannerApp = () => {
     return savedStep ? parseInt(savedStep, 10) : 0;
   });
   
-  useEffect(() => {
-    localStorage.setItem("currentStep", currentStep);
-  }, [currentStep]);
-  
-  
-  // Save currentStep to localStorage when it changes
   useEffect(() => {
     localStorage.setItem("currentStep", currentStep);
   }, [currentStep]);
@@ -630,7 +628,7 @@ const hotelOptions =
   className="personal-area-btn"
   onClick={async () => {
     await handleSaveOrder(); // ✅ Save the order only once per session
-    window.location.href = "/personal-area"; // ✅ Redirect after saving
+    navigate("/personal-area"); // ✅ בלי לרענן את הדף
   }}
 >
   Go to Personal Area
@@ -748,17 +746,27 @@ const hotelOptions =
     Back
   </button>
   <button
-  onClick={() => setCurrentStep((prev) => prev + 1)}
+  onClick={() => {
+    const step = steps[currentStep];
+    const isPaymentStep = step.label === "Payment";
+    const selectedMethod = userResponses["Select payment method"];
+    const requiresModal = ["Credit Card", "PayPal", "Bank Transfer", "Crypto"].includes(selectedMethod);
+
+    if (isPaymentStep && requiresModal && !paymentCompleted) {
+      // 🔒 לא מאפשר להמשיך בלי תשלום
+      setIsPaymentModalOpen(true);
+      return;
+    }
+
+    setCurrentStep((prev) => prev + 1);
+  }}
   disabled={
     currentStep === steps.length - 1 ||
     (steps[currentStep]?.questions?.length > 0 &&
       !userResponses[steps[currentStep].questions[0]?.prompt]) ||
-    (step.label === "Flight" &&
+    (steps[currentStep]?.label === "Flight" &&
       (!userResponses["Travel dates (departure)?"] ||
-        !userResponses["Travel dates (return)?"])) ||
-    (step.label === "Payment" &&
-      ["Credit Card", "PayPal", "Bank Transfer", "Crypto"].includes(userResponses["Select payment method"]) &&
-      !paymentCompleted) // ✅ Prevents skipping any required payment confirmation
+        !userResponses["Travel dates (return)?"]))
   }
   className="custom-btn2"
 >
@@ -785,10 +793,15 @@ const hotelOptions =
     console.log("Closing payment modal...");
     setIsPaymentModalOpen(false);
   }} 
-  onPaymentSuccess={() => {
+  onPaymentSuccess={async () => {
     console.log("Payment successful, proceeding...");
     setPaymentCompleted(true);
     setCurrentStep((prev) => prev + 1); // ✅ Move to the next step
+    // Save order and navigate automatically after payment
+    if (currentStep === steps.length - 2) { // If payment step is just before summary
+      await handleSaveOrder?.();
+      navigate("/personal-area");
+    }
   }}
   totalAmount={calculateTotalPrice()} 
   userResponses={userResponses}
