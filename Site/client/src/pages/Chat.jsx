@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { ChevronRight, MapPin, Plane, Hotel, Compass, Car, CreditCard, CheckCircle } from "lucide-react";
 import "../assets/styles/chat.css";
@@ -56,6 +55,7 @@ const [paymentCompleted, setPaymentCompleted] = useState(false);
   useEffect(() => {
     async function fetchCities() {
       try {
+ 
         const response = await fetch("http://localhost:4000/api/cities");
         if (!response.ok) {
           throw new Error(`Failed to fetch cities, status: ${response.status}`);

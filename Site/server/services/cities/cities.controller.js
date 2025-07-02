@@ -3,13 +3,16 @@ import City from './cities.model.js';
  
 // Fetch all cities
 export async function getCities(req, res) {
-    try {
-        const city = await City.findAll();
-        return res.status(200).json(city);
-    } catch (error) {
-        return res.status(500).json({ error: 'An error occurred while fetching cities.' });
-    }
+  try {
+    const cities = await City.findAll();
+    res.status(200).json(cities);
+  } catch (error) {
+    console.error("Error in getCities:", error);
+    res.status(500).json({ error: 'Error fetching cities', details: error.message });
+  }
 }
+
+
 
 // Fetch a city by ID
 export async function getCityById(req, res) {

@@ -6,13 +6,10 @@ export default class City {
     }
  
     // Static method to find all cities
-    static async findAll() {
-        try {
-            return await getAllCitiesFromDatabase(); // fetching from the database
-        } catch (error) {
-            throw new Error('An error occurred while fetching cities.');
-        }
-    }
+  static async findAll() {
+    return await getAllCitiesFromDatabase();  // לא עוטף ב־try-catch, נותן ל־controller לטפל בשגיאה
+}
+
  
     // Static method to find a city by ID
     static async findById(id) {
