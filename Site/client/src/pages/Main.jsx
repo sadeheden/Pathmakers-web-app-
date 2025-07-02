@@ -119,39 +119,58 @@ const Main = () => {
         </div>
       </section>
 
-      {selectedCity && (
-        <div className="modal-overlay" onClick={() => setSelectedCity(null)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <h2>Your Trip is Ready!</h2>
-            <img src={selectedCity.img} alt={selectedCity.name} style={{ maxWidth: '100%', borderRadius: '8px', marginBottom: '1rem' }} />
-            <p><strong>Destination:</strong> {selectedCity.name}</p>
-            <p><strong>Flight Number:</strong> {selectedCity.flight}</p>
-            <p><strong>Trip Date:</strong> {tripDate}</p>
+  {selectedCity && (
+  <div className="modal-overlay" onClick={() => setSelectedCity(null)}>
+    <div className="modal-content" onClick={e => e.stopPropagation()}>
+      {/* Smaller X CLOSE BUTTON */}
+      <button
+        className="modal-close-x"
+        onClick={() => setSelectedCity(null)}
+        aria-label="Close"
+      >
+        &#10005;
+      </button>
+      <h2>Your Trip is Ready!</h2>
+      <div className="modal-image-wrapper">
+        <img
+          src={selectedCity.img}
+          alt={selectedCity.name}
+          className="modal-city-image"
+        />
+      </div>
+      <p><strong>Destination:</strong> {selectedCity.name}</p>
+      <p><strong>Flight Number:</strong> {selectedCity.flight}</p>
+      <p><strong>Trip Date:</strong> {tripDate}</p>
 
-            <button 
-              onClick={() => setSelectedCity(null)} 
-              style={{ marginRight: '1rem' }}
-            >
-              Close
-            </button>
+      <div className="modal-btns">
+        <button
+          className="modal-trip-btn"
+          onClick={() =>
+            navigate('/chat', {
+              state: {
+                onlyPayment: true,
+                destination: selectedCity.name,
+                flight: selectedCity.flight,
+                date: tripDate,
+              }
+            })
+          }
+        >
+          Other date options
+        </button>
+        <button
+          className="modal-payment-btn"
+          onClick={() => {
+            alert('💸 Payment successful!\nThanks for booking!');
+          }}
+        >
+          Payment
+        </button>
+      </div>
+    </div>
+  </div>
+)}
 
-            <button 
-              onClick={() => {
-                navigate('/chat', {
-                  state: {
-                    onlyPayment: true,
-                    destination: selectedCity.name,
-                    flight: selectedCity.flight,
-                    date: tripDate
-                  }
-                });
-              }}
-            >
-              Close Trip
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
