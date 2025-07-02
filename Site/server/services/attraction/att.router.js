@@ -1,8 +1,19 @@
-import express from "express";
-import { getAttractions } from "./att.controller.js"; // Use the controller
+import { Router } from 'express';
+import {
+  getAttractions,
+  getAttractionById,
+  addAttraction,
+  updateAttraction,
+  deleteAttraction
+} from './att.controller.js';
 
-const router = express.Router();
+const router = Router();
 
-router.get("/:city", getAttractions); // Add city parameter
+router
+  .get('/', getAttractions)
+  .get('/:id', getAttractionById)
+  .post('/', addAttraction)
+  .put('/:id', updateAttraction)
+  .delete('/:id', deleteAttraction);
 
 export default router;

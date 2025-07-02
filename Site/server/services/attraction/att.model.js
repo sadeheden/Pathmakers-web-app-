@@ -1,41 +1,43 @@
-import fs from "fs/promises";
+import {
+  getAllAttractionsFromDatabase,
+  getAttractionByIdFromDatabase,
+  saveAttractionToDatabase,
+  updateAttractionInDatabase,
+  deleteAttractionInDatabase
+} from './att.db.js';
 
-const FILE_PATH = "data/attractions.json";
-
-const fileExists = async (filePath) => {
-  try {
-    await fs.access(filePath);
-    return true;
-  } catch {
-    return false;
-  }
-};
-
-const readJsonFile = async (filePath) => {
-  try {
-    if (!(await fileExists(filePath))) {
-      await fs.writeFile(filePath, JSON.stringify({ attractions: [] }, null, 2));
-      return { attractions: [] }; // מחזירים אובייקט עם מערך "attractions"
-    }
-    const data = await fs.readFile(filePath, "utf8");
-    return JSON.parse(data);
-  } catch (error) {
-    console.error("Error reading file:", error);
-    return { attractions: [] }; // מחזירים אובייקט עם מערך ריק במקרה של שגיאה
-  }
-};
-
-export const getAttractionsByCity = async (city) => {
-  const attractionsData = await readJsonFile(FILE_PATH);
-  const cityLowerCase = city.toLowerCase();
-
-  const cityAttractionEntry = attractionsData.attractions.find(
-    (entry) => entry.city.toLowerCase() === cityLowerCase
-  );
-
-  if (!cityAttractionEntry) {
-    return [];
+export default class Attraction {
+  constructor({ name, city, description }) {
+    this.name = name;
+    this.city = city;
+    this.description = description;
   }
 
-  return cityAttractionEntry.attractions; // Return the direct array of attractions
-};
+  static async findAll() {
+    return await getAllAttractionsFromDatabase();
+  }
+
+  static async findById(id) {
+    return await getAttractionByIdFromDatabase(id);
+  }
+
+  static async delete(id) {
+    return await deleteAttractionInDatabase(id);
+  }
+
+  async save() {
+    return await saveAttractionToDatabase({
+      name: this.name,
+      city: this.city,
+      description: this.description
+    });
+  }
+
+  async update(id) {
+    return await updateAttractionInDatabase({
+      name: this.name,
+      city: this.city,
+      description: this.description
+    }, id);
+  }
+}
