@@ -166,8 +166,15 @@ const [paymentCompleted, setPaymentCompleted] = useState(false);
       label: "Destination",
       icon: MapPin,
       questions: [
-        { prompt: "What is your departure city?", options: loadedCities.length ? loadedCities : ["Loading..."] },
-        { prompt: "What is your destination city?", options: loadedCities.length ? loadedCities : ["Loading..."] },
+        {
+  prompt: "What is your departure city?",
+  options: loadedCities.length ? loadedCities.map(c => c.city) : ["Loading..."]
+},
+{
+  prompt: "What is your destination city?",
+  options: loadedCities.length ? loadedCities.map(c => c.city) : ["Loading..."]
+},
+
       ],
     },
     {
