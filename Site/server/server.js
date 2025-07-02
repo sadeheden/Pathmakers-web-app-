@@ -5,6 +5,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 import citiesRouter from './services/cities/cities.router.js';
+import attractionRoutes from './services/attraction/att.router.js';
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -12,9 +13,10 @@ const PORT = process.env.PORT || 4000;
 app.use(cors());
 app.use(express.json());
 
+
 // רישום ראוטים
 app.use('/api/cities', citiesRouter);
-
+app.use('/api/attraction', attractionRoutes);
 // טיפול בשגיאות
 app.use((err, req, res, next) => {
   console.error(err.stack);
