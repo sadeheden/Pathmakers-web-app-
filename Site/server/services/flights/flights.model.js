@@ -1,38 +1,46 @@
-import fs from "fs/promises";
+import {
+  getAllFlightsFromDatabase,
+  getFlightByIdFromDatabase,
+  saveFlightToDatabase,
+  updateFlightInDatabase,
+  deleteFlightInDatabase
+} from "./flights.db.js";
 
-const FILE_PATH = "data/flights.json";
+export default class Flight {
+  constructor({ city, airline, departureTime }) {
+    this.city = city;
+    this.airline = airline;
+    this.departureTime = departureTime;
+  }
 
-const fileExists = async (filePath) => {
-    try {
-        await fs.access(filePath);
-        return true;
-    } catch {
-        return false;
-    }
-};
+  static async findAll() {
+    return await getAllFlightsFromDatabase();
+  }
 
-const readJsonFile = async (filePath) => {
-    try {
-        if (!(await fileExists(filePath))) {
-            await fs.writeFile(filePath, JSON.stringify([], null, 2));
-            return [];
-        }
-        const data = await fs.readFile(filePath, "utf8");
-        return JSON.parse(data);
-    } catch (error) {
-        return [];
-    }
-};
+  static async findById(id) {
+    return await getFlightByIdFromDatabase(id);
+  }
 
-const writeJsonFile = async (filePath, data) => {
-    try {
-        await fs.writeFile(filePath, JSON.stringify(data, null, 2));
-    } catch (error) {
-        throw new Error("Error writing to file");
-    }
-};
+  static async delete(id) {
+    return await deleteFlightInDatabase(id);
+  }
 
-export const getFlightsByCity = async (city) => {
-    const flights = await readJsonFile(FILE_PATH);
-    return flights.filter(flight => flight.city.toLowerCase() === city.toLowerCase());
-};
+  async save() {
+    return await saveFlightToDatabase({
+      city: this.city,
+      airline: this.airline,
+      departureTime: this.departureTime
+    });
+  }
+
+  async update(id) {
+    return await updateFlightInDatabase(
+      {
+        city: this.city,
+        airline: this.airline,
+        departureTime: this.departureTime
+      },
+      id
+    );
+  }
+}
