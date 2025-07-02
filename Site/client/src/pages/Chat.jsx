@@ -69,7 +69,8 @@ const [paymentCompleted, setPaymentCompleted] = useState(false);
 
     async function fetchFlights(city) {
       try {
-        const response = await fetch(`http://localhost:4000/api/flights/${city}`);
+        const response = await fetch(`http://localhost:4000/api/flights/${encodeURIComponent(city)}`);
+
         if (!response.ok) {
           throw new Error(`Failed to fetch flights, status: ${response.status}`);
         }
@@ -89,7 +90,7 @@ const [paymentCompleted, setPaymentCompleted] = useState(false);
     async function fetchHotels(city) {
       if (!city) return;
       try {
-        const response = await fetch(`http://localhost:4000/api/hotels/${city.toLowerCase()}`);
+        const response = await fetch(`http://localhost:4000/api/hotels/${encodeURIComponent(city)}`);
         if (!response.ok) {
           throw new Error(`Failed to fetch attractions for ${city}, status: ${response.status}`);
         }

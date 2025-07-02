@@ -19,7 +19,7 @@ app.use(express.json());
 
 // רישום ראוטים
 app.use('/api/cities', citiesRouter);
-app.use('/api/attraction', attractionRoutes);
+app.use('/api/attractions', attractionRoutes);
 app.use('/api/flights', flightsRoutes);
 app.use("/api/hotels", hotelRoutes);
 
