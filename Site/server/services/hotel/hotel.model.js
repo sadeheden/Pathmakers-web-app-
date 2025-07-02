@@ -1,73 +1,49 @@
-import fs from "fs/promises";
+import {
+  getAllHotelsFromDatabase,
+  getHotelByIdFromDatabase,
+  saveHotelToDatabase,
+  updateHotelInDatabase,
+  deleteHotelInDatabase,
+} from "./hotel.db.js";
 
-const FILE_PATH = "data/hotels.json";
+export default class Hotel {
+  constructor({ city, name, price, stars }) {
+    this.city = city;
+    this.name = name;
+    this.price = price;
+    this.stars = stars;
+  }
 
-const fileExists = async (filePath) => {
-    try {
-        await fs.access(filePath);
-        return true;
-    } catch {
-        return false;
-    }
-};
-export const loadHotels = async () => {
-    try {
-        if (!(await fileExists(FILE_PATH))) {
-            console.warn("⚠️ Hotels data file does not exist. Creating a new one.");
-            await fs.writeFile(FILE_PATH, JSON.stringify([], null, 2)); // Create an empty file if missing
-            return [];
-        }
+  static async findAll() {
+    return await getAllHotelsFromDatabase();
+  }
 
-        const data = await fs.readFile(FILE_PATH, "utf8");
-        return JSON.parse(data);
-    } catch (error) {
-        console.error("❌ Error reading hotels data:", error);
-        return [];
-    }
-};
+  static async findById(id) {
+    return await getHotelByIdFromDatabase(id);
+  }
 
+  static async delete(id) {
+    return await deleteHotelInDatabase(id);
+  }
 
-const readJsonFile = async (filePath) => {
-    try {
-        if (!(await fileExists(filePath))) {
-            await fs.writeFile(filePath, JSON.stringify([], null, 2));
-            return [];
-        }
-        const data = await fs.readFile(filePath, "utf8");
-        return JSON.parse(data);
-    } catch (error) {
-        return [];
-    }
-};
+  async save() {
+    return await saveHotelToDatabase({
+      city: this.city,
+      name: this.name,
+      price: this.price,
+      stars: this.stars,
+    });
+  }
 
-export const getHotelsByCity = async (city) => {
-    try {
-        const hotelsData = await loadHotels(); // ✅ Now reading from JSON file
-
-        if (!hotelsData || hotelsData.length === 0) {
-            console.warn("⚠️ No hotel data found!");
-            return [];
-        }
-
-        console.log("🔍 Searching for city:", city);
-
-        // Ensure case-insensitive search
-        const cityHotels = hotelsData.find(
-            (cityData) => cityData.city.toLowerCase() === city.toLowerCase()
-        );
-
-        if (!cityHotels) {
-            console.warn(`🚨 No hotels found for city: ${city}`);
-            return [];
-        }
-
-        console.log(`✅ Found ${cityHotels.hotels.length} hotels for ${city}`);
-        return cityHotels.hotels;
-    } catch (error) {
-        console.error("❌ Error fetching hotels:", error);
-        return [];
-    }
-};
-
-
-
+  async update(id) {
+    return await updateHotelInDatabase(
+      {
+        city: this.city,
+        name: this.name,
+        price: this.price,
+        stars: this.stars,
+      },
+      id
+    );
+  }
+}

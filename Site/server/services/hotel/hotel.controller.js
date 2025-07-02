@@ -1,41 +1,109 @@
-import { loadHotels } from "./hotel.model.js"; // ✅ Correct import
+import { ObjectId } from "mongodb";
+import Hotel from "./hotel.model.js";
+import { getHotelsByCity } from "./hotel.db.js";
 
-export const getHotels = async (req, res) => {
-    const city = decodeURIComponent(req.params.city); // ✅ Fix URL Encoding
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
+// Get all hotels
+export async function getHotels(req, res) {
+  try {
+    const hotels = await Hotel.findAll();
+    return res.status(200).json(hotels);
+  } catch (error) {
+    return res.status(500).json({ error: "An error occurred while fetching hotels." });
+  }
+}
 
-    console.log("🔍 Fetching hotels for:", city);
+// Get hotel by ID
+export async function getHotelById(req, res) {
+  const { id } = req.params;
 
-    try {
-        const hotelsData = await loadHotels();
-        if (!hotelsData || hotelsData.length === 0) {
-            return res.status(500).json({ message: "Hotels data is unavailable." });
-        }
+  if (!id || !ObjectId.isValid(id)) {
+    return res.status(400).json({ error: "Invalid or missing Hotel ID." });
+  }
 
-        // ✅ Find city entry (not filter)
-        const cityHotels = hotelsData.find(h => h.city.toLowerCase() === city.toLowerCase());
-
-        if (!cityHotels || !cityHotels.hotels || cityHotels.hotels.length === 0) {
-            console.warn(`🚨 No hotels found for city: ${city}`);
-            return res.status(404).json({ message: `No hotels found for ${city}.` });
-        }
-
-        // ✅ Apply Pagination
-        const totalHotels = cityHotels.hotels.length;
-        const paginatedHotels = cityHotels.hotels.slice((page - 1) * limit, page * limit);
-
-        console.log(`✅ Found ${totalHotels} hotels for ${city}, displaying page ${page}`);
-
-        return res.json({
-            totalHotels,
-            totalPages: Math.ceil(totalHotels / limit),
-            currentPage: page,
-            hotels: paginatedHotels
-        });
-
-    } catch (error) {
-        console.error("❌ Error fetching hotels:", error);
-        return res.status(500).json({ message: "Internal Server Error" });
+  try {
+    const hotel = await Hotel.findById(id);
+    if (!hotel) {
+      return res.status(404).json({ error: "Hotel not found." });
     }
-};
+    return res.status(200).json(hotel);
+  } catch (error) {
+    return res.status(500).json({ error: "An error occurred while fetching the hotel." });
+  }
+}
+
+// Add a new hotel
+export async function addHotel(req, res) {
+  const { city, name, price, stars } = req.body;
+
+  if (!city || !name || price == null || stars == null) {
+    return res.status(400).json({ error: "City, name, price, and stars are required." });
+  }
+
+  const newHotel = new Hotel({ city, name, price, stars });
+
+  try {
+    const result = await newHotel.save();
+    return res.status(201).json(result);
+  } catch (error) {
+    return res.status(500).json({ error: "An error occurred while adding the hotel." });
+  }
+}
+
+// Update hotel
+export async function updateHotel(req, res) {
+  const { id } = req.params;
+  const { city, name, price, stars } = req.body;
+
+  if (!id || !ObjectId.isValid(id)) {
+    return res.status(400).json({ error: "Invalid or missing Hotel ID." });
+  }
+
+  if (!city || !name || price == null || stars == null) {
+    return res.status(400).json({ error: "City, name, price, and stars are required." });
+  }
+
+  const updatedHotel = new Hotel({ city, name, price, stars });
+
+  try {
+    const result = await updatedHotel.update(id);
+    return res.status(200).json(result);
+  } catch (error) {
+    return res.status(500).json({ error: "An error occurred while updating the hotel." });
+  }
+}
+
+// Delete hotel
+export async function deleteHotel(req, res) {
+  const { id } = req.params;
+
+  if (!id || !ObjectId.isValid(id)) {
+    return res.status(400).json({ error: "Invalid or missing Hotel ID." });
+  }
+
+  try {
+    const result = await Hotel.delete(id);
+    return res.status(200).json(result);
+  } catch (error) {
+    return res.status(500).json({ error: "An error occurred while deleting the hotel." });
+  }
+}
+
+// New: Get hotels by city name (case insensitive)
+export async function getHotelsByCityName(req, res) {
+  const city = req.params.city?.trim().toLowerCase();
+
+  if (!city) {
+    return res.status(400).json({ error: "City name is required." });
+  }
+
+  try {
+    const hotels = await getHotelsByCity(city);
+    if (!hotels.length) {
+      return res.status(404).json({ error: `No hotels found for city: ${city}` });
+    }
+    return res.status(200).json(hotels);
+  } catch (error) {
+    console.error("Error fetching hotels by city:", error);
+    return res.status(500).json({ error: "Server error" });
+  }
+}

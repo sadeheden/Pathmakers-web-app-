@@ -1,8 +1,21 @@
-import express from "express";
-import { getHotels } from "./hotel.controller.js"; // ✅ Ensure controller exists
+import { Router } from "express";
+import {
+  getHotels,
+  getHotelById,
+  addHotel,
+  updateHotel,
+  deleteHotel,
+  getHotelsByCityName,
+} from "./hotel.controller.js";
 
-const router = express.Router();
+const router = Router();
 
-router.get("/:city", getHotels); // ✅ Must match frontend request
+router
+  .get("/city/:city", getHotelsByCityName) // must be before /:id
+  .get("/:id", getHotelById)
+  .get("/", getHotels)
+  .post("/", addHotel)
+  .put("/:id", updateHotel)
+  .delete("/:id", deleteHotel);
 
 export default router;
