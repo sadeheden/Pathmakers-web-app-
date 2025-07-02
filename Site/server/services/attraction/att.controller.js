@@ -10,6 +10,20 @@ export async function getAttractions(req, res) {
     return res.status(500).json({ error: 'An error occurred while fetching attractions.' });
   }
 }
+// att.controller.js
+export async function getAttractionsByCity(req, res) {
+  const city = req.params.city;
+  try {
+    // assuming Attraction.findByCity exists and does a case-insensitive search
+    const attractions = await Attraction.findByCity(city);
+    if (!attractions || !attractions.length) {
+      return res.status(404).json({ error: `No attractions found for city: ${city}` });
+    }
+    res.status(200).json({ attractions });
+  } catch (err) {
+    res.status(500).json({ error: 'Server error' });
+  }
+}
 
 // Get attraction by ID
 export async function getAttractionById(req, res) {

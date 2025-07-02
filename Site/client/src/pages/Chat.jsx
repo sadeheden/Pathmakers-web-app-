@@ -66,20 +66,20 @@ const [paymentCompleted, setPaymentCompleted] = useState(false);
         console.error("Error fetching cities:", error);
       }
     }
-
-    async function fetchFlights(city) {
-      try {
-        const response = await fetch(`http://localhost:4000/api/flights/${encodeURIComponent(city)}`);
-
-        if (!response.ok) {
-          throw new Error(`Failed to fetch flights, status: ${response.status}`);
-        }
-        const data = await response.json();
-        setLoadedFlights(data);
-      } catch (error) {
-        console.error("Error fetching flights:", error);
-      }
+async function fetchFlights(city) {
+  if (!city) return;
+  try {
+    const response = await fetch(`http://localhost:4000/api/flights/city/${encodeURIComponent(city)}`);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch flights for ${city}, status: ${response.status}`);
     }
+    const data = await response.json();
+    setLoadedFlights(data);
+  } catch (error) {
+    console.error("Error fetching flights:", error);
+  }
+}
+
     const handleNextStep = () => {
       const nextStep = currentStep + 1;
       setCurrentStep(nextStep);
@@ -87,19 +87,24 @@ const [paymentCompleted, setPaymentCompleted] = useState(false);
     };
     
 
-    async function fetchHotels(city) {
-      if (!city) return;
-      try {
-        const response = await fetch(`http://localhost:4000/api/hotels/${encodeURIComponent(city)}`);
-        if (!response.ok) {
-          throw new Error(`Failed to fetch attractions for ${city}, status: ${response.status}`);
-        }
-        const data = await response.json();
-        setLoadedHotels(data.hotels || []);
-      } catch (error) {
-        console.error("Error fetching hotels:", error);
-      }
+  async function fetchHotels(city) {
+  if (!city) return;
+  try {
+    const response = await fetch(`http://localhost:4000/api/hotels/city/${encodeURIComponent(city)}`);
+    if (response.status === 404) {
+      setLoadedHotels([]);
+      return;
     }
+    if (!response.ok) {
+      throw new Error(`Failed to fetch hotels for ${city}, status: ${response.status}`);
+    }
+    const data = await response.json();
+    setLoadedHotels(data);
+  } catch (error) {
+    console.error("Error fetching hotels:", error);
+  }
+}
+
 
  async function fetchAttractions(city) {
   if (!city) return;
@@ -166,6 +171,15 @@ const [paymentCompleted, setPaymentCompleted] = useState(false);
 
     return total;
   };
+// Flatten the attractions for the select dropdown
+const attractionNames =
+  loadedAttractions.length && Array.isArray(loadedAttractions[0]?.attractions)
+    ? loadedAttractions[0].attractions.map(attr => attr.name)
+    : [];
+const hotelOptions =
+  loadedHotels.length && Array.isArray(loadedHotels[0]?.hotels)
+    ? loadedHotels[0].hotels.map(hotel => `${hotel.name} - $${hotel.price}/night`)
+    : [];
 
   const steps = [
     {
@@ -205,13 +219,12 @@ const [paymentCompleted, setPaymentCompleted] = useState(false);
       label: "Hotel",
       icon: Hotel,
       questions: [
-        {
-          prompt: "Select your hotel",
-          options:
-            loadedHotels.length
-              ? loadedHotels.map((hotel) => `${hotel.name} - $${hotel.price}/night`)
-              : ["No hotels available"],
-        },
+{
+  prompt: "Select your hotel",
+  options: hotelOptions.length ? hotelOptions : ["No hotels available"],
+},
+
+
         { prompt: "Budget range per night?", type: "text" },
         { prompt: "Accessibility requirements?", options: ["None", "Wheelchair Access", "Ground Floor", "Special Assistance"] },
         { prompt: "Pet-friendly options?", options: ["Yes", "No"] },
@@ -221,10 +234,11 @@ const [paymentCompleted, setPaymentCompleted] = useState(false);
       label: "Attractions",
       icon: Compass,
       questions: [
-        {
-          prompt: "Select attractions to visit",
-          options: loadedAttractions.length ? loadedAttractions : ["No attractions available"],
-        },
+    {
+  prompt: "Select attractions to visit",
+  options: attractionNames.length ? attractionNames : ["No attractions available"],
+},
+
         { prompt: "Budget for daily activities?", type: "text" },
         { prompt: "Interest areas?", options: ["History", "Food", "Nightlife", "Nature", "Culture"] },
         { prompt: "Group type?", options: ["Solo", "Couple", "Family", "Friends"] },

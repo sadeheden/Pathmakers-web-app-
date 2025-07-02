@@ -4,12 +4,14 @@ import {
   getAttractionById,
   addAttraction,
   updateAttraction,
-  deleteAttraction
+  deleteAttraction,
+  getAttractionsByCity
 } from './att.controller.js';
 
 const router = Router();
 
 router
+  .get('/city/:city', getAttractionsByCity) // <-- This is now correct!
   .get('/', getAttractions)
   .get('/:id', getAttractionById)
   .post('/', addAttraction)
