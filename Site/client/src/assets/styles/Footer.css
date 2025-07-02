@@ -1,74 +1,80 @@
 .footer {
-    background-color: #2c85b2;
-    color: white;
-    padding: 20px 0;
-    text-align: center;
-    position: inherit;
-    bottom: 0;
-    width: 100%;
-  }
-  
-  .footer a {
-    color: white;
-    margin: 0 15px;
-    text-decoration: none;
-    font-size: 24px;
-    text-align: center;
-  }
-  
-  .footer a:hover {
-    color: #f39c12;
-  }
-  
- 
-
-  
-/* Animation */
-@keyframes fadeIn {
-  from {
-      opacity: 0;
-      transform: translateY(20px);
-  }
-  to {
-      opacity: 1;
-      transform: translateY(0);
-  }
+  background: #004e75;
+   position:static;
+     left: 0;
+  bottom: 0;
+  width: 100vw;
+  z-index: 999;
+  color: #afdce7;
+  padding: 6.2rem 1.3rem 1.3rem 4.3rem;
+  font-size: 1.04rem;
+  margin-top: 4rem;
+  box-shadow: 0 -2px 24px 0 rgba(0,0,0,0.09);
 }
 
-/* Responsive Design for iPhones */
-@media (max-width: 430px) {
-  .about-container {
-      margin: 15px 10px;
-      padding: 15px;
-      border-radius: 10px;
-      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-  }
-
-  h1 {
-      font-size: 1.4rem;
-  }
-
-  p {
-      font-size: 0.95rem;
-      line-height: 1.6;
-  }
-
-  body {
-      line-height: 1.4;
-  }
+.footer-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.3rem;
 }
 
-/* Extra Small Screens (e.g., iPhone SE) */
-@media (max-width: 360px) {
-  .about-container {
-      padding: 10px;
-  }
+.footer-left {
+  display: flex;
+  align-items: center;
+  gap: 1.3rem;
+  font-size: 1.04rem;
+}
 
-  h1 {
-      font-size: 1.2rem;
-  }
+.footer-logo {
+  font-weight: 800;
+  font-family: 'Noto Sans', sans-serif;
+  font-size: 1.14rem;
+  letter-spacing: 2px;
+  color: #afdce7;
+}
 
-  p {
-      font-size: 0.9rem;
+.footer-copy {
+  opacity: 0.8;
+  font-size: 1rem;
+}
+
+.footer-right {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  font-size: 1.06rem;
+}
+
+.footer-follow {
+  font-weight: 500;
+  font-size: 1rem;
+  color: #e8eaf0;
+  margin-right: 0.6rem;
+}
+
+.footer-right a {
+  color: #afdce7;
+  font-size: 1.5rem;
+  margin: 0 0.07em;
+  transition: color 0.15s;
+}
+
+.footer-right a:hover {
+  color: #afdce7;
+}
+
+@media (max-width: 650px) {
+  .footer-content {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1.5rem;
+  }
+  .footer-right {
+    gap: 0.75rem;
+    font-size: 1.18rem;
   }
 }
