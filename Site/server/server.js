@@ -6,6 +6,7 @@ dotenv.config();
 
 import citiesRouter from './services/cities/cities.router.js';
 import attractionRoutes from './services/attraction/att.router.js';
+import flightsRoutes from './services/flights/flights.router.js';
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -14,9 +15,12 @@ app.use(cors());
 app.use(express.json());
 
 
+
 // רישום ראוטים
 app.use('/api/cities', citiesRouter);
 app.use('/api/attraction', attractionRoutes);
+app.use('/api/flights', flightsRoutes);
+
 // טיפול בשגיאות
 app.use((err, req, res, next) => {
   console.error(err.stack);
