@@ -6,22 +6,27 @@ import '../assets/styles/main.css';
 import { FiCompass, FiHeart, FiMap, FiUsers } from 'react-icons/fi';
 
 // Use your actual images:
-import fantasyImg from '../assets/images/fantasy-3502188_1280.jpg';           
-import airportImg from '../assets/images/airport-2373727_1280.jpg';           
-import globeImg from '../assets/images/globe-trotter-1828079_1280.jpg';       
-import mockupImg from '../assets/images/mockup.png';                          
-import logoImg from '../assets/images/logo.png';
+import parisImg from '../assets/images/paris.png';
+import tokyoImg from '../assets/images/tokyo.png';
+import newYorkImg from '../assets/images/newyork.png';
+import barcelonaImg from '../assets/images/barcelona.png';
+import romeImg from '../assets/images/rome.png';
+import londonImg from '../assets/images/london.png';
+import bangkokImg from '../assets/images/bangkok.png';
+import dubaiImg from '../assets/images/dubai.png';
+import fantasyImg from '../assets/images/fantasy.jpg'; 
+import airportImg from '../assets/images/airport.jpg';
 
 // Destination "cities"
 const cities = [
-  { img: fantasyImg, name: 'Fantasy Land', slug: 'fantasy-land' },
-  { img: airportImg, name: 'Airport City', slug: 'airport-city' },
-  { img: globeImg, name: 'Globetrotter', slug: 'globetrotter' },
-  { img: mockupImg, name: 'Mockup Town', slug: 'mockup-town' },
-  { img: logoImg, name: 'Logo City', slug: 'logo-city' },
-  { img: globeImg, name: 'Metro World', slug: 'metro-world' },      // NEW
-  { img: fantasyImg, name: 'Sunshine Bay', slug: 'sunshine-bay' },  // NEW
-  { img: airportImg, name: 'Jetsetter Ville', slug: 'jetsetter-ville' } // NEW
+  { img: parisImg, name: 'Paris', slug: 'paris' },
+  { img: tokyoImg, name: 'Tokyo', slug: 'tokyo' },
+  { img: newYorkImg, name: 'New York', slug: 'new-york' },
+  { img: barcelonaImg, name: 'Barcelona', slug: 'barcelona' },
+  { img: romeImg, name: 'Rome', slug: 'rome' },
+  { img: londonImg, name: 'London', slug: 'london' },
+  { img: bangkokImg, name: 'Bangkok', slug: 'bangkok' },
+  { img: dubaiImg, name: 'Dubai', slug: 'dubai' }
 ];
 
 
