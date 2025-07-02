@@ -16,6 +16,19 @@ export async function getAllAttractionsFromDatabase() {
     client.close();
   }
 }
+export async function getAttractionsByCityFromDatabase(city) {
+  const { client, db } = await connectDB();
+  try {
+    // Find attractions matching the city (case-insensitive for safety)
+    return await db
+      .collection(COLLECTION_NAME)
+      .find({ city: { $regex: new RegExp(`^${city}$`, 'i') }, isDeleted: { $ne: true } })
+      .toArray();
+  } finally {
+    client.close();
+  }
+}
+
 
 export async function getAttractionByIdFromDatabase(id) {
   const { client, db } = await connectDB();

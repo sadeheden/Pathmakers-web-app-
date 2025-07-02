@@ -3,8 +3,10 @@ import {
   getAttractionByIdFromDatabase,
   saveAttractionToDatabase,
   updateAttractionInDatabase,
-  deleteAttractionInDatabase
+  deleteAttractionInDatabase,
+  getAttractionsByCityFromDatabase // <--- Add this!
 } from './att.db.js';
+
 
 export default class Attraction {
   constructor({ name, city, description }) {
@@ -32,6 +34,10 @@ export default class Attraction {
       description: this.description
     });
   }
+    static async findByCity(city) {
+    return await getAttractionsByCityFromDatabase(city);
+  }
+
 
   async update(id) {
     return await updateAttractionInDatabase({

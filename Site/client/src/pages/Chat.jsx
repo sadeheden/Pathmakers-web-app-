@@ -100,19 +100,24 @@ const [paymentCompleted, setPaymentCompleted] = useState(false);
       }
     }
 
-    async function fetchAttractions(city) {
-      if (!city) return;
-      try {
-        const response = await fetch(`http://localhost:4000/api/attractions/${city.toLowerCase()}`);
-        if (!response.ok) {
-          throw new Error(`Failed to fetch attractions for ${city}, status: ${response.status}`);
-        }
-        const data = await response.json();
-        setLoadedAttractions(data.attractions || []);
-      } catch (error) {
-        console.error("Error fetching attractions:", error);
-      }
+ async function fetchAttractions(city) {
+  if (!city) return;
+  try {
+    const response = await fetch(
+      `http://localhost:4000/api/attractions/city/${encodeURIComponent(city)}`
+    );
+    if (!response.ok) {
+      throw new Error(
+        `Failed to fetch attractions for ${city}, status: ${response.status}`
+      );
     }
+    const data = await response.json();
+    setLoadedAttractions(data.attractions || []);
+  } catch (error) {
+    console.error("Error fetching attractions:", error);
+  }
+}
+
 
     async function fetchData() {
       await Promise.all([
