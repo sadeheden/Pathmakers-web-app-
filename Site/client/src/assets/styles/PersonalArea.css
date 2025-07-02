@@ -1,0 +1,263 @@
+/* 🏠 Main Container */
+.containerPersonal {
+    width: 100%;
+    max-width: 600px;
+    margin: 10px auto;
+    padding: 20px;
+    background-color: white;
+    border-radius: 30px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+/* 🎯 Title - Styled like all h1 elements */
+.page-title {
+    text-align: center;
+    font-size: 2rem;
+    font-weight: bold;
+    color: #004e75; /* Light Blue */
+    margin-top: 15px;
+}
+
+/* 🎯 Tab Buttons */
+.tab-buttons {
+    display: flex;
+    justify-content: center;
+    margin-top: 20px;
+    gap: 10px;
+}
+
+.tab-buttons button {
+    background-color: #a3d5ff; /* Light Blue */
+    border: none;
+    padding: 12px 18px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: bold;
+    transition: background-color 0.3s ease;
+}
+
+.tab-buttons button.active {
+    background-color: #4a90e2; /* Darker Blue */
+    color: white;
+}
+
+.tab-buttons button:hover {
+    background-color: #6baefb;
+    color: white;
+}
+
+/* 📌 Section Headings */
+.heading {
+    text-align: center;
+    margin-bottom: 10px;
+}
+
+/* ℹ️ User Information Box */
+.profileInfo {
+    background-color: #f3e5f5;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+.profileInfo p {
+    font-size: 1.1em;
+    margin: 5px 0;
+}
+.order-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.order-modal-content {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    min-width: 300px;
+    text-align: center;
+}
+
+.close-modal {
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    background: none;
+    border: none;
+    font-size: 20px;
+    cursor: pointer;
+}
+/* 📌 Order Modal Styling */
+.order-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5); /* Semi-transparent background */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000; /* Ensure it's on top */
+}
+
+.order-modal-content {
+    background: white;
+    padding: 25px;
+    border-radius: 10px;
+    width: 80%;
+    max-width: 400px;
+    text-align: center;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+    position: relative; /* Ensure proper positioning of close button */
+}
+
+/* ❌ Close Button */
+.close-modal {
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    color: red;
+    font-weight: bold;
+}
+
+.close-modal:hover {
+    color: darkred;
+}
+
+/* 📜 Order List Styling */
+.orders-list {
+    list-style-type: none;
+    padding: 0;
+    margin-top: 20px;
+}
+
+/* 🎟️ Order Item */
+.order-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #ece5ff; /* Light Purple */
+    padding: 12px;
+    border-radius: 12px;
+    margin-bottom: 10px;
+    font-size: 1rem;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
+    border-left: 5px solid #7a5fd9; /* Accent border */
+}
+
+/* 🔹 Hover Effect */
+.order-item:hover {
+    background-color: #ded3f7; /* Slightly darker */
+    transform: scale(1.02);
+}
+
+/* 🖱️ "View Details" Button */
+.view-details-button {
+    background: #4a90e2;
+    color: white;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 5px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background 0.3s ease-in-out, transform 0.2s ease;
+}
+
+.view-details-button:hover {
+    background-color: #357ab7;
+    transform: scale(1.05);
+}
+
+/* ℹ️ User Information Box - Center Content */
+.profileInfo {
+    display: flex;
+    flex-direction: column;
+    align-items: center; /* Center content horizontally */
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    text-align: center; /* Center text */
+}
+
+/* 🖱️ Center Buttons */
+.button, .logout-button {
+    display: block;
+    width: 60%; /* Set consistent width */
+    max-width: 250px; /* Prevents from being too wide */
+    text-align: center;
+    margin: 10px auto; /* Centers horizontally */
+}
+
+
+/* 🖱️ Light Blue Buttons */
+.button {  
+    background-color: #4a90e2; /* Light Blue */
+    color: white;
+    border: none;
+    padding: 10px 15px;
+    border-radius: 8px; /* Rounded corners */
+    font-size: 14px;
+    font-weight: bold;
+    transition: background 0.3s ease-in-out, transform 0.2s ease;
+    display: block;
+    width: 30%;
+    text-align: center;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.button:hover {
+    background-color: #357ab7;
+    transform: scale(1.05);
+}
+
+/* 📩 Newsletter Input - Smaller */
+.newsletter-input {
+    width: 80%;  /* Reduce width */
+    padding: 8px;  /* Reduce padding */
+    font-size: 0.9rem;  /* Reduce font size */
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    margin-top: 10px;
+    display: block;
+    margin: 0 auto;  /* Center input */
+}
+
+/* 📩 Newsletter Button - Match Other Buttons */
+.newsletter-button {
+    background-color: #4a90e2; /* Light Blue */
+    color: white;
+    border: none;
+    padding: 10px 15px;
+    border-radius: 8px; /* Rounded corners */
+    font-size: 14px;
+    font-weight: bold;
+    transition: background 0.3s ease-in-out, transform 0.2s ease;
+    display: block;
+    margin-left: 200px;
+    margin-top: 30px;
+    width: 30%;
+    text-align: center;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+/* 📜 Orders List - Better Spacing & Styling */
+.orders-list {
+    list-style-type: none;
+    padding: 0;
+    margin-top: 20px;
+}
+
+

@@ -1,0 +1,100 @@
+/* Global Styles */
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 20px;
+    background-color: #f0f8ff;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    text-align: center;
+}
+
+h1 {
+    color: #333;
+    margin-bottom: 40px;
+    margin-top: 40px;
+}
+
+.cards-container {
+    display: flex;
+    justify-content: center;
+    gap: 30px;
+    margin-bottom: 40px;
+    flex-wrap: wrap; /* Allow items to wrap on small screens */
+}
+
+.card {
+    background: white;
+    padding: 50px;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    flex: 1;
+    max-width: 300px;
+    text-align: center;
+    margin: 10px; /* Add margin to ensure spacing on smaller screens */
+    padding-bottom: 9%;
+}
+
+.icon {
+    font-size: 40px;
+    color: #3498db;
+}
+.cta {
+    background: #e6e6fa;
+    padding-top: 20px;
+    padding-bottom: 14px; /* Increase padding */
+    width: 99vw; /* Full width of the viewport */
+    margin-top: 30px;
+    margin-left: -50vw; /* Reset any inherited container margins */
+    margin-right: -50vw;
+    left: 50%;
+    position: relative;
+    text-align: center;
+}
+
+
+/* Responsive Styles for iPhone and small screens */
+@media (max-width: 768px) {
+    .container {
+        padding: 10px; /* Reduce padding for smaller screens */
+    }
+
+    h1 {
+        font-size: 24px; /* Adjust heading size */
+        margin-bottom: 30px; /* Less space for smaller screens */
+    }
+
+    .cards-container {
+        gap: 15px; /* Reduce gap between cards */
+    }
+
+    .card {
+        max-width: 100%; /* Cards should take up full width on small screens */
+        margin-bottom: 20px; /* Add bottom margin between cards */
+    }
+
+    .icon {
+        font-size: 30px; /* Smaller icon size for mobile */
+    }
+
+    .cta {
+        padding: 15px; /* Reduce padding in call-to-action box */
+    }
+}
+
+@media (max-width: 480px) {
+    h1 {
+        font-size: 20px; /* Even smaller heading size for very small screens */
+    }
+
+    .card {
+        padding: 20px; /* Adjust card padding */
+    }
+
+    .cta {
+        padding: 10px; /* Adjust call-to-action padding for small screens */
+    }
+}

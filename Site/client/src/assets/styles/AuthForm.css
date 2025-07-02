@@ -1,0 +1,229 @@
+/* 🌎 Global Styles - Ensuring Consistency */
+:root {
+    --primary-font: 'Poppins', sans-serif;
+    --text-color: #333;
+    --heading-color-login: #000; /* Black heading for login */
+    --heading-color-signup: #4a90e2; /* Blue heading for signup */
+    --label-color: #666;
+    --input-border: #ddd;
+    --input-focus: #4facfe;
+    --button-text-color: white;
+    --button-bg-login: linear-gradient(135deg, #4facfe, #00f2fe);
+    --button-bg-signup: linear-gradient(135deg, #4a90e2, #55c9e0);
+    --button-hover-bg-login: linear-gradient(135deg, #00c6ff, #0072ff);
+    --button-hover-bg-signup: linear-gradient(135deg, #357ab7, #3cb1c1);
+    --error-color: #f75c7e;
+}
+
+
+/* 🌟 General Styles */
+body {
+    font-family: var(--primary-font);
+    color: var(--text-color);
+    background-color: #f5f5f5;
+    margin: 0;
+    padding: 0;
+}
+.inputError {
+    border: 1px solid #f75c7e !important; /* Red border */
+    background-color: #ffe6e9; /* Light red background */
+}
+
+.error {
+    color: #f75c7e;
+    font-size: 0.9rem;
+    margin-top: 5px;
+}
+
+
+/* 📌 Auth Container (Shared for Login & Signup) */
+.authContainer {
+    background: white;
+    margin: 2px auto; /* Centers horizontally */
+    padding: 40px 30px;
+    border-radius: 16px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+    width: 100%;
+    max-width: 400px;
+    box-sizing: border-box;
+    text-align: center;
+}
+
+/* 🎯 Dynamic Heading Colors */
+.authTitle {
+    margin-bottom: 10px;
+    font-weight: 600;
+    font-size: 1.5rem;
+}
+
+/* Login heading is black, signup heading is blue */
+.authContainer.login .authTitle {
+    color: var(--heading-color-login);
+}
+.authContainer.signup .authTitle {
+    color: var(--heading-color-signup);
+}
+
+/* 🔹 Form */
+.formGroup {
+    margin-bottom: 20px;
+    text-align: left;
+}
+
+.formGroup label {
+    display: block;
+    font-size: 0.9rem;
+    color: var(--label-color);
+    margin-bottom: 5px;
+}
+
+.formGroup input {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid var(--input-border);
+    border-radius: 8px;
+    font-size: 1rem;
+    color: var(--text-color);
+    box-sizing: border-box;
+    outline: none;
+    transition: all 0.3s ease;
+    background-color: white;
+}
+
+.formGroup input:focus {
+    border-color: var(--input-focus);
+    box-shadow: 0 0 5px rgba(79, 172, 254, 0.5);
+}
+
+/* 🎨 Dynamic Button Styles */
+.authButton {
+    width: 100%;
+    padding: 12px;
+    font-size: 1rem;
+    font-weight: bold;
+    color: var(--button-text-color);
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+/* Login button style */
+.authContainer.login .authButton {
+    background: var(--button-bg-login);
+}
+.authContainer.login .authButton:hover {
+    background: var(--button-hover-bg-login);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+}
+
+/* Signup button style */
+.authContainer.signup .authButton {
+    background: var(--button-bg-signup);
+}
+.authContainer.signup .authButton:hover {
+    background: var(--button-hover-bg-signup);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+}
+
+/* 🔗 Switch Text */
+.toggleText {
+    margin-top: 15px;
+    font-size: 0.9rem;
+}
+
+.toggleText a {
+    color: var(--input-focus);
+    text-decoration: none;
+    font-weight: bold;
+}
+
+.toggleText a:hover {
+    text-decoration: underline;
+}
+
+/* ❌ Error Messages */
+.error {
+    color: red;
+    font-size: 0.9rem;
+    margin-top: 8px;
+}
+.authContainer {
+    background: white;
+    margin: 90px auto;
+    padding: 40px 30px;
+    border-radius: 16px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+    width: 100%;
+    max-width: 400px;
+    box-sizing: border-box;
+    text-align: center;
+}
+
+.authTitle {
+    margin-bottom: 10px;
+    font-weight: 600;
+    font-size: 1.5rem;
+}
+
+.formGroup {
+    margin-bottom: 20px;
+    text-align: left;
+}
+
+.formGroup label {
+    display: block;
+    font-size: 0.9rem;
+    margin-bottom: 5px;
+}
+
+.formGroup input {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-size: 1rem;
+    box-sizing: border-box;
+    outline: none;
+}
+
+.authButton {
+    width: 100%;
+    padding: 12px;
+    font-size: 1rem;
+    font-weight: bold;
+    color: white;
+    background: #4facfe;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+.previewImage {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    object-fit: cover;
+    margin-top: 10px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+.switchAuth {
+    text-align: center;
+    margin-top: 15px;
+    font-size: 0.9rem;
+    color: #555;
+}
+
+.switchLink {
+    color: #007bff;
+    cursor: pointer;
+    font-weight: bold;
+    text-decoration: none;
+}
+
+.switchLink:hover {
+    text-decoration: underline;
+}

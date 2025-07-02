@@ -1,0 +1,416 @@
+
+:root {
+  --primary-font: 'Poppins', sans-serif;
+  --text-color: #4a4a4a;
+  --heading-color: #000;
+  --line-color: #e0e0e0;
+  --button-bg: #a367d3;
+  --button-hover-bg: #7f2fa1;
+  --input-bg: #f9f9f9;
+  --card-bg: #ffffff;
+  --shadow-color: rgba(0, 0, 0, 0.1);
+  --accent-color: #9c64d8;
+}
+
+/* Chat Container - Soft Look */
+.containerCh {
+  max-width: 650px;
+  margin: 50px auto;
+  margin-top: 10px;;
+  padding: 10px;
+  background: var(--card-bg);
+  border-radius: 20px;
+  box-shadow: 0 8px 20px var(--shadow-color);
+  font-family: var(--primary-font);
+  color: var(--text-color);
+  animation: fadeIn 1s ease-in-out;
+}
+
+/* Headings */
+h1 {
+  text-align: center;
+  font-size: 2rem;
+  font-weight: 600;
+  color: var(--heading-color);
+  margin-bottom: 20px;
+}
+
+/* Underline Effect for h1 */
+h1::after {
+  content: '';
+  display: block;
+  width: 200px;
+  height: 3px;
+  background: var(--primary-bg, #879fc293);
+  margin: 10px auto 0;
+  border-radius: 2px;
+}
+
+/* Step Content */
+.step {
+  background: var(--card-bg);
+  padding: 15px;
+  border-radius: 15px;
+  box-shadow: 0 4px 12px var(--shadow-color);
+  text-align: center;
+  margin-top: 20px;
+}
+
+.step-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 5px;
+}
+
+.step-header svg {
+  width: 26px;
+  height: 26px;
+  margin-right: 10px;
+  color: var(--button-bg);
+}
+
+/* Form Elements */
+label {
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--heading-color);
+}
+
+input,
+select {
+  width: 100%;
+  padding: 12px;
+  font-size: 14px;
+  border-radius: 12px;
+  border: 1px solid #ddd;
+  margin-top: 8px;
+  background: var(--input-bg);
+  transition: border-color 0.3s ease;
+  box-sizing: border-box; /* Ensures same width across all fields */
+  height: 45px; /* Adjust to match dropdown height */
+}
+
+
+input:focus,
+select:focus {
+  border-color: var(--button-bg);
+  outline: none;
+}
+
+/* Custom Button */
+.custom-btn {
+  background-color: var(--button-bg);
+  font-size: 16px;
+  padding: 12px 25px;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  margin-top: 20px;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  transition: background 0.3s ease-in-out;
+}
+
+.custom-btn:disabled {
+  background-color: #b733c5;
+  cursor: not-allowed;
+}
+
+.custom-btn:hover:not(:disabled) {
+  background-color: var(--button-hover-bg);
+}
+
+/* Progress Bar */
+.progress-bar {
+  width: 100%;
+  height: 6px;
+  background-color: var(--line-color);
+  border-radius: 3px;
+  margin-top: 10px;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background-color: var(--accent-color);
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+/* Navigation Buttons */
+.navigation-buttons {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  margin-top: 20px;
+}
+
+.custom-btn1, .custom-btn2 {
+  background-color: var(--button-bg);
+  font-size: 14px;
+  padding: 12px 25px;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;  
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  transition: background 0.3s ease-in-out;
+  width: 45%; /* Ensures equal width */
+  text-align: center;
+}
+
+.custom-btn1:disabled, .custom-btn2:disabled {
+  background-color: #bbb;
+  cursor: not-allowed;
+}
+
+.custom-btn1:hover:not(:disabled), .custom-btn2:hover:not(:disabled) {
+  background-color: var(--button-hover-bg);
+}
+
+.personal-area-btn {
+  background-color: #355ab7; /* Ensures same background */
+  color: white;
+  padding: 10px 20px;
+  font-size: 16px;
+  border: none;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: background 0.3s ease-in-out;
+}
+
+.personal-area-btn:hover {
+  background-color: #2c4a8e; /* Slightly darker on hover */
+}
+
+.custom-btn1 {
+  background-color: var(--button-bg);
+  font-size: 14px;
+  padding: 12px 25px;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  transition: background 0.3s ease-in-out;
+}
+
+.custom-btn2 {
+  background-color: var(--button-bg);
+  font-size: 14px;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  transition: background 0.3s ease-in-out;
+}
+
+.custom-btn1:disabled,
+.custom-btn2:disabled {
+  background-color: #bbb;
+  cursor: not-allowed;
+}
+
+.custom-btn1:hover:not(:disabled),
+.custom-btn2:hover:not(:disabled) {
+  background-color: var(--button-hover-bg);
+}
+
+/* Animation */
+@keyframes fadeIn {
+  from {
+      opacity: 0;
+      transform: translateY(20px);
+  }
+  to {
+      opacity: 1;
+      transform: translateY(0);
+  }
+}
+
+@media (max-width: 430px) {
+  .containerCh {
+      margin: 15px 10px;
+      padding: 20px;
+      border-radius: 15px;
+      box-shadow: 0 6px 16px var(--shadow-color);
+  }
+
+  h1 {
+      font-size: 1.6rem;
+  }
+
+  .step {
+      padding: 20px;
+  }
+
+  label {
+      font-size: 14px;
+  }
+
+  .custom-btn {
+      padding: 10px 20px;
+  }
+}
+
+@media (max-width: 360px) {
+  .containerCh {
+      padding: 15px;
+  }
+
+  h1 {
+      font-size: 1.4rem;
+  }
+
+  label {
+      font-size: 13px;
+  }
+
+  .custom-btn {
+      padding: 8px 18px;
+  }
+} 
+/* Modal Styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.modal-content {
+  background: white;
+  padding: 20px;
+  border-radius: 10px;
+  width: 350px;
+  text-align: center;
+}
+
+.modal-content label {
+  display: block;
+  text-align: left;
+  margin-top: 10px;
+  font-weight: bold;
+}
+
+.modal-content input {
+  width: 100%;
+  padding: 10px;
+  margin-top: 5px;
+  border-radius: 5px;
+  border: 1px solid #ccc;
+}
+
+.expiry-cvv {
+  display: flex;
+  justify-content: space-between;
+}
+
+.expiry-cvv div {
+  width: 48%;
+}
+
+.pay-button {
+  background: #4a90e2;
+  color: white;
+  border: none;
+  padding: 12px;
+  width: 100%;
+  margin-top: 20px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+.change-payment {
+  background: none;
+  border: none;
+  color: #4a90e2;
+  text-decoration: underline;
+  cursor: pointer;
+  margin-top: 10px;
+}
+.modal-content h2 {
+  color: #4CAF50;
+  font-size: 22px;
+}
+
+.modal-content p {
+  font-size: 16px;
+  margin-top: 10px;
+}
+.error-message {
+  color: red;
+  font-size: 14px;
+  margin-bottom: 10px;
+  text-align: center;
+}
+.trip-summary-container {
+  display: contents;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+}
+
+.summary-box {
+  background: #fff;
+  padding: 30px;
+  border-radius: 10px;
+  box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.1);
+  max-width: 1000px;
+  text-align: center;
+}
+
+.summary-details {
+  text-align: left;
+  margin-bottom: 20px;
+}
+
+.summary-details p {
+  font-size: 16px;
+  margin: 5px 0;
+}
+
+.summary-details h3 {
+  color: #9466d1;
+  text-align: center;
+}
+
+.summary-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.download-btn, .personal-area-btn {
+  padding: 10px 20px;
+  font-size: 16px;
+  border: none;
+  border-radius: 20px;
+  cursor: pointer;
+}
+
+.download-btn {
+  background-color: #357ab7;
+  color: white;
+}
+
+.personal-area-btn {
+  background-color: #355ab7;
+  color: white;
+}
