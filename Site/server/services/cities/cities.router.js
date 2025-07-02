@@ -1,9 +1,15 @@
-import express from 'express';
-import { getCitiesList } from './cities.controller.js';
+import { getCities, getCityById,addCity, updateCity, deleteCity } from "./cities.controller.js";
+import { Router } from "express";
+ 
+const router = Router();
 
-const router = express.Router();
-
-// קישור לפונקציה שמביאה את הערים
-router.get('/', getCitiesList);
-
-export default router;
+router
+    .get('/', getCities)
+    .get('/:id', getCityById)
+    .post('/', addCity)
+    .put('/:id', updateCity)
+    .delete('/:id', deleteCity);
+ 
+    export default router;
+ 
+ 

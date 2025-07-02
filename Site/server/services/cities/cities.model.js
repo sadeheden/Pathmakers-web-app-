@@ -1,35 +1,54 @@
-import fs from "fs/promises";
+import { getAllCitiesFromDatabase, getCityById, saveCityToDatabase, updateCityInDatabase, deleteCityInDatabase } from './cities.db.js';
 
-const FILE_PATH = "data/cities.json";
-
-// פונקציה לבדוק אם הקובץ קיים
-const fileExists = async (filePath) => {
-    try {
-        await fs.access(filePath);
-        return true;
-    } catch (error) {
-        console.error(`File not found: ${filePath}`, error);
-        return false;
+export default class City {
+    constructor(city) {
+        this.city = city; // Name of the city
     }
-};
-
-// פונקציה לקרוא את הקובץ JSON
-const readJsonFile = async (filePath) => {
-    try {
-        if (!(await fileExists(filePath))) {
-            console.log(`File does not exist. Creating new file at ${filePath}`);
-            await fs.writeFile(filePath, JSON.stringify([], null, 2));
-            return [];
+ 
+    // Static method to find all cities
+    static async findAll() {
+        try {
+            return await getAllCitiesFromDatabase(); // fetching from the database
+        } catch (error) {
+            throw new Error('An error occurred while fetching cities.');
         }
-        const data = await fs.readFile(filePath, "utf8");
-        return JSON.parse(data);
-    } catch (error) {
-        console.error("Error reading JSON file:", error);
-        return [];
     }
-};
-
-// פונקציה לקבלת הערים מתוך הקובץ
-export const getCities = async () => {
-    return await readJsonFile(FILE_PATH);
-};
+ 
+    // Static method to find a city by ID
+    static async findById(id) {
+        try {
+            return await getCityById(id); // fetching from the database
+        } catch (error) {
+            throw new Error('An error occurred while fetching the city.');
+        }
+    }
+ 
+    // Static method to delete a city
+    static async delete(id) {
+        try {
+            return await deleteCityInDatabase(id); // deleting from the database
+        } catch (error) {
+            throw new Error('An error occurred while deleting the city.');
+        }
+    }
+ 
+    // Instance method to save a new city
+async save() {
+    try {
+        // Pass only the city name to the database function
+        return await saveCityToDatabase({ city: this.city }); // saving to the database
+    } catch (error) {
+        throw new Error('An error occurred while saving the city.');
+    }
+}
+ 
+// Instance method to update a city
+async update(id) {
+    try {
+        // Pass only the city name and the id to the database function
+        return await updateCityInDatabase({ city: this.city }, id); // updating in the database
+    } catch (error) {
+        throw new Error('An error occurred while updating the city.');
+    }
+}
+}
