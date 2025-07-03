@@ -49,87 +49,88 @@ const AuthForm = ({ isLogin, isManager }) => {
     };
     
     // Handle form submission
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        setErrors({});
-        
-        if (!isLogin) {
-            const validationErrors = validateForm();
-            if (Object.keys(validationErrors).length > 0) {
-                setErrors(validationErrors);
+   const handleSubmit = async (e) => {
+    e.preventDefault();
+    setErrors({});
+
+    if (!isLogin) {
+        const validationErrors = validateForm();
+        if (Object.keys(validationErrors).length > 0) {
+            setErrors(validationErrors);
+            return;
+        }
+    }
+
+    try {
+        let profileImageUrl =
+            formData.profile_image ||
+            "https://res.cloudinary.com/dnnmhrsja/image/upload/v1700000000/default_profile.jpg";
+
+        // If a new file is selected, upload it
+        if (formData.profileImage && typeof formData.profileImage !== "string") {
+            const imageData = new FormData();
+            imageData.append("file", formData.profileImage);
+            imageData.append("upload_preset", "your_cloudinary_preset");
+
+            const imageResponse = await fetch("http://localhost:4000/api/upload/single", {
+                method: "POST",
+                body: imageData,
+            });
+
+            const imageResult = await imageResponse.json();
+
+            if (imageResponse.ok && imageResult.url) {
+                profileImageUrl = imageResult.url;
+            } else {
+                console.warn("🚨 Cloudinary upload response:", imageResult);
+                setErrors({ submit: "⚠️ Profile image upload failed. Try again." });
                 return;
             }
         }
-    
-        try {
-            let profileImageUrl = formData.profileImageUrl || "https://res.cloudinary.com/dnnmhrsja/image/upload/v1700000000/default_profile.jpg"; // Keep existing image if available
-    
-            if (formData.profileImage && typeof formData.profileImage !== "string") {
-                const imageData = new FormData();
-                imageData.append("file", formData.profileImage);
-                imageData.append("upload_preset", "your_cloudinary_preset");
-    
-                const imageResponse = await fetch("http://localhost:4000/api/upload/single", {
-                    method: "POST",
-                    body: imageData,
-                });
-    
-                const imageResult = await imageResponse.json();
-    
-                if (imageResponse.ok && imageResult.url) {
-                    profileImageUrl = imageResult.url;
-                } else {
-                    console.warn("🚨 Cloudinary upload response:", imageResult);
-                    setErrors({ submit: "⚠️ Profile image upload failed. Try again." });
-                    return;
-                }
-            }
-    
-            const requestBody = isLogin
-            ? isManager
-                ? { username: "manager", password: formData.password } // Manager Login
-                : { username: formData.username, password: formData.password } // Regular Login
-            : isManager
-            ? { 
-                  username: formData.username, 
-                  email: formData.email, 
-                  password: formData.password, 
-                  profileImage: profileImageUrl, 
-                  role: "manager"  // Ensure backend recognizes manager registration
-              } 
-            : { 
-                  username: formData.username, 
-                  email: formData.email, 
-                  password: formData.password, 
-                  profileImage: profileImageUrl 
-              };
 
-    
-            const url = isLogin
-                ? "http://localhost:4000/api/auth/login"
-                : "http://localhost:4000/api/auth/register";
-    
-            const response = await fetch(url, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(requestBody),
-            });
-    
-            const data = await response.json();
-    
-            if (response.ok) {
-                localStorage.setItem("authToken", data.token);
-                navigate("/main");
-            } else {
-                console.error("❌ Registration/Login failed:", data);
-                setErrors({ submit: data.error || "An error occurred. Try again." });
-            }
-        } catch (error) {
-            console.error("❌ Auth error:", error);
-            setErrors({ submit: "An error occurred. Please try again." });
+        // Prepare request body
+        let requestBody;
+        if (isLogin) {
+            // Login: send only what's relevant
+            requestBody = isManager
+                ? { username: "manager", password: formData.password }
+                : { username: formData.username, password: formData.password };
+        } else {
+            // Register: send fields as expected by your backend
+            requestBody = {
+                username: formData.username,
+                email: formData.email,
+                password: formData.password,
+                profile_image: profileImageUrl // <-- must match backend
+            };
+            if (isManager) requestBody.role = "manager";
         }
-    };
-    
+
+        const url = isLogin
+            ? "http://localhost:4000/api/auth/login"
+            : "http://localhost:4000/api/auth/register";
+
+        const response = await fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(requestBody),
+        });
+
+        const data = await response.json();
+
+        if (response.ok && data.token) {
+            localStorage.setItem("authToken", data.token);
+            navigate("/main");
+        } else {
+            console.error("❌ Registration/Login failed:", data);
+            setErrors({ submit: data.error || data.message || "An error occurred. Try again." });
+        }
+    } catch (error) {
+        console.error("❌ Auth error:", error);
+        setErrors({ submit: "An error occurred. Please try again." });
+    }
+};
+
 
     return (
         <div className={`authContainer ${isLogin ? "login" : "signup"}`}>
