@@ -48,7 +48,7 @@ const Main = () => {
     ...cities.slice(0, CARDS_PER_PAGE)
   ].slice(carouselIdx, carouselIdx + CARDS_PER_PAGE);
 
-  const tripDate = "2025-09-15";
+  const tripDate = "2026-03-15";
 
   return (
     <div className="trips-page">
@@ -78,7 +78,6 @@ const Main = () => {
           </div>
         </div>
       </section>
-
       <section className="trip-options">
         <div className="trip-card ai-card">
           <img src={fantasyImg} alt="AI Trip Builder" />
@@ -86,7 +85,7 @@ const Main = () => {
           <p>
             Answer four short questions and get personalized recs with AI, guided by traveler opinions.
           </p>
-          <button onClick={() => navigate('/ai-builder')}>
+          <button onClick={() => navigate('/realChat')}>
             Try AI trip builder
           </button>
         </div>
@@ -96,7 +95,7 @@ const Main = () => {
           <p>
             Browse top destinations, restaurants, and things to do and save your faves as you go.
           </p>
-          <button onClick={() => navigate('/manual-builder')}>
+          <button onClick={() => navigate('/chat')}>
             Do it yourself
           </button>
         </div>

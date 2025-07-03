@@ -29,18 +29,21 @@ h1.realChat {
 /* ריבוע ההודעות */
 .chat-box {
   background-color: #ffffff;
-  border-radius: 16px;
+  border-radius: 30px;
   padding: 20px;
-  flex-grow: 1; /* תופס את כל הגובה שנותר */
-  overflow: visible; /* אין גלילה */
+  flex-grow: 1; 
+  overflow: visible; 
   box-shadow: 0 2px 16px rgba(102, 51, 204, 0.10), 0 1.5px 6px rgba(0,0,0,0.07);
-  margin-bottom: 20px;
+  margin: 0 auto 20px auto; /* מרכוז אוטומטי */
   display: flex;
   flex-direction: column;
   gap: 18px;
-  max-height: none; /* לא מגביל גובה */
-  min-height: 400px;
+  max-height: none;
+  min-height: 200px;
+  max-width: 800px; /* הגבלת רוחב מקסימלי */
+  width: 90%; /* רוחב יחסי */
 }
+
 
 /* בועות הודעה */
 .message-container {
@@ -94,6 +97,7 @@ h1.realChat {
   align-items: center;
   z-index: 13;
   backdrop-filter: blur(10px);
+  
 }
 
 /* שאר הסגנונות כפי ששלחת */
