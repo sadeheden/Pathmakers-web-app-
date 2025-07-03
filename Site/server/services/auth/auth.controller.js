@@ -1,6 +1,8 @@
 import { MongoClient, ObjectId } from "mongodb";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
+import dotenv from "dotenv";
+dotenv.config();
 
 const uri = process.env.CONNECTION_STRING;
 const dbName = process.env.DB_NAME;
@@ -36,7 +38,7 @@ export async function getAllUsers(req, res) {
 
     } catch (error) {
         console.error("❌ Error fetching users:");
-        console.error(error); // מדפיס את השגיאה המלאה
+        console.error(error);
         res.status(500).json({ error: "Internal server error", details: error.message });
     } finally {
         if (client) {

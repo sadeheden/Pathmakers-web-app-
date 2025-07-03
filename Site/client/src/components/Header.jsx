@@ -15,37 +15,42 @@ const Header = () => {
 
     // Fetch user session from backend using token stored in localStorage
     const fetchUser = async () => {
-    const token = localStorage.getItem("authToken");
-    if (!token) {
-        setUser(null);
-        return;
-    }
-    try {
-        const res = await fetch("http://localhost:4000/api/auth/user", {
-            method: "GET",
-            headers: {
-                Authorization: `Bearer ${token}`,
-                "Content-Type": "application/json"
-            }
-        });
-        if (!res.ok) {
-            const err = await res.text();
-            console.error("⚠️ Backend error:", err);
-            throw new Error(`⚠️ Failed to fetch user, status: ${res.status}`);
+        const token = localStorage.getItem("authToken");
+        if (!token) {
+            setUser(null);
+            return;
         }
-        const userData = await res.json();
-        console.log("userData from backend:", userData);
+        try {
+            const res = await fetch("http://localhost:4000/api/auth/user", {
+                method: "GET",
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    "Content-Type": "application/json"
+                }
+            });
+            if (!res.ok) {
+                const err = await res.text();
+                console.error("⚠️ Backend error:", err);
+                throw new Error(`⚠️ Failed to fetch user, status: ${res.status}`);
+            }
+            const userData = await res.json();
+            console.log("userData from backend:", userData);
 
-        // Use profile_image from backend, fall back to Cloudinary/default/local placeholder if missing
-        userData.profile_image = userData.profile_image && userData.profile_image !== "null"
-            ? userData.profile_image
-            : DEFAULT_PROFILE_IMAGE;
-        setUser(userData);
-    } catch (error) {
-        setUser(null);
-        console.error("⚠️ Error fetching user session:", error);
-    }
-};
+            // Use profile_image from backend, fall back to Cloudinary/default/local placeholder if missing
+            userData.profile_image = userData.profile_image && userData.profile_image !== "null"
+                ? userData.profile_image
+                : DEFAULT_PROFILE_IMAGE;
+            setUser(userData);
+        } catch (error) {
+            setUser(null);
+            console.error("⚠️ Error fetching user session:", error);
+        }
+    };
+
+    // Call fetchUser once on mount
+    useEffect(() => {
+        fetchUser();
+    }, []);
 
     // Handle logout
     const handleLogout = async () => {

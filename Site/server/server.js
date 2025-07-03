@@ -2,9 +2,17 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 
-dotenv.config(); // טעינת משתני סביבה
+// 🚀 טען משתני סביבה
+dotenv.config();
 
-// ייבוא ראוטים לפי השירותים בפרויקט
+// 🧪 בדיקה: האם משתני הסביבה נטענו כמו שצריך
+console.log("🌿 Loaded ENV variables:");
+console.log("🔗 CONNECTION_STRING:", process.env.CONNECTION_STRING);
+console.log("🗄️ DB_NAME:", process.env.DB_NAME);
+console.log("🔐 JWT_SECRET_KEY:", process.env.JWT_SECRET_KEY ? "[OK]" : "[MISSING]");
+
+
+// 📦 ייבוא ראוטים לפי השירותים בפרויקט
 import citiesRouter from './services/cities/cities.router.js';
 import attractionRoutes from './services/attraction/att.router.js';
 import flightsRoutes from './services/flights/flights.router.js';
