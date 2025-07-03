@@ -1,15 +1,27 @@
 import express from 'express';
-import { getAllUsers, register, login, logout, removeUser, getCurrentUser } from './auth.controller.js';
-import authenticateUser from "../middleware/authenticateUser.js"; // ✅ Ensure correct path
+import {
+    getAllUsers,
+    register,
+    login,
+    logout,
+    removeUser,
+    getCurrentUser
+} from './auth.controller.js';
 
-const authRouter = express.Router(); // ✅ Correct import and initialization
+import authenticateUser from "../middleware/authenticateUser.js"; // JWT auth middleware
 
-// Define routes
-authRouter.get("/users", getAllUsers);
-authRouter.post("/register", register);
-authRouter.post("/login", login);  
-authRouter.post("/logout", logout);
-authRouter.delete("/users/:id", removeUser);
-authRouter.get("/user", authenticateUser, getCurrentUser); // ✅ Protect this route
+const authRouter = express.Router();
 
-export default authRouter; // ✅ Use ES Module export
+// 🟢 Public endpoints
+authRouter.post("/register", register);    // Register new user
+authRouter.post("/login", login);          // Login user
+authRouter.post("/logout", logout);        // (optional, stateless with JWT)
+authRouter.get("/users", getAllUsers);     // List all users
+
+// 🔒 Protected endpoint (requires JWT in header)
+authRouter.get("/user", authenticateUser, getCurrentUser); // Get current user
+
+// 🔒 Admin or user-only (optional: protect this route with another middleware if needed)
+authRouter.delete("/users/:id", removeUser); // Remove user by ID
+
+export default authRouter;

@@ -1,61 +1,52 @@
-import { readFile, writeFile } from 'fs/promises';
-import path from 'path';
-import { v4 as uuidv4 } from 'uuid';
+import { ObjectId } from "mongodb";
+import { connectDB } from "./auth.db.js"; // or db.js
 
-// **Path to JSON database**
-const FILE_PATH = path.join(process.cwd(), 'data', 'users.json');
+// 1. Get All Users (hides passwords)
+export async function getUsers() {
+    const db = await connectDB();
+    const users = await db.collection("Users").find({}).toArray();
+    users.forEach(user => delete user.password); // Remove passwords!
+    return users;
+}
 
-// **Get All Users**
-export const getUsers = async () => {
-    try {
-        const data = await readFile(FILE_PATH, 'utf-8');
-        return JSON.parse(data);
-    } catch (error) {
-        if (error.code === 'ENOENT') {  // If file is missing, create it
-            console.warn("⚠️ users.json file not found, creating a new one...");
-            await saveUsers([]); // Create an empty users file
-            return [];
-        }
-        console.error("❌ Error reading users file:", error);
-        return [];
-    }
-};
+// 2. Find User by Username or Email
+export async function findUserByUsernameOrEmail(username, email) {
+    const db = await connectDB();
+    return await db.collection("Users").findOne({
+        $or: [
+            ...(username ? [{ username }] : []),
+            ...(email ? [{ email }] : [])
+        ]
+    });
+}
 
-// **Save Users to File**
-export const saveUsers = async (users) => {
-    try {
-        await writeFile(FILE_PATH, JSON.stringify(users, null, 2));
-        console.log("✅ Users saved successfully");
-    } catch (error) {
-        console.error("❌ Error saving users file:", error);
-    }
-};
-
-// **Find User By Username or Email**
-export const findUserByUsernameOrEmail = async (username, email) => {
-    const users = await getUsers();
-    return users.find(user => user.username === username || user.email === email);
-};
-
-// **Add User**
-export const addUser = async (username, email, password, profileImage = null) => {
-    const users = await getUsers();
-
-    // Ensure no duplicate users
-    if (await findUserByUsernameOrEmail(username, email)) {
-        return false;
-    }
+// 3. Add User
+export async function addUser(username, email, password, profile_image = null) {
+    const db = await connectDB();
+    // Check for duplicate
+    const exists = await findUserByUsernameOrEmail(username, email);
+    if (exists) return false;
 
     const newUser = {
-        id: uuidv4(),
         username,
         email,
-        password,  // Hashed password
-        profileImage
+        password, // Should already be hashed!
+        profile_image
     };
-
-    users.push(newUser);
-    await saveUsers(users);
-    console.log("✅ New user added:", newUser);
+    const result = await db.collection("Users").insertOne(newUser);
+    newUser._id = result.insertedId;
     return newUser;
-};
+}
+
+// 4. Get User By ID
+export async function getUserById(id) {
+    const db = await connectDB();
+    return await db.collection("Users").findOne({ _id: new ObjectId(id) });
+}
+
+// 5. Remove User By ID
+export async function removeUserById(id) {
+    const db = await connectDB();
+    const result = await db.collection("Users").deleteOne({ _id: new ObjectId(id) });
+    return result.deletedCount > 0;
+}
