@@ -8,6 +8,12 @@ const DEFAULT_PROFILE_IMAGE = "https://res.cloudinary.com/YOUR_CLOUDINARY_NAME/i
 
 // Helper: get database
 async function getDB() {
+    console.log("🔑 CONNECTION_STRING:", uri ? "[OK]" : "[MISSING]");
+    console.log("🛢️ DB_NAME:", dbName ? dbName : "[MISSING]");
+
+    if (!uri) throw new Error("CONNECTION_STRING is not defined");
+    if (!dbName) throw new Error("DB_NAME is not defined");
+
     const client = new MongoClient(uri, { useUnifiedTopology: true });
     await client.connect();
     const db = client.db(dbName);
@@ -18,16 +24,25 @@ async function getDB() {
 export async function getAllUsers(req, res) {
     let client;
     try {
+        console.log("🔄 Attempting to fetch all users...");
         const { db, client: c } = await getDB();
         client = c;
+
         const users = await db.collection("Users").find({}).toArray();
         users.forEach(user => delete user.password);
+
+        console.log(`✅ Fetched ${users.length} users.`);
         res.status(200).json(users);
+
     } catch (error) {
-        console.error("❌ Error fetching users:", error);
-        res.status(500).json({ error: "Internal server error" });
+        console.error("❌ Error fetching users:");
+        console.error(error); // מדפיס את השגיאה המלאה
+        res.status(500).json({ error: "Internal server error", details: error.message });
     } finally {
-        if (client) client.close();
+        if (client) {
+            console.log("🔚 Closing DB connection...");
+            await client.close();
+        }
     }
 }
 
@@ -89,7 +104,7 @@ export async function register(req, res) {
         console.error("❌ Register error:", error);
         res.status(500).json({ error: "Internal server error" });
     } finally {
-        if (client) client.close();
+        if (client) await client.close();
     }
 }
 
@@ -139,7 +154,7 @@ export async function login(req, res) {
         console.error("❌ Login error:", error);
         res.status(500).json({ error: "Internal server error" });
     } finally {
-        if (client) client.close();
+        if (client) await client.close();
     }
 }
 
@@ -175,7 +190,7 @@ export async function getCurrentUser(req, res) {
         console.error("❌ getCurrentUser error:", error);
         return res.status(401).json({ message: "Unauthorized, invalid token" });
     } finally {
-        if (client) client.close();
+        if (client) await client.close();
     }
 }
 
@@ -200,6 +215,6 @@ export async function removeUser(req, res) {
     } catch (error) {
         res.status(500).json({ error: "Internal server error" });
     } finally {
-        if (client) client.close();
+        if (client) await client.close();
     }
 }
