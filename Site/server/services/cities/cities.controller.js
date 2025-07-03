@@ -12,8 +12,6 @@ export async function getCities(req, res) {
   }
 }
 
-
-
 // Fetch a city by ID
 export async function getCityById(req, res) {
     let { id } = req.params;
