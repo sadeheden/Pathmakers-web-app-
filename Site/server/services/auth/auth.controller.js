@@ -10,8 +10,6 @@ const DEFAULT_PROFILE_IMAGE = "https://res.cloudinary.com/YOUR_CLOUDINARY_NAME/i
 
 // Helper: get database
 async function getDB() {
-    console.log("🔑 CONNECTION_STRING:", uri ? "[OK]" : "[MISSING]");
-    console.log("🛢️ DB_NAME:", dbName ? dbName : "[MISSING]");
 
     if (!uri) throw new Error("CONNECTION_STRING is not defined");
     if (!dbName) throw new Error("DB_NAME is not defined");

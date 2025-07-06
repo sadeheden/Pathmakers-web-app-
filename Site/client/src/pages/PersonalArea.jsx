@@ -373,11 +373,10 @@ const PersonalArea = () => {
 )}
 
 
-
 {activeTab === "orders" && (
     <>
         <h2 className="heading">Your Previous Orders</h2>
-        {orders && orders.length > 0 ? ( // ✅ Make sure orders is not null
+        {orders && orders.length > 0 ? ( 
             <ul className="orders-list">
                 {orders.map((order, index) => (
                     <li key={index} className="order-item">

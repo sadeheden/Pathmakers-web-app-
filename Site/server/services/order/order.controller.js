@@ -160,7 +160,6 @@ export const getOrderPDF = async (req, res) => {
         if (!fs.existsSync(pdfPath)) {
             return res.status(404).json({ message: "PDF not found. Please try generating a new order." });
         }
-
         res.setHeader("Content-Type", "application/pdf");
         res.setHeader("Content-Disposition", `inline; filename=receipt-${orderId}.pdf`);
         res.sendFile(pdfPath);
