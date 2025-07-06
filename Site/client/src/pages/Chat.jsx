@@ -466,21 +466,17 @@ const hotelOptions =
             Total Price: $${calculateTotalPrice()}
             `;
     
-            const orderData = {
-                userId: userData.id, // ✅ Attach the logged-in user's ID
-                username: userData.username,
-                departureCity: userResponses["What is your departure city?"] || "Unknown",
-                destinationCity: userResponses["What is your destination city?"] || "Unknown",
-                flight: userResponses["Select your flight"] || "None",
-                hotel: userResponses["Select your hotel"] || "None",
-                attractions: userResponses["Select attractions to visit"]
-                    ? userResponses["Select attractions to visit"].split(", ")
-                    : [],
-                transportation: userResponses["Select your mode of transportation"] || "None",
-                paymentMethod: userResponses["Select payment method"] || "None",
-                totalPrice: calculateTotalPrice(),
-                orderText: orderText.trim() // ✅ Save formatted text
-            };
+       const orderData = {
+  departureCityId,          // from selectedDepartureCity?._id
+  destinationCityId,        // from selectedDestinationCity?._id
+  flightId: selectedFlight?._id,    // you'll need to find the selected flight from loadedFlights
+  hotelId: selectedHotel?._id,      // find from loadedHotels
+  attractions: selectedAttractions, // can be an array of names or IDs, up to your backend
+  transportation: userResponses["Select your mode of transportation"] || "None",
+  paymentMethod: userResponses["Select payment method"] || "None",
+  totalPrice: calculateTotalPrice(),
+};
+
     
             console.log("🔍 Sending Order Data:", orderData);
     
