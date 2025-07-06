@@ -1,4 +1,4 @@
-import { MongoClient } from "mongodb";
+import { MongoClient, ObjectId } from "mongodb";
 import dotenv from "dotenv";
 dotenv.config();
 
@@ -6,16 +6,30 @@ const uri = process.env.CONNECTION_STRING;
 const dbName = process.env.DB_NAME;
 
 if (!uri || !dbName) {
-    throw new Error("❌ Missing CONNECTION_STRING or DB_NAME in environment variables.");
+  throw new Error("Missing CONNECTION_STRING or DB_NAME env variables");
 }
 
-const client = new MongoClient(uri);
+let client;
 
-export async function getDb() {
-    if (!client.topology || !client.topology.isConnected()) {
-        console.log("🔌 Connecting to MongoDB...");
-        await client.connect();
-        console.log("✅ Connected to MongoDB.");
-    }
-    return client.db(dbName);
+async function getClient() {
+  if (!client || !client.topology || !client.topology.isConnected()) {
+    client = new MongoClient(uri);
+    await client.connect();
+  }
+  return client;
+}
+
+export async function findOrdersByUserIdFromDb(userId) {
+  const client = await getClient();
+  const db = client.db(dbName);
+  return db.collection("orders").find({ user_id: new ObjectId(userId) }).toArray();
+}
+
+export async function insertOrderToDb(order) {
+  const client = await getClient();
+  const db = client.db(dbName);
+  console.log("Inserting order:", order);
+  const result = await db.collection("orders").insertOne(order);
+  console.log("Insert result:", result);
+  return result;
 }

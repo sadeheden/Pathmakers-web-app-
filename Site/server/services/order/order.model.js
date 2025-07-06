@@ -1,14 +1,27 @@
 import { ObjectId } from "mongodb";
-import { getDb } from "../db.js"; // See below for db.js
+import { findOrdersByUserIdFromDb, insertOrderToDb } from './order.db.js';
 
-// Get all orders for a specific user
-export async function findOrdersByUserId(userId) {
-    const db = await getDb();
-    return db.collection("orders").find({ user_id: new ObjectId(userId) }).toArray();
-}
+export default class Order {
+  constructor(data) {
+    this.orderId = data.orderId;
+    this.user_id = new ObjectId(String(data.user_id));
+    this.username = data.username;
+    this.departure_city_id = new ObjectId(String(data.departure_city_id));
+    this.destination_city_id = new ObjectId(String(data.destination_city_id));
+    this.flight_id = new ObjectId(String(data.flight_id));
+    this.hotel_id = new ObjectId(String(data.hotel_id));
+    this.attractions = data.attractions || [];
+    this.transportation = data.transportation || null;
+    this.payment_method = data.payment_method;
+    this.total_price = data.total_price;
+    this.pdfUrl = data.pdfUrl;
+    this.created_at = data.created_at || new Date();
+  }
+  static async findByUserId(userId) {
+    return findOrdersByUserIdFromDb(userId);
+  }
 
-// Insert a new order
-export async function insertOrder(orderData) {
-    const db = await getDb();
-    return db.collection("orders").insertOne(orderData);
+  async save() {
+    return insertOrderToDb(this);
+  }
 }
