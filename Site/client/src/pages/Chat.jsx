@@ -443,6 +443,7 @@ const hotelOptions = loadedHotels.length
         const step = steps[currentStep];
 
         if (step.label === "Trip Summary") {
+          
             const totalPrice = calculateTotalPrice();
 
         const handleSaveOrder = async () => {
@@ -713,11 +714,11 @@ const hotelOptions = loadedHotels.length
       </option>
     ))}
 </select>
-
-                            )}
+ )}
                         </div>
                     ))}
                 </div>
+                
                 <div className="navigation-buttons">
                     <button
                         onClick={() => setCurrentStep((prev) => prev - 1)}
@@ -780,5 +781,4 @@ const hotelOptions = loadedHotels.length
         </div>
     );
 };
-
 export default TravelPlannerApp;

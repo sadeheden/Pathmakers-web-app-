@@ -31,10 +31,146 @@ const cities = [
 const CARDS_PER_PAGE = 6;
 const AUTO_ROTATE_SECONDS = 10;
 
+const getPriceByCity = (cityName) => {
+  switch(cityName) {
+    case 'Paris': return 1800;
+    case 'Tokyo': return 2200;
+    case 'New York': return 2000;
+    case 'Barcelona': return 1700;
+    case 'Rome': return 1600;
+    case 'London': return 1900;
+    case 'Bangkok': return 1500;
+    case 'Dubai': return 2100;
+    default: return 2000;
+  }
+};
+
+// ה-PaymentModal שהבאת, עם שינויים קלים להתאמה
+const PaymentModal = ({ isOpen, onClose, totalAmount, onPaymentSuccess }) => {
+  const [fullName, setFullName] = useState("");
+  const [paymentDetails, setPaymentDetails] = useState("");
+  const [expiryDate, setExpiryDate] = useState("");
+  const [cvv, setCvv] = useState("");
+  const [paymentSuccess, setPaymentSuccess] = useState(false);
+  const [error, setError] = useState("");
+
+  const currentYear = new Date().getFullYear();
+  const maxYear = currentYear + 10;
+
+  const handlePayment = () => {
+    let errors = [];
+
+    if (!fullName.trim() || fullName.trim().length < 3) {
+      errors.push("❌ Invalid Full Name. Enter at least 3 characters.");
+    }
+
+    if (!/^\d{16}$/.test(paymentDetails)) {
+      errors.push("❌ Invalid Payment Number. Must be 16 digits.");
+    }
+
+    const expiryMatch = expiryDate.match(/^(0[1-9]|1[0-2])\/(\d{4})$/);
+    if (!expiryMatch || parseInt(expiryMatch[2]) < currentYear || parseInt(expiryMatch[2]) > maxYear) {
+      errors.push(`❌ Invalid Expiry Date. Must be MM/YYYY between ${currentYear}-${maxYear}.`);
+    }
+
+    if (!/^\d{3}$/.test(cvv)) {
+      errors.push("❌ Invalid CVV. Must be exactly 3 digits.");
+    }
+
+    if (errors.length > 0) {
+      setError(errors.join("\n"));
+      return;
+    }
+
+    setPaymentSuccess(true);
+    setError("");
+
+    setTimeout(() => {
+      setPaymentSuccess(false);
+      onClose();
+      onPaymentSuccess();
+      // איפוס שדות:
+      setFullName("");
+      setPaymentDetails("");
+      setExpiryDate("");
+      setCvv("");
+      setError("");
+    }, 2000);
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="modal-overlay">
+      <div className="modal-content">
+        {paymentSuccess ? (
+          <>
+            <h2>🎉 Payment Successful! 🎉</h2>
+            <p>Your payment of <strong>${totalAmount}</strong> has been processed.</p>
+            <p>✅ Your trip is now confirmed!</p>
+          </>
+        ) : (
+          <>
+            <h2>Payment</h2>
+            <p><strong>Total Amount: ${totalAmount}</strong></p>
+            {error && <p className="error-message" style={{whiteSpace: "pre-line"}}>{error}</p>}
+
+            <label>Full Name</label>
+            <input 
+              type="text" 
+              placeholder="John Doe"
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+            />
+
+            <label>Payment Number</label>
+            <input 
+              type="text" 
+              placeholder="1234 5678 9012 3456"
+              maxLength="16"
+              value={paymentDetails}
+              onChange={(e) => setPaymentDetails(e.target.value.replace(/\D/g, ""))}
+            />
+
+            <div className="expiry-cvv">
+              <div>
+                <label>Expiry Date</label>
+                <input 
+                  type="text" 
+                  placeholder="MM/YYYY" 
+                  value={expiryDate}
+                  onChange={(e) => setExpiryDate(e.target.value)}
+                />
+              </div>
+              <div>
+                <label>CVV</label>
+                <input 
+                  type="text" 
+                  placeholder="123"
+                  maxLength="3"
+                  value={cvv}
+                  onChange={(e) => setCvv(e.target.value.replace(/\D/g, ""))}
+                />
+              </div>
+            </div>
+
+            <button className="pay-button" onClick={handlePayment} disabled={paymentSuccess}>
+              {paymentSuccess ? "Processing..." : `Pay $${totalAmount}`}
+            </button>
+            <button className="change-payment" onClick={onClose}>Cancel</button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+};
+
 const Main = () => {
   const navigate = useNavigate();
   const [carouselIdx, setCarouselIdx] = useState(0);
   const [selectedCity, setSelectedCity] = useState(null);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [paymentCompleted, setPaymentCompleted] = useState(false);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -49,6 +185,8 @@ const Main = () => {
   ].slice(carouselIdx, carouselIdx + CARDS_PER_PAGE);
 
   const tripDate = "2026-03-15";
+
+  const totalPrice = selectedCity ? getPriceByCity(selectedCity.name) : 0;
 
   return (
     <div className="trips-page">
@@ -78,6 +216,7 @@ const Main = () => {
           </div>
         </div>
       </section>
+
       <section className="trip-options">
         <div className="trip-card ai-card">
           <img src={fantasyImg} alt="AI Trip Builder" />
@@ -108,7 +247,11 @@ const Main = () => {
             <div 
               className="city-card" 
               key={i} 
-              onClick={() => setSelectedCity(city)} 
+              onClick={() => {
+                setSelectedCity(city);
+                setPaymentCompleted(false);
+                setShowPaymentModal(false);
+              }} 
               style={{ cursor: 'pointer' }}
             >
               <img src={city.img} alt={city.name} />
@@ -118,64 +261,83 @@ const Main = () => {
         </div>
       </section>
 
-  {selectedCity && (
-  <div className="modal-overlay" onClick={() => setSelectedCity(null)}>
-    <div className="modal-content" onClick={e => e.stopPropagation()}>
-      {/* Smaller X CLOSE BUTTON */}
-      <button
-        className="modal-close-x"
-        onClick={() => setSelectedCity(null)}
-        aria-label="Close"
-      >
-        &#10005;
-      </button>
-      <h2>Your Trip is Ready!</h2>
-      <div className="modal-image-wrapper">
-        <img
-          src={selectedCity.img}
-          alt={selectedCity.name}
-          className="modal-city-image"
-        />
-      </div>
-      <p><strong>Destination:</strong> {selectedCity.name}</p>
-      <p><strong>Flight Number:</strong> {selectedCity.flight}</p>
-      <p><strong>Trip Date:</strong> {tripDate}</p>
-
-      <div className="modal-btns">
-        <button
-          className="modal-trip-btn"
-          onClick={() =>
-            navigate('/chat', {
-              state: {
-                onlyPayment: true,
-                destination: selectedCity.name,
-                flight: selectedCity.flight,
-                date: tripDate,
-              }
-            })
-          }
-        >
-          Other date options
-        </button>
-       <button
-              className="modal-payment-btn"
-              onClick={() => {
-                navigate('/chat', {
-                  state: {
-                    onlyPayment: true,
-                    destination: selectedCity.name,
-                    flight: selectedCity.flight,
-                    date: tripDate,
-                  }
-                });
-              }}
+      {selectedCity && !paymentCompleted && !showPaymentModal && (
+        <div className="modal-overlay" onClick={() => setSelectedCity(null)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()}>
+            <button
+              className="modal-close-x"
+              onClick={() => setSelectedCity(null)}
+              aria-label="Close"
             >
-              Payment
-      </button>
-      </div>
-    </div>
-  </div>
-)}
+              &#10005;
+            </button>
+
+            <h2>Your Trip is Ready!</h2>
+            <div className="modal-image-wrapper">
+              <img
+                src={selectedCity.img}
+                alt={selectedCity.name}
+                className="modal-city-image"
+              />
+            </div>
+            <p><strong>Destination:</strong> {selectedCity.name}</p>
+            <p><strong>Flight Number:</strong> {selectedCity.flight}</p>
+            <p><strong>Trip Date:</strong> {tripDate}</p>
+            <p><strong>Total Price:</strong> ${totalPrice}</p>
+
+            <div className="modal-btns">
+              <button
+                className="modal-payment-btn"
+                onClick={() => setShowPaymentModal(true)}
+              >
+                Pay Now
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showPaymentModal && (
+        <PaymentModal
+          isOpen={showPaymentModal}
+          onClose={() => setShowPaymentModal(false)}
+          totalAmount={totalPrice}
+          onPaymentSuccess={() => {
+            setPaymentCompleted(true);
+            setShowPaymentModal(false);
+          }}
+        />
+      )}
+
+      {paymentCompleted && selectedCity && (
+        <div className="modal-overlay" onClick={() => setSelectedCity(null)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()}>
+            <button
+              className="modal-close-x"
+              onClick={() => {
+                setSelectedCity(null);
+                setPaymentCompleted(false);
+              }}
+              aria-label="Close"
+            >
+              &#10005;
+            </button>
+
+            <h2>Payment Successful!</h2>
+            <p><strong>Destination:</strong> {selectedCity.name}</p>
+            <p><strong>Flight Number:</strong> {selectedCity.flight}</p>
+            <p><strong>Trip Date:</strong> {tripDate}</p>
+            <p><strong>Total Price:</strong> ${totalPrice}</p>
+            <p>Thank you for your purchase! Your trip is confirmed.</p>
+            <button onClick={() => {
+              setSelectedCity(null);
+              setPaymentCompleted(false);
+            }}>
+              Close
+            </button>
+          </div>
+        </div>
+      )}
 
     </div>
   );
