@@ -21,7 +21,6 @@ const TravelPlannerApp = () => {
             sessionStorage.setItem("hasLoggedIn", "true");
         }
     }, []); 
-
     const [currentStep, setCurrentStep] = useState(() => {
         const savedStep = localStorage.getItem("currentStep");
         return savedStep ? parseInt(savedStep, 10) : 0;
@@ -126,7 +125,6 @@ const TravelPlannerApp = () => {
 ]);
 
         }
-
         fetchData();
     }, [userResponses["What is your destination city?"]]);
 
