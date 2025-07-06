@@ -21,6 +21,16 @@ const TravelPlannerApp = () => {
             sessionStorage.setItem("hasLoggedIn", "true");
         }
     }, []); 
+
+    useEffect(() => {
+        if (location.state?.onlyPayment) {
+            const paymentStepIndex = steps.findIndex(s => s.label === "Payment");
+            setCurrentStep(paymentStepIndex !== -1 ? paymentStepIndex : 0);
+            setPaymentCompleted(false);
+            setIsPaymentModalOpen(true);
+        }
+}, [location.state]);
+
     const [currentStep, setCurrentStep] = useState(() => {
         const savedStep = localStorage.getItem("currentStep");
         return savedStep ? parseInt(savedStep, 10) : 0;
@@ -129,6 +139,9 @@ const TravelPlannerApp = () => {
     }, [userResponses["What is your destination city?"]]);
 
     const calculateTotalPrice = () => {
+          if (location.state?.onlyPayment) {
+    return 2000; // מחיר קבוע למשתמש שבחר טיול מוכן
+  }
         let total = 0;
 
         // חישוב מחיר טיסה
