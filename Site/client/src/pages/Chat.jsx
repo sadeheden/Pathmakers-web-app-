@@ -73,18 +73,23 @@ const TravelPlannerApp = () => {
 
     async function fetchFlights(city) {
   if (!city) return;
-  const cityName = city.name || city; // if city is object, use its name
+  const cityName = city.name || city;
   try {
     const response = await fetch(`http://localhost:4000/api/flights/city/${encodeURIComponent(cityName)}`);
-    if (!response.ok) {
-      throw new Error(`Failed to fetch flights for ${cityName}, status: ${response.status}`);
-    }
+    if (!response.ok) throw new Error(`Failed to fetch flights for ${cityName}, status: ${response.status}`);
     const data = await response.json();
-    setLoadedFlights(data);
+
+    const formattedFlights = (data.airlines || []).map(airline => ({
+      id: String(airline._id),
+      name: `${airline.name} - $${airline.price} (${airline.duration})`,
+      raw: airline, // store full original if needed later
+    }));
+    setLoadedFlights(formattedFlights);
   } catch (error) {
     console.error("Error fetching flights:", error);
   }
 }
+
        async function fetchHotels(city) {
   if (!city) return;
   const cityName = city.name || city; // ✔ extract .name if city is an object
@@ -105,20 +110,25 @@ const TravelPlannerApp = () => {
 }
 
 
-       async function fetchAttractions(city) {
+async function fetchAttractions(city) {
   if (!city) return;
-  const cityName = city.name || city; // ✔ extract .name if city is an object
+  const cityName = city.name || city;
   try {
     const response = await fetch(`http://localhost:4000/api/attractions/city/${encodeURIComponent(cityName)}`);
-    if (!response.ok) {
-      throw new Error(`Failed to fetch attractions for ${cityName}, status: ${response.status}`);
-    }
+    if (!response.ok) throw new Error(`Failed to fetch attractions for ${cityName}, status: ${response.status}`);
     const data = await response.json();
-    setLoadedAttractions(data.attractions || []);
+
+    const formattedAttractions = (data || []).map(attr => ({
+      id: String(attr._id),
+      name: attr.name,
+      raw: attr,
+    }));
+    setLoadedAttractions(formattedAttractions);
   } catch (error) {
     console.error("Error fetching attractions:", error);
   }
 }
+
 
 
         async function fetchData() {
@@ -221,15 +231,15 @@ const hotelOptions = loadedHotels.length
       { prompt: "Travel dates (return)?", type: "date" },
       {
         prompt: "Select your flight",
-        options:
-          loadedFlights.length
-            ? loadedFlights
-                .find(flight => flight.city === userResponses["What is your destination city?"]?.name)
-                ?.airlines.map(airline => ({
-                  id: airline._id,
-                  name: `${airline.name} - $${airline.price} (${airline.duration})`,
-                })) || []
-            : [],
+      options:
+  loadedFlights.length
+    ? loadedFlights.map(airline => ({
+        id: String(airline._id),
+        name: `${airline.name} - $${airline.price} (${airline.duration})`,
+      }))
+    : [],
+
+
       },
       { prompt: "Class preference", options: ["Economy", "Business", "First"] },
     ],
@@ -239,15 +249,17 @@ const hotelOptions = loadedHotels.length
     icon: Hotel,
     questions: [
       {
-        prompt: "Select your hotel",
-        options:
-          loadedHotels.length && Array.isArray(loadedHotels[0]?.hotels)
-            ? loadedHotels[0].hotels.map(hotel => ({
-                id: hotel._id,
-                name: `${hotel.name} - $${hotel.price}/night`,
-              }))
-            : [],
-      },
+      
+  prompt: "Select your hotel",
+  options:
+    loadedHotels.length
+      ? loadedHotels.map(hotel => ({
+          id: hotel._id,
+          name: `${hotel.name} - $${hotel.price}/night`,
+        }))
+      : [],
+},
+
       { prompt: "Budget range per night?", type: "text" },
       {
         prompt: "Accessibility requirements?",
@@ -263,9 +275,10 @@ const hotelOptions = loadedHotels.length
       {
         prompt: "Select attractions to visit",
         options:
-          loadedAttractions.length
-            ? loadedAttractions.map(attr => ({ id: attr._id, name: attr.name }))
-            : [],
+  loadedAttractions.length
+    ? loadedAttractions.map(attr => ({ id: attr._id, name: attr.name }))
+    : [],
+
       },
       { prompt: "Budget for daily activities?", type: "text" },
       { prompt: "Interest areas?", options: ["History", "Food", "Nightlife", "Nature", "Culture"] },
@@ -684,7 +697,7 @@ const hotelOptions = loadedHotels.length
     if (typeof q.options[0] === "string") {
       selectedOption = e.target.value;
     } else {
-      selectedOption = q.options.find(opt => opt.id === e.target.value);
+    selectedOption = q.options.find(opt => String(opt.id) === e.target.value);
     }
     setUserResponses((prevResponses) => ({
       ...prevResponses,
