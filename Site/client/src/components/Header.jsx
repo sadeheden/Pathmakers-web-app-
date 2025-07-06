@@ -48,9 +48,17 @@ const Header = () => {
     };
 
     // Call fetchUser once on mount
-    useEffect(() => {
+  // Listen for "userChanged" events (after login/register)
+useEffect(() => {
+    const handleUserChange = () => {
         fetchUser();
-    }, []);
+    };
+    window.addEventListener("userChanged", handleUserChange);
+    return () => {
+        window.removeEventListener("userChanged", handleUserChange);
+    };
+}, []);
+
 
     // Handle logout
     const handleLogout = async () => {
@@ -66,6 +74,7 @@ const Header = () => {
             if (!response.ok) throw new Error(`Logout failed: ${response.statusText}`);
             // Clean up
             localStorage.removeItem("authToken");
+            window.dispatchEvent(new Event("userChanged"));
             sessionStorage.removeItem("hasLoggedIn");
             localStorage.removeItem("currentStep");
             localStorage.removeItem("userResponses");
