@@ -11,7 +11,6 @@ export const handleNewsletterSubscription = async (req, res) => {
         console.error("❌ Error: No email provided");
         return res.status(400).json({ message: "Error: No email provided" });
     }
-
     try {
         // Attempt to send an email
         console.log("📨 Attempting to send email...");
