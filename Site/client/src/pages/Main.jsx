@@ -157,14 +157,21 @@ const Main = () => {
         >
           Other date options
         </button>
-        <button
-          className="modal-payment-btn"
-          onClick={() => {
-            alert('💸 Payment successful!\nThanks for booking!');
-          }}
-        >
-          Payment
-        </button>
+       <button
+              className="modal-payment-btn"
+              onClick={() => {
+                navigate('/chat', {
+                  state: {
+                    onlyPayment: true,
+                    destination: selectedCity.name,
+                    flight: selectedCity.flight,
+                    date: tripDate,
+                  }
+                });
+              }}
+            >
+              Payment
+      </button>
       </div>
     </div>
   </div>
