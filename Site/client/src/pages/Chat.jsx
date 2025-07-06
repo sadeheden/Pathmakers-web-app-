@@ -85,8 +85,6 @@ const TravelPlannerApp = () => {
     console.error("Error fetching flights:", error);
   }
 }
-
-
        async function fetchHotels(city) {
   if (!city) return;
   const cityName = city.name || city; // ✔ extract .name if city is an object
@@ -138,45 +136,49 @@ const TravelPlannerApp = () => {
         fetchData();
     }, [userResponses["What is your destination city?"]]);
 
-    const calculateTotalPrice = () => {
-          if (location.state?.onlyPayment) {
+ const calculateTotalPrice = () => {
+  if (location.state?.onlyPayment) {
     return 2000; // מחיר קבוע למשתמש שבחר טיול מוכן
   }
-        let total = 0;
 
-        // חישוב מחיר טיסה
-        const selectedFlight = userResponses["Select your flight"];
-       if (selectedFlight) {
-    const flightPrice = parseInt(selectedFlight.name.split("$")[1]?.split(" ")[0]);
-    total += flightPrice || 0;
-}
+  let total = 0;
 
+  // חישוב מחיר טיסה
+  const selectedFlight = userResponses["Select your flight"];
+  if (selectedFlight?.name && selectedFlight.name.includes("$")) {
+    const pricePart = selectedFlight.name.split("$")[1];
+    if (pricePart) {
+      const flightPrice = parseInt(pricePart.split(" ")[0]);
+      total += flightPrice || 0;
+    }
+  }
 
-        // חישוב מחיר מלון
-      const selectedHotel = userResponses["Select your hotel"];
-if (selectedHotel) {
-    const hotelPrice = parseInt(selectedHotel.name.split("$")[1]?.split("/")[0]);
-    total += hotelPrice || 0;
-}
+  // חישוב מחיר מלון
+  const selectedHotel = userResponses["Select your hotel"];
+  if (selectedHotel?.name && selectedHotel.name.includes("$")) {
+    const pricePart = selectedHotel.name.split("$")[1];
+    if (pricePart) {
+      const hotelPrice = parseInt(pricePart.split("/")[0]);
+      total += hotelPrice || 0;
+    }
+  }
 
-
-        // חישוב עלות אטרקציות
-        const selectedAttractions = userResponses["Select attractions to visit"];
-      if (Array.isArray(selectedAttractions)) {
+  // חישוב עלות אטרקציות
+  const selectedAttractions = userResponses["Select attractions to visit"];
+  if (Array.isArray(selectedAttractions)) {
     const attractionPrice = 20 * selectedAttractions.length;
     total += attractionPrice || 0;
-}
+  }
 
+  // חישוב תחבורה
+  const selectedTransportation = userResponses["Select your mode of transportation"];
+  if (selectedTransportation) {
+    const transportationPrice = selectedTransportation === "Car" ? 50 : 10;
+    total += transportationPrice || 0;
+  }
 
-        // חישוב תחבורה
-        const selectedTransportation = userResponses["Select your mode of transportation"];
-        if (selectedTransportation) {
-            const transportationPrice = selectedTransportation === "Car" ? 50 : 10;
-            total += transportationPrice || 0;
-        }
-
-        return total;
-    };
+  return total;
+};
 
     // Flatten the attractions for the select dropdown
     const attractionNames =
