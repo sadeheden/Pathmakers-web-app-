@@ -43,11 +43,12 @@ export async function addFlight(req, res) {
 
   try {
     const result = await newFlight.save();
-    return res.status(201).json(result);
+    return res.status(201).json(result); // ✅ this line must be inside the function
   } catch (error) {
     return res.status(500).json({ error: "An error occurred while adding the flight." });
   }
 }
+
 
 // Update flight
 export async function updateFlight(req, res) {
@@ -97,13 +98,26 @@ export async function getFlightsByCityName(req, res) {
   }
 
   try {
-    const flights = await getFlightsByCity(city);
-    if (!flights.length) {
+    const cityFlights = await getFlightsByCity(city);
+
+    if (!cityFlights.length) {
       return res.status(404).json({ error: `No flights found for city: ${city}` });
     }
-    return res.status(200).json(flights);
+
+    // Flatten airlines with city name
+    const formattedFlights = cityFlights[0].airlines.map((airline, index) => ({
+      id: `${cityFlights[0]._id}_${index}`,
+      airline: airline.name,
+      departureTime: airline.departureTime,
+      price: airline.price,
+      city: cityFlights[0].city
+    }));
+
+    return res.status(200).json(formattedFlights);
+
   } catch (error) {
-    console.error("Error fetching flights by city:", error);  // **הדפסת השגיאה בפירוט**
+    console.error("Error fetching flights by city:", error);
     return res.status(500).json({ error: "Server error" });
   }
 }
+

@@ -7,11 +7,14 @@ import {
 } from "./flights.db.js";
 
 export default class Flight {
-  constructor({ city, airline, departureTime }) {
-    this.city = city;
-    this.airline = airline;
-    this.departureTime = departureTime;
-  }
+ constructor({ city, airline, departureTime, price }) {
+  this.city = city;
+  this.airline = airline;
+  this.departureTime = departureTime;
+  this.price = price; // add price field
+}
+
+  
 
   static async findAll() {
     return await getAllFlightsFromDatabase();
