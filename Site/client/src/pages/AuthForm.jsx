@@ -2,21 +2,20 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "../assets/styles/AuthForm.css";
 
-const AuthForm = ({ isLogin, isManager }) => {
+const AuthForm = ({ isLogin }) => {
     const navigate = useNavigate();
-   const [formData, setFormData] = useState({
-    identifier: "",
-    username: "",
-    email: "",
-    password: "",
-    confirmPassword: "",
-    profileImage: null
-});
+    const [formData, setFormData] = useState({
+        identifier: "",
+        username: "",
+        email: "",
+        password: "",
+        confirmPassword: "",
+        profileImage: null
+    });
 
     const [errors, setErrors] = useState({});
     const [preview, setPreview] = useState(null);
 
-    // Handle input changes
     const handleChange = (e) => {
         const { id, value } = e.target;
         setFormData((prevState) => ({ ...prevState, [id]: value }));
@@ -26,7 +25,6 @@ const AuthForm = ({ isLogin, isManager }) => {
         }
     };
 
-    // Handle file input
     const handleFileChange = (e) => {
         const file = e.target.files[0];
         setFormData((prev) => ({ ...prev, profileImage: file }));
@@ -38,11 +36,10 @@ const AuthForm = ({ isLogin, isManager }) => {
         }
     };
 
-    // Validation (registration only)
     const validateForm = () => {
         if (isLogin) return {};
         const newErrors = {};
-        if (!isManager && !formData.username.trim()) newErrors.username = "Username is required";
+        if (!formData.username.trim()) newErrors.username = "Username is required";
         if (!formData.email.trim() || !/\S+@\S+\.\S+/.test(formData.email)) newErrors.email = "Valid email is required";
         if (!formData.password || formData.password.length < 6) newErrors.password = "Password must be at least 6 characters";
         if (formData.password !== formData.confirmPassword) newErrors.confirmPassword = "Passwords do not match";
@@ -50,7 +47,6 @@ const AuthForm = ({ isLogin, isManager }) => {
         return newErrors;
     };
 
-    // Handle form submission
     const handleSubmit = async (e) => {
         e.preventDefault();
         setErrors({});
@@ -68,7 +64,6 @@ const AuthForm = ({ isLogin, isManager }) => {
                 formData.profile_image ||
                 "https://res.cloudinary.com/dnnmhrsja/image/upload/v1700000000/default_profile.jpg";
 
-            // If a new file is selected, upload it
             if (formData.profileImage && typeof formData.profileImage !== "string") {
                 const imageData = new FormData();
                 imageData.append("file", formData.profileImage);
@@ -89,32 +84,24 @@ const AuthForm = ({ isLogin, isManager }) => {
                 }
             }
 
-            // Prepare request body
             let requestBody;
             if (isLogin) {
-                if (isManager) {
-                    requestBody = { username: "manager", password: formData.password };
-                } else {
-                    // Use identifier field (username or email)
-                    const identifier = formData.identifier.trim();
-                    if (!identifier) {
-                        setErrors({ identifier: "Username or email is required" });
-                        return;
-                    }
-                    const isEmail = /\S+@\S+\.\S+/.test(identifier);
-                    requestBody = isEmail
-                        ? { email: identifier, password: formData.password }
-                        : { username: identifier, password: formData.password };
+                const identifier = formData.identifier.trim();
+                if (!identifier) {
+                    setErrors({ identifier: "Username or email is required" });
+                    return;
                 }
+                const isEmail = /\S+@\S+\.\S+/.test(identifier);
+                requestBody = isEmail
+                    ? { email: identifier, password: formData.password }
+                    : { username: identifier, password: formData.password };
             } else {
-                // Register: send fields as expected by your backend
                 requestBody = {
                     username: formData.username,
                     email: formData.email,
                     password: formData.password,
                     profile_image: profileImageUrl
                 };
-                if (isManager) requestBody.role = "manager";
             }
 
             const url = isLogin
@@ -145,12 +132,11 @@ const AuthForm = ({ isLogin, isManager }) => {
         <div className={`authContainer ${isLogin ? "login" : "signup"}`}>
             <form className="authForm" onSubmit={handleSubmit}>
                 <h2 className="authTitle">
-                    {isManager ? "Manager Sign In" : isLogin ? "Welcome Back" : "Create an Account"}
+                    {isLogin ? "Welcome Back" : "Create an Account"}
                 </h2>
                 {errors.submit && <p className="error">{errors.submit}</p>}
 
-                {/* Username or Email input for login */}
-                {isLogin && !isManager && (
+                {isLogin && (
                     <div className="formGroup">
                         <label htmlFor="identifier">Username or Email</label>
                         <input
@@ -166,49 +152,43 @@ const AuthForm = ({ isLogin, isManager }) => {
                     </div>
                 )}
 
-                {/* Username input for register */}
-                {!isLogin && !isManager && (
-                    <div className="formGroup">
-                        <label htmlFor="username">Username</label>
-                        <input
-                            type="text"
-                            id="username"
-                            placeholder="Enter your username"
-                            value={formData.username}
-                            className={errors.username ? "inputError" : ""}
-                            onChange={handleChange}
-                            required
-                        />
-                        {errors.username && <p className="error">{errors.username}</p>}
-                    </div>
-                )}
-
-                {/* Email input for register */}
                 {!isLogin && (
-                    <div className="formGroup">
-                        <label htmlFor="email">Email</label>
-                        <input
-                            type="email"
-                            id="email"
-                            placeholder="Enter your email"
-                            value={formData.email}
-                            onChange={handleChange}
-                            required
-                        />
-                        {errors.email && <p className="error">{errors.email}</p>}
-                    </div>
+                    <>
+                        <div className="formGroup">
+                            <label htmlFor="username">Username</label>
+                            <input
+                                type="text"
+                                id="username"
+                                placeholder="Enter your username"
+                                value={formData.username}
+                                className={errors.username ? "inputError" : ""}
+                                onChange={handleChange}
+                                required
+                            />
+                            {errors.username && <p className="error">{errors.username}</p>}
+                        </div>
+
+                        <div className="formGroup">
+                            <label htmlFor="email">Email</label>
+                            <input
+                                type="email"
+                                id="email"
+                                placeholder="Enter your email"
+                                value={formData.email}
+                                onChange={handleChange}
+                                required
+                            />
+                            {errors.email && <p className="error">{errors.email}</p>}
+                        </div>
+
+                        <div className="formGroup">
+                            <label htmlFor="profileImage">Profile Picture (Optional)</label>
+                            <input type="file" id="profileImage" accept="image/*" onChange={handleFileChange} />
+                            {preview && <img src={preview} alt="Preview" className="previewImage" />}
+                        </div>
+                    </>
                 )}
 
-                {/* Profile image input for register */}
-                {!isLogin && (
-                    <div className="formGroup">
-                        <label htmlFor="profileImage">Profile Picture (Optional)</label>
-                        <input type="file" id="profileImage" accept="image/*" onChange={handleFileChange} />
-                        {preview && <img src={preview} alt="Preview" className="previewImage" />}
-                    </div>
-                )}
-
-                {/* Password */}
                 <div className="formGroup">
                     <label htmlFor="password">Password</label>
                     <input
@@ -222,7 +202,6 @@ const AuthForm = ({ isLogin, isManager }) => {
                     {errors.password && <p className="error">{errors.password}</p>}
                 </div>
 
-                {/* Confirm password for register */}
                 {!isLogin && (
                     <div className="formGroup">
                         <label htmlFor="confirmPassword">Confirm Password</label>
@@ -242,8 +221,7 @@ const AuthForm = ({ isLogin, isManager }) => {
 
                 {isLogin && (
                     <p className="switchAuth">
-                        No account? <span onClick={() => navigate("/signup")} className="switchLink">Register here</span><br />
-                        Manager? <span onClick={() => navigate("/managersignin")} className="switchLink">Sign in here</span>
+                        No account? <span onClick={() => navigate("/signup")} className="switchLink">Register here</span>
                     </p>
                 )}
             </form>

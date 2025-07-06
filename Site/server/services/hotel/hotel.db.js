@@ -3,10 +3,10 @@ import { MongoClient, ObjectId } from "mongodb";
 const COLLECTION_NAME = "hotels";
 
 async function connectDB() {
-  const client = await MongoClient.connect(process.env.CONNECTION_STRING, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-  });
+const client = await MongoClient.connect(process.env.CONNECTION_STRING, {
+    useNewUrlParser: true
+});
+
   const db = client.db(process.env.DB_NAME);
   return { client, db };
 }

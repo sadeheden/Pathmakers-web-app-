@@ -14,7 +14,7 @@ async function getDB() {
     if (!uri) throw new Error("CONNECTION_STRING is not defined");
     if (!dbName) throw new Error("DB_NAME is not defined");
 
-    const client = new MongoClient(uri, { useUnifiedTopology: true });
+    const client = new MongoClient(uri);
     await client.connect();
     const db = client.db(dbName);
     return { db, client };

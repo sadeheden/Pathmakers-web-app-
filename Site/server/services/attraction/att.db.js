@@ -7,7 +7,6 @@ async function connectDB() {
   const db = client.db(process.env.DB_NAME);
   return { client, db };
 }
-
 export async function getAllAttractionsFromDatabase() {
   const { client, db } = await connectDB();
   try {

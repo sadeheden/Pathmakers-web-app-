@@ -20,7 +20,6 @@ export default class Order {
   static async findByUserId(userId) {
     return findOrdersByUserIdFromDb(userId);
   }
-
   async save() {
     return insertOrderToDb(this);
   }

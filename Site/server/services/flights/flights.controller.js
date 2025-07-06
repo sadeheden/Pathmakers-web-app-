@@ -103,7 +103,7 @@ export async function getFlightsByCityName(req, res) {
     }
     return res.status(200).json(flights);
   } catch (error) {
-    console.error("Error fetching flights by city:", error);
+    console.error("Error fetching flights by city:", error);  // **הדפסת השגיאה בפירוט**
     return res.status(500).json({ error: "Server error" });
   }
 }
