@@ -4,13 +4,15 @@ import "../assets/styles/AuthForm.css";
 
 const AuthForm = ({ isLogin, isManager }) => {
     const navigate = useNavigate();
-    const [formData, setFormData] = useState(
-        isLogin
-            ? isManager
-                ? { password: "" }
-                : { identifier: "", password: "" } // use 'identifier' for username/email login
-            : { username: "", email: "", password: "", confirmPassword: "", profileImage: null }
-    );
+   const [formData, setFormData] = useState({
+    identifier: "",
+    username: "",
+    email: "",
+    password: "",
+    confirmPassword: "",
+    profileImage: null
+});
+
     const [errors, setErrors] = useState({});
     const [preview, setPreview] = useState(null);
 
