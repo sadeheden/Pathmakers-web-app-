@@ -698,7 +698,6 @@ const TravelPlannerApp = () => {
                                 setIsPaymentModalOpen(true);
                                 return;
                             }
-
                             setCurrentStep((prev) => prev + 1);
                         }}
                         disabled={
@@ -718,7 +717,6 @@ const TravelPlannerApp = () => {
             </div>
         );
     };
-
     return (
         <div className="containerCh">
             <header>

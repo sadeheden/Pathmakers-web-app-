@@ -6,6 +6,5 @@ const router = express.Router();
 
 router.post("/", authenticateUser, createOrder);
 router.get("/", authenticateUser, getUserOrders);
-router.get("/:orderId/pdf", authenticateUser, getOrderPDF); // ✅ Serve the PDF
 
 export default router;
