@@ -18,6 +18,8 @@ import attractionRoutes from './services/attraction/att.router.js';
 import flightsRoutes from './services/flights/flights.router.js';
 import hotelRoutes from './services/hotel/hotel.router.js';
 import authRouter from './services/auth/auth.router.js';
+import orderRouter from './services/order/order.router.js';
+
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -37,6 +39,8 @@ app.use('/api/attractions', attractionRoutes);
 app.use('/api/flights', flightsRoutes);
 app.use('/api/hotels', hotelRoutes);
 app.use('/api/auth', authRouter);
+app.use('/api/order', orderRouter);
+
 
 // 🛑 טיפול בנתיבים לא קיימים (404)
 app.use((req, res, next) => {

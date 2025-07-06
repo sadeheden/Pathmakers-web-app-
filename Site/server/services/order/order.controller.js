@@ -134,8 +134,16 @@ export async function createOrder(req, res) {
 export async function getOrderPDF(req, res) {
   try {
     const { orderId } = req.params;
+    // Fetch order from DB
+    const order = await Order.findByOrderId(orderId);
+    if (!order) {
+      return res.status(404).json({ message: "Order not found." });
+    }
+    // Check user ownership
+    if (!req.user || order.user_id !== String(req.user.id)) {
+      return res.status(403).json({ message: "Forbidden" });
+    }
     const pdfPath = path.join(pdfDir, `${orderId}.pdf`);
-
     if (!fs.existsSync(pdfPath)) {
       return res.status(404).json({ message: "PDF not found. Please try generating a new order." });
     }
