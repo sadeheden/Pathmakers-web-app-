@@ -78,41 +78,41 @@ const TravelPlannerApp = () => {
 }
 
 
-        async function fetchHotels(city) {
-            if (!city) return;
-            try {
-                const response = await fetch(`http://localhost:4000/api/hotels/city/${encodeURIComponent(city)}`);
-                if (response.status === 404) {
-                    setLoadedHotels([]);
-                    return;
-                }
-                if (!response.ok) {
-                    throw new Error(`Failed to fetch hotels for ${city}, status: ${response.status}`);
-                }
-                const data = await response.json();
-                setLoadedHotels(data);
-            } catch (error) {
-                console.error("Error fetching hotels:", error);
-            }
-        }
+       async function fetchHotels(city) {
+  if (!city) return;
+  const cityName = city.name || city; // ✔ extract .name if city is an object
+  try {
+    const response = await fetch(`http://localhost:4000/api/hotels/city/${encodeURIComponent(cityName)}`);
+    if (response.status === 404) {
+      setLoadedHotels([]);
+      return;
+    }
+    if (!response.ok) {
+      throw new Error(`Failed to fetch hotels for ${cityName}, status: ${response.status}`);
+    }
+    const data = await response.json();
+    setLoadedHotels(data);
+  } catch (error) {
+    console.error("Error fetching hotels:", error);
+  }
+}
 
-        async function fetchAttractions(city) {
-            if (!city) return;
-            try {
-                const response = await fetch(
-                    `http://localhost:4000/api/attractions/city/${encodeURIComponent(city)}`
-                );
-                if (!response.ok) {
-                    throw new Error(
-                        `Failed to fetch attractions for ${city}, status: ${response.status}`
-                    );
-                }
-                const data = await response.json();
-                setLoadedAttractions(data.attractions || []);
-            } catch (error) {
-                console.error("Error fetching attractions:", error);
-            }
-        }
+
+       async function fetchAttractions(city) {
+  if (!city) return;
+  const cityName = city.name || city; // ✔ extract .name if city is an object
+  try {
+    const response = await fetch(`http://localhost:4000/api/attractions/city/${encodeURIComponent(cityName)}`);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch attractions for ${cityName}, status: ${response.status}`);
+    }
+    const data = await response.json();
+    setLoadedAttractions(data.attractions || []);
+  } catch (error) {
+    console.error("Error fetching attractions:", error);
+  }
+}
+
 
         async function fetchData() {
           await Promise.all([
@@ -135,24 +135,27 @@ const TravelPlannerApp = () => {
 
         // חישוב מחיר טיסה
         const selectedFlight = userResponses["Select your flight"];
-        if (selectedFlight) {
-            const flightPrice = parseInt(selectedFlight.split("$")[1]?.split(" ")[0]);
-            total += flightPrice || 0;
-        }
+       if (selectedFlight) {
+    const flightPrice = parseInt(selectedFlight.name.split("$")[1]?.split(" ")[0]);
+    total += flightPrice || 0;
+}
+
 
         // חישוב מחיר מלון
-        const selectedHotel = userResponses["Select your hotel"];
-        if (selectedHotel) {
-            const hotelPrice = parseInt(selectedHotel.split("$")[1]?.split("/")[0]);
-            total += hotelPrice || 0;
-        }
+      const selectedHotel = userResponses["Select your hotel"];
+if (selectedHotel) {
+    const hotelPrice = parseInt(selectedHotel.name.split("$")[1]?.split("/")[0]);
+    total += hotelPrice || 0;
+}
+
 
         // חישוב עלות אטרקציות
         const selectedAttractions = userResponses["Select attractions to visit"];
-        if (selectedAttractions) {
-            const attractionPrice = 20 * selectedAttractions.split(",").length;
-            total += attractionPrice || 0;
-        }
+      if (Array.isArray(selectedAttractions)) {
+    const attractionPrice = 20 * selectedAttractions.length;
+    total += attractionPrice || 0;
+}
+
 
         // חישוב תחבורה
         const selectedTransportation = userResponses["Select your mode of transportation"];
@@ -169,10 +172,13 @@ const TravelPlannerApp = () => {
         loadedAttractions.length && Array.isArray(loadedAttractions[0]?.attractions)
             ? loadedAttractions[0].attractions.map(attr => attr.name)
             : [];
-    const hotelOptions =
-        loadedHotels.length && Array.isArray(loadedHotels[0]?.hotels)
-            ? loadedHotels[0].hotels.map(hotel => `${hotel.name} - $${hotel.price}/night`)
-            : [];
+const hotelOptions = loadedHotels.length
+  ? loadedHotels.map(hotel => ({
+      id: hotel._id,
+      name: `${hotel.name} - $${hotel.price}/night`
+    }))
+  : [];
+
 
     // ✅ REORDERED STEPS - Payment comes before Trip Summary
    const steps = [
@@ -657,19 +663,25 @@ const TravelPlannerApp = () => {
                                     )}
                                 </>
                             ) : (
-                               <select
-  value={userResponses[q.prompt]?.id || ""}
+                          <select
+  value={typeof userResponses[q.prompt] === "object" ? userResponses[q.prompt]?.id : userResponses[q.prompt] || ""}
   onChange={(e) => {
-    const selectedOption = q.options.find(opt => opt.id === e.target.value);
+    let selectedOption;
+    if (typeof q.options[0] === "string") {
+      selectedOption = e.target.value;
+    } else {
+      selectedOption = q.options.find(opt => opt.id === e.target.value);
+    }
     setUserResponses((prevResponses) => ({
       ...prevResponses,
       [q.prompt]: selectedOption,
     }));
+    
 
     const methodsRequiringModal = ["Credit Card", "PayPal", "Bank Transfer", "Crypto"];
     if (q.prompt === "Select payment method") {
-      if (methodsRequiringModal.includes(selectedOption?.name)) {
-        console.log(`Opening payment modal for ${selectedOption.name}...`);
+      if (methodsRequiringModal.includes(selectedOption?.name || selectedOption)) {
+        console.log(`Opening payment modal for ${selectedOption?.name || selectedOption}...`);
         setIsPaymentModalOpen(false);
         setTimeout(() => setIsPaymentModalOpen(true), 10);
         setPaymentCompleted(false);
@@ -683,8 +695,8 @@ const TravelPlannerApp = () => {
   {q.options &&
     q.options.length > 0 &&
     q.options.map((option, i) => (
-      <option key={i} value={option.id}>
-        {option.name}
+      <option key={i} value={typeof option === "string" ? option : option.id}>
+        {typeof option === "string" ? option : option.name}
       </option>
     ))}
 </select>
