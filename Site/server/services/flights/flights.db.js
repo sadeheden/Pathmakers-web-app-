@@ -4,9 +4,9 @@ const COLLECTION_NAME = "flights";
 
 async function connectDB() {
   const client = await MongoClient.connect(process.env.CONNECTION_STRING, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-  });
+    useNewUrlParser: true
+});
+
   const db = client.db(process.env.DB_NAME);
   return { client, db };
 }

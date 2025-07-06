@@ -13,7 +13,7 @@ let client;
 
 async function getClient() {
   if (!client || !client.topology || !client.topology.isConnected()) {
-    client = new MongoClient(uri);
+   const client = new MongoClient(uri);
     await client.connect();
   }
   return client;

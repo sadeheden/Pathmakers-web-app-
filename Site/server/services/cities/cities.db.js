@@ -4,11 +4,9 @@ export async function getAllCitiesFromDatabase() {
     let client = null;
     try {
         console.log("Opening connection to database...");
-        client = await MongoClient.connect(process.env.CONNECTION_STRING, {
-            useNewUrlParser: true,
-            useUnifiedTopology: true
-        });
- 
+       client = await MongoClient.connect(process.env.CONNECTION_STRING, {
+       useNewUrlParser: true
+     });
         console.log("Connection successful! Fetching cities...");
         let db = client.db(process.env.DB_NAME);
         const cities = await db.collection('city').find().toArray();  // Fetch cities from the 'city' collection

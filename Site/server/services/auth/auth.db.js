@@ -14,10 +14,9 @@ export async function connectDB() {
     if (db) return db;
 
     if (!client) {
-        client = new MongoClient(uri, {
-            useNewUrlParser: true,
-            useUnifiedTopology: true,
-        });
+        client = await MongoClient.connect(process.env.CONNECTION_STRING, {
+        useNewUrlParser: true
+});
         await client.connect();
     }
 
