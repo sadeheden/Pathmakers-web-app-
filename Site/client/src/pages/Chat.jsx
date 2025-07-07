@@ -22,6 +22,15 @@ const TravelPlannerApp = () => {
         }
     }, []); 
 
+    useEffect(() => {
+        if (location.state?.onlyPayment) {
+            const paymentStepIndex = steps.findIndex(s => s.label === "Payment");
+            setCurrentStep(paymentStepIndex !== -1 ? paymentStepIndex : 0);
+            setPaymentCompleted(false);
+            setIsPaymentModalOpen(true);
+        }
+}, [location.state]);
+
     const [currentStep, setCurrentStep] = useState(() => {
         const savedStep = localStorage.getItem("currentStep");
         return savedStep ? parseInt(savedStep, 10) : 0;
@@ -62,122 +71,115 @@ const TravelPlannerApp = () => {
             }
         }
 
-        async function fetchFlights(city) {
-            if (!city) return;
-            try {
-                const response = await fetch(`http://localhost:4000/api/flights/city/${encodeURIComponent(city)}`);
-                if (!response.ok) {
-                    throw new Error(`Failed to fetch flights for ${city}, status: ${response.status}`);
-                }
-                const data = await response.json();
-                setLoadedFlights(data);
-            } catch (error) {
-                console.error("Error fetching flights:", error);
-            }
-        }
+    async function fetchFlights(city) {
+  if (!city) return;
+  const cityName = city.name || city; // if city is object, use its name
+  try {
+    const response = await fetch(`http://localhost:4000/api/flights/city/${encodeURIComponent(cityName)}`);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch flights for ${cityName}, status: ${response.status}`);
+    }
+    const data = await response.json();
+    setLoadedFlights(data);
+  } catch (error) {
+    console.error("Error fetching flights:", error);
+  }
+}
+       async function fetchHotels(city) {
+  if (!city) return;
+  const cityName = city.name || city; // ✔ extract .name if city is an object
+  try {
+    const response = await fetch(`http://localhost:4000/api/hotels/city/${encodeURIComponent(cityName)}`);
+    if (response.status === 404) {
+      setLoadedHotels([]);
+      return;
+    }
+    if (!response.ok) {
+      throw new Error(`Failed to fetch hotels for ${cityName}, status: ${response.status}`);
+    }
+    const data = await response.json();
+    setLoadedHotels(data);
+  } catch (error) {
+    console.error("Error fetching hotels:", error);
+  }
+}
 
-        async function fetchHotels(city) {
-            if (!city) return;
-            try {
-                const response = await fetch(`http://localhost:4000/api/hotels/city/${encodeURIComponent(city)}`);
-                if (response.status === 404) {
-                    setLoadedHotels([]);
-                    return;
-                }
-                if (!response.ok) {
-                    throw new Error(`Failed to fetch hotels for ${city}, status: ${response.status}`);
-                }
-                const data = await response.json();
-                setLoadedHotels(data);
-            } catch (error) {
-                console.error("Error fetching hotels:", error);
-            }
-        }
 
-        async function fetchAttractions(city) {
-            if (!city) return;
-            try {
-                const response = await fetch(
-                    `http://localhost:4000/api/attractions/city/${encodeURIComponent(city)}`
-                );
-                if (!response.ok) {
-                    throw new Error(
-                        `Failed to fetch attractions for ${city}, status: ${response.status}`
-                    );
-                }
-                const data = await response.json();
-                setLoadedAttractions(data.attractions || []);
-            } catch (error) {
-                console.error("Error fetching attractions:", error);
-            }
-        }
+       async function fetchAttractions(city) {
+  if (!city) return;
+  const cityName = city.name || city; // ✔ extract .name if city is an object
+  try {
+    const response = await fetch(`http://localhost:4000/api/attractions/city/${encodeURIComponent(cityName)}`);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch attractions for ${cityName}, status: ${response.status}`);
+    }
+    const data = await response.json();
+    setLoadedAttractions(data.attractions || []);
+  } catch (error) {
+    console.error("Error fetching attractions:", error);
+  }
+}
+
 
         async function fetchData() {
-            await Promise.all([
-                fetchCities(),
-                userResponses["What is your destination city?"] &&
-                    fetchFlights(userResponses["What is your destination city?"]),
-                userResponses["What is your destination city?"] && fetchHotels(userResponses["What is your destination city?"]),
-                userResponses["What is your destination city?"] && fetchAttractions(userResponses["What is your destination city?"]),
-            ]);
-        }
+          await Promise.all([
+  fetchCities(),
+  userResponses["What is your destination city?"] &&
+    fetchFlights(userResponses["What is your destination city?"]),
+  userResponses["What is your destination city?"] &&
+    fetchHotels(userResponses["What is your destination city?"]),
+  userResponses["What is your destination city?"] &&
+    fetchAttractions(userResponses["What is your destination city?"]),
+]);
 
+        }
         fetchData();
     }, [userResponses["What is your destination city?"]]);
 
- const calculateTotalPrice = () => {
-  if (location.state?.onlyPayment) {
-    return 2000; // מחיר קבוע למשתמש שבחר טיול מוכן
-  }
+        const calculateTotalPrice = () => {
+          let total = 0;
 
-  let total = 0;
+          // ✈️ מחיר טיסה
+          const selectedFlight = userResponses["Select your flight"];
+          if (selectedFlight?.price) {
+            total += selectedFlight.price;
+          }
 
-  // חישוב מחיר טיסה
-  const selectedFlight = userResponses["Select your flight"];
-  if (selectedFlight?.name && selectedFlight.name.includes("$")) {
-    const pricePart = selectedFlight.name.split("$")[1];
-    if (pricePart) {
-      const flightPrice = parseInt(pricePart.split(" ")[0]);
-      total += flightPrice || 0;
-    }
-  }
+          // 🏨 מחיר מלון
+          const selectedHotel = userResponses["Select your hotel"];
+          if (selectedHotel?.price) {
+            total += selectedHotel.price;
+          }
 
-  // חישוב מחיר מלון
-  const selectedHotel = userResponses["Select your hotel"];
-  if (selectedHotel?.name && selectedHotel.name.includes("$")) {
-    const pricePart = selectedHotel.name.split("$")[1];
-    if (pricePart) {
-      const hotelPrice = parseInt(pricePart.split("/")[0]);
-      total += hotelPrice || 0;
-    }
-  }
+          // 🏛️ מחיר אטרקציות
+          const selectedAttractions = userResponses["Select attractions to visit"];
+          if (Array.isArray(selectedAttractions)) {
+            selectedAttractions.forEach(attr => {
+              if (attr?.price) total += attr.price;
+            });
+          }
 
-  // חישוב עלות אטרקציות
-  const selectedAttractions = userResponses["Select attractions to visit"];
-  if (Array.isArray(selectedAttractions)) {
-    const attractionPrice = 20 * selectedAttractions.length;
-    total += attractionPrice || 0;
-  }
+          // 🚗 תחבורה
+          const selectedTransportation = userResponses["Select your mode of transportation"];
+          if (selectedTransportation) {
+            total += selectedTransportation === "Car" ? 50 : 10;
+          }
+           const numberOfTravelers = parseInt(userResponses["Number of travelers"]) || 1;
 
-  // חישוב תחבורה
-  const selectedTransportation = userResponses["Select your mode of transportation"];
-  if (selectedTransportation) {
-    const transportationPrice = selectedTransportation === "Car" ? 50 : 10;
-    total += transportationPrice || 0;
-  }
-
-  return total;
-};
+          return total * numberOfTravelers;
+        };
 
     // Flatten the attractions for the select dropdown
     const attractionNames =
         loadedAttractions.length && Array.isArray(loadedAttractions[0]?.attractions)
             ? loadedAttractions[0].attractions.map(attr => attr.name)
             : [];
-const hotelOptions =
-  loadedHotels.length && Array.isArray(loadedHotels[0]?.hotels)
-    ? loadedHotels[0].hotels.map(hotel => `${hotel.name} - $${hotel.price}/night`)
-    : [];
+const hotelOptions = loadedHotels.length
+  ? loadedHotels.map(hotel => ({
+      id: hotel._id,
+      name: `${hotel.name} - $${hotel.price}/night`
+    }))
+  : [];
 
 
     // ✅ REORDERED STEPS - Payment comes before Trip Summary
@@ -200,40 +202,45 @@ const hotelOptions =
       },
     ],
   },
-  {
-    label: "Flight",
-    icon: Plane,
-    questions: [
-      { prompt: "Travel dates (departure)?", type: "date" },
-      { prompt: "Travel dates (return)?", type: "date" },
-      {
-        prompt: "Select your flight",
-        options:
-          loadedFlights.length
-            ? loadedFlights
-                .find(flight => flight.city === userResponses["What is your destination city?"]?.name)
-                ?.airlines.map(airline => ({
-                  id: airline._id,
-                  name: `${airline.name} - $${airline.price} (${airline.duration})`,
-                })) || []
-            : [],
-      },
-      { prompt: "Class preference", options: ["Economy", "Business", "First"] },
-    ],
-  },
+ {
+  label: "Flight",
+  icon: Plane,
+  questions: [
+    { prompt: "Travel dates (departure)?", type: "date" },
+    { prompt: "Travel dates (return)?", type: "date" },
+    {
+      prompt: "Select your flight",
+      options: (() => {
+        const dest = userResponses["What is your destination city?"];
+        const cityName = typeof dest === "string" ? dest : dest?.name;
+        const flightGroup = loadedFlights.find(f => f.city === cityName);
+
+        return flightGroup?.airlines?.map((airline, index) => ({
+          id: `${flightGroup._id}-${index}`, // משתמשים ב־index כי אין id
+          name: `${airline.name} - $${airline.price} (${airline.duration})`,
+          ...airline, // נוסיף את כל הפרטים למעקב
+        })) || [];
+      })(),
+    },
+    { prompt: "Class preference", options: ["Economy", "Business", "First"] },
+  ],
+},
   {
     label: "Hotel",
     icon: Hotel,
     questions: [
       {
         prompt: "Select your hotel",
-        options:
-          loadedHotels.length && Array.isArray(loadedHotels[0]?.hotels)
-            ? loadedHotels[0].hotels.map(hotel => ({
-                id: hotel._id,
-                name: `${hotel.name} - $${hotel.price}/night`,
-              }))
-            : [],
+        options: (() => {
+          const dest = userResponses["What is your destination city?"];
+          const cityName = typeof dest === "string" ? dest : dest?.name;
+          const hotelGroup = loadedHotels.find(h => h.city === cityName);
+          return hotelGroup?.hotels?.map((hotel, i) => ({
+            id: `${hotelGroup._id}-${i}`,
+            name: `${hotel.name} - $${hotel.price}/night`,
+            ...hotel,
+          })) || [];
+        })(),
       },
       { prompt: "Budget range per night?", type: "text" },
       {
@@ -243,23 +250,36 @@ const hotelOptions =
       { prompt: "Pet-friendly options?", options: ["Yes", "No"] },
     ],
   },
-  {
-    label: "Attractions",
-    icon: Compass,
-    questions: [
-      {
-        prompt: "Select attractions to visit",
-        options:
-          loadedAttractions.length
-            ? loadedAttractions.map(attr => ({ id: attr._id, name: attr.name }))
-            : [],
-      },
-      { prompt: "Budget for daily activities?", type: "text" },
-      { prompt: "Interest areas?", options: ["History", "Food", "Nightlife", "Nature", "Culture"] },
-      { prompt: "Group type?", options: ["Solo", "Couple", "Family", "Friends"] },
-      { prompt: "Tour preference?", options: ["Guided Tours", "Self-Guided"] },
-    ],
-  },
+ {
+  label: "Attractions",
+  icon: Compass,
+  questions: [
+    {
+      prompt: "Select attractions to visit",
+      options: (() => {
+        const dest = userResponses["What is your destination city?"];
+        const cityName = typeof dest === "string" ? dest : dest?.name;
+        const attractionGroup = loadedAttractions.find(a => a.city === cityName);
+        return attractionGroup?.attractions?.map((attr, i) => ({
+          id: `${attractionGroup._id}-${i}`,
+          name: `${attr.name} - $${attr.price}`,
+          ...attr,
+        })) || [];
+      })(),
+    },
+    { prompt: "Budget for daily activities?", type: "text" },
+    { prompt: "Interest areas?", options: ["History", "Food", "Nightlife", "Nature", "Culture"] },
+    { prompt: "Group type?", options: ["Solo", "Couple", "Family", "Friends"] },
+   { 
+  prompt: "Number of travelers", 
+  type: "number", 
+  min: 1,
+  max: 20
+},
+    { prompt: "Tour preference?", options: ["Guided Tours", "Self-Guided"] },
+  ],
+},
+
   {
     label: "Transportation",
     icon: Car,
@@ -430,78 +450,65 @@ const hotelOptions =
         const step = steps[currentStep];
 
         if (step.label === "Trip Summary") {
+          
             const totalPrice = calculateTotalPrice();
 
-            const handleSaveOrder = async () => {
-                const token = localStorage.getItem("authToken");
+        const handleSaveOrder = async () => {
+    const token = localStorage.getItem("authToken");
+    if (!token) {
+        console.error("❌ No token found. User might not be logged in.");
+        alert("⚠️ You must be logged in to save an order.");
+        return;
+    }
 
-                if (!token) {
-                    console.error("❌ No token found. User might not be logged in.");
-                    alert("⚠️ You must be logged in to save an order.");
-                    return;
-                }
+    if (!userResponses) {
+        console.error("❌ No user responses found!");
+        alert("⚠️ No order details available.");
+        return;
+    }
 
-                try {
-                    const userResponse = await fetch("http://localhost:4000/api/info/user", {
-                        method: "GET",
-                        headers: {
-                            "Authorization": `Bearer ${token}`,
-                            "Content-Type": "application/json"
-                        }
-                    });
+    // Build orderData according to your backend model
+    const orderData = {
+  departureCityId: userResponses["What is your departure city?"]?.id,
+  destinationCityId: userResponses["What is your destination city?"]?.id,
+  flightId: userResponses["Select your flight"]?.id,
+  hotelId: userResponses["Select your hotel"]?.id,
+  attractions: userResponses["Select attractions to visit"]?.map(attr => attr.id),
+  transportation: userResponses["Select your mode of transportation"],
+  paymentMethod: userResponses["Select payment method"],
+  totalPrice: calculateTotalPrice(),
+};
 
-                    if (!userResponse.ok) {
-                        throw new Error("❌ Failed to fetch user details.");
-                    }
+    console.log("🔍 Sending Order Data:", orderData);
 
-                    const userData = await userResponse.json();
-                    console.log("✅ Fetched User:", userData);
+    try {
+        const response = await fetch("http://localhost:4000/api/order", {
+            method: "POST",
+            headers: {
+                "Authorization": `Bearer ${token}`,
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify(orderData),
+        });
 
-                    if (!userResponses) {
-                        console.error("❌ No user responses found!");
-                        alert("⚠️ No order details available.");
-                        return;
-                    }
+        if (!response.ok) {
+            const errorMessage = await response.text();
+            console.error("❌ Failed to save order:", response.status, errorMessage);
+            alert(`Error: ${errorMessage}`);
+            return;
+        }
 
-                    const orderData = {
-                        userId: userData.id,
-                        username: userData.username,
-                        departureCity: userResponses["What is your departure city?"],
-                        destinationCity: userResponses["What is your destination city?"],
-                        flight: userResponses["Select your flight"],
-                        hotel: userResponses["Select your hotel"],
-                        attractions: userResponses["Select attractions to visit"]?.split(", "),
-                        transportation: userResponses["Select your mode of transportation"],
-                        paymentMethod: userResponses["Select payment method"],
-                        totalPrice: calculateTotalPrice(),
-                        paymentStatus: "Completed" // ✅ Payment is already completed
-                    };
+        const savedOrder = await response.json();
+        console.log("✅ Order saved successfully!", savedOrder);
+        localStorage.setItem("orderSaved", "true");
+        // Optionally, handle further actions (navigate, show receipt, etc.)
 
-                    console.log("🔍 Sending Order Data:", orderData);
+    } catch (error) {
+        console.error("⚠️ Error saving order:", error);
+        alert("⚠️ An error occurred while saving your order. Please try again.");
+    }
+};
 
-                    const response = await fetch("http://localhost:4000/api/order", {
-                        method: "POST",
-                        headers: {
-                            "Authorization": `Bearer ${token}`,
-                            "Content-Type": "application/json"
-                        },
-                        body: JSON.stringify(orderData)
-                    });
-
-                    if (!response.ok) {
-                        const errorMessage = await response.text();
-                        console.error("❌ Failed to save order:", response.status, errorMessage);
-                        alert(`Error: ${errorMessage}`);
-                        return;
-                    }
-
-                    console.log("✅ Order saved successfully!");
-                    localStorage.setItem("orderSaved", "true");
-
-                } catch (error) {
-                    console.error("⚠️ Error saving order:", error);
-                }
-            };
 
             const handleDownloadSummary = async () => {
                 try {
@@ -678,43 +685,48 @@ const hotelOptions =
                                     )}
                                 </>
                             ) : (
-                                <select
-                                    value={userResponses[q.prompt] || ""}
-                                    onChange={(e) => {
-                                        const selectedValue = e.target.value;
+                          <select
+  value={typeof userResponses[q.prompt] === "object" ? userResponses[q.prompt]?.id : userResponses[q.prompt] || ""}
+  onChange={(e) => {
+    let selectedOption;
+    if (typeof q.options[0] === "string") {
+      selectedOption = e.target.value;
+    } else {
+      selectedOption = q.options.find(opt => opt.id === e.target.value);
+    }
+    setUserResponses((prevResponses) => ({
+      ...prevResponses,
+      [q.prompt]: selectedOption,
+    }));
+    
 
-                                        setUserResponses((prevResponses) => ({
-                                            ...prevResponses,
-                                            [q.prompt]: selectedValue,
-                                        }));
-
-                                        const methodsRequiringModal = ["Credit Card", "PayPal", "Bank Transfer", "Crypto"];
-
-                                        if (q.prompt === "Select payment method") {
-                                            if (methodsRequiringModal.includes(selectedValue)) {
-                                                console.log(`Opening payment modal for ${selectedValue}...`);
-                                                setIsPaymentModalOpen(false);
-                                                setTimeout(() => setIsPaymentModalOpen(true), 10);
-                                                setPaymentCompleted(false);
-                                            } else {
-                                                setPaymentCompleted(true);
-                                            }
-                                        }
-                                    }}
-                                >
-                                    <option value="" disabled>Select an option</option>
-                                    {q.options &&
-                                        q.options.length > 0 &&
-                                        q.options.map((option, i) => (
-                                            <option key={i} value={option}>
-                                                {option}
-                                            </option>
-                                        ))}
-                                </select>
-                            )}
+    const methodsRequiringModal = ["Credit Card", "PayPal", "Bank Transfer", "Crypto"];
+    if (q.prompt === "Select payment method") {
+      if (methodsRequiringModal.includes(selectedOption?.name || selectedOption)) {
+        console.log(`Opening payment modal for ${selectedOption?.name || selectedOption}...`);
+        setIsPaymentModalOpen(false);
+        setTimeout(() => setIsPaymentModalOpen(true), 10);
+        setPaymentCompleted(false);
+      } else {
+        setPaymentCompleted(true);
+      }
+    }
+  }}
+>
+  <option value="" disabled>Select an option</option>
+  {q.options &&
+    q.options.length > 0 &&
+    q.options.map((option, i) => (
+      <option key={i} value={typeof option === "string" ? option : option.id}>
+        {typeof option === "string" ? option : option.name}
+      </option>
+    ))}
+</select>
+ )}
                         </div>
                     ))}
                 </div>
+                
                 <div className="navigation-buttons">
                     <button
                         onClick={() => setCurrentStep((prev) => prev - 1)}
@@ -734,7 +746,6 @@ const hotelOptions =
                                 setIsPaymentModalOpen(true);
                                 return;
                             }
-
                             setCurrentStep((prev) => prev + 1);
                         }}
                         disabled={
@@ -754,7 +765,6 @@ const hotelOptions =
             </div>
         );
     };
-
     return (
         <div className="containerCh">
             <header>
@@ -779,5 +789,4 @@ const hotelOptions =
         </div>
     );
 };
-
 export default TravelPlannerApp;
