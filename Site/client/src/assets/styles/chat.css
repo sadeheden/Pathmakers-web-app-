@@ -414,3 +414,12 @@ select:focus {
   background-color: #355ab7;
   color: white;
 }
+.backdrop {
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+}
+
+.noselect {
+  -webkit-user-select: none;
+  user-select: none;
+}

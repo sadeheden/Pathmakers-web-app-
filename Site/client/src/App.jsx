@@ -12,31 +12,37 @@ import AuthForm from "./pages/AuthForm"; // ✅ Use AuthForm for both login & si
 import Main from "./pages/Main";
 import Manager from "./pages/Manager";
 import RealChat from "./pages/RealChat";
+import ErrorBoundary from "./components/ErrorBoundary.jsx";
+
+
  
 function App() {
   return (
-    <Router>
-      <Header />  {/* Header component */}
-     
-      <div className="content">
-        <Routes>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/about" element={<AboutPage />} />
-          <Route path="/login" element={<AuthForm isLogin={true} />} />  {/* ✅ Fix here */}
-          <Route path="/signup" element={<AuthForm isLogin={false} />} /> {/* ✅ Add signup route */}
-          <Route path="/personal-area" element={<PersonalArea />} />
-          <Route path="/chat" element={<Chat />} />
-          <Route path="/manager" element={<Manager/>} />
-          <Route path="/downloadApp" element={<DownloadApp />} />
-          <Route path="/video" element={<Video />} />
-          <Route path="/main" element={<Main />} />
-          <Route path="/realChat" element={<RealChat />} />
-        </Routes>
-      </div>
- 
-      <Footer />  {/* Footer component */}
-    </Router>
+    <ErrorBoundary>
+      <Router>
+        <Header />  {/* Header component */}
+       
+        <div className="content">
+          <Routes>
+            <Route path="/" element={<HomePage />} />
+            <Route path="/about" element={<AboutPage />} />
+            <Route path="/login" element={<AuthForm isLogin={true} />} />
+            <Route path="/signup" element={<AuthForm isLogin={false} />} />
+            <Route path="/personal-area" element={<PersonalArea />} />
+            <Route path="/chat" element={<Chat />} />
+            <Route path="/manager" element={<Manager />} />
+            <Route path="/downloadApp" element={<DownloadApp />} />
+            <Route path="/video" element={<Video />} />
+            <Route path="/main" element={<Main />} />
+            <Route path="/realChat" element={<RealChat />} />
+          </Routes>
+        </div>
+
+        <Footer />  {/* Footer component */}
+      </Router>
+    </ErrorBoundary>
   );
 }
+
  
 export default App;

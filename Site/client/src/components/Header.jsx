@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import logo from "../assets/images/Image20250119205452.png";
-import profilePlaceholder from "../assets/images/2151100205.jpg";
+import profilePlaceholder from "../assets/images/default_profile.jpg";
 import "../assets/styles/Header.css";
 
 const DEFAULT_PROFILE_IMAGE = "https://res.cloudinary.com/YOUR_CLOUDINARY_NAME/image/upload/v1700000000/YOUR_DEFAULT_IMAGE.jpg";
