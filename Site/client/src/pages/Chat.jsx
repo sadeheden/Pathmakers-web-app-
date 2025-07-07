@@ -136,49 +136,38 @@ const TravelPlannerApp = () => {
         fetchData();
     }, [userResponses["What is your destination city?"]]);
 
- const calculateTotalPrice = () => {
-  if (location.state?.onlyPayment) {
-    return 2000; // מחיר קבוע למשתמש שבחר טיול מוכן
-  }
+        const calculateTotalPrice = () => {
+          let total = 0;
 
-  let total = 0;
+          // ✈️ מחיר טיסה
+          const selectedFlight = userResponses["Select your flight"];
+          if (selectedFlight?.price) {
+            total += selectedFlight.price;
+          }
 
-  // חישוב מחיר טיסה
-  const selectedFlight = userResponses["Select your flight"];
-  if (selectedFlight?.name && selectedFlight.name.includes("$")) {
-    const pricePart = selectedFlight.name.split("$")[1];
-    if (pricePart) {
-      const flightPrice = parseInt(pricePart.split(" ")[0]);
-      total += flightPrice || 0;
-    }
-  }
+          // 🏨 מחיר מלון
+          const selectedHotel = userResponses["Select your hotel"];
+          if (selectedHotel?.price) {
+            total += selectedHotel.price;
+          }
 
-  // חישוב מחיר מלון
-  const selectedHotel = userResponses["Select your hotel"];
-  if (selectedHotel?.name && selectedHotel.name.includes("$")) {
-    const pricePart = selectedHotel.name.split("$")[1];
-    if (pricePart) {
-      const hotelPrice = parseInt(pricePart.split("/")[0]);
-      total += hotelPrice || 0;
-    }
-  }
+          // 🏛️ מחיר אטרקציות
+          const selectedAttractions = userResponses["Select attractions to visit"];
+          if (Array.isArray(selectedAttractions)) {
+            selectedAttractions.forEach(attr => {
+              if (attr?.price) total += attr.price;
+            });
+          }
 
-  // חישוב עלות אטרקציות
-  const selectedAttractions = userResponses["Select attractions to visit"];
-  if (Array.isArray(selectedAttractions)) {
-    const attractionPrice = 20 * selectedAttractions.length;
-    total += attractionPrice || 0;
-  }
+          // 🚗 תחבורה
+          const selectedTransportation = userResponses["Select your mode of transportation"];
+          if (selectedTransportation) {
+            total += selectedTransportation === "Car" ? 50 : 10;
+          }
+           const numberOfTravelers = parseInt(userResponses["Number of travelers"]) || 1;
 
-  // חישוב תחבורה
-  const selectedTransportation = userResponses["Select your mode of transportation"];
-  if (selectedTransportation) {
-    const transportationPrice = selectedTransportation === "Car" ? 50 : 10;
-    total += transportationPrice || 0;
-  }
-
-  return total;
-};
+          return total * numberOfTravelers;
+        };
 
     // Flatten the attractions for the select dropdown
     const attractionNames =
@@ -213,40 +202,45 @@ const hotelOptions = loadedHotels.length
       },
     ],
   },
-  {
-    label: "Flight",
-    icon: Plane,
-    questions: [
-      { prompt: "Travel dates (departure)?", type: "date" },
-      { prompt: "Travel dates (return)?", type: "date" },
-      {
-        prompt: "Select your flight",
-        options:
-          loadedFlights.length
-            ? loadedFlights
-                .find(flight => flight.city === userResponses["What is your destination city?"]?.name)
-                ?.airlines.map(airline => ({
-                  id: airline._id,
-                  name: `${airline.name} - $${airline.price} (${airline.duration})`,
-                })) || []
-            : [],
-      },
-      { prompt: "Class preference", options: ["Economy", "Business", "First"] },
-    ],
-  },
+ {
+  label: "Flight",
+  icon: Plane,
+  questions: [
+    { prompt: "Travel dates (departure)?", type: "date" },
+    { prompt: "Travel dates (return)?", type: "date" },
+    {
+      prompt: "Select your flight",
+      options: (() => {
+        const dest = userResponses["What is your destination city?"];
+        const cityName = typeof dest === "string" ? dest : dest?.name;
+        const flightGroup = loadedFlights.find(f => f.city === cityName);
+
+        return flightGroup?.airlines?.map((airline, index) => ({
+          id: `${flightGroup._id}-${index}`, // משתמשים ב־index כי אין id
+          name: `${airline.name} - $${airline.price} (${airline.duration})`,
+          ...airline, // נוסיף את כל הפרטים למעקב
+        })) || [];
+      })(),
+    },
+    { prompt: "Class preference", options: ["Economy", "Business", "First"] },
+  ],
+},
   {
     label: "Hotel",
     icon: Hotel,
     questions: [
       {
         prompt: "Select your hotel",
-        options:
-          loadedHotels.length && Array.isArray(loadedHotels[0]?.hotels)
-            ? loadedHotels[0].hotels.map(hotel => ({
-                id: hotel._id,
-                name: `${hotel.name} - $${hotel.price}/night`,
-              }))
-            : [],
+        options: (() => {
+          const dest = userResponses["What is your destination city?"];
+          const cityName = typeof dest === "string" ? dest : dest?.name;
+          const hotelGroup = loadedHotels.find(h => h.city === cityName);
+          return hotelGroup?.hotels?.map((hotel, i) => ({
+            id: `${hotelGroup._id}-${i}`,
+            name: `${hotel.name} - $${hotel.price}/night`,
+            ...hotel,
+          })) || [];
+        })(),
       },
       { prompt: "Budget range per night?", type: "text" },
       {
@@ -256,23 +250,36 @@ const hotelOptions = loadedHotels.length
       { prompt: "Pet-friendly options?", options: ["Yes", "No"] },
     ],
   },
-  {
-    label: "Attractions",
-    icon: Compass,
-    questions: [
-      {
-        prompt: "Select attractions to visit",
-        options:
-          loadedAttractions.length
-            ? loadedAttractions.map(attr => ({ id: attr._id, name: attr.name }))
-            : [],
-      },
-      { prompt: "Budget for daily activities?", type: "text" },
-      { prompt: "Interest areas?", options: ["History", "Food", "Nightlife", "Nature", "Culture"] },
-      { prompt: "Group type?", options: ["Solo", "Couple", "Family", "Friends"] },
-      { prompt: "Tour preference?", options: ["Guided Tours", "Self-Guided"] },
-    ],
-  },
+ {
+  label: "Attractions",
+  icon: Compass,
+  questions: [
+    {
+      prompt: "Select attractions to visit",
+      options: (() => {
+        const dest = userResponses["What is your destination city?"];
+        const cityName = typeof dest === "string" ? dest : dest?.name;
+        const attractionGroup = loadedAttractions.find(a => a.city === cityName);
+        return attractionGroup?.attractions?.map((attr, i) => ({
+          id: `${attractionGroup._id}-${i}`,
+          name: `${attr.name} - $${attr.price}`,
+          ...attr,
+        })) || [];
+      })(),
+    },
+    { prompt: "Budget for daily activities?", type: "text" },
+    { prompt: "Interest areas?", options: ["History", "Food", "Nightlife", "Nature", "Culture"] },
+    { prompt: "Group type?", options: ["Solo", "Couple", "Family", "Friends"] },
+   { 
+  prompt: "Number of travelers", 
+  type: "number", 
+  min: 1,
+  max: 20
+},
+    { prompt: "Tour preference?", options: ["Guided Tours", "Self-Guided"] },
+  ],
+},
+
   {
     label: "Transportation",
     icon: Car,
@@ -599,17 +606,18 @@ const hotelOptions = loadedHotels.length
                     <div className="summary-box">
                         <h2>🎉 Trip Confirmed!</h2>
                         <p><strong>✅ Payment Status:</strong> Completed</p>
-                        <div className="summary-details">
-                            <p><strong>Departure City:</strong> {userResponses["What is your departure city?"] || "N/A"}</p>
-                            <p><strong>Destination City:</strong> {userResponses["What is your destination city?"] || "N/A"}</p>
-                            <p><strong>Flight:</strong> {userResponses["Select your flight"] || "N/A"}</p>
-                            <p><strong>Hotel:</strong> {userResponses["Select your hotel"] || "N/A"}</p>
-                            <p><strong>Attractions:</strong> {userResponses["Select attractions to visit"] || "N/A"}</p>
-                            <p><strong>Transportation:</strong> {userResponses["Select your mode of transportation"] || "N/A"}</p>
-                            <p><strong>Payment Method:</strong> {userResponses["Select payment method"] || "N/A"}</p>
-                            <h3>Total Paid: ${totalPrice}</h3>
-                        </div>
-
+                       <div className="summary-details">
+                        <p><strong>Departure City:</strong> {userResponses["What is your departure city?"]?.name || "N/A"}</p>
+                        <p><strong>Destination City:</strong> {userResponses["What is your destination city?"]?.name || "N/A"}</p>
+                        <p><strong>Flight:</strong> {userResponses["Select your flight"]?.name || "N/A"}</p>
+                        <p><strong>Hotel:</strong> {userResponses["Select your hotel"]?.name || "N/A"}</p>
+                        <p><strong>Attractions:</strong> {Array.isArray(userResponses["Select attractions to visit"])
+                          ? userResponses["Select attractions to visit"].map(attr => attr.name).join(", ")
+                          : userResponses["Select attractions to visit"]?.name || "N/A"}</p>
+                        <p><strong>Transportation:</strong> {userResponses["Select your mode of transportation"] || "N/A"}</p>
+                        <p><strong>Payment Method:</strong> {userResponses["Select payment method"] || "N/A"}</p>
+                        <h3>Total Paid: ${calculateTotalPrice()}</h3>
+                      </div>
                         <div className="summary-buttons">
                             <button className="download-btn" onClick={handleDownloadSummary}>Download Receipt</button>
                             <button
@@ -640,7 +648,7 @@ const hotelOptions = loadedHotels.length
                     {step.questions.map((q, index) => (
                         <div key={index}>
                             <label>{q.prompt}</label>
-                            {q.type === "text" || q.type === "date" ? (
+                            {q.type === "text" || q.type === "date" || q.type === "number" ? (
                                 <>
                                     {q.prompt.includes("departure") && (
                                         <input
