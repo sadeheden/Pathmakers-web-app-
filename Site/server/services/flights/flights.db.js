@@ -1,54 +1,75 @@
 import { MongoClient, ObjectId } from "mongodb";
-import dotenv from "dotenv";
-dotenv.config();
 
 const COLLECTION_NAME = "flights";
-const uri = process.env.CONNECTION_STRING;
-const dbName = process.env.DB_NAME;
-
-let client;
-let db;
 
 async function connectDB() {
-  if (!db) {
-client = new MongoClient(uri);
-    await client.connect();
-    db = client.db(dbName);
-    console.log("✅ MongoDB connected for flights");
-  }
-  return db;
+  const client = await MongoClient.connect(process.env.CONNECTION_STRING, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+  });
+  const db = client.db(process.env.DB_NAME);
+  return { client, db };
 }
 
 export async function getAllFlightsFromDatabase() {
-  const db = await connectDB();
-  return db.collection(COLLECTION_NAME).find().toArray();
+  const { client, db } = await connectDB();
+  try {
+    return await db.collection(COLLECTION_NAME).find().toArray();
+  } finally {
+    client.close();
+  }
 }
 
 export async function getFlightByIdFromDatabase(id) {
-  const db = await connectDB();
-  return db.collection(COLLECTION_NAME).findOne({ _id: new ObjectId(id) });
+  const { client, db } = await connectDB();
+  try {
+    return await db.collection(COLLECTION_NAME).findOne({ _id: new ObjectId(id) });
+  } finally {
+    client.close();
+  }
 }
 
 export async function saveFlightToDatabase(flight) {
-  const db = await connectDB();
-  return db.collection(COLLECTION_NAME).insertOne(flight);
+  const { client, db } = await connectDB();
+  try {
+    return await db.collection(COLLECTION_NAME).insertOne(flight);
+  } finally {
+    client.close();
+  }
 }
 
 export async function updateFlightInDatabase(flight, id) {
-  const db = await connectDB();
-  return db.collection(COLLECTION_NAME).updateOne({ _id: new ObjectId(id) }, { $set: flight });
+  const { client, db } = await connectDB();
+  try {
+    return await db
+      .collection(COLLECTION_NAME)
+      .updateOne({ _id: new ObjectId(id) }, { $set: flight });
+  } finally {
+    client.close();
+  }
 }
 
 export async function deleteFlightInDatabase(id) {
-  const db = await connectDB();
-  // soft delete
-  return db.collection(COLLECTION_NAME).updateOne({ _id: new ObjectId(id) }, { $set: { isDeleted: true } });
+  const { client, db } = await connectDB();
+  try {
+    // soft delete
+    return await db
+      .collection(COLLECTION_NAME)
+      .updateOne({ _id: new ObjectId(id) }, { $set: { isDeleted: true } });
+  } finally {
+    client.close();
+  }
 }
 
 // New: get flights by city (case insensitive)
 export async function getFlightsByCity(city) {
-  const db = await connectDB();
-  return db.collection(COLLECTION_NAME)
-    .find({ city: { $regex: `^${city}$`, $options: "i" } })
-    .toArray();
+  const { client, db } = await connectDB();
+  try {
+    return await db
+      .collection(COLLECTION_NAME)
+      .find({ city: { $regex: `^${city}$`, $options: "i" } })
+      .toArray();
+  } finally {
+    client.close();
+  }
 }
