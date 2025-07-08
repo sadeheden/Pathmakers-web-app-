@@ -489,7 +489,6 @@ function cleanId(id) {
   return id.split(/[-_]/)[0]; // מנקה מזהים כמו 68075f88dc218773e065222f_0
 }
 
-
 console.log("🧪 Checking IDs before sending:");
 console.log("departureCityId:", orderData.departureCityId);
 console.log("destinationCityId:", orderData.destinationCityId);
