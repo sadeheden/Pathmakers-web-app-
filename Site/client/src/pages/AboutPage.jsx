@@ -26,7 +26,13 @@ const AboutPage = () => {
       <div className="cta">
         <p>Book your next adventure with us — we're the best at what we do!</p>
       </div>
+      <section className="customer-support">
+  <h2>Need Help?</h2>
+  <p>Our customer support team is available 24/7 to assist you with your trips and payments.</p>
+  <button onClick={() => navigate('/support')}>Contact Support</button>
+</section>
     </div>
+    
   );
 };
 

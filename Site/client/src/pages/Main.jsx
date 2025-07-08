@@ -216,6 +216,7 @@ const Main = () => {
           </div>
         </div>
       </section>
+      
 
       <section className="trip-options">
         <div className="trip-card ai-card">
@@ -338,11 +339,7 @@ const Main = () => {
           </div>
         </div>
       )}
-<section className="customer-support">
-  <h2>Need Help?</h2>
-  <p>Our customer support team is available 24/7 to assist you with your trips and payments.</p>
-  <button onClick={() => navigate('/support')}>Contact Support</button>
-</section>
+
 <button 
   className="floating-support-btn"
   onClick={() => navigate('/support')}
