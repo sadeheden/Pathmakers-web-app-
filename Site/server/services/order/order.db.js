@@ -9,11 +9,11 @@ if (!uri || !dbName) {
   throw new Error("Missing CONNECTION_STRING or DB_NAME env variables");
 }
 
-let client;
+let client;  // חשוב להגדיר את המשתנה מחוץ לפונקציה
 
 async function getClient() {
   if (!client || !client.topology || !client.topology.isConnected()) {
-   const client = new MongoClient(uri);
+    client = new MongoClient(uri);  // בלי const
     await client.connect();
   }
   return client;
