@@ -230,19 +230,21 @@ const hotelOptions = loadedHotels.length
     label: "Hotel",
     icon: Hotel,
     questions: [
-      {
-        prompt: "Select your hotel",
-        options: (() => {
-          const dest = userResponses["What is your destination city?"];
-          const cityName = typeof dest === "string" ? dest : dest?.name;
-          const hotelGroup = loadedHotels.find(h => h.city === cityName);
-          return hotelGroup?.hotels?.map((hotel, i) => ({
-           id: hotel._id, // ensure your backend API returns _id for each hotel
-            name: `${hotel.name} - $${hotel.price}/night`,
-            ...hotel,
-          })) || [];
-        })(),
-      },
+     {
+      prompt: "Select your hotel",
+      options: (() => {
+        const dest = userResponses["What is your destination city?"];
+        const cityName = typeof dest === "string" ? dest : dest?.name;
+        const hotelGroup = loadedHotels.find(
+          h => h.city.toLowerCase() === cityName?.toLowerCase()
+        );
+        return hotelGroup?.hotels?.map((hotel, i) => ({
+          id: hotel._id || `${hotel.name}-${i}`,
+          name: `${hotel.name} - $${hotel.price}/night`,
+          ...hotel,
+        })) || [];
+      })(),
+    },
       { prompt: "Budget range per night?", type: "text" },
       {
         prompt: "Accessibility requirements?",
