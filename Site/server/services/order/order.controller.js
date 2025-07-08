@@ -54,46 +54,87 @@ export async function createOrder(req, res) {
       totalPrice,
     } = req.body;
 
-    // Basic validation example (מומלץ להרחיב בהתאם לצורך)
-    if (
-      !departureCityId ||
-      !destinationCityId ||
-      !flightId ||
-      !hotelId ||
-      !paymentMethod ||
-      !totalPrice
-    ) {
-      return res.status(400).json({ message: "Missing required fields" });
+    console.log("📦 Received order data:", {
+      departureCityId,
+      destinationCityId,
+      flightId,
+      hotelId,
+      attractions,
+      transportation,
+      paymentMethod,
+      totalPrice
+    });
+
+    // Enhanced validation with better error messages
+    const missingFields = [];
+    if (!departureCityId) missingFields.push('departureCityId');
+    if (!destinationCityId) missingFields.push('destinationCityId');
+    if (!flightId) missingFields.push('flightId');
+    if (!hotelId) missingFields.push('hotelId');
+    if (!paymentMethod) missingFields.push('paymentMethod');
+    if (!totalPrice) missingFields.push('totalPrice');
+
+    if (missingFields.length > 0) {
+      return res.status(400).json({ 
+        message: `Missing required fields: ${missingFields.join(', ')}`,
+        missingFields,
+        receivedData: req.body
+      });
     }
 
     const userId = String(req.user.id);
     const username = req.user.username;
 
-    const newOrder = new Order({
-      user_id: userId,
-      departure_city_id: departureCityId,
-      destination_city_id: destinationCityId,
-      flight_id: flightId,
-      hotel_id: hotelId,
-      attractions,
-      payment_method: paymentMethod,
-      total_price: totalPrice,
-      created_at: new Date(),
+    try {
+      const newOrder = new Order({
+        user_id: userId,
+        departure_city_id: departureCityId,
+        destination_city_id: destinationCityId,
+        flight_id: flightId,
+        hotel_id: hotelId,
+        attractions: attractions || [],
+        payment_method: paymentMethod,
+        total_price: totalPrice,
+        created_at: new Date(),
+      });
+
+      console.log("📦 Order created successfully:", {
+        userId,
+        departureCityId,
+        destinationCityId,
+        flightId,
+        hotelId
+      });
+
+      const savedOrder = await newOrder.save();
+      
+      // Send response immediately after saving to database
+      res.status(201).json(savedOrder);
+
+      // Generate PDF in background (don't wait for PDF completion to send response)
+      generateOrderPDF(savedOrder, username, flightId, hotelId, attractions, transportation, paymentMethod, totalPrice);
+
+    } catch (orderError) {
+      console.error("❌ Order creation/saving error:", orderError);
+      return res.status(400).json({ 
+        message: "Failed to create order", 
+        error: orderError.message,
+        details: orderError.toString()
+      });
+    }
+
+  } catch (error) {
+    console.error("❌ Error creating order:", error);
+    res.status(500).json({ 
+      message: "Internal Server Error", 
+      error: error.message 
     });
-    console.log("📦 Order input data:", {
-      userId,
-      departureCityId,
-      destinationCityId,
-      flightId,
-      hotelId
-    });
+  }
+}
 
-    const savedOrder = await newOrder.save();
-
-    // שליחת תגובה מיד לאחר השמירה במסד הנתונים
-    res.status(201).json(savedOrder);
-
-    // יצירת PDF ברקע (לא מחכה לסיום ה-PDF כדי לשלוח תגובה)
+// Separate function for PDF generation
+async function generateOrderPDF(savedOrder, username, flightId, hotelId, attractions, transportation, paymentMethod, totalPrice) {
+  try {
     const orderId = savedOrder._id.toString();
     const pdfPath = path.join(pdfDir, `${orderId}.pdf`);
     const doc = new pdfkit({
@@ -134,14 +175,16 @@ export async function createOrder(req, res) {
     doc.end();
 
     stream.on("error", (error) => {
-      console.error("Error generating PDF:", error);
+      console.error("❌ Error generating PDF:", error);
+    });
+
+    stream.on("finish", () => {
+      console.log("✅ PDF generated successfully:", pdfPath);
     });
 
   } catch (error) {
-    console.error("Error creating order:", error);
-    res.status(500).json({ message: "Internal Server Error" });
+    console.error("❌ PDF generation error:", error);
   }
-
 }
 
 export async function getOrderPDF(req, res) {
