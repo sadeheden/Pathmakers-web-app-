@@ -225,6 +225,12 @@ const AuthForm = ({ isLogin }) => {
                     </p>
                 )}
             </form>
+            <button 
+  className="floating-support-btn"
+  onClick={() => navigate('/support')}
+>
+  💬 Support
+</button>
         </div>
     );
 };

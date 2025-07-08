@@ -124,6 +124,13 @@ AI TRIPER — your travel sidekick that plans your trip, suggests cool spots, an
           <RingLoader color="#6633cc" size={60} />
         </div>
       )}
+      <button 
+  className="floating-support-btn"
+  onClick={() => navigate('/support')}
+>
+  💬 Support
+</button>
     </div>
   );
+  
 }
