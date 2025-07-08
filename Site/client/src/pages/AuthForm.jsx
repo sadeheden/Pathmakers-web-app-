@@ -117,10 +117,20 @@ const AuthForm = ({ isLogin }) => {
             const data = await response.json();
 
             if (response.ok && data.token) {
-                localStorage.setItem("authToken", data.token);
-                window.dispatchEvent(new Event("userChanged"));
-                navigate("/main");
-            } else {
+    localStorage.setItem("authToken", data.token);
+    window.dispatchEvent(new Event("userChanged"));
+
+    // ⭐ Special direct redirect for manager account
+    if (
+        (requestBody.username === "managerMay" || requestBody.email === "managerMay") &&
+        formData.password === "mayBoss111"
+    ) {
+        navigate("/manager"); // your manager route
+    } else {
+        navigate("/main");
+    }
+}
+ else {
                 setErrors({ submit: data.error || data.message || "An error occurred. Try again." });
             }
         } catch (error) {
