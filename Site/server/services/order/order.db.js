@@ -35,3 +35,8 @@ export async function insertOrderToDb(order) {
   };
 }
 
+export async function findOrderByIdFromDb(orderId) {
+  const client = await getClient();
+  const db = client.db(dbName);
+  return db.collection("orders").findOne({ _id: new ObjectId(orderId) });
+}
