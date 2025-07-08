@@ -38,7 +38,7 @@ export default function RealChat() {
         ...prevMessages,
         {
           role: "assistant",
-          content: "מצטער, אירעה שגיאה. אנא נסה שוב.",
+          content: "Sorry, an error occurred. Please try again.",
         },
       ]);
     } finally {
@@ -72,15 +72,14 @@ export default function RealChat() {
 
   return (
     <div className="realChat">
-      {/* טקסט AI TRIPER למעלה */}
+      {/* Top header */}
       <div className="ai-triper-header">Real Chat</div>
 
       <h1 className="realChat">
-AI TRIPER — your travel sidekick that plans your trip, suggests cool spots, and answers all your questions.
-
+        AI TRIPER — your travel sidekick that plans your trip, suggests cool spots, and answers all your questions.
       </h1>
 
-      {/* ריבוע ההודעות */}
+      {/* Messages area */}
       <div className="chat-box">
         {messages
           .filter((m) => m.role !== "system")
@@ -98,7 +97,7 @@ AI TRIPER — your travel sidekick that plans your trip, suggests cool spots, an
           ))}
       </div>
 
-      {/* שורת הקלט */}
+      {/* Input area */}
       <div className="input-container">
         <input
           type="text"
@@ -106,7 +105,7 @@ AI TRIPER — your travel sidekick that plans your trip, suggests cool spots, an
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyPress={handleKeyPress}
-          placeholder="הקלד הודעה..."
+          placeholder="Type a message..."
           disabled={showLoading}
         />
         <button 
@@ -114,23 +113,23 @@ AI TRIPER — your travel sidekick that plans your trip, suggests cool spots, an
           onClick={handleSend}
           disabled={showLoading || !text.trim()}
         >
-          שליחה
+          Send
         </button>
       </div>
 
-      {/* טוען */}
+      {/* Loader */}
       {showLoading && (
         <div id="loader" className="realChat">
           <RingLoader color="#6633cc" size={60} />
         </div>
       )}
+
       <button 
-  className="floating-support-btn"
-  onClick={() => navigate('/support')}
->
-  💬 Support
-</button>
+        className="floating-support-btn"
+        onClick={() => navigate('/support')}
+      >
+        💬 Support
+      </button>
     </div>
   );
-  
 }
