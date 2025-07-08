@@ -31,6 +31,7 @@ export const Router = createBrowserRouter([
   { path: "/manager", element: <Manager /> },
   { path: "/realChat", element: <RealChat /> },
   { path: "/support", element: <Support /> },
+  <Route path="/manager" element={<Manager />} />
 
  
   { path: "*", element: <NotFound /> }, // Handles unmatched routes
