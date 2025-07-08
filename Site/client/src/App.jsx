@@ -13,6 +13,9 @@ import Main from "./pages/Main";
 import Manager from "./pages/Manager";
 import RealChat from "./pages/RealChat";
 import ErrorBoundary from "./components/ErrorBoundary.jsx";
+import Support from "./pages/support.jsx";
+
+
 
 
  
@@ -35,6 +38,8 @@ function App() {
             <Route path="/video" element={<Video />} />
             <Route path="/main" element={<Main />} />
             <Route path="/realChat" element={<RealChat />} />
+            <Route path="/support" element={<Support />} />
+
           </Routes>
         </div>
 

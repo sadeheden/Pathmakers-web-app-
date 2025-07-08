@@ -26,7 +26,14 @@ const AboutPage = () => {
       <div className="cta">
         <p>Book your next adventure with us — we're the best at what we do!</p>
       </div>
+   <button 
+  className="floating-support-btn"
+  onClick={() => navigate('/support')}
+>
+  💬 Support
+</button>
     </div>
+    
   );
 };
 

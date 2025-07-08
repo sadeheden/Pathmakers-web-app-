@@ -439,6 +439,24 @@ body {
 .modal-content h2 {
   color: #1f2937;  /* or just #000 for pure black */
 }
+.floating-support-btn {
+  position: fixed;
+  bottom: 30px;
+  right: 30px;
+  background-color: #004e75;
+  color: white;
+  border: none;
+  border-radius: 50px;
+  padding: 0.8rem 1.2rem;
+  font-size: 1rem;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  z-index: 1000;
+}
+
+.floating-support-btn:hover {
+  background-color: #003b5c;
+}
 
 
 /* Main action button: accent purple */

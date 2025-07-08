@@ -454,61 +454,66 @@ const hotelOptions = loadedHotels.length
           
             const totalPrice = calculateTotalPrice();
 
-        const handleSaveOrder = async () => {
-    const token = localStorage.getItem("authToken");
-    if (!token) {
-        console.error("❌ No token found. User might not be logged in.");
-        alert("⚠️ You must be logged in to save an order.");
-        return;
+  const handleSaveOrder = async () => {
+  const token = localStorage.getItem("authToken");
+  if (!token) {
+    console.error("❌ No token found. User might not be logged in.");
+    alert("⚠️ You must be logged in to save an order.");
+    return;
+  }
+
+  if (!userResponses) {
+    console.error("❌ No user responses found!");
+    alert("⚠️ No order details available.");
+    return;
+  }
+
+  let selectedAttractions = userResponses["Select attractions to visit"];
+  if (!Array.isArray(selectedAttractions)) {
+    selectedAttractions = selectedAttractions ? [selectedAttractions] : [];
+  }
+
+  const orderData = {
+    departureCityId: userResponses["What is your departure city?"]?.id,
+    destinationCityId: userResponses["What is your destination city?"]?.id,
+    flightId: userResponses["Select your flight"]?.id,
+    hotelId: userResponses["Select your hotel"]?.id,
+    attractions: selectedAttractions.map(attr => attr.id),
+    transportation: userResponses["Select your mode of transportation"],
+    paymentMethod: userResponses["Select payment method"],
+    totalPrice: calculateTotalPrice(),
+  };
+
+  console.log("🔍 Sending Order Data:", orderData);
+
+  try {
+    const response = await fetch("http://localhost:4000/api/order", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(orderData),
+    });
+
+    if (!response.ok) {
+      const errorMessage = await response.text();
+      console.error("❌ Failed to save order:", response.status, errorMessage);
+      alert(`Error: ${errorMessage}`);
+      return;
     }
 
-    if (!userResponses) {
-        console.error("❌ No user responses found!");
-        alert("⚠️ No order details available.");
-        return;
-    }
+    const savedOrder = await response.json();
+    console.log("✅ Order saved successfully!", savedOrder);
+    localStorage.setItem("orderSaved", "true");
+    // Optionally, navigate or show receipt here
 
-    // Build orderData according to your backend model
-    const orderData = {
-  departureCityId: userResponses["What is your departure city?"]?.id,
-  destinationCityId: userResponses["What is your destination city?"]?.id,
-  flightId: userResponses["Select your flight"]?.id,
-  hotelId: userResponses["Select your hotel"]?.id,
-  attractions: userResponses["Select attractions to visit"]?.map(attr => attr.id),
-  transportation: userResponses["Select your mode of transportation"],
-  paymentMethod: userResponses["Select payment method"],
-  totalPrice: calculateTotalPrice(),
+  } catch (error) {
+    console.error("⚠️ Error saving order:", error);
+    alert("⚠️ An error occurred while saving your order. Please try again.");
+  }
 };
 
-    console.log("🔍 Sending Order Data:", orderData);
-
-    try {
-        const response = await fetch("http://localhost:4000/api/order", {
-            method: "POST",
-            headers: {
-                "Authorization": `Bearer ${token}`,
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify(orderData),
-        });
-
-        if (!response.ok) {
-            const errorMessage = await response.text();
-            console.error("❌ Failed to save order:", response.status, errorMessage);
-            alert(`Error: ${errorMessage}`);
-            return;
-        }
-
-        const savedOrder = await response.json();
-        console.log("✅ Order saved successfully!", savedOrder);
-        localStorage.setItem("orderSaved", "true");
-        // Optionally, handle further actions (navigate, show receipt, etc.)
-
-    } catch (error) {
-        console.error("⚠️ Error saving order:", error);
-        alert("⚠️ An error occurred while saving your order. Please try again.");
-    }
-};
 
 
             const handleDownloadSummary = async () => {
