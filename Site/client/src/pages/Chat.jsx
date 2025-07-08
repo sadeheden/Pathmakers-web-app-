@@ -208,20 +208,21 @@ const hotelOptions = loadedHotels.length
   questions: [
     { prompt: "Travel dates (departure)?", type: "date" },
     { prompt: "Travel dates (return)?", type: "date" },
-    {
-      prompt: "Select your flight",
-      options: (() => {
-        const dest = userResponses["What is your destination city?"];
-        const cityName = typeof dest === "string" ? dest : dest?.name;
-        const flightGroup = loadedFlights.find(f => f.city === cityName);
-
-        return flightGroup?.airlines?.map((airline, index) => ({
-          id: `${flightGroup._id}-${index}`, // משתמשים ב־index כי אין id
-          name: `${airline.name} - $${airline.price} (${airline.duration})`,
-          ...airline, // נוסיף את כל הפרטים למעקב
-        })) || [];
-      })(),
-    },
+   {
+  prompt: "Select your flight",
+  options: (() => {
+    const dest = userResponses["What is your destination city?"];
+    const cityName = typeof dest === "string" ? dest : dest?.name;
+    // במקום למצוא קבוצת טיסות, פשוט סינן את כל הטיסות שמתאימות לעיר:
+    return loadedFlights
+      .filter(flight => flight.city === cityName)
+      .map((flight, index) => ({
+        id: flight.id || `${cityName}-${index}`, 
+        name: `${flight.airline} - $${flight.price}`, 
+        ...flight,
+      }));
+  })(),
+},
     { prompt: "Class preference", options: ["Economy", "Business", "First"] },
   ],
 },
