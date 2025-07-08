@@ -454,13 +454,13 @@ const hotelOptions = loadedHotels.length
           
             const totalPrice = calculateTotalPrice();
 
-  const handleSaveOrder = async () => {
-  const token = localStorage.getItem("authToken");
-  if (!token) {
-    console.error("❌ No token found. User might not be logged in.");
-    alert("⚠️ You must be logged in to save an order.");
-    return;
-  }
+      const handleSaveOrder = async () => {
+      const token = localStorage.getItem("authToken");
+      if (!token) {
+        console.error("❌ No token found. User might not be logged in.");
+        alert("⚠️ You must be logged in to save an order.");
+        return;
+      }
 
   if (!userResponses) {
     console.error("❌ No user responses found!");
@@ -472,7 +472,6 @@ const hotelOptions = loadedHotels.length
   if (!Array.isArray(selectedAttractions)) {
     selectedAttractions = selectedAttractions ? [selectedAttractions] : [];
   }
-
   const orderData = {
     departureCityId: userResponses["What is your departure city?"]?.id,
     destinationCityId: userResponses["What is your destination city?"]?.id,
@@ -483,6 +482,12 @@ const hotelOptions = loadedHotels.length
     paymentMethod: userResponses["Select payment method"],
     totalPrice: calculateTotalPrice(),
   };
+console.log("🧪 Checking IDs before sending:");
+console.log("departureCityId:", orderData.departureCityId);
+console.log("destinationCityId:", orderData.destinationCityId);
+console.log("flightId:", orderData.flightId);
+console.log("hotelId:", orderData.hotelId);
+console.log("attractions:", orderData.attractions);
 
   console.log("🔍 Sending Order Data:", orderData);
 
@@ -502,7 +507,6 @@ const hotelOptions = loadedHotels.length
       alert(`Error: ${errorMessage}`);
       return;
     }
-
     const savedOrder = await response.json();
     console.log("✅ Order saved successfully!", savedOrder);
     localStorage.setItem("orderSaved", "true");
@@ -513,8 +517,6 @@ const hotelOptions = loadedHotels.length
     alert("⚠️ An error occurred while saving your order. Please try again.");
   }
 };
-
-
 
             const handleDownloadSummary = async () => {
                 try {

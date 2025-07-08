@@ -5,7 +5,6 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 
-
 // Fix __dirname for ES Modules
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -39,12 +38,10 @@ export async function getUserOrders(req, res) {
   }
 }
 
-
 export async function createOrder(req, res) {
   if (!req.user || !req.user.id) {
     return res.status(401).json({ message: "Unauthorized: User not identified" });
   }
-
   try {
     const {
       departureCityId,
@@ -71,32 +68,38 @@ export async function createOrder(req, res) {
 
     const userId = String(req.user.id);
     const username = req.user.username;
-    const orderId = uuidv4();
 
     const newOrder = new Order({
-  user_id: userId,
-  departure_city_id: departureCityId,
-  destination_city_id: destinationCityId,
-  flight_id: flightId,
-  hotel_id: hotelId,
-  attractions,
-  payment_method: paymentMethod,
-  total_price: totalPrice,
-  created_at: new Date(),
-});
+      user_id: userId,
+      departure_city_id: departureCityId,
+      destination_city_id: destinationCityId,
+      flight_id: flightId,
+      hotel_id: hotelId,
+      attractions,
+      payment_method: paymentMethod,
+      total_price: totalPrice,
+      created_at: new Date(),
+    });
+    console.log("📦 Order input data:", {
+      userId,
+      departureCityId,
+      destinationCityId,
+      flightId,
+      hotelId
+    });
 
-const savedOrder = await newOrder.save();
+    const savedOrder = await newOrder.save();
 
-res.status(201).json(savedOrder);
+    // שליחת תגובה מיד לאחר השמירה במסד הנתונים
+    res.status(201).json(savedOrder);
 
-
-    // יצירת PDF (כמו בקוד שלך, לא שיניתי)
+    // יצירת PDF ברקע (לא מחכה לסיום ה-PDF כדי לשלוח תגובה)
+    const orderId = savedOrder._id.toString();
     const pdfPath = path.join(pdfDir, `${orderId}.pdf`);
     const doc = new pdfkit({
       size: "A4",
       margins: { top: 50, bottom: 50, left: 50, right: 50 },
     });
-
     const stream = fs.createWriteStream(pdfPath);
     doc.pipe(stream);
 
@@ -130,27 +133,27 @@ res.status(201).json(savedOrder);
 
     doc.end();
 
-    stream.on("finish", () => res.status(201).json(newOrder));
     stream.on("error", (error) => {
       console.error("Error generating PDF:", error);
-      res.status(500).json({ message: "Failed to generate PDF" });
     });
+
   } catch (error) {
     console.error("Error creating order:", error);
     res.status(500).json({ message: "Internal Server Error" });
   }
+
 }
 
 export async function getOrderPDF(req, res) {
   try {
     const { orderId } = req.params;
-    // Fetch order from DB
+    // Fetch order from DB using the new findByOrderId method
     const order = await Order.findByOrderId(orderId);
     if (!order) {
       return res.status(404).json({ message: "Order not found." });
     }
     // Check user ownership
-    if (!req.user || order.user_id !== String(req.user.id)) {
+    if (!req.user || order.user_id.toString() !== String(req.user.id)) {
       return res.status(403).json({ message: "Forbidden" });
     }
     const pdfPath = path.join(pdfDir, `${orderId}.pdf`);
