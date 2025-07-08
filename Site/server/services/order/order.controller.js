@@ -23,12 +23,22 @@ export async function getUserOrders(req, res) {
   try {
     const userId = String(req.user.id);
     const orders = await Order.findByUserId(userId);
-    res.status(200).json(orders);
+
+    const formattedOrders = orders.map(order => ({
+      id: order._id,
+      departureCity: order.departure_city_id,
+      destinationCity: order.destination_city_id,
+      totalPrice: order.total_price,
+      createdAt: order.created_at
+    }));
+
+    res.status(200).json(formattedOrders);
   } catch (error) {
     console.error("Error fetching orders:", error);
     res.status(500).json({ message: "Internal Server Error" });
   }
 }
+
 
 export async function createOrder(req, res) {
   if (!req.user || !req.user.id) {
@@ -64,22 +74,21 @@ export async function createOrder(req, res) {
     const orderId = uuidv4();
 
     const newOrder = new Order({
-      orderId,
-      user_id: userId,
-      username,
-      departure_city_id: departureCityId,
-      destination_city_id: destinationCityId,
-      flight_id: flightId,
-      hotel_id: hotelId,
-      attractions,
-      transportation,
-      payment_method: paymentMethod,
-      total_price: totalPrice,
-      pdfUrl: `/api/order/${orderId}/pdf`,
-      created_at: new Date(),
-    });
+  user_id: userId,
+  departure_city_id: departureCityId,
+  destination_city_id: destinationCityId,
+  flight_id: flightId,
+  hotel_id: hotelId,
+  attractions,
+  payment_method: paymentMethod,
+  total_price: totalPrice,
+  created_at: new Date(),
+});
 
-    await newOrder.save();
+const savedOrder = await newOrder.save();
+
+res.status(201).json(savedOrder);
+
 
     // יצירת PDF (כמו בקוד שלך, לא שיניתי)
     const pdfPath = path.join(pdfDir, `${orderId}.pdf`);

@@ -28,8 +28,10 @@ export async function findOrdersByUserIdFromDb(userId) {
 export async function insertOrderToDb(order) {
   const client = await getClient();
   const db = client.db(dbName);
-  console.log("Inserting order:", order);
   const result = await db.collection("orders").insertOne(order);
-  console.log("Insert result:", result);
-  return result;
+  return {
+    _id: result.insertedId,
+    ...order
+  };
 }
+
