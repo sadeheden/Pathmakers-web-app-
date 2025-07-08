@@ -23,7 +23,8 @@ const PersonalArea = () => {
     
     const fetchOrders = async () => {
         try {
-            const token = localStorage.getItem("authToken");
+          const token = localStorage.getItem("authToken");
+
             if (!token) {
                 console.error("⚠️ No token found, please log in again.");
                 return;
@@ -109,7 +110,8 @@ const PersonalArea = () => {
     // ✅ Move `fetchUser` outside of useEffect
     const fetchUser = async () => {
         try {
-            const token = localStorage.getItem("authToken");
+           const token = localStorage.getItem("authToken");
+
             if (!token) {
                 console.warn("⚠️ No token found. Redirecting to login...");
                 setTimeout(() => navigate("/login"), 1000);
@@ -147,7 +149,7 @@ const PersonalArea = () => {
 
     useEffect(() => {
         const fetchData = async () => {
-            const token = localStorage.getItem("authToken");
+         const token = localStorage.getItem("authToken");
             if (!token) {
                 console.warn("⚠️ No token found, redirecting to login.");
                 navigate("/login");
@@ -171,7 +173,8 @@ const PersonalArea = () => {
 
     const handleSaveProfile = async () => {
         setLoading(true);
-        const token = localStorage.getItem("authToken");
+   const token = localStorage.getItem("authToken");
+
     
         // Ensure age is calculated before saving
        const updatedData = {
