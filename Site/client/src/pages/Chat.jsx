@@ -472,16 +472,22 @@ const hotelOptions = loadedHotels.length
   if (!Array.isArray(selectedAttractions)) {
     selectedAttractions = selectedAttractions ? [selectedAttractions] : [];
   }
- const orderData = {
-  departureCityId: userResponses["What is your departure city?"]?._id,
-  destinationCityId: userResponses["What is your destination city?"]?._id,
-  flightId: userResponses["Select your flight"]?._id,
-  hotelId: userResponses["Select your hotel"]?._id,
-  attractions: userResponses["Select attractions to visit"] || [],
+const orderData = {
+  departureCityId: cleanId(userResponses["What is your departure city?"]?.id),
+  destinationCityId: cleanId(userResponses["What is your destination city?"]?.id),
+  flightId: cleanId(userResponses["Select your flight"]?.id),
+  hotelId: cleanId(userResponses["Select your hotel"]?.id),
+  attractions: (Array.isArray(userResponses["Select attractions to visit"])
+    ? userResponses["Select attractions to visit"].map(a => cleanId(a.id))
+    : []),
   transportation: userResponses["Select your mode of transportation"] || null,
   paymentMethod: userResponses["Select payment method"] || "Unknown",
-  totalPrice: calculateTotalPrice(userResponses),
+  totalPrice: calculateTotalPrice(),
 };
+function cleanId(id) {
+  if (!id) return null;
+  return id.split(/[-_]/)[0]; // מנקה מזהים כמו 68075f88dc218773e065222f_0
+}
 
 
 console.log("🧪 Checking IDs before sending:");
