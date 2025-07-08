@@ -217,7 +217,7 @@ const hotelOptions = loadedHotels.length
     return loadedFlights
       .filter(flight => flight.city === cityName)
       .map((flight, index) => ({
-        id: flight.id || `${cityName}-${index}`, 
+      id: flight._id, // ensure your backend API returns _id
         name: `${flight.airline} - $${flight.price}`, 
         ...flight,
       }));
@@ -237,7 +237,7 @@ const hotelOptions = loadedHotels.length
           const cityName = typeof dest === "string" ? dest : dest?.name;
           const hotelGroup = loadedHotels.find(h => h.city === cityName);
           return hotelGroup?.hotels?.map((hotel, i) => ({
-            id: `${hotelGroup._id}-${i}`,
+           id: hotel._id, // ensure your backend API returns _id for each hotel
             name: `${hotel.name} - $${hotel.price}/night`,
             ...hotel,
           })) || [];
@@ -472,16 +472,18 @@ const hotelOptions = loadedHotels.length
   if (!Array.isArray(selectedAttractions)) {
     selectedAttractions = selectedAttractions ? [selectedAttractions] : [];
   }
-  const orderData = {
-    departureCityId: userResponses["What is your departure city?"]?.id,
-    destinationCityId: userResponses["What is your destination city?"]?.id,
-    flightId: userResponses["Select your flight"]?.id,
-    hotelId: userResponses["Select your hotel"]?.id,
-    attractions: selectedAttractions.map(attr => attr.id),
-    transportation: userResponses["Select your mode of transportation"],
-    paymentMethod: userResponses["Select payment method"],
-    totalPrice: calculateTotalPrice(),
-  };
+ const orderData = {
+  departureCityId: userResponses["What is your departure city?"]?._id,
+  destinationCityId: userResponses["What is your destination city?"]?._id,
+  flightId: userResponses["Select your flight"]?._id,
+  hotelId: userResponses["Select your hotel"]?._id,
+  attractions: userResponses["Select attractions to visit"] || [],
+  transportation: userResponses["Select your mode of transportation"] || null,
+  paymentMethod: userResponses["Select payment method"] || "Unknown",
+  totalPrice: calculateTotalPrice(userResponses),
+};
+
+
 console.log("🧪 Checking IDs before sending:");
 console.log("departureCityId:", orderData.departureCityId);
 console.log("destinationCityId:", orderData.destinationCityId);
