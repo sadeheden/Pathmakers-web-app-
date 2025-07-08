@@ -59,7 +59,6 @@ export async function updateFlightInDatabase(updateData, id) {
     await client.close();
   }
 }
-
 export async function deleteFlightInDatabase(id) {
   const { client, db } = await connectDB();
   try {
