@@ -17,8 +17,16 @@ const authenticateUser = (req, res, next) => {
     try {
         const decoded = jwt.verify(token, secretKey);
 
-        // JWT auto-checks expiry; manual check not needed
-        req.user = decoded; // _id, username, etc.
+        req.user = {
+            id: decoded.id || decoded._id, // normalize to id
+            username: decoded.username,
+            email: decoded.email,
+        };
+
+        if (!req.user.id) {
+            return res.status(401).json({ message: "Unauthorized: User not identified" });
+        }
+
         next();
     } catch (error) {
         return res.status(401).json({ message: "Invalid or expired token" });
