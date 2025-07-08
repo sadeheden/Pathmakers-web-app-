@@ -38,7 +38,7 @@ export default function RealChat() {
         ...prevMessages,
         {
           role: "assistant",
-          content: "Sorry, an error occurred. Please try again.",
+          content: "מצטער, אירעה שגיאה. אנא נסה שוב.",
         },
       ]);
     } finally {
@@ -72,14 +72,15 @@ export default function RealChat() {
 
   return (
     <div className="realChat">
-      {/* Top header */}
+      {/* טקסט AI TRIPER למעלה */}
       <div className="ai-triper-header">Real Chat</div>
 
       <h1 className="realChat">
-        AI TRIPER — your travel sidekick that plans your trip, suggests cool spots, and answers all your questions.
+AI TRIPER — your travel sidekick that plans your trip, suggests cool spots, and answers all your questions.
+
       </h1>
 
-      {/* Messages area */}
+      {/* ריבוע ההודעות */}
       <div className="chat-box">
         {messages
           .filter((m) => m.role !== "system")
@@ -97,7 +98,7 @@ export default function RealChat() {
           ))}
       </div>
 
-      {/* Input area */}
+      {/* שורת הקלט */}
       <div className="input-container">
         <input
           type="text"
@@ -105,7 +106,7 @@ export default function RealChat() {
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyPress={handleKeyPress}
-          placeholder="Type a message..."
+          placeholder="הקלד הודעה..."
           disabled={showLoading}
         />
         <button 
@@ -113,23 +114,16 @@ export default function RealChat() {
           onClick={handleSend}
           disabled={showLoading || !text.trim()}
         >
-          Send
+          שליחה
         </button>
       </div>
 
-      {/* Loader */}
+      {/* טוען */}
       {showLoading && (
         <div id="loader" className="realChat">
           <RingLoader color="#6633cc" size={60} />
         </div>
       )}
-
-      <button 
-        className="floating-support-btn"
-        onClick={() => navigate('/support')}
-      >
-        💬 Support
-      </button>
     </div>
   );
 }
