@@ -107,3 +107,5 @@ export async function getHotelsByCityName(req, res) {
     return res.status(500).json({ error: "Server error" });
   }
 }
+
+
