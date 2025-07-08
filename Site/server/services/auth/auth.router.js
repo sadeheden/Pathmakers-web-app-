@@ -5,8 +5,10 @@ import {
     login,
     logout,
     removeUser,
-    getCurrentUser
+    getCurrentUser,
+    updateUser // ⬅️ add this
 } from './auth.controller.js';
+
 
 import authenticateUser from "../middleware/authenticateUser.js"; // JWT auth middleware
 
@@ -17,7 +19,7 @@ authRouter.post("/register", register);    // Register new user
 authRouter.post("/login", login);          // Login user
 authRouter.post("/logout", logout);        // (optional, stateless with JWT)
 authRouter.get("/users", getAllUsers);     // List all users
-
+authRouter.put("/user", authenticateUser, updateUser); 
 // 🔒 Protected endpoint (requires JWT in header)
 authRouter.get("/user", authenticateUser, getCurrentUser); // Get current user
 

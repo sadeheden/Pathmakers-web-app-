@@ -217,4 +217,53 @@ export async function removeUser(req, res) {
     } finally {
         if (client) await client.close();
     }
+    
+}// Update current user details
+export async function updateUser(req, res) {
+    let client;
+    try {
+        const authHeader = req.headers.authorization;
+        if (!authHeader) {
+            return res.status(401).json({ message: "Unauthorized, no token provided" });
+        }
+        const token = authHeader.split(" ")[1];
+        if (!token) {
+            return res.status(401).json({ message: "Unauthorized, token missing" });
+        }
+        const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY);
+
+        const { db, client: c } = await getDB();
+        client = c;
+
+        // Build update fields from body
+        const updates = {};
+        if (req.body.username) updates.username = req.body.username;
+        if (req.body.email) updates.email = req.body.email;
+        if (req.body.profile_image) updates.profile_image = req.body.profile_image;
+
+        const result = await db.collection("Users").findOneAndUpdate(
+            { _id: new ObjectId(decoded._id) },
+            { $set: updates },
+            { returnDocument: "after" }
+        );
+
+        if (!result.value) {
+            return res.status(404).json({ message: "User not found" });
+        }
+
+        res.status(200).json({
+            _id: result.value._id,
+            username: result.value.username,
+            email: result.value.email,
+            profile_image: result.value.profile_image
+        });
+
+    } catch (error) {
+        console.error("❌ updateUser error:", error);
+        res.status(500).json({ error: "Internal server error" });
+    } finally {
+        if (client) await client.close();
+    }
 }
+
+

@@ -50,9 +50,12 @@ const Header = () => {
     // Call fetchUser once on mount
   // Listen for "userChanged" events (after login/register)
 useEffect(() => {
+    fetchUser(); // Call it immediately on mount
+
     const handleUserChange = () => {
         fetchUser();
     };
+
     window.addEventListener("userChanged", handleUserChange);
     return () => {
         window.removeEventListener("userChanged", handleUserChange);
