@@ -1,20 +1,20 @@
+// flights.model.js
 import {
   getAllFlightsFromDatabase,
   getFlightByIdFromDatabase,
   saveFlightToDatabase,
   updateFlightInDatabase,
-  deleteFlightInDatabase
+  deleteFlightInDatabase,
+  getFlightsByCity,
 } from "./flights.db.js";
 
 export default class Flight {
- constructor({ city, airline, departureTime, price }) {
-  this.city = city;
-  this.airline = airline;
-  this.departureTime = departureTime;
-  this.price = price; // add price field
-}
-
-  
+  constructor({ city, airline, departureTime, price }) {
+    this.city = city;
+    this.airline = airline;
+    this.departureTime = departureTime;
+    this.price = price;
+  }
 
   static async findAll() {
     return await getAllFlightsFromDatabase();
@@ -24,26 +24,37 @@ export default class Flight {
     return await getFlightByIdFromDatabase(id);
   }
 
+  static async findByCityExact(city) {
+    return await getFlightsByCity(city);
+  }
+
+  static async createCityWithFlight({ city, airline, departureTime, price }) {
+    return await saveFlightToDatabase({
+      city,
+      airlines: [{ name: airline, departureTime, price }],
+    });
+  }
+
+  static async addFlightToCity(cityDocId, flight) {
+    return await updateFlightInDatabase(
+      { $push: { airlines: flight } },
+      cityDocId
+    );
+  }
+
+  static async updateCityDocument(id, data) {
+    return await updateFlightInDatabase(id, data);
+  }
+
   static async delete(id) {
     return await deleteFlightInDatabase(id);
   }
 
   async save() {
-    return await saveFlightToDatabase({
-      city: this.city,
-      airline: this.airline,
-      departureTime: this.departureTime
-    });
+    throw new Error("Use createCityWithFlight or addFlightToCity instead.");
   }
 
   async update(id) {
-    return await updateFlightInDatabase(
-      {
-        city: this.city,
-        airline: this.airline,
-        departureTime: this.departureTime
-      },
-      id
-    );
+    throw new Error("Update city document instead.");
   }
 }
