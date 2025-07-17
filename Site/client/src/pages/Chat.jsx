@@ -5,11 +5,8 @@ import { useLocation, useNavigate } from "react-router-dom";
 
 function cleanId(id) {
   if (!id) return null;
-  if (typeof id === 'object' && id._id) return id._id;
-  if (typeof id === 'string') return id.split(/[-_]/)[0];
-  return id;
+  return id.split(/[-_]/)[0];
 }
-
 const TravelPlannerApp = () => {
     const location = useLocation();
     const navigate = useNavigate();
@@ -549,17 +546,17 @@ console.log("attractions:", orderData.attractions);
                     console.log("✅ Fetched User:", userData);
 
                    const orderData = {
-                    departureCityId: cleanId(userResponses["What is your departure city?"]?.id),
-                    destinationCityId: cleanId(userResponses["What is your destination city?"]?.id),
-                    flightId: cleanId(userResponses["Select your flight"]?.id),
-                    hotelId: cleanId(userResponses["Select your hotel"]?.id),
-                    attractions: Array.isArray(userResponses["Select attractions to visit"])
-                      ? userResponses["Select attractions to visit"].map(a => cleanId(a.id))
-                      : [cleanId(userResponses["Select attractions to visit"]?.id)],
-                    transportation: userResponses["Select your mode of transportation"] || null,
-                    paymentMethod: userResponses["Select payment method"] || "Unknown",
-                    totalPrice: calculateTotalPrice(),
-                  };
+                      departureCityId: cleanId(userResponses["What is your departure city?"]?.id),
+                      destinationCityId: cleanId(userResponses["What is your destination city?"]?.id),
+                      flightId: cleanId(userResponses["Select your flight"]?.id),
+                      hotelId: cleanId(userResponses["Select your hotel"]?.id),
+                      attractions: Array.isArray(userResponses["Select attractions to visit"])
+                        ? userResponses["Select attractions to visit"].map(a => cleanId(a.id))
+                        : [cleanId(userResponses["Select attractions to visit"]?.id)],
+                      transportation: userResponses["Select your mode of transportation"] || null,
+                      paymentMethod: userResponses["Select payment method"] || "Unknown",
+                      totalPrice: calculateTotalPrice(),
+                };
 
 
                     console.log("🔍 Sending Order Data:", orderData);
