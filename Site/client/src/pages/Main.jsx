@@ -54,7 +54,6 @@ const PaymentModal = ({ isOpen, onClose, totalAmount, onPaymentSuccess }) => {
   const [cvv, setCvv] = useState("");
   const [paymentSuccess, setPaymentSuccess] = useState(false);
   const [error, setError] = useState("");
-
   const currentYear = new Date().getFullYear();
   const maxYear = currentYear + 10;
 
@@ -172,6 +171,7 @@ const Main = () => {
   const [selectedCity, setSelectedCity] = useState(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [paymentCompleted, setPaymentCompleted] = useState(false);
+  const [showIntroPopup, setShowIntroPopup] = useState(false);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -186,7 +186,7 @@ const Main = () => {
   ].slice(carouselIdx, carouselIdx + CARDS_PER_PAGE);
 
   const tripDate = "2026-03-15";
-
+  const returnDate = "2026-03-22";
   const totalPrice = selectedCity ? getPriceByCity(selectedCity.name) : 0;
 
   return (
@@ -253,6 +253,7 @@ const Main = () => {
                 setSelectedCity(city);
                 setPaymentCompleted(false);
                 setShowPaymentModal(false);
+                setShowIntroPopup(true);
               }} 
               style={{ cursor: 'pointer' }}
             >
@@ -262,8 +263,40 @@ const Main = () => {
           ))}
         </div>
       </section>
+{selectedCity && showIntroPopup && (
+  <div className="modal-overlay" onClick={() => setShowIntroPopup(false)}>
+    <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+      <button
+        className="modal-close-x"
+        onClick={() => {
+          setShowIntroPopup(false);
+          setSelectedCity(null);
+        }}
+        aria-label="Close"
+      >
+        &#10005;
+      </button>
 
-      {selectedCity && !paymentCompleted && !showPaymentModal && (
+      <h2>You've Selected {selectedCity.name}!</h2>
+      <p>
+        ✈️ Awesome! You're about to see your trip details to <strong>{selectedCity.name}</strong>.<br/>
+        This includes flight number, departure info, and trip dates.
+      </p>
+      <p>   
+        Click <strong>Continue</strong> to review and proceed to payment.
+      </p>
+      <p><strong>Price per person*</strong></p>
+      <button 
+        className="modal-payment-btn" 
+        onClick={() => setShowIntroPopup(false)}
+      >
+        Continue
+      </button>
+    </div>
+  </div>
+)}
+
+     {selectedCity && !paymentCompleted && !showPaymentModal && !showIntroPopup && (
         <div className="modal-overlay" onClick={() => setSelectedCity(null)}>
           <div className="modal-content" onClick={e => e.stopPropagation()}>
             <button
@@ -283,8 +316,10 @@ const Main = () => {
               />
             </div>
             <p><strong>Destination:</strong> {selectedCity.name}</p>
+            <p><strong>Departure:</strong> Israel (Ben-Gurion Airport)</p>
             <p><strong>Flight Number:</strong> {selectedCity.flight}</p>
             <p><strong>Trip Date:</strong> {tripDate}</p>
+            <p><strong>Return Date:</strong> {returnDate}</p>
             <p><strong>Total Price:</strong> ${totalPrice}</p>
 
             <div className="modal-btns">
@@ -304,15 +339,21 @@ const Main = () => {
           isOpen={showPaymentModal}
           onClose={() => setShowPaymentModal(false)}
           totalAmount={totalPrice}
-       onPaymentSuccess={async () => {
+    onPaymentSuccess={async () => {
   setPaymentCompleted(true);
   setShowPaymentModal(false);
 
-  const token = localStorage.getItem("token");
-  
+  // Try different possible token key names
+  const token = localStorage.getItem("token") || 
+                localStorage.getItem("authToken") || 
+                localStorage.getItem("jwt") || 
+                localStorage.getItem("access_token") || 
+                localStorage.getItem("userToken");
+    
   // Check if token exists
   if (!token) {
     console.error("❌ No authentication token found");
+    console.log("🔍 Available localStorage keys:", Object.keys(localStorage));
     alert("Please log in to complete your purchase");
     navigate('/login'); // Redirect to login
     return;
@@ -357,9 +398,7 @@ const Main = () => {
         },
       }
     );
-    
-    console.log("✅ Order saved successfully:", response.data);
-    
+        
   } catch (error) {
     console.error("❌ Error saving order:", error.response?.data || error.message);
     
@@ -393,7 +432,8 @@ const Main = () => {
             <h2>Payment Successful!</h2>
             <p><strong>Destination:</strong> {selectedCity.name}</p>
             <p><strong>Flight Number:</strong> {selectedCity.flight}</p>
-            <p><strong>Trip Date:</strong> {tripDate}</p>
+            <p><strong>Trip Date:</strong> {tripDate}</p>      
+            <p><strong>Return Date:</strong> {returnDate}</p>
             <p><strong>Total Price:</strong> ${totalPrice}</p>
             <p>Thank you for your purchase! Your trip is confirmed.</p>
             <button onClick={() => {
