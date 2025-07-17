@@ -254,6 +254,8 @@ const hotelOptions = loadedHotels.length
     ],
   },
  {
+
+
   label: "Attractions",
   icon: Compass,
   questions: [
@@ -450,7 +452,12 @@ const hotelOptions = loadedHotels.length
     };
 
     const renderStepContent = () => {
-        const step = steps[currentStep];
+      const step = steps[currentStep];
+
+if (!step || !Array.isArray(step.questions)) {
+    return <div style={{ color: "red" }}>Error: Step misconfigured or not found.</div>;
+}
+
 
         if (step.label === "Trip Summary") {
           
@@ -463,6 +470,7 @@ const hotelOptions = loadedHotels.length
         alert("⚠️ You must be logged in to save an order.");
         return;
       }
+      
 
   if (!userResponses) {
     console.error("❌ No user responses found!");
@@ -474,22 +482,37 @@ const hotelOptions = loadedHotels.length
   if (!Array.isArray(selectedAttractions)) {
     selectedAttractions = selectedAttractions ? [selectedAttractions] : [];
   }
-const orderData = {
-  departureCityId: cleanId(userResponses["What is your departure city?"]?.id),
-  destinationCityId: cleanId(userResponses["What is your destination city?"]?.id),
-  flightId: cleanId(userResponses["Select your flight"]?.id),
-  hotelId: cleanId(userResponses["Select your hotel"]?.id),
-  attractions: (Array.isArray(userResponses["Select attractions to visit"])
-    ? userResponses["Select attractions to visit"].map(a => cleanId(a.id))
-    : []),
-  transportation: userResponses["Select your mode of transportation"] || null,
-  paymentMethod: userResponses["Select payment method"] || "Unknown",
-  totalPrice: calculateTotalPrice(),
-};
+   const orderData = {
+                        userId: userData.id,
+                        username: userData.username,
+                        departureCity: userResponses["What is your departure city?"],
+                        destinationCity: userResponses["What is your destination city?"],
+                        flight: userResponses["Select your flight"],
+                        hotel: userResponses["Select your hotel"],
+                        attractions: userResponses["Select attractions to visit"]?.split(", "),
+                        transportation: userResponses["Select your mode of transportation"],
+                        paymentMethod: userResponses["Select payment method"],
+                        totalPrice: calculateTotalPrice(),
+                        paymentStatus: "Completed"
+                    };
 function cleanId(id) {
   if (!id) return null;
-  return id.split(/[-_]/)[0]; // מנקה מזהים כמו 68075f88dc218773e065222f_0
+  
+  // Handle string IDs
+  if (typeof id === 'string') {
+    const onlyHex = id.match(/[a-f\d]{24}/i);
+    return onlyHex ? onlyHex[0] : null;
+  }
+  
+  // Handle object IDs
+  if (typeof id === 'object' && id.id) {
+    const onlyHex = id.id.match(/[a-f\d]{24}/i);
+    return onlyHex ? onlyHex[0] : null;
+  }
+  
+  return null;
 }
+
 
 console.log("🧪 Checking IDs before sending:");
 console.log("departureCityId:", orderData.departureCityId);
@@ -536,7 +559,6 @@ console.log("attractions:", orderData.attractions);
                         alert("⚠️ You must be logged in to download receipt.");
                         return;
                     }
-
                     const userResponse = await fetch("http://localhost:4000/api/auth/user", {
                         method: "GET",
                         headers: {
@@ -551,21 +573,23 @@ console.log("attractions:", orderData.attractions);
 
                     const userData = await userResponse.json();
                     console.log("✅ Fetched User:", userData);
+        const orderData = {
+                    departureCityId: cleanId(userResponses["What is your departure city?"]?.id),
+                    destinationCityId: cleanId(userResponses["What is your destination city?"]?.id),
+                    flightId: cleanId(userResponses["Select your flight"]?.id),
+                    hotelId: cleanId(userResponses["Select your hotel"]?.id),
+                    attractions: Array.isArray(userResponses["Select attractions to visit"])
+                      ? userResponses["Select attractions to visit"].map(a => cleanId(a.id))
+                      : [cleanId(userResponses["Select attractions to visit"]?.id)],
+                    transportation: userResponses["Select your mode of transportation"] || null,
+                    paymentMethod: userResponses["Select payment method"] || "Unknown",
+                    totalPrice: calculateTotalPrice(),
+                  };
 
-                   const orderData = {
-        departureCityId: cleanId(userResponses["What is your departure city?"]?.id),
-        destinationCityId: cleanId(userResponses["What is your destination city?"]?.id),
-        flightId: cleanId(userResponses["Select your flight"]?.id),
-        hotelId: cleanId(userResponses["Select your hotel"]?.id),
-        attractions: Array.isArray(userResponses["Select attractions to visit"])
-          ? userResponses["Select attractions to visit"].map(a => cleanId(a.id))
-          : [cleanId(userResponses["Select attractions to visit"]?.id)],
-        transportation: userResponses["Select your mode of transportation"] || null,
-        paymentMethod: userResponses["Select payment method"] || "Unknown",
-        totalPrice: calculateTotalPrice(),
-      };
-
-
+                  function cleanId(id) {
+                        if (!id) return null;
+                        return id.split(/[-_]/)[0];
+    }
                     console.log("🔍 Sending Order Data:", orderData);
 
                     const response = await fetch("http://localhost:4000/api/order", {
@@ -587,7 +611,7 @@ console.log("attractions:", orderData.attractions);
 
                     await new Promise(resolve => setTimeout(resolve, 1000));
 
-                   const pdfResponse = await fetch(`http://localhost:4000/api/order/${savedOrder._id}/pdf`, {
+                   const pdfResponse = await fetch(`http://localhost:4000/api/order/${savedOrder.id}/pdf`, {
                       method: "GET",
                       headers: {
                         "Authorization": `Bearer ${token}`
@@ -663,7 +687,8 @@ console.log("attractions:", orderData.attractions);
                     <h2>{step.label}</h2>
                 </div>
                 <div className="step-content">
-                    {step.questions.map((q, index) => (
+                    {
+                    step.questions.map((q, index) => (
                         <div key={index}>
                             <label>{q.prompt}</label>
                             {q.type === "text" || q.type === "date" || q.type === "number" ? (
