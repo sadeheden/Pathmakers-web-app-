@@ -107,6 +107,8 @@ useEffect(() => {
                     <Link to="/about">About</Link>
                     <Link to="/video">Video</Link>
                     <Link to="/DownloadApp">Download App</Link>
+                     {/* רק אם המשתמש הוא מנהל */}
+                    {user?.isAdmin && <Link to="/manager">Manager</Link>}
                 </nav>
             )}
 

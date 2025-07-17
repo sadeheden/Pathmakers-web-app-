@@ -21,6 +21,7 @@ const authenticateUser = (req, res, next) => {
             id: decoded.id || decoded._id, // normalize to id
             username: decoded.username,
             email: decoded.email,
+            role: decoded.role
         };
 
         if (!req.user.id) {
