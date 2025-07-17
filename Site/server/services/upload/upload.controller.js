@@ -55,3 +55,33 @@ export async function uploadToCloudinary(req, res) {
     }
 }
 
+import path from "path";
+import { fileURLToPath } from "url";
+import fs from "fs";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Optional function for uploading default profile image
+export async function uploadDefaultProfileImage(req, res) {
+    const filePath = path.join(__dirname, "../client/src/assets/images/default_profile.jpg");
+
+    try {
+        if (!fs.existsSync(filePath)) {
+            return res.status(404).json({ error: "Image file not found locally" });
+        }
+
+        const result = await cloudinary.uploader.upload(filePath, {
+            folder: "user_profiles",
+            public_id: "default_profile",
+            overwrite: true,
+            resource_type: "image"
+        });
+
+        console.log("✅ Uploaded default_profile.jpg:", result.secure_url);
+        return res.status(200).json({ success: true, url: result.secure_url });
+    } catch (error) {
+        console.error("🚨 Error uploading default image:", error);
+        return res.status(500).json({ error: "Failed to upload default image", details: error.message });
+    }
+}

@@ -60,9 +60,9 @@ const AuthForm = ({ isLogin }) => {
         }
 
         try {
-            let profileImageUrl =
-                formData.profile_image ||
-                "https://res.cloudinary.com/dnnmhrsja/image/upload/v1700000000/default_profile.jpg";
+          let profileImageUrl = formData.profile_image || "https://res.cloudinary.com/dnnmhrsja/image/upload/v1741780893/user_profiles/may.jpg";
+
+
 
             if (formData.profileImage && typeof formData.profileImage !== "string") {
                 const imageData = new FormData();

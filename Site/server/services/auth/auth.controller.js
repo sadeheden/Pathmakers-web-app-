@@ -6,7 +6,9 @@ dotenv.config();
 
 const uri = process.env.CONNECTION_STRING;
 const dbName = process.env.DB_NAME;
-const DEFAULT_PROFILE_IMAGE = "https://res.cloudinary.com/YOUR_CLOUDINARY_NAME/image/upload/v1700000000/YOUR_DEFAULT_IMAGE.jpg";
+const DEFAULT_PROFILE_IMAGE = "https://res.cloudinary.com/dnnmhrsja/image/upload/v1741780893/user_profiles/may.jpg";
+
+
 
 // Helper: get database
 async function getDB() {
