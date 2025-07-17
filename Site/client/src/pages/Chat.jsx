@@ -3,6 +3,13 @@ import { ChevronRight, MapPin, Plane, Hotel, Compass, Car, CreditCard, CheckCirc
 import "../assets/styles/chat.css";
 import { useLocation, useNavigate } from "react-router-dom";
 
+function cleanId(id) {
+  if (!id) return null;
+  if (typeof id === 'object' && id._id) return id._id;
+  if (typeof id === 'string') return id.split(/[-_]/)[0];
+  return id;
+}
+
 const TravelPlannerApp = () => {
     const location = useLocation();
     const navigate = useNavigate();
@@ -226,33 +233,22 @@ const hotelOptions = loadedHotels.length
     { prompt: "Class preference", options: ["Economy", "Business", "First"] },
   ],
 },
-  {
-    label: "Hotel",
-    icon: Hotel,
-    questions: [
-     {
-      prompt: "Select your hotel",
-      options: (() => {
-        const dest = userResponses["What is your destination city?"];
-        const cityName = typeof dest === "string" ? dest : dest?.name;
-        const hotelGroup = loadedHotels.find(
-          h => h.city.toLowerCase() === cityName?.toLowerCase()
-        );
-        return hotelGroup?.hotels?.map((hotel, i) => ({
-          id: hotel._id || `${hotel.name}-${i}`,
-          name: `${hotel.name} - $${hotel.price}/night`,
-          ...hotel,
-        })) || [];
-      })(),
-    },
-      { prompt: "Budget range per night?", type: "text" },
-      {
-        prompt: "Accessibility requirements?",
-        options: ["None", "Wheelchair Access", "Ground Floor", "Special Assistance"],
-      },
-      { prompt: "Pet-friendly options?", options: ["Yes", "No"] },
-    ],
-  },
+ {
+  prompt: "Select your hotel",
+  options: (() => {
+    const dest = userResponses["What is your destination city?"];
+    const cityName = typeof dest === "string" ? dest : dest?.name;
+    const hotelGroup = loadedHotels.find(
+      h => h.city.toLowerCase() === cityName?.toLowerCase()
+    );
+    return hotelGroup?.hotels?.map((hotel, i) => ({
+      id: hotel._id || `${hotel.name}-${i}`, // Ensure we have an ID
+      name: `${hotel.name} - ${hotel.price}/night`,
+      price: hotel.price, // Include price for calculations
+      ...hotel, // Include all hotel properties
+    })) || [];
+  })(),
+},
  {
   label: "Attractions",
   icon: Compass,
@@ -474,6 +470,8 @@ const hotelOptions = loadedHotels.length
   if (!Array.isArray(selectedAttractions)) {
     selectedAttractions = selectedAttractions ? [selectedAttractions] : [];
   }
+console.log("userResponses before order:", userResponses);
+
 const orderData = {
   departureCityId: cleanId(userResponses["What is your departure city?"]?.id),
   destinationCityId: cleanId(userResponses["What is your destination city?"]?.id),
@@ -486,10 +484,8 @@ const orderData = {
   paymentMethod: userResponses["Select payment method"] || "Unknown",
   totalPrice: calculateTotalPrice(),
 };
-function cleanId(id) {
-  if (!id) return null;
-  return id.split(/[-_]/)[0]; // מנקה מזהים כמו 68075f88dc218773e065222f_0
-}
+
+console.log("Sending orderData:", orderData);
 
 console.log("🧪 Checking IDs before sending:");
 console.log("departureCityId:", orderData.departureCityId);
@@ -553,17 +549,17 @@ console.log("attractions:", orderData.attractions);
                     console.log("✅ Fetched User:", userData);
 
                    const orderData = {
-        departureCityId: cleanId(userResponses["What is your departure city?"]?.id),
-        destinationCityId: cleanId(userResponses["What is your destination city?"]?.id),
-        flightId: cleanId(userResponses["Select your flight"]?.id),
-        hotelId: cleanId(userResponses["Select your hotel"]?.id),
-        attractions: Array.isArray(userResponses["Select attractions to visit"])
-          ? userResponses["Select attractions to visit"].map(a => cleanId(a.id))
-          : [cleanId(userResponses["Select attractions to visit"]?.id)],
-        transportation: userResponses["Select your mode of transportation"] || null,
-        paymentMethod: userResponses["Select payment method"] || "Unknown",
-        totalPrice: calculateTotalPrice(),
-      };
+                    departureCityId: cleanId(userResponses["What is your departure city?"]?.id),
+                    destinationCityId: cleanId(userResponses["What is your destination city?"]?.id),
+                    flightId: cleanId(userResponses["Select your flight"]?.id),
+                    hotelId: cleanId(userResponses["Select your hotel"]?.id),
+                    attractions: Array.isArray(userResponses["Select attractions to visit"])
+                      ? userResponses["Select attractions to visit"].map(a => cleanId(a.id))
+                      : [cleanId(userResponses["Select attractions to visit"]?.id)],
+                    transportation: userResponses["Select your mode of transportation"] || null,
+                    paymentMethod: userResponses["Select payment method"] || "Unknown",
+                    totalPrice: calculateTotalPrice(),
+                  };
 
 
                     console.log("🔍 Sending Order Data:", orderData);
@@ -703,13 +699,15 @@ console.log("attractions:", orderData.attractions);
                                     )}
                                 </>
                             ) : (
-                          <select
+                        
+<select
   value={typeof userResponses[q.prompt] === "object" ? userResponses[q.prompt]?.id : userResponses[q.prompt] || ""}
   onChange={(e) => {
     let selectedOption;
     if (typeof q.options[0] === "string") {
       selectedOption = e.target.value;
     } else {
+      // IMPORTANT: Store the complete hotel object, not just the ID
       selectedOption = q.options.find(opt => opt.id === e.target.value);
     }
     setUserResponses((prevResponses) => ({
@@ -717,7 +715,6 @@ console.log("attractions:", orderData.attractions);
       [q.prompt]: selectedOption,
     }));
     
-
     const methodsRequiringModal = ["Credit Card", "PayPal", "Bank Transfer", "Crypto"];
     if (q.prompt === "Select payment method") {
       if (methodsRequiringModal.includes(selectedOption?.name || selectedOption)) {
