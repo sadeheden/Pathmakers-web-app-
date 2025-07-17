@@ -236,14 +236,16 @@ const hotelOptions = loadedHotels.length
     const dest = userResponses["What is your destination city?"];
     const cityName = typeof dest === "string" ? dest : dest?.name;
     const hotelGroup = loadedHotels.find(
-      h => h.city.toLowerCase() === cityName?.toLowerCase()
+      h => h.city?.toLowerCase() === cityName?.toLowerCase()
     );
-    return hotelGroup?.hotels?.map((hotel, i) => ({
-      id: hotel._id || `${hotel.name}-${i}`, // Ensure we have an ID
+    console.log("hotelGroup:", hotelGroup);
+    if (!hotelGroup || !Array.isArray(hotelGroup.hotels)) return [];
+    return hotelGroup.hotels.map((hotel, i) => ({
+      id: hotel._id || `${hotel.name}-${i}`,
       name: `${hotel.name} - ${hotel.price}/night`,
-      price: hotel.price, // Include price for calculations
-      ...hotel, // Include all hotel properties
-    })) || [];
+      price: hotel.price,
+      ...hotel,
+    }));
   })(),
 },
  {
@@ -526,7 +528,6 @@ console.log("attractions:", orderData.attractions);
                         alert("⚠️ You must be logged in to download receipt.");
                         return;
                     }
-
                     const userResponse = await fetch("http://localhost:4000/api/auth/user", {
                         method: "GET",
                         headers: {
