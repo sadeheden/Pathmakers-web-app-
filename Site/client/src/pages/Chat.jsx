@@ -462,21 +462,18 @@ const hotelOptions = loadedHotels.length
     alert("⚠️ No order details available.");
     return;
   }
-
-  let selectedAttractions = userResponses["Select attractions to visit"];
-  if (!Array.isArray(selectedAttractions)) {
-    selectedAttractions = selectedAttractions ? [selectedAttractions] : [];
-  }
 console.log("userResponses before order:", userResponses);
 
 const orderData = {
   departureCityId: cleanId(userResponses["What is your departure city?"]?.id),
   destinationCityId: cleanId(userResponses["What is your destination city?"]?.id),
   flightId: cleanId(userResponses["Select your flight"]?.id),
-  hotelId: cleanId(userResponses["Select your hotel"]?.id),
-  attractions: (Array.isArray(userResponses["Select attractions to visit"])
-    ? userResponses["Select attractions to visit"].map(a => cleanId(a.id))
-    : []),
+ hotelId: cleanId(userResponses["Select your hotel"]?.id) || undefined,
+attractions: Array.isArray(userResponses["Select attractions to visit"])
+  ? userResponses["Select attractions to visit"].map(a => cleanId(a?.id))
+  : userResponses["Select attractions to visit"]
+  ? [cleanId(userResponses["Select attractions to visit"]?.id)]
+  : [],
   transportation: userResponses["Select your mode of transportation"] || null,
   paymentMethod: userResponses["Select payment method"] || "Unknown",
   totalPrice: calculateTotalPrice(),
