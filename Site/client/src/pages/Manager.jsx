@@ -28,10 +28,35 @@ const revenueData = [
   { name: "Jul", revenue: 8500 },
 ];
 
-const sidebarItems = ["Dashboard", "Trips", "Articles", "Settings", "Help"];
+const sidebarItems = [
+  "Dashboard",
+  "Trips",
+  "Articles",
+  "Settings",
+  "Help",
+  "Manage Data",
+];
 
 const Manager = () => {
   const [activeItem, setActiveItem] = useState("Dashboard");
+
+  // State for manage data
+  const [hotels, setHotels] = useState([]);
+  const [flights, setFlights] = useState([]);
+  const [hotelForm, setHotelForm] = useState({ name: "", city: "", price: "" });
+  const [flightForm, setFlightForm] = useState({ from: "", to: "", price: "" });
+
+  const addHotel = () => {
+    if (!hotelForm.name || !hotelForm.city || !hotelForm.price) return;
+    setHotels([...hotels, { ...hotelForm }]);
+    setHotelForm({ name: "", city: "", price: "" });
+  };
+
+  const addFlight = () => {
+    if (!flightForm.from || !flightForm.to || !flightForm.price) return;
+    setFlights([...flights, { ...flightForm }]);
+    setFlightForm({ from: "", to: "", price: "" });
+  };
 
   const renderContent = () => {
     switch (activeItem) {
@@ -80,7 +105,12 @@ const Manager = () => {
                     <XAxis dataKey="name" />
                     <YAxis />
                     <Tooltip />
-                    <Line type="monotone" dataKey="revenue" stroke="#47569e" strokeWidth={2} />
+                    <Line
+                      type="monotone"
+                      dataKey="revenue"
+                      stroke="#47569e"
+                      strokeWidth={2}
+                    />
                   </LineChart>
                 </ResponsiveContainer>
               </div>
@@ -93,9 +123,11 @@ const Manager = () => {
                 <table>
                   <thead>
                     <tr>
-                      {["Trip", "Destination", "Dates", "Status", "Actions"].map((head) => (
-                        <th key={head}>{head}</th>
-                      ))}
+                      {["Trip", "Destination", "Dates", "Status", "Actions"].map(
+                        (head) => (
+                          <th key={head}>{head}</th>
+                        )
+                      )}
                     </tr>
                   </thead>
                   <tbody>
@@ -154,6 +186,90 @@ const Manager = () => {
           <>
             <h1 className="main-title">Help & Support</h1>
             <p>Find FAQs or contact support for assistance.</p>
+          </>
+        );
+
+      case "Manage Data":
+        return (
+          <>
+            <h1 className="main-title">Manage Travel Data</h1>
+            <section className="admin-tools">
+              {/* Hotels */}
+              <div className="tool-card">
+                <h2>Add Hotel</h2>
+                <input
+                  type="text"
+                  placeholder="Hotel Name"
+                  value={hotelForm.name}
+                  onChange={(e) =>
+                    setHotelForm({ ...hotelForm, name: e.target.value })
+                  }
+                />
+                <input
+                  type="text"
+                  placeholder="City"
+                  value={hotelForm.city}
+                  onChange={(e) =>
+                    setHotelForm({ ...hotelForm, city: e.target.value })
+                  }
+                />
+                <input
+                  type="number"
+                  placeholder="Price"
+                  value={hotelForm.price}
+                  onChange={(e) =>
+                    setHotelForm({ ...hotelForm, price: e.target.value })
+                  }
+                />
+                <button onClick={addHotel}>Add Hotel</button>
+
+                <ul>
+                  {hotels.map((h, i) => (
+                    <li key={i}>
+                      {h.name} in {h.city} - ${h.price}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              {/* Flights */}
+              <div className="tool-card">
+                <h2>Add Flight</h2>
+                <input
+                  type="text"
+                  placeholder="From"
+                  value={flightForm.from}
+                  onChange={(e) =>
+                    setFlightForm({ ...flightForm, from: e.target.value })
+                  }
+                />
+                <input
+                  type="text"
+                  placeholder="To"
+                  value={flightForm.to}
+                  onChange={(e) =>
+                    setFlightForm({ ...flightForm, to: e.target.value })
+                  }
+                />
+                <input
+                  type="number"
+                  placeholder="Price"
+                  value={flightForm.price}
+                  onChange={(e) =>
+                    setFlightForm({ ...flightForm, price: e.target.value })
+                  }
+                />
+                <button onClick={addFlight}>Add Flight</button>
+
+                <ul>
+                  {flights.map((f, i) => (
+                    <li key={i}>
+                      Flight from {f.from} to {f.to} - ${f.price}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </section>
           </>
         );
 
