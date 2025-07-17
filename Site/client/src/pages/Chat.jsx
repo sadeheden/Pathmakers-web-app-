@@ -226,32 +226,8 @@ const hotelOptions = loadedHotels.length
     { prompt: "Class preference", options: ["Economy", "Business", "First"] },
   ],
 },
-<<<<<<< Updated upstream
  {
-  prompt: "Select your hotel",
-  options: (() => {
-    const dest = userResponses["What is your destination city?"];
-    const cityName = typeof dest === "string" ? dest : dest?.name;
-    const hotelGroup = loadedHotels.find(
-      h => h.city?.toLowerCase() === cityName?.toLowerCase()
-    );
-    console.log("hotelGroup:", hotelGroup);
-    if (!hotelGroup || !Array.isArray(hotelGroup.hotels)) return [];
-    return hotelGroup.hotels.map((hotel, i) => ({
-      id: hotel._id || `${hotel.name}-${i}`,
-      name: `${hotel.name} - ${hotel.price}/night`,
-      price: hotel.price,
-      ...hotel,
-    }));
-  })(),
-},
-=======
-  {
-    label: "Hotel",
-    icon: Hotel,
-    questions: [
-     {
-      prompt: "Select your hotel",
+ prompt: "Select your hotel",
       options: (() => {
         const dest = userResponses["What is your destination city?"];
         const cityName = typeof dest === "string" ? dest : dest?.name;
@@ -264,16 +240,8 @@ const hotelOptions = loadedHotels.length
           ...hotel,
         })) || [];
       })(),
-    },
-      { prompt: "Budget range per night?", type: "text" },
-      {
-        prompt: "Accessibility requirements?",
-        options: ["None", "Wheelchair Access", "Ground Floor", "Special Assistance"],
-      },
-      { prompt: "Pet-friendly options?", options: ["Yes", "No"] },
-    ],
-  },
->>>>>>> Stashed changes
+},
+
  {
   label: "Attractions",
   icon: Compass,
@@ -501,18 +469,19 @@ if (!step || !Array.isArray(step.questions)) {
   if (!Array.isArray(selectedAttractions)) {
     selectedAttractions = selectedAttractions ? [selectedAttractions] : [];
   }
-const orderData = {
-  departureCityId: cleanId(userResponses["What is your departure city?"]?.id),
-  destinationCityId: cleanId(userResponses["What is your destination city?"]?.id),
-  flightId: cleanId(userResponses["Select your flight"]?.id),
-   hotelId: cleanId(userResponses["Select your hotel"]?.id),
-  attractions: (Array.isArray(userResponses["Select attractions to visit"]?.id)
-    ? userResponses["Select attractions to visit"].map(a => cleanId(a.id))
-    : []),
-  transportation: userResponses["Select your mode of transportation"] || null,
-  paymentMethod: userResponses["Select payment method"] || "Unknown",
-  totalPrice: calculateTotalPrice(),
-};
+   const orderData = {
+                        userId: userData.id,
+                        username: userData.username,
+                        departureCity: userResponses["What is your departure city?"],
+                        destinationCity: userResponses["What is your destination city?"],
+                        flight: userResponses["Select your flight"],
+                        hotel: userResponses["Select your hotel"],
+                        attractions: userResponses["Select attractions to visit"]?.split(", "),
+                        transportation: userResponses["Select your mode of transportation"],
+                        paymentMethod: userResponses["Select payment method"],
+                        totalPrice: calculateTotalPrice(),
+                        paymentStatus: "Completed"
+                    };
 function cleanId(id) {
   if (!id) return null;
   
@@ -629,7 +598,7 @@ console.log("attractions:", orderData.attractions);
 
                     await new Promise(resolve => setTimeout(resolve, 1000));
 
-                   const pdfResponse = await fetch(`http://localhost:4000/api/order/${savedOrder._id}/pdf`, {
+                   const pdfResponse = await fetch(`http://localhost:4000/api/order/${savedOrder.id}/pdf`, {
                       method: "GET",
                       headers: {
                         "Authorization": `Bearer ${token}`
