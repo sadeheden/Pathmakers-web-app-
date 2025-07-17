@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 import '../assets/styles/main.css';
 
 // React icons
@@ -303,10 +304,75 @@ const Main = () => {
           isOpen={showPaymentModal}
           onClose={() => setShowPaymentModal(false)}
           totalAmount={totalPrice}
-          onPaymentSuccess={() => {
-            setPaymentCompleted(true);
-            setShowPaymentModal(false);
-          }}
+       onPaymentSuccess={async () => {
+  setPaymentCompleted(true);
+  setShowPaymentModal(false);
+
+  const token = localStorage.getItem("token");
+  
+  // Check if token exists
+  if (!token) {
+    console.error("❌ No authentication token found");
+    alert("Please log in to complete your purchase");
+    navigate('/login'); // Redirect to login
+    return;
+  }
+
+  // Check if token is expired (optional)
+  const isTokenExpired = (token) => {
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      return payload.exp * 1000 < Date.now();
+    } catch (error) {
+      return true;
+    }
+  };
+
+  if (isTokenExpired(token)) {
+    console.error("❌ Token has expired");
+    alert("Your session has expired. Please log in again.");
+    localStorage.removeItem("token");
+    navigate('/login');
+    return;
+  }
+
+  try {
+    const response = await axios.post(
+      "http://localhost:4000/api/order",
+      {
+        departureCityId: "ben-gurion",
+        destinationCityId: selectedCity.slug,
+        flightId: selectedCity.flight,
+        hotelId: "default-hotel",
+        attractions: [],
+        transportation: null,
+        paymentMethod: "Credit Card",
+        totalPrice: totalPrice,
+        tripDate: "2026-03-15"
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+      }
+    );
+    
+    console.log("✅ Order saved successfully:", response.data);
+    
+  } catch (error) {
+    console.error("❌ Error saving order:", error.response?.data || error.message);
+    
+    if (error.response?.status === 401) {
+      alert("Your session has expired. Please log in again.");
+      localStorage.removeItem("token");
+      navigate('/login');
+    } else {
+      alert("Failed to save order. Please try again.");
+    }
+  }
+}}
+
         />
       )}
 
