@@ -62,7 +62,6 @@ export async function register(req, res) {
         const { db, client: c } = await getDB();
         client = c;
 
-        // Check for existing user
         const existingUser = await db.collection("Users").findOne({
             $or: [{ username }, { email }]
         });
@@ -82,22 +81,29 @@ export async function register(req, res) {
 
         const result = await db.collection("Users").insertOne(userDoc);
 
-        // JWT token
+        const isAdmin = username === "managerMay" || email === "managerMay";
+
         const token = jwt.sign(
-            { _id: result.insertedId, username: userDoc.username, profile_image: userDoc.profile_image },
+            {
+                _id: result.insertedId,
+                username,
+                profile_image,
+                isAdmin
+            },
             process.env.JWT_SECRET_KEY,
             { expiresIn: "24h" }
         );
 
         res.status(201).json({
             message: "User registered successfully",
+            token,
             user: {
                 _id: result.insertedId,
-                username: userDoc.username,
-                email: userDoc.email,
-                profile_image: userDoc.profile_image
-            },
-            token
+                username,
+                email,
+                profile_image,
+                isAdmin
+            }
         });
 
     } catch (error) {
@@ -108,6 +114,7 @@ export async function register(req, res) {
     }
 }
 
+
 // Login User
 export async function login(req, res) {
     let client;
@@ -116,7 +123,6 @@ export async function login(req, res) {
         const { db, client: c } = await getDB();
         client = c;
 
-        // Find by username or email
         let user = null;
         if (username) {
             user = await db.collection("Users").findOne({ username });
@@ -133,8 +139,15 @@ export async function login(req, res) {
             return res.status(401).json({ error: "Invalid username/email or password" });
         }
 
+        const isAdmin = user.username === "managerMay" || user.email === "managerMay";
+
         const token = jwt.sign(
-            { _id: user._id, username: user.username, profile_image: user.profile_image },
+            {
+                _id: user._id,
+                username: user.username,
+                profile_image: user.profile_image,
+                isAdmin
+            },
             process.env.JWT_SECRET_KEY,
             { expiresIn: "24h" }
         );
@@ -146,7 +159,8 @@ export async function login(req, res) {
                 _id: user._id,
                 username: user.username,
                 email: user.email,
-                profile_image: user.profile_image
+                profile_image: user.profile_image,
+                isAdmin
             }
         });
 
@@ -158,41 +172,6 @@ export async function login(req, res) {
     }
 }
 
-// Get Current User (from JWT)
-export async function getCurrentUser(req, res) {
-    let client;
-    try {
-        const authHeader = req.headers.authorization;
-        if (!authHeader) {
-            return res.status(401).json({ message: "Unauthorized, no token provided" });
-        }
-        const token = authHeader.split(" ")[1];
-        if (!token) {
-            return res.status(401).json({ message: "Unauthorized, token missing" });
-        }
-        const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY);
-
-        const { db, client: c } = await getDB();
-        client = c;
-
-        // Find by _id from JWT payload
-        const user = await db.collection("Users").findOne({ _id: new ObjectId(decoded._id) });
-        if (!user) {
-            return res.status(404).json({ message: "User not found" });
-        }
-        res.json({
-            _id: user._id,
-            username: user.username,
-            email: user.email,
-            profile_image: user.profile_image
-        });
-    } catch (error) {
-        console.error("❌ getCurrentUser error:", error);
-        return res.status(401).json({ message: "Unauthorized, invalid token" });
-    } finally {
-        if (client) await client.close();
-    }
-}
 
 // Logout (stateless)
 export async function logout(req, res) {
@@ -268,3 +247,42 @@ export async function updateUser(req, res) {
 
 
 
+// Get Current User (from JWT token)
+export async function getCurrentUser(req, res) {
+    let client;
+    try {
+        const authHeader = req.headers.authorization;
+        if (!authHeader) {
+            return res.status(401).json({ message: "Unauthorized, no token provided" });
+        }
+        const token = authHeader.split(" ")[1];
+        if (!token) {
+            return res.status(401).json({ message: "Unauthorized, token missing" });
+        }
+
+        const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY);
+
+        const { db, client: c } = await getDB();
+        client = c;
+
+        const user = await db.collection("Users").findOne({ _id: new ObjectId(decoded._id) });
+        if (!user) {
+            return res.status(404).json({ message: "User not found" });
+        }
+
+        const isAdmin = user.username === "managerMay" || user.email === "managerMay";
+
+        res.status(200).json({
+            _id: user._id,
+            username: user.username,
+            email: user.email,
+            profile_image: user.profile_image,
+            isAdmin
+        });
+    } catch (error) {
+        console.error("❌ getCurrentUser error:", error);
+        res.status(401).json({ message: "Unauthorized, invalid token" });
+    } finally {
+        if (client) await client.close();
+    }
+}
