@@ -553,22 +553,19 @@ console.log("attractions:", orderData.attractions);
                     console.log("✅ Fetched User:", userData);
 
                    const orderData = {
-                    departureCityId: cleanId(userResponses["What is your departure city?"]?.id),
-                    destinationCityId: cleanId(userResponses["What is your destination city?"]?.id),
-                    flightId: cleanId(userResponses["Select your flight"]?.id),
-                    hotelId: cleanId(userResponses["Select your hotel"]?.id),
-                    attractions: Array.isArray(userResponses["Select attractions to visit"])
-                      ? userResponses["Select attractions to visit"].map(a => cleanId(a.id))
-                      : [cleanId(userResponses["Select attractions to visit"]?.id)],
-                    transportation: userResponses["Select your mode of transportation"] || null,
-                    paymentMethod: userResponses["Select payment method"] || "Unknown",
-                    totalPrice: calculateTotalPrice(),
-                  };
+        departureCityId: cleanId(userResponses["What is your departure city?"]?.id),
+        destinationCityId: cleanId(userResponses["What is your destination city?"]?.id),
+        flightId: cleanId(userResponses["Select your flight"]?.id),
+        hotelId: cleanId(userResponses["Select your hotel"]?.id),
+        attractions: Array.isArray(userResponses["Select attractions to visit"])
+          ? userResponses["Select attractions to visit"].map(a => cleanId(a.id))
+          : [cleanId(userResponses["Select attractions to visit"]?.id)],
+        transportation: userResponses["Select your mode of transportation"] || null,
+        paymentMethod: userResponses["Select payment method"] || "Unknown",
+        totalPrice: calculateTotalPrice(),
+      };
 
-                  function cleanId(id) {
-                        if (!id) return null;
-                        return id.split(/[-_]/)[0];
-    }
+
                     console.log("🔍 Sending Order Data:", orderData);
 
                     const response = await fetch("http://localhost:4000/api/order", {
