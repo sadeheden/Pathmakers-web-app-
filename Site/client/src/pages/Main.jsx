@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 import '../assets/styles/main.css';
 
 // React icons
@@ -53,7 +54,6 @@ const PaymentModal = ({ isOpen, onClose, totalAmount, onPaymentSuccess }) => {
   const [cvv, setCvv] = useState("");
   const [paymentSuccess, setPaymentSuccess] = useState(false);
   const [error, setError] = useState("");
-
   const currentYear = new Date().getFullYear();
   const maxYear = currentYear + 10;
 
@@ -171,6 +171,7 @@ const Main = () => {
   const [selectedCity, setSelectedCity] = useState(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [paymentCompleted, setPaymentCompleted] = useState(false);
+  const [showIntroPopup, setShowIntroPopup] = useState(false);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -185,7 +186,7 @@ const Main = () => {
   ].slice(carouselIdx, carouselIdx + CARDS_PER_PAGE);
 
   const tripDate = "2026-03-15";
-
+  const returnDate = "2026-03-22";
   const totalPrice = selectedCity ? getPriceByCity(selectedCity.name) : 0;
 
   return (
@@ -252,6 +253,7 @@ const Main = () => {
                 setSelectedCity(city);
                 setPaymentCompleted(false);
                 setShowPaymentModal(false);
+                setShowIntroPopup(true);
               }} 
               style={{ cursor: 'pointer' }}
             >
@@ -261,8 +263,40 @@ const Main = () => {
           ))}
         </div>
       </section>
+{selectedCity && showIntroPopup && (
+  <div className="modal-overlay" onClick={() => setShowIntroPopup(false)}>
+    <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+      <button
+        className="modal-close-x"
+        onClick={() => {
+          setShowIntroPopup(false);
+          setSelectedCity(null);
+        }}
+        aria-label="Close"
+      >
+        &#10005;
+      </button>
 
-      {selectedCity && !paymentCompleted && !showPaymentModal && (
+      <h2>You've Selected {selectedCity.name}!</h2>
+      <p>
+        ✈️ Awesome! You're about to see your trip details to <strong>{selectedCity.name}</strong>.<br/>
+        This includes flight number, departure info, and trip dates.
+      </p>
+      <p>   
+        Click <strong>Continue</strong> to review and proceed to payment.
+      </p>
+      <p><strong>Price per person*</strong></p>
+      <button 
+        className="modal-payment-btn" 
+        onClick={() => setShowIntroPopup(false)}
+      >
+        Continue
+      </button>
+    </div>
+  </div>
+)}
+
+     {selectedCity && !paymentCompleted && !showPaymentModal && !showIntroPopup && (
         <div className="modal-overlay" onClick={() => setSelectedCity(null)}>
           <div className="modal-content" onClick={e => e.stopPropagation()}>
             <button
@@ -282,8 +316,10 @@ const Main = () => {
               />
             </div>
             <p><strong>Destination:</strong> {selectedCity.name}</p>
+            <p><strong>Departure:</strong> Israel (Ben-Gurion Airport)</p>
             <p><strong>Flight Number:</strong> {selectedCity.flight}</p>
             <p><strong>Trip Date:</strong> {tripDate}</p>
+            <p><strong>Return Date:</strong> {returnDate}</p>
             <p><strong>Total Price:</strong> ${totalPrice}</p>
 
             <div className="modal-btns">
@@ -303,10 +339,79 @@ const Main = () => {
           isOpen={showPaymentModal}
           onClose={() => setShowPaymentModal(false)}
           totalAmount={totalPrice}
-          onPaymentSuccess={() => {
-            setPaymentCompleted(true);
-            setShowPaymentModal(false);
-          }}
+    onPaymentSuccess={async () => {
+  setPaymentCompleted(true);
+  setShowPaymentModal(false);
+
+  // Try different possible token key names
+  const token = localStorage.getItem("token") || 
+                localStorage.getItem("authToken") || 
+                localStorage.getItem("jwt") || 
+                localStorage.getItem("access_token") || 
+                localStorage.getItem("userToken");
+    
+  // Check if token exists
+  if (!token) {
+    console.error("❌ No authentication token found");
+    console.log("🔍 Available localStorage keys:", Object.keys(localStorage));
+    alert("Please log in to complete your purchase");
+    navigate('/login'); // Redirect to login
+    return;
+  }
+
+  // Check if token is expired (optional)
+  const isTokenExpired = (token) => {
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      return payload.exp * 1000 < Date.now();
+    } catch (error) {
+      return true;
+    }
+  };
+
+  if (isTokenExpired(token)) {
+    console.error("❌ Token has expired");
+    alert("Your session has expired. Please log in again.");
+    localStorage.removeItem("token");
+    navigate('/login');
+    return;
+  }
+
+  try {
+    const response = await axios.post(
+      "http://localhost:4000/api/order",
+      {
+        departureCityId: "ben-gurion",
+        destinationCityId: selectedCity.slug,
+        flightId: selectedCity.flight,
+        hotelId: "default-hotel",
+        attractions: [],
+        transportation: null,
+        paymentMethod: "Credit Card",
+        totalPrice: totalPrice,
+        tripDate: "2026-03-15"
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+      }
+    );
+        
+  } catch (error) {
+    console.error("❌ Error saving order:", error.response?.data || error.message);
+    
+    if (error.response?.status === 401) {
+      alert("Your session has expired. Please log in again.");
+      localStorage.removeItem("token");
+      navigate('/login');
+    } else {
+      alert("Failed to save order. Please try again.");
+    }
+  }
+}}
+
         />
       )}
 
@@ -327,7 +432,8 @@ const Main = () => {
             <h2>Payment Successful!</h2>
             <p><strong>Destination:</strong> {selectedCity.name}</p>
             <p><strong>Flight Number:</strong> {selectedCity.flight}</p>
-            <p><strong>Trip Date:</strong> {tripDate}</p>
+            <p><strong>Trip Date:</strong> {tripDate}</p>      
+            <p><strong>Return Date:</strong> {returnDate}</p>
             <p><strong>Total Price:</strong> ${totalPrice}</p>
             <p>Thank you for your purchase! Your trip is confirmed.</p>
             <button onClick={() => {
