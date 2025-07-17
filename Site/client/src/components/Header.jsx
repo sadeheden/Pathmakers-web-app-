@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import logo from "../assets/images/Image20250119205452.png";
-import profilePlaceholder from "../assets/images/default_profile.jpg";
 import "../assets/styles/Header.css";
 
-const DEFAULT_PROFILE_IMAGE = "https://res.cloudinary.com/YOUR_CLOUDINARY_NAME/image/upload/v1700000000/YOUR_DEFAULT_IMAGE.jpg";
+const DEFAULT_PROFILE_IMAGE = "https://res.cloudinary.com/dnnmhrsja/image/upload/v1741780893/user_profiles/may.jpg";
+
 
 const Header = () => {
     const [user, setUser] = useState(null);
@@ -115,12 +115,17 @@ useEffect(() => {
             <div className="profile-section">
                 {user ? (
                     <>
-                        <img
-                            src={user.profile_image || profilePlaceholder}
-                            alt="User"
-                            className="profile-image"
-                            onClick={() => setIsProfileOpen(!isProfileOpen)}
-                        />
+                       <img
+  src={user.profile_image}
+  alt="User"
+  className="profile-image"
+  onClick={() => setIsProfileOpen(!isProfileOpen)}
+  onError={(e) => {
+    e.target.onerror = null;
+    e.target.src = DEFAULT_PROFILE_IMAGE;
+  }}
+/>
+
 
                         {isProfileOpen && (
                             <div className="profile-popup">
