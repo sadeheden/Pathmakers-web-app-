@@ -6,7 +6,7 @@ export default function Index() {
   useEffect(() => {
     // הוסף delay קטן כדי לוודא שה-layout נטען
     const timer = setTimeout(() => {
-      router.replace('/(tabs)/intro');
+      router.replace('/(tabs)/splash');
     }, 100);
 
     return () => clearTimeout(timer);

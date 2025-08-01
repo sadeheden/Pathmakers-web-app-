@@ -13,7 +13,7 @@ export default function IntroScreen() {
         אפליקציה חכמה שמלווה אותך לאורך כל הטיול שלך, עם יומן יומי, מפה אינטראקטיבית, מזג אוויר, ועוד!
       </Text>
 
-      <TouchableOpacity style={styles.button} onPress={() => router.push('/auth-check')}>
+      <TouchableOpacity style={styles.button} onPress={() => router.push('/tabs/login')}>
         <Text style={styles.buttonText}>המשך</Text>
       </TouchableOpacity>
     </View>
