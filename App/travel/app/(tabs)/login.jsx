@@ -11,7 +11,7 @@ export default function LoginScreen() {
     // Later, you'll call your API here
     if (email === 'may' && password === '1234') {
       // Simulate successful login
-      router.replace('/(tabs)'); // Navigate to the main app
+    router.replace('/(tabs)/home');  // Navigate to the main app
     } else {
       Alert.alert('Error', 'Incorrect email or password');
     }
