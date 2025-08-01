@@ -1,12 +1,10 @@
 // app/_layout.jsx
-import { Stack } from "expo-router";
+import { Stack } from 'expo-router';
 
 export default function RootLayout() {
   return (
-    <Stack initialRouteName="splash" screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="splash" />
-      <Stack.Screen name="intro" />
-      <Stack.Screen name="login" />
+    <Stack screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="index" />
       <Stack.Screen name="(tabs)" />
     </Stack>
   );

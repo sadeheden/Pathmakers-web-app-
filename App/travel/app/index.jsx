@@ -4,8 +4,12 @@ import { router } from 'expo-router';
 
 export default function Index() {
   useEffect(() => {
-    // מתחיל מ intro
-    router.replace('/(tabs)/intro');
+    // הוסף delay קטן כדי לוודא שה-layout נטען
+    const timer = setTimeout(() => {
+      router.replace('/(tabs)/intro');
+    }, 100);
+
+    return () => clearTimeout(timer);
   }, []);
 
   return null; // רק מפנה, לא מציג כלום
