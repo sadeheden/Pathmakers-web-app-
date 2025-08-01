@@ -174,12 +174,13 @@ const TravelPlannerApp = () => {
         loadedAttractions.length && Array.isArray(loadedAttractions[0]?.attractions)
             ? loadedAttractions[0].attractions.map(attr => attr.name)
             : [];
-const hotelOptions = loadedHotels.length
+  const hotelOptions = loadedHotels.length
   ? loadedHotels.map(hotel => ({
-      id: hotel._id,
-      name: `${hotel.name} - $${hotel.price}/night`
+      id: hotel._id || hotel.id || String(hotel),
+      name: `${String(hotel)} - $${hotel.price || "N/A"}/night`
     }))
   : [];
+
 
 
     // ✅ REORDERED STEPS - Payment comes before Trip Summary
@@ -457,8 +458,6 @@ const hotelOptions = loadedHotels.length
 if (!step || !Array.isArray(step.questions)) {
     return <div style={{ color: "red" }}>Error: Step misconfigured or not found.</div>;
 }
-
-
         if (step.label === "Trip Summary") {
           
             const totalPrice = calculateTotalPrice();
@@ -482,19 +481,20 @@ if (!step || !Array.isArray(step.questions)) {
   if (!Array.isArray(selectedAttractions)) {
     selectedAttractions = selectedAttractions ? [selectedAttractions] : [];
   }
-   const orderData = {
-                        userId: userData.id,
-                        username: userData.username,
-                        departureCity: userResponses["What is your departure city?"],
-                        destinationCity: userResponses["What is your destination city?"],
-                        flight: userResponses["Select your flight"],
-                        hotel: userResponses["Select your hotel"],
-                        attractions: userResponses["Select attractions to visit"]?.split(", "),
-                        transportation: userResponses["Select your mode of transportation"],
-                        paymentMethod: userResponses["Select payment method"],
-                        totalPrice: calculateTotalPrice(),
-                        paymentStatus: "Completed"
-                    };
+  const orderData = {
+    departureCityId: String(userResponses["What is your departure city?"]?.id),
+    destinationCityId: String(userResponses["What is your destination city?"]?.id),
+    flightId: String(userResponses["Select your flight"]?.id),
+    hotelId: userResponses["Select your hotel"]?.id || null,
+    attractions: Array.isArray(userResponses["Select attractions to visit"])
+      ? userResponses["Select attractions to visit"].map(a => String(a.id))
+      : [String(userResponses["Select attractions to visit"]?.id)],
+    transportation: userResponses["Select your mode of transportation"] || null,
+    paymentMethod: userResponses["Select payment method"] || "Unknown",
+    totalPrice: calculateTotalPrice(),
+    paymentStatus: "Completed" // אם נדרש ע"י השרת
+  };
+
 function cleanId(id) {
   if (!id) return null;
   
@@ -519,6 +519,7 @@ console.log("departureCityId:", orderData.departureCityId);
 console.log("destinationCityId:", orderData.destinationCityId);
 console.log("flightId:", orderData.flightId);
 console.log("hotelId:", orderData.hotelId);
+console.log("Hotel ID:", userResponses["Select your hotel"]?.id);
 console.log("attractions:", orderData.attractions);
 
   console.log("🔍 Sending Order Data:", orderData);
@@ -733,7 +734,7 @@ console.log("attractions:", orderData.attractions);
   onChange={(e) => {
     let selectedOption;
     if (typeof q.options[0] === "string") {
-      selectedOption = e.target.value;
+       selectedOption = e.target.value;
     } else {
       selectedOption = q.options.find(opt => opt.id === e.target.value);
     }
