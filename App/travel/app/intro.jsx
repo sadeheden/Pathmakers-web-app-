@@ -13,7 +13,10 @@ export default function IntroScreen() {
         A smart app that supports your journey from start to finish – with a daily journal, interactive map, weather updates, and more!
       </Text>
 
-      <TouchableOpacity style={styles.button} onPress={() => router.push('/auth-check')}>
+      <TouchableOpacity
+        style={styles.button}
+        onPress={() => router.replace('/(tabs)/login')}
+      >
         <Text style={styles.buttonText}>Continue</Text>
       </TouchableOpacity>
     </View>
@@ -26,6 +29,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
+    backgroundColor: '#fff',
   },
   title: {
     fontSize: 26,
