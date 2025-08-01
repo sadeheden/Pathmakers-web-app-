@@ -8,13 +8,13 @@ export default function IntroScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>ברוכים הבאים ל־PathMakers</Text>
+      <Text style={styles.title}>Welcome to PathMakers</Text>
       <Text style={styles.description}>
-        אפליקציה חכמה שמלווה אותך לאורך כל הטיול שלך, עם יומן יומי, מפה אינטראקטיבית, מזג אוויר, ועוד!
+        A smart app that supports your journey from start to finish – with a daily journal, interactive map, weather updates, and more!
       </Text>
 
       <TouchableOpacity style={styles.button} onPress={() => router.push('/auth-check')}>
-        <Text style={styles.buttonText}>המשך</Text>
+        <Text style={styles.buttonText}>Continue</Text>
       </TouchableOpacity>
     </View>
   );

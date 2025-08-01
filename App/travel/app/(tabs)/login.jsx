@@ -8,21 +8,21 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
 
   const handleLogin = () => {
-    // כאן תבצעי קריאה ל-API בעתיד
+    // Later, you'll call your API here
     if (email === 'may' && password === '1234') {
-      // נניח שהוא מחובר בהצלחה
-      router.replace('/(tabs)'); // נווט לאפליקציה הראשית
+      // Simulate successful login
+      router.replace('/(tabs)'); // Navigate to the main app
     } else {
-      Alert.alert('שגיאה', 'האימייל או הסיסמה שגויים');
+      Alert.alert('Error', 'Incorrect email or password');
     }
   };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>התחברות</Text>
+      <Text style={styles.title}>Login</Text>
 
       <TextInput
-        placeholder="אימייל"
+        placeholder="Email"
         value={email}
         onChangeText={setEmail}
         keyboardType="email-address"
@@ -31,7 +31,7 @@ export default function LoginScreen() {
       />
 
       <TextInput
-        placeholder="סיסמה"
+        placeholder="Password"
         value={password}
         onChangeText={setPassword}
         secureTextEntry
@@ -39,7 +39,7 @@ export default function LoginScreen() {
       />
 
       <TouchableOpacity style={styles.button} onPress={handleLogin}>
-        <Text style={styles.buttonText}>התחברות</Text>
+        <Text style={styles.buttonText}>Log In</Text>
       </TouchableOpacity>
     </View>
   );
