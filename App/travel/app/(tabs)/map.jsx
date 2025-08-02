@@ -1,15 +1,154 @@
-import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, TextInput, StyleSheet, Dimensions, Alert, TouchableOpacity } from 'react-native';
+import MapView, { Marker, Polyline } from 'react-native-maps';
+import * as Location from 'expo-location';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function MapScreen() {
+  const [location, setLocation] = useState(null);
+  const [destinationText, setDestinationText] = useState('');
+  const [destinationCoords, setDestinationCoords] = useState(null);
+  const [loadingDest, setLoadingDest] = useState(false);
+
+  const typingTimeoutRef = useRef(null);
+
+  useEffect(() => {
+    (async () => {
+      let { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Denied', 'Allow location access to use the map.');
+        return;
+      }
+      let currentLocation = await Location.getCurrentPositionAsync({});
+      setLocation(currentLocation.coords);
+    })();
+  }, []);
+
+  const handleSetDestination = async () => {
+    if (!destinationText.trim()) return;
+
+    if (loadingDest) return;
+
+    setLoadingDest(true);
+    try {
+      let geo = await Location.geocodeAsync(destinationText);
+      if (geo.length > 0) {
+        setDestinationCoords({
+          latitude: geo[0].latitude,
+          longitude: geo[0].longitude,
+        });
+      } else {
+        Alert.alert('Not Found', 'Could not find the destination.');
+      }
+    } catch (err) {
+      Alert.alert('Error', 'Failed to get coordinates.');
+    }
+    setLoadingDest(false);
+  };
+
+  const onChangeDestinationText = (text) => {
+    setDestinationText(text);
+
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
+    typingTimeoutRef.current = setTimeout(() => {
+      handleSetDestination();
+    }, 1000);
+  };
+
+  const clearDestinationText = () => {
+    setDestinationText('');
+    setDestinationCoords(null);
+  };
+
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>מפה אינטראקטיבית</Text>
+      {location ? (
+        <MapView
+          style={styles.map}
+          initialRegion={{
+            latitude: location.latitude,
+            longitude: location.longitude,
+            latitudeDelta: 0.1,
+            longitudeDelta: 0.1,
+          }}
+          showsUserLocation={true}
+        >
+          {destinationCoords && (
+            <>
+              <Marker coordinate={destinationCoords} title="Destination" />
+              <Polyline
+                coordinates={[
+                  { latitude: location.latitude, longitude: location.longitude },
+                  destinationCoords,
+                ]}
+                strokeColor="#0000FF"
+                strokeWidth={4}
+              />
+            </>
+          )}
+        </MapView>
+      ) : (
+        <View style={styles.loading}>
+          <Text>Loading location...</Text>
+        </View>
+      )}
+
+      <View style={styles.inputContainer}>
+        <TextInput
+          style={styles.input}
+          placeholder="Enter destination"
+          value={destinationText}
+          onChangeText={onChangeDestinationText}
+          editable={!loadingDest}
+          returnKeyType="done"
+        />
+
+        {/* כפתור איקס למחיקת הטקסט */}
+        {destinationText.length > 0 && (
+          <TouchableOpacity onPress={clearDestinationText} style={{ marginHorizontal: 8 }}>
+            <Ionicons name="close-circle" size={24} color="#aaa" />
+          </TouchableOpacity>
+        )}
+
+        <TouchableOpacity onPress={handleSetDestination} disabled={loadingDest}>
+          <Ionicons name="navigate-outline" size={28} color={loadingDest ? '#aaa' : '#1E90FF'} />
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  title: { fontSize: 24 },
+  container: { flex: 1 },
+  map: {
+    width: Dimensions.get('window').width,
+    height: Dimensions.get('window').height,
+  },
+  loading: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  inputContainer: {
+    position: 'absolute',
+    top: 40,
+    left: 20,
+    right: 20,
+    backgroundColor: 'white',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    elevation: 6,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowOffset: { width: 0, height: 2 },
+  },
+  input: {
+    flex: 1,
+    fontSize: 16,
+  },
 });
