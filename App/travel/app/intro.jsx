@@ -13,11 +13,8 @@ export default function IntroScreen() {
         A smart app that supports your journey from start to finish – with a daily journal, interactive map, weather updates, and more!
       </Text>
 
-      <TouchableOpacity
-        style={styles.button}
-        onPress={() => router.replace('/(tabs)/login')}
-      >
-        <Text style={styles.buttonText}>Continue</Text>
+      <TouchableOpacity style={styles.button} onPress={() => router.push('/login')}>
+        <Text style={styles.buttonText}>המשך</Text>
       </TouchableOpacity>
     </View>
   );
