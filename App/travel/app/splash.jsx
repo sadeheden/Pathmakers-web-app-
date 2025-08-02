@@ -8,8 +8,8 @@ export default function IntroScreen() {
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      router.replace('/intro');
-    }, 4000); // show intro for 4 seconds
+      router.replace('/intro'); // Navigate to login after 4 seconds
+    }, 4000);
 
     return () => clearTimeout(timer);
   }, []);
@@ -17,6 +17,8 @@ export default function IntroScreen() {
   return (
     <View style={styles.container}>
       <Image source={require('../assets/images/logo.png')} style={styles.logo} />
+      <Text style={styles.title}>Welcome to PathMakers</Text>
+      <Text style={styles.subtitle}>Your journey starts here</Text>
     </View>
   );
 }
@@ -26,10 +28,22 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#fff',
   },
   logo: {
-    width: 200,
-    height: 200,
+    width: 180,
+    height: 180,
     resizeMode: 'contain',
+    marginBottom: 30,
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  subtitle: {
+    fontSize: 16,
+    color: '#777',
+    marginTop: 10,
   },
 });
