@@ -1,6 +1,6 @@
 // app/intro.jsx
 import React, { useEffect } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, Image } from 'react-native';
 import { useRouter } from 'expo-router';
 
 export default function IntroScreen() {
@@ -16,7 +16,7 @@ export default function IntroScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.text}>Welcome to the App!</Text>
+      <Image source={require('../assets/images/logo.png')} style={styles.logo} />
     </View>
   );
 }
@@ -27,8 +27,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  text: {
-    fontSize: 24,
-    fontWeight: 'bold',
+  logo: {
+    width: 200,
+    height: 200,
+    resizeMode: 'contain',
   },
 });
