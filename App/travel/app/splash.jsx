@@ -8,7 +8,7 @@ export default function IntroScreen() {
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      router.replace('/login');
+      router.replace('/intro');
     }, 4000); // show intro for 4 seconds
 
     return () => clearTimeout(timer);
