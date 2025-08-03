@@ -1,37 +1,60 @@
-// app/login.jsx
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ActivityIndicator } from 'react-native';
+import { 
+  View, 
+  Text, 
+  TextInput, 
+  TouchableOpacity, 
+  StyleSheet, 
+  Alert, 
+  ActivityIndicator 
+} from 'react-native';
 import { useRouter } from 'expo-router';
 import { post } from './api.js';
 
-
 export default function LoginScreen() {
   const router = useRouter();
-  const [email, setEmail] = useState('');
+  const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleLogin = async () => {
-    if (!email || !password) {
-      Alert.alert('Missing Fields', 'Please enter both email and password');
+    // Validate inputs
+    if (!identifier.trim() || !password) {
+      Alert.alert('Missing Fields', 'Please enter both email/username and password');
       return;
     }
 
     setLoading(true);
+    
     try {
-      const response = await post('auth/login', { email, password });
+      console.log('Attempting login with:', { identifier: identifier.trim() });
+      
+      const response = await post('auth/login', { 
+        identifier: identifier.trim(),
+        password 
+      });
 
-      if (response.success || response.token) {
-        // Optionally: save token using AsyncStorage
-        // await AsyncStorage.setItem('token', response.token);
+      console.log('Login response:', response);
 
-        router.replace('/(tabs)/home'); // Or wherever you want to go
+      if (response.success && response.token) {
+        Alert.alert('Success', 'Login successful!');
+        // TODO: Save token to AsyncStorage here
+        // await AsyncStorage.setItem('userToken', response.token);
+        // await AsyncStorage.setItem('userData', JSON.stringify(response.user));
+        
+        router.replace('/(tabs)/home');
       } else {
-        Alert.alert('Login Failed', response.message || 'Invalid credentials');
+        Alert.alert(
+          'Login Failed', 
+          response.message || 'Invalid credentials'
+        );
       }
-    } catch (err) {
-      console.error('Login error:', err);
-      Alert.alert('Error', 'Could not connect to server');
+    } catch (error) {
+      console.error('Login error:', error);
+      Alert.alert(
+        'Connection Error', 
+        'Could not connect to server. Please check your internet connection.'
+      );
     } finally {
       setLoading(false);
     }
@@ -39,15 +62,18 @@ export default function LoginScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Login</Text>
+      <Text style={styles.title}>Welcome Back</Text>
+      <Text style={styles.subtitle}>Sign in to your account</Text>
 
       <TextInput
-        placeholder="Email"
-        value={email}
-        onChangeText={setEmail}
+        placeholder="Email or Username"
+        value={identifier}
+        onChangeText={setIdentifier}
         style={styles.input}
         autoCapitalize="none"
-        keyboardType="email-address"
+        autoCorrect={false}
+        keyboardType="default"
+        editable={!loading}
       />
 
       <TextInput
@@ -56,6 +82,7 @@ export default function LoginScreen() {
         onChangeText={setPassword}
         style={styles.input}
         secureTextEntry
+        editable={!loading}
       />
 
       <TouchableOpacity
@@ -63,7 +90,21 @@ export default function LoginScreen() {
         onPress={handleLogin}
         disabled={loading}
       >
-        {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Log In</Text>}
+        {loading ? (
+          <ActivityIndicator color="#fff" />
+        ) : (
+          <Text style={styles.buttonText}>Sign In</Text>
+        )}
+      </TouchableOpacity>
+
+      <TouchableOpacity 
+        style={styles.linkButton}
+        onPress={() => router.push('/register')}
+        disabled={loading}
+      >
+        <Text style={styles.linkText}>
+          Don't have an account? Sign up
+        </Text>
       </TouchableOpacity>
     </View>
   );
@@ -77,25 +118,33 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
   },
   title: {
-    fontSize: 28,
+    fontSize: 32,
     fontWeight: 'bold',
-    marginBottom: 20,
+    marginBottom: 8,
     textAlign: 'center',
+    color: '#333',
+  },
+  subtitle: {
+    fontSize: 16,
+    marginBottom: 32,
+    textAlign: 'center',
+    color: '#666',
   },
   input: {
-    backgroundColor: '#f5f5f5',
-    padding: 14,
-    borderRadius: 8,
+    backgroundColor: '#f8f9fa',
+    padding: 16,
+    borderRadius: 12,
     marginBottom: 16,
     fontSize: 16,
     borderWidth: 1,
-    borderColor: '#ccc',
+    borderColor: '#e9ecef',
   },
   button: {
     backgroundColor: '#007AFF',
-    paddingVertical: 14,
-    borderRadius: 8,
+    paddingVertical: 16,
+    borderRadius: 12,
     alignItems: 'center',
+    marginTop: 8,
   },
   buttonDisabled: {
     backgroundColor: '#89baff',
@@ -104,5 +153,13 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 18,
     fontWeight: '600',
+  },
+  linkButton: {
+    marginTop: 24,
+    alignItems: 'center',
+  },
+  linkText: {
+    color: '#007AFF',
+    fontSize: 16,
   },
 });
