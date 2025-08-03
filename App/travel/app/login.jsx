@@ -1,15 +1,10 @@
 import React, { useState } from 'react';
 import { 
-  View, 
-  Text, 
-  TextInput, 
-  TouchableOpacity, 
-  StyleSheet, 
-  Alert, 
-  ActivityIndicator 
+  View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ActivityIndicator 
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
-import { post } from './api.js';
+import { post } from './api.js'; // פונקציה לשליחת POST לשרת
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -23,13 +18,7 @@ export default function LoginScreen() {
       return;
     }
 
-    if (typeof post !== 'function') {
-      Alert.alert('Internal Error', 'Service is currently unavailable, please try again later.');
-      return;
-    }
-
     setLoading(true);
-
     try {
       const response = await post('auth/login', { 
         identifier: identifier.trim(),
@@ -37,30 +26,31 @@ export default function LoginScreen() {
       });
 
       if (!response) {
-        Alert.alert('Error', 'No response from server, please try again.');
+        Alert.alert('Error', 'Server did not respond. Please try again.');
+        setLoading(false);
         return;
       }
 
-      if (response.success && response.token) {
-        Alert.alert('Success', 'You have successfully logged in!');
-        router.replace('/(tabs)/home');
+      if (response.success && response.token && response.user) {
+        // שמירת הטוקן ב־AsyncStorage תחת המפתח 'token'
+        await AsyncStorage.setItem('token', response.token);
+        // אם תרצי לשמור גם את פרטי המשתמש (אופציונלי)
+        await AsyncStorage.setItem('userData', JSON.stringify(response.user));
+
+        Alert.alert('Success', 'Logged in successfully!');
+        router.replace('/home'); // נניח שהמסך הבית נקרא home
       } else {
-        if (response.message && (
-            response.message.toLowerCase().includes('invalid') ||
-            response.message.toLowerCase().includes('incorrect') ||
-            response.message.toLowerCase().includes('username') ||
-            response.message.toLowerCase().includes('password')
-          )) {
-          Alert.alert('Error', 'Invalid username or password, please try again.');
-        } else {
-          Alert.alert('Error', response.message || 'An error occurred, please try again.');
-        }
+        Alert.alert(
+          'Login Failed',
+          response.message?.toLowerCase().includes('invalid') || 
+          response.message?.toLowerCase().includes('incorrect')
+            ? 'Username or password incorrect, please try again.'
+            : (response.message || 'An error occurred, please try again.')
+        );
       }
     } catch (error) {
-      Alert.alert(
-        'Connection Error', 
-        'Could not connect to server. Please check your internet connection.'
-      );
+      Alert.alert('Connection Error', 'Could not connect to server. Check your internet.');
+      console.error(error);
     } finally {
       setLoading(false);
     }
@@ -79,7 +69,7 @@ export default function LoginScreen() {
         autoCapitalize="none"
         autoCorrect={false}
         keyboardType="default"
-        editable={true} // Always editable
+        editable={!loading}
       />
 
       <TextInput
@@ -88,7 +78,7 @@ export default function LoginScreen() {
         onChangeText={setPassword}
         style={styles.input}
         secureTextEntry
-        editable={true} // Always editable
+        editable={!loading}
       />
 
       <TouchableOpacity
@@ -96,43 +86,16 @@ export default function LoginScreen() {
         onPress={handleLogin}
         disabled={loading}
       >
-        {loading ? (
-          <ActivityIndicator color="#fff" />
-        ) : (
-          <Text style={styles.buttonText}>Sign In</Text>
-        )}
+        {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Sign In</Text>}
       </TouchableOpacity>
-
-      <TouchableOpacity style={styles.linkButton} disabled={loading}>
-        <Text style={styles.linkText}>
-          Don't have an account? Sign up on web.
-        </Text>
-      </TouchableOpacity>
-
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 24,
-    justifyContent: 'center',
-    backgroundColor: '#fff',
-  },
-  title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    marginBottom: 8,
-    textAlign: 'center',
-    color: '#333',
-  },
-  subtitle: {
-    fontSize: 16,
-    marginBottom: 32,
-    textAlign: 'center',
-    color: '#666',
-  },
+  container: { flex:1, padding: 24, justifyContent: 'center', backgroundColor: '#fff' },
+  title: { fontSize: 32, fontWeight: 'bold', marginBottom: 8, textAlign: 'center', color: '#333' },
+  subtitle: { fontSize: 16, marginBottom: 32, textAlign: 'center', color: '#666' },
   input: {
     backgroundColor: '#f8f9fa',
     padding: 16,
@@ -149,20 +112,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 8,
   },
-  buttonDisabled: {
-    backgroundColor: '#89baff',
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: '600',
-  },
-  linkButton: {
-    marginTop: 24,
-    alignItems: 'center',
-  },
-  linkText: {
-    color: '#5392d6ff',
-    fontSize: 16,
-  },
+  buttonDisabled: { backgroundColor: '#89baff' },
+  buttonText: { color: '#fff', fontSize: 18, fontWeight: '600' },
 });
