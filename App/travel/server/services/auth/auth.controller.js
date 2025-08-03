@@ -1,75 +1,55 @@
-import { insertUser, findUserByEmail } from './auth.model.js';
+import { findUserByEmail } from  './auth.model.js';;
 import jwt from 'jsonwebtoken';
+import bcrypt from 'bcrypt';
 
 const secretKey = process.env.JWT_SECRET || process.env.JWT_SECRET_KEY;
 
-export async function registerUser(req, res) {
-  const { email, password, name } = req.body;
-
-  try {
-    // Check if user already exists
-    const existing = await findUserByEmail(email);
-    if (existing) {
-      return res.status(400).json({
-        success: false,
-        message: 'User already exists',
-      });
-    }
-
-    // Insert new user into DB
-    const user = await insertUser({ email, password, name });
-
-    // Create JWT token
-    const token = jwt.sign(
-      {
-        id: user._id,
-        email: user.email,
-        name: user.name,
-      },
-      secretKey,
-      { expiresIn: '2h' }
-    );
-
-    // Respond with token + user info
-    return res.status(201).json({
-      success: true,
-      token,
-      user: {
-        id: user._id,
-        email: user.email,
-        name: user.name,
-      },
-    });
-  } catch (error) {
-    console.error('Register error:', error);
-    return res.status(500).json({
-      success: false,
-      message: 'Server error during registration',
-    });
-  }
-}
 export async function loginUser(req, res) {
   const { email, password } = req.body;
+  console.log('🔔 Login attempt:', { email });
+
+  if (!secretKey) {
+    console.error('❌ JWT secret key is not set!');
+    return res.status(500).json({
+      success: false,
+      message: 'Server misconfiguration: missing JWT secret key',
+    });
+  }
 
   try {
     const user = await findUserByEmail(email);
+    if (!user) {
+      console.log('❌ User not found for email:', email);
+      return res.status(401).json({
+        success: false,
+        message: 'User not found',
+      });
+    }
 
-    if (!user || user.password !== password) {
+    console.log('🔍 User found:', { id: user._id, email: user.email });
+
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      console.log('❌ Password mismatch for user:', email);
       return res.status(401).json({
         success: false,
         message: 'Invalid credentials',
       });
     }
 
+    console.log('✅ Password matched, generating token');
+
     const token = jwt.sign(
       {
         id: user._id,
         email: user.email,
-        name: user.name,
+        name: user.username,
       },
       secretKey,
       { expiresIn: '2h' }
     );
+
+    console.log('🎟 Token generated successfully');
 
     return res.json({
       success: true,
@@ -77,14 +57,16 @@ export async function loginUser(req, res) {
       user: {
         id: user._id,
         email: user.email,
-        name: user.name,
+        name: user.username,
+        profile_image: user.profile_image || null,
       },
     });
   } catch (error) {
-    console.error('Login error:', error);
+    console.error('🔥 Login error stack:', error);
     return res.status(500).json({
       success: false,
       message: 'Server error during login',
+      error: error.stack || error.message || error,
     });
   }
 }

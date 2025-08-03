@@ -1,70 +1,77 @@
-
 const base_url = __DEV__
-  ? "http://localhost:3001/api" // for local dev
-  : "https://pathmakers-web-app-app-travel.onrender.com/api"; // for production
-  
+  ? "http://10.0.0.2:3001/api" // ה-IP המקומי שלך
+  : "https://pathmakers-web-app-app-travel.onrender.com/api";
+
 export async function get(endpoint) {
-    try {
-        const response = await fetch(`${base_url}/${endpoint}`);
-        if (!response.ok) {
-            throw new Error('Network response was not ok');
-        }
-        return await response.json();
-    } catch (error) {
-        console.error('Error fetching data:', error);
-        throw error;
+  try {
+    const response = await fetch(`${base_url}/${endpoint}`);
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Error response text:', errorText);
+      throw new Error('Network response was not ok');
     }
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching data:', error);
+    throw error;
+  }
 }
 
 export async function post(endpoint, data) {
-    try {
-        const response = await fetch(`${base_url}/${endpoint}`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(data),
-        });
-        if (!response.ok) {
-            throw new Error('Network response was not ok');
-        }
-        return await response.json();
-    } catch (error) {
-        console.error('Error posting data:', error);
-        throw error;
+  try {
+    const response = await fetch(`${base_url}/${endpoint}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data),
+    });
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Error response text:', errorText);
+      throw new Error('Network response was not ok');
     }
+    return await response.json();
+  } catch (error) {
+    console.error('Error posting data:', error);
+    throw error;
+  }
 }
 
 export async function put(endpoint, data) {
-    try {
-        const response = await fetch(`${base_url}/${endpoint}`, {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(data),
-        });
-        if (!response.ok) {
-            throw new Error('Network response was not ok');
-        }
-        return await response.json();
-    } catch (error) {
-        console.error('Error updating data:', error);
-        throw error;
+  try {
+    const response = await fetch(`${base_url}/${endpoint}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data),
+    });
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Error response text:', errorText);
+      throw new Error('Network response was not ok');
     }
+    return await response.json();
+  } catch (error) {
+    console.error('Error updating data:', error);
+    throw error;
+  }
 }
 
 export async function del(endpoint) {
-    try {
-        const response = await fetch(`${base_url}/${endpoint}`, {
-            method: 'DELETE',
-        });
-        if (!response.ok) {
-            throw new Error('Network response was not ok');
-        }
-        return await response.json();
-    } catch (error) {
-        console.error('Error deleting data:', error);
-        throw error;
+  try {
+    const response = await fetch(`${base_url}/${endpoint}`, {
+      method: 'DELETE',
+    });
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Error response text:', errorText);
+      throw new Error('Network response was not ok');
     }
+    return await response.json();
+  } catch (error) {
+    console.error('Error deleting data:', error);
+    throw error;
+  }
 }

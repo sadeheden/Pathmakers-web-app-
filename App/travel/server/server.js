@@ -1,18 +1,20 @@
+// server.js
 import express from 'express';
-import cors from 'cors';
 import dotenv from 'dotenv';
-import authRouter from './services/auth/auth.router.js';
-
 dotenv.config();
 
-const app = express();
-const PORT = process.env.PORT || 3001;
+import { loginUser } from './services/auth/auth.controller.js'; // תקני את הנתיב לפי מיקום הקובץ שלך
 
-app.use(cors());
+const app = express();
+const port = process.env.PORT || 3000;
+
+// middleware לקריאת JSON בבקשות POST
 app.use(express.json());
 
-app.use('/api', authRouter);
+// Route ל-login
+app.post('/login', loginUser);
 
-app.listen(PORT, () => {
-  console.log(`✅ Server running on port ${PORT}`);
+// Start server
+app.listen(port, () => {
+  console.log(`Server is running on port ${port}`);
 });
