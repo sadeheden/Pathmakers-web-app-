@@ -17,17 +17,53 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
- const handleLogin = async () => {
-  if (!identifier.trim() || !password.trim()) {
-    Alert.alert('Missing Fields', 'Please enter both email/username and password');
-    return;
-  }
+  const handleLogin = async () => {
+    if (!identifier.trim() || !password) {
+      Alert.alert('Missing Fields', 'Please enter both email/username and password');
+      return;
+    }
 
-  setLoading(true);
+    if (typeof post !== 'function') {
+      Alert.alert('Internal Error', 'Service is currently unavailable, please try again later.');
+      return;
+    }
 
-  const payload = {
-    identifier: identifier.trim(),
-    password: password.trim(),
+    setLoading(true);
+
+    try {
+      const response = await post('auth/login', { 
+        identifier: identifier.trim(),
+        password 
+      });
+
+      if (!response) {
+        Alert.alert('Error', 'No response from server, please try again.');
+        return;
+      }
+
+      if (response.success && response.token) {
+        Alert.alert('Success', 'You have successfully logged in!');
+        router.replace('/(tabs)/home');
+      } else {
+        if (response.message && (
+            response.message.toLowerCase().includes('invalid') ||
+            response.message.toLowerCase().includes('incorrect') ||
+            response.message.toLowerCase().includes('username') ||
+            response.message.toLowerCase().includes('password')
+          )) {
+          Alert.alert('Error', 'Invalid username or password, please try again.');
+        } else {
+          Alert.alert('Error', response.message || 'An error occurred, please try again.');
+        }
+      }
+    } catch (error) {
+      Alert.alert(
+        'Connection Error', 
+        'Could not connect to server. Please check your internet connection.'
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
   console.log('Attempting login with:', payload);
@@ -69,7 +105,7 @@ export default function LoginScreen() {
         autoCapitalize="none"
         autoCorrect={false}
         keyboardType="default"
-        editable={!loading}
+        editable={true} // Always editable
       />
 
       <TextInput
@@ -78,7 +114,7 @@ export default function LoginScreen() {
         onChangeText={setPassword}
         style={styles.input}
         secureTextEntry
-        editable={!loading}
+        editable={true} // Always editable
       />
 
       <TouchableOpacity
@@ -93,11 +129,11 @@ export default function LoginScreen() {
         )}
       </TouchableOpacity>
 
-    <TouchableOpacity style={styles.linkButton} disabled={loading}>
-      <Text style={styles.linkText}>
-        Don't have an account? Sign up on web.
-      </Text>
-    </TouchableOpacity>
+      <TouchableOpacity style={styles.linkButton} disabled={loading}>
+        <Text style={styles.linkText}>
+          Don't have an account? Sign up on web.
+        </Text>
+      </TouchableOpacity>
 
     </View>
   );

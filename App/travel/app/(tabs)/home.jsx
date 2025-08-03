@@ -3,19 +3,18 @@ import { useRouter } from 'expo-router';
 
 export default function HomeScreen() {
   const router = useRouter();
-
   return (
     <View style={styles.container}>
-      {/* לוגו - ודא שהקובץ קיים ב־assets/logo.png */}
-     <Image source={require('../../assets/images/logo.png')} style={styles.logo} />
+      {/* Logo - make sure the file exists at assets/logo.png */}
+      <Image source={require('../../assets/images/logo.png')} style={styles.logo} />
 
-      <Text style={styles.title}>ברוכה הבאה ל־PathMakers</Text>
+      <Text style={styles.title}>Welcome to PathMakers</Text>
       <Text style={styles.subtitle}>
-        האפליקציה שמלווה אותך לאורך כל הטיול — עם לוח זמנים, מפה, מזג אוויר ועוד!
+        The app that guides you throughout your trip — with a schedule, map, weather, and more!
       </Text>
 
       <TouchableOpacity style={styles.button} onPress={() => router.push('/diary')}>
-        <Text style={styles.buttonText}>לתחילת היום שלך</Text>
+        <Text style={styles.buttonText}>Start Your Day</Text>
       </TouchableOpacity>
     </View>
   );

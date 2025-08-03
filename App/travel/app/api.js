@@ -16,7 +16,6 @@ export async function get(endpoint) {
     throw error;
   }
 }
-
 export async function post(endpoint, data) {
   try {
     const response = await fetch(`${base_url}/${endpoint}`, {
