@@ -1,4 +1,4 @@
-// server/services/db.js
+// server/services/auth/auth.db.js
 
 import { MongoClient } from 'mongodb';
 import dotenv from 'dotenv';
@@ -25,4 +25,10 @@ export async function connectDB() {
 
   console.log(`📦 Connected to database: ${dbName}`);
   return db;
+}
+
+// ✅ Add this function:
+export async function getUserCollection() {
+  const db = await connectDB();
+  return db.collection('users'); // Adjust collection name if different
 }

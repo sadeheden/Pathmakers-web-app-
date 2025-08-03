@@ -1,7 +1,7 @@
 // server/auth/auth.router.js
 
 import express from 'express';
-import { loginUser, registerUser } from './auth.controller.js';
+import { loginUser, registerUser } from './auth.controller.js'; // ✅ CORRECT
 import authenticateUser from '../middlewares/authenticateUser.js';
 
 const router = express.Router();
