@@ -3,7 +3,6 @@ import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
 
 const secretKey = process.env.JWT_SECRET || process.env.JWT_SECRET_KEY;
-
 export async function loginUser(req, res) {
   const { email, password } = req.body;
   console.log('🔔 Login attempt:', { email });
