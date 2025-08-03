@@ -1,4 +1,7 @@
-const base_url = "http://10.0.0.2:3001/api";
+import { API_URL } from './config';
+
+const base_url = API_URL;
+
 export async function get(endpoint) {
   try {
     const response = await fetch(`${base_url}/${endpoint}`);

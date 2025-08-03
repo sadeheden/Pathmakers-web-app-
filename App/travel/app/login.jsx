@@ -17,48 +17,44 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleLogin = async () => {
-    // Validate inputs
-    if (!identifier.trim() || !password) {
-      Alert.alert('Missing Fields', 'Please enter both email/username and password');
-      return;
-    }
+ const handleLogin = async () => {
+  if (!identifier.trim() || !password.trim()) {
+    Alert.alert('Missing Fields', 'Please enter both email/username and password');
+    return;
+  }
 
-    setLoading(true);
-    
-    try {
-      console.log('Attempting login with:', { identifier: identifier.trim() });
-      
-      const response = await post('auth/login', { 
-        identifier: identifier.trim(),
-        password 
-      });
+  setLoading(true);
 
-      console.log('Login response:', response);
-
-      if (response.success && response.token) {
-        Alert.alert('Success', 'Login successful!');
-        // TODO: Save token to AsyncStorage here
-        // await AsyncStorage.setItem('userToken', response.token);
-        // await AsyncStorage.setItem('userData', JSON.stringify(response.user));
-        
-        router.replace('/(tabs)/home');
-      } else {
-        Alert.alert(
-          'Login Failed', 
-          response.message || 'Invalid credentials'
-        );
-      }
-    } catch (error) {
-      console.error('Login error:', error);
-      Alert.alert(
-        'Connection Error', 
-        'Could not connect to server. Please check your internet connection.'
-      );
-    } finally {
-      setLoading(false);
-    }
+  const payload = {
+    identifier: identifier.trim(),
+    password: password.trim(),
   };
+
+  console.log('Attempting login with:', payload);
+
+  try {
+    const response = await post('auth/login', payload);
+
+    console.log('Login response:', response);
+
+    if (response.success && response.token) {
+      Alert.alert('Success', 'Login successful!');
+      // Save token to AsyncStorage if needed
+      // await AsyncStorage.setItem('userToken', response.token);
+      // await AsyncStorage.setItem('userData', JSON.stringify(response.user));
+
+      router.replace('/(tabs)/home');
+    } else {
+      Alert.alert('Login Failed', response.message || 'Invalid credentials');
+    }
+  } catch (error) {
+    console.error('Login error:', error);
+    Alert.alert('Connection Error', error.message || 'Could not connect to the server.');
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   return (
     <View style={styles.container}>
