@@ -1,7 +1,9 @@
+// app/login.jsx
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { post } from './api.js';
+
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -11,25 +13,25 @@ export default function LoginScreen() {
 
   const handleLogin = async () => {
     if (!email || !password) {
-      Alert.alert('Validation Error', 'Please fill in both email and password');
+      Alert.alert('Missing Fields', 'Please enter both email and password');
       return;
     }
 
     setLoading(true);
     try {
-   const response = await post('auth/login', { email, password });
+      const response = await post('auth/login', { email, password });
 
+      if (response.success || response.token) {
+        // Optionally: save token using AsyncStorage
+        // await AsyncStorage.setItem('token', response.token);
 
-
-      if (response.success) {
-        // Optionally store token or user info here
-        router.replace('/(tabs)/home');
+        router.replace('/(tabs)/home'); // Or wherever you want to go
       } else {
-        Alert.alert('Login Failed', response.message || 'Invalid email or password');
+        Alert.alert('Login Failed', response.message || 'Invalid credentials');
       }
-    } catch (error) {
-      console.error(error);
-      Alert.alert('Server Error', 'Something went wrong. Please try again later.');
+    } catch (err) {
+      console.error('Login error:', err);
+      Alert.alert('Error', 'Could not connect to server');
     } finally {
       setLoading(false);
     }
@@ -37,24 +39,23 @@ export default function LoginScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Welcome Back</Text>
-      <Text style={styles.subtitle}>Log in to your PathMakers account</Text>
+      <Text style={styles.title}>Login</Text>
 
       <TextInput
         placeholder="Email"
         value={email}
         onChangeText={setEmail}
-        keyboardType="email-address"
-        autoCapitalize="none"
         style={styles.input}
+        autoCapitalize="none"
+        keyboardType="email-address"
       />
 
       <TextInput
         placeholder="Password"
         value={password}
         onChangeText={setPassword}
-        secureTextEntry
         style={styles.input}
+        secureTextEntry
       />
 
       <TouchableOpacity
@@ -73,44 +74,31 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 24,
     justifyContent: 'center',
-    backgroundColor: '#f9f9f9',
+    backgroundColor: '#fff',
   },
   title: {
     fontSize: 28,
     fontWeight: 'bold',
+    marginBottom: 20,
     textAlign: 'center',
-    marginBottom: 10,
-    color: '#333',
-  },
-  subtitle: {
-    fontSize: 16,
-    textAlign: 'center',
-    marginBottom: 30,
-    color: '#666',
   },
   input: {
-    backgroundColor: '#fff',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderRadius: 10,
-    borderColor: '#ddd',
-    borderWidth: 1,
-    fontSize: 16,
+    backgroundColor: '#f5f5f5',
+    padding: 14,
+    borderRadius: 8,
     marginBottom: 16,
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    fontSize: 16,
+    borderWidth: 1,
+    borderColor: '#ccc',
   },
   button: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: '#007AFF',
     paddingVertical: 14,
-    borderRadius: 30,
+    borderRadius: 8,
     alignItems: 'center',
-    marginTop: 10,
   },
   buttonDisabled: {
-    backgroundColor: '#A5D6A7',
+    backgroundColor: '#89baff',
   },
   buttonText: {
     color: '#fff',

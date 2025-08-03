@@ -1,71 +1,45 @@
-import { findUserByEmail } from  './auth.model.js';;
-import jwt from 'jsonwebtoken';
+import { getUserCollection } from './auth.db.js';
 import bcrypt from 'bcrypt';
+import jwt from 'jsonwebtoken';
 
-const secretKey = process.env.JWT_SECRET || process.env.JWT_SECRET_KEY;
 export async function loginUser(req, res) {
   const { email, password } = req.body;
-  console.log('🔔 Login attempt:', { email });
 
-  if (!secretKey) {
-    console.error('❌ JWT secret key is not set!');
-    return res.status(500).json({
-      success: false,
-      message: 'Server misconfiguration: missing JWT secret key',
-    });
+  if (!email || !password) {
+    return res.status(400).json({ success: false, message: 'Email/Username and password are required' });
   }
 
   try {
-    const user = await findUserByEmail(email);
-    if (!user) {
-      console.log('❌ User not found for email:', email);
-      return res.status(401).json({
-        success: false,
-        message: 'User not found',
-      });
-    }
+    const users = await getUserCollection();
 
-    console.log('🔍 User found:', { id: user._id, email: user.email });
+    // 🔍 Try to find user by email OR username
+    const user = await users.findOne({
+      $or: [
+        { email: email.toLowerCase() },
+        { username: email.toLowerCase() } // If email field contains a username
+      ]
+    });
+
+    if (!user) {
+      return res.status(401).json({ success: false, message: 'User not found' });
+    }
 
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
-      console.log('❌ Password mismatch for user:', email);
-      return res.status(401).json({
-        success: false,
-        message: 'Invalid credentials',
-      });
+      return res.status(401).json({ success: false, message: 'Invalid credentials' });
     }
 
-    console.log('✅ Password matched, generating token');
+    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
 
-    const token = jwt.sign(
-      {
-        id: user._id,
-        email: user.email,
-        name: user.username,
-      },
-      secretKey,
-      { expiresIn: '2h' }
-    );
-
-    console.log('🎟 Token generated successfully');
-
-    return res.json({
+    return res.status(200).json({
       success: true,
+      message: 'Login successful',
       token,
-      user: {
-        id: user._id,
-        email: user.email,
-        name: user.username,
-        profile_image: user.profile_image || null,
-      },
+      user: { id: user._id, email: user.email, username: user.username }
     });
+
   } catch (error) {
-    console.error('🔥 Login error stack:', error);
-    return res.status(500).json({
-      success: false,
-      message: 'Server error during login',
-      error: error.stack || error.message || error,
-    });
+    console.error('Login error:', error);
+    return res.status(500).json({ success: false, message: 'Server error' });
   }
 }
