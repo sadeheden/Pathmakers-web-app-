@@ -17,7 +17,9 @@ export default function LoginScreen() {
 
     setLoading(true);
     try {
-      const response = await post('login', { email, password });
+   const response = await post('auth/login', { email, password });
+
+
 
       if (response.success) {
         // Optionally store token or user info here

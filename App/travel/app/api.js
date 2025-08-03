@@ -1,6 +1,4 @@
-const base_url = __DEV__
-  ? "http://10.0.0.2:3001/api" // ה-IP המקומי שלך
-  : "https://pathmakers-web-app-app-travel.onrender.com/api";
+const base_url = "https://pathmakers-web-app-app-travel.onrender.com/api";
 
 export async function get(endpoint) {
   try {
