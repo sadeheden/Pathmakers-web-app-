@@ -97,15 +97,12 @@ export default function LoginScreen() {
         )}
       </TouchableOpacity>
 
-      <TouchableOpacity 
-        style={styles.linkButton}
-        onPress={() => router.push('/register')}
-        disabled={loading}
-      >
-        <Text style={styles.linkText}>
-          Don't have an account? Sign up
-        </Text>
-      </TouchableOpacity>
+    <TouchableOpacity style={styles.linkButton} disabled={loading}>
+      <Text style={styles.linkText}>
+        Don't have an account? Sign up on web.
+      </Text>
+    </TouchableOpacity>
+
     </View>
   );
 }
@@ -159,7 +156,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   linkText: {
-    color: '#007AFF',
+    color: '#5392d6ff',
     fontSize: 16,
   },
 });
