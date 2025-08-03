@@ -1,53 +1,52 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, Image, ActivityIndicator, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 
-// פונקציה שמייצרת מזג אוויר מזויף לעיר לפי השם
+// Function that generates fake weather for a city by name
 function generateFakeWeather(cityName) {
   const icons = ['01d', '02d', '03d', '09d', '10d', '11d', '13d'];
   const descriptions = [
-    'שמשי ונעים',
-    'מעונן חלקית',
-    'גשום קל',
-    'סוער',
-    'מעונן',
-    'גשם כבד',
-    'שלג קל',
+    'Sunny and pleasant',
+    'Partly cloudy',
+    'Light rain',
+    'Stormy',
+    'Cloudy',
+    'Heavy rain',
+    'Light snow',
   ];
   
   const hash = cityName
     ? cityName.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0)
     : 0;
   
-  const temp = 15 + (hash % 20); // בין 15 ל-35 מעלות
+  const temp = 15 + (hash % 20); // between 15 and 35 degrees
   const icon = icons[hash % icons.length];
   const description = descriptions[hash % descriptions.length];
   
   return { temp, icon, description };
 }
 
-// פונקציה שמייצרת תחזית שבועית
+// Function that generates a weekly forecast
 function generateWeeklyForecast(cityName) {
-  const daysOfWeek = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
+  const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
   const forecast = [];
   
   for (let i = 0; i < 7; i++) {
-    // יוצרים hash שונה לכל יום
     const dayHash = cityName ? cityName.split('').reduce((acc, char) => acc + char.charCodeAt(0) + i * 123, 0) : i * 123;
     
     const icons = ['01d', '02d', '03d', '09d', '10d', '11d', '13d', '04d'];
     const descriptions = [
-      'שמשי ונעים',
-      'מעונן חלקית', 
-      'גשום קל',
-      'סוער',
-      'מעונן',
-      'גשם כבד',
-      'שלג קל',
-      'מעונן כבד'
+      'Sunny and pleasant',
+      'Partly cloudy', 
+      'Light rain',
+      'Stormy',
+      'Cloudy',
+      'Heavy rain',
+      'Light snow',
+      'Heavy clouds'
     ];
     
-    const minTemp = 10 + (dayHash % 15); // 10-25
-    const maxTemp = minTemp + 5 + (dayHash % 10); // +5-15 מעל המינימום
+    const minTemp = 10 + (dayHash % 15);
+    const maxTemp = minTemp + 5 + (dayHash % 10);
     const icon = icons[dayHash % icons.length];
     const description = descriptions[dayHash % descriptions.length];
     
@@ -56,8 +55,8 @@ function generateWeeklyForecast(cityName) {
     futureDate.setDate(today.getDate() + i);
     
     forecast.push({
-      day: i === 0 ? 'היום' : daysOfWeek[futureDate.getDay()],
-      date: futureDate.toLocaleDateString('he-IL'),
+      day: i === 0 ? 'Today' : daysOfWeek[futureDate.getDay()],
+      date: futureDate.toLocaleDateString('en-US'),
       minTemp,
       maxTemp,
       icon,
@@ -68,13 +67,14 @@ function generateWeeklyForecast(cityName) {
   return forecast;
 }
 
-// פונקציה שמדמה קבלת מיקום עם ערים ישראליות
+// Function simulating location permission with a list of cities
 function simulateLocationPermission() {
   return new Promise((resolve) => {
     setTimeout(() => {
       const cities = [
-        'תל אביב', 'ירושלים', 'חיפה', 'באר שבע', 'נתניה', 
-        'פתח תקווה', 'אשדוד', 'ראשון לציון', 'רמת גן', 'בני ברק'
+        'Paris', 'London', 'New York', 'Tokyo', 'Rome', 'Los Angeles', 
+        'Berlin', 'Barcelona', 'Dubai', 'Amsterdam', 'San Francisco', 
+        'Madrid', 'Seoul'
       ];
       const randomCity = cities[Math.floor(Math.random() * cities.length)];
       resolve({ granted: true, city: randomCity });
@@ -97,7 +97,7 @@ export default function WeatherByLocation() {
       const result = await simulateLocationPermission();
       
       if (!result.granted) {
-        setError('אין הרשאה לגישה למיקום. נסה שוב או הכנס עיר באופן ידני.');
+        setError('Location permission denied. Please try again or enter a city manually.');
         setLoading(false);
         return;
       }
@@ -112,7 +112,7 @@ export default function WeatherByLocation() {
       setWeeklyForecast(forecast);
       
     } catch (error) {
-      setError('לא ניתן לקבל את המיקום או מזג האוויר.');
+      setError('Unable to get location or weather data.');
     } finally {
       setLoading(false);
     }
@@ -126,7 +126,7 @@ export default function WeatherByLocation() {
     return (
       <View style={styles.centered}>
         <ActivityIndicator size="large" color="#1E90FF" />
-        <Text style={styles.loadingText}>טוען תחזית מזג אוויר שבועית...</Text>
+        <Text style={styles.loadingText}>Loading weekly weather forecast...</Text>
       </View>
     );
   }
@@ -137,7 +137,7 @@ export default function WeatherByLocation() {
         <Text style={styles.errorIcon}>⚠️</Text>
         <Text style={styles.errorText}>{error}</Text>
         <TouchableOpacity onPress={requestLocation} style={styles.retryButton}>
-          <Text style={styles.retryButtonText}>נסה שוב</Text>
+          <Text style={styles.retryButtonText}>Try Again</Text>
         </TouchableOpacity>
       </View>
     );
@@ -146,16 +146,16 @@ export default function WeatherByLocation() {
   if (!currentWeather || !weeklyForecast) {
     return (
       <View style={styles.centered}>
-        <Text style={styles.infoText}>לא נמצא מידע על מזג האוויר.</Text>
+        <Text style={styles.infoText}>No weather information found.</Text>
       </View>
     );
   }
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      {/* מזג אוויר נוכחי */}
+      {/* Current Weather */}
       <View style={styles.currentWeatherContainer}>
-        <Text style={styles.title}>מזג אוויר ב־{city}</Text>
+        <Text style={styles.title}>Weather in {city}</Text>
         <View style={styles.weatherBox}>
           <Image
             source={{ uri: `https://openweathermap.org/img/wn/${currentWeather.icon}@4x.png` }}
@@ -168,9 +168,9 @@ export default function WeatherByLocation() {
         </View>
       </View>
 
-      {/* תחזית שבועית */}
+      {/* Weekly Forecast */}
       <View style={styles.weeklyForecastContainer}>
-        <Text style={styles.subTitle}>תחזית ל-7 ימים</Text>
+        <Text style={styles.subTitle}>7-Day Forecast</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.weeklyScroll}>
           {weeklyForecast.map((day, index) => (
             <View key={index} style={styles.dayContainer}>
@@ -191,12 +191,12 @@ export default function WeatherByLocation() {
         </ScrollView>
       </View>
 
-      {/* כפתור עדכון */}
+      {/* Update Button */}
       <TouchableOpacity onPress={requestLocation} style={styles.updateButton}>
-        <Text style={styles.updateButtonText}>🔄 עדכן מיקום</Text>
+        <Text style={styles.updateButtonText}>🔄 Update Location</Text>
       </TouchableOpacity>
 
-      <Text style={styles.note}>*תחזית מדומה למטרות הדגמה</Text>
+      <Text style={styles.note}>*Fake forecast for demonstration purposes</Text>
     </ScrollView>
   );
 }
