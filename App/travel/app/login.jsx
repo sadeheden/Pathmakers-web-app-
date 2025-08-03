@@ -63,31 +63,6 @@ export default function LoginScreen() {
       );
     } finally {
       setLoading(false);
-    }
-  };
-
-  console.log('Attempting login with:', payload);
-
-  try {
-    const response = await post('auth/login', payload);
-
-    console.log('Login response:', response);
-
-    if (response.success && response.token) {
-      Alert.alert('Success', 'Login successful!');
-      // Save token to AsyncStorage if needed
-      // await AsyncStorage.setItem('userToken', response.token);
-      // await AsyncStorage.setItem('userData', JSON.stringify(response.user));
-
-      router.replace('/(tabs)/home');
-    } else {
-      Alert.alert('Login Failed', response.message || 'Invalid credentials');
-    }
-  } catch (error) {
-    console.error('Login error:', error);
-    Alert.alert('Connection Error', error.message || 'Could not connect to the server.');
-  } finally {
-    setLoading(false);
   }
 };
 
@@ -138,7 +113,6 @@ export default function LoginScreen() {
     </View>
   );
 }
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
