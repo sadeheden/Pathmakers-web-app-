@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { View, Text, Image, ActivityIndicator, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 
 // פונקציה שמייצרת מזג אוויר מזויף לעיר לפי השם
 function generateFakeWeather(cityName) {
@@ -123,116 +124,241 @@ export default function WeatherByLocation() {
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-96 bg-gradient-to-br from-blue-50 to-sky-100 p-8 rounded-xl shadow-lg">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mb-4"></div>
-        <p className="text-lg text-gray-700">טוען תחזית מזג אוויר שבועית...</p>
-      </div>
+      <View style={styles.centered}>
+        <ActivityIndicator size="large" color="#1E90FF" />
+        <Text style={styles.loadingText}>טוען תחזית מזג אוויר שבועית...</Text>
+      </View>
     );
   }
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-96 bg-gradient-to-br from-red-50 to-pink-100 p-8 rounded-xl shadow-lg">
-        <div className="text-red-500 text-6xl mb-4">⚠️</div>
-        <p className="text-lg text-red-700 text-center mb-4">{error}</p>
-        <button 
-          onClick={requestLocation}
-          className="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-6 rounded-lg transition-colors"
-        >
-          נסה שוב
-        </button>
-      </div>
+      <View style={[styles.centered, styles.errorContainer]}>
+        <Text style={styles.errorIcon}>⚠️</Text>
+        <Text style={styles.errorText}>{error}</Text>
+        <TouchableOpacity onPress={requestLocation} style={styles.retryButton}>
+          <Text style={styles.retryButtonText}>נסה שוב</Text>
+        </TouchableOpacity>
+      </View>
     );
   }
 
   if (!currentWeather || !weeklyForecast) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-96 bg-gradient-to-br from-gray-50 to-gray-100 p-8 rounded-xl shadow-lg">
-        <p className="text-lg text-gray-700">לא נמצא מידע על מזג האוויר.</p>
-      </div>
+      <View style={styles.centered}>
+        <Text style={styles.infoText}>לא נמצא מידע על מזג האוויר.</Text>
+      </View>
     );
   }
 
   return (
-    <div className="bg-gradient-to-br from-blue-50 via-sky-50 to-indigo-100 p-6 rounded-xl shadow-lg max-w-4xl mx-auto">
+    <ScrollView contentContainerStyle={styles.container}>
       {/* מזג אוויר נוכחי */}
-      <div className="text-center mb-8">
-        <h1 className="text-3xl font-bold text-gray-800 mb-4">
-          מזג אוויר ב־{city}
-        </h1>
-        
-        <div className="bg-white/70 backdrop-blur-sm rounded-2xl p-6 shadow-md mb-4">
-          <div className="flex items-center justify-center gap-4">
-            <img
-              src={`https://openweathermap.org/img/wn/${currentWeather.icon}@4x.png`}
-              alt="weather icon"
-              className="w-20 h-20"
-            />
-            <div>
-              <p className="text-4xl font-bold text-blue-600">
-                {currentWeather.temp.toFixed(1)}°C
-              </p>
-              <p className="text-lg text-gray-700">
-                {currentWeather.description}
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
+      <View style={styles.currentWeatherContainer}>
+        <Text style={styles.title}>מזג אוויר ב־{city}</Text>
+        <View style={styles.weatherBox}>
+          <Image
+            source={{ uri: `https://openweathermap.org/img/wn/${currentWeather.icon}@4x.png` }}
+            style={styles.weatherIcon}
+          />
+          <View>
+            <Text style={styles.tempText}>{currentWeather.temp.toFixed(1)}°C</Text>
+            <Text style={styles.descText}>{currentWeather.description}</Text>
+          </View>
+        </View>
+      </View>
 
       {/* תחזית שבועית */}
-      <div className="mb-6">
-        <h2 className="text-2xl font-bold text-gray-800 mb-4 text-center">תחזית ל-7 ימים</h2>
-        <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-4 shadow-lg border border-white/20">
-          <div className="flex justify-between gap-2 overflow-x-auto">
-            {weeklyForecast.map((day, index) => (
-              <div 
-                key={index}
-                className="text-center flex-1 min-w-[80px] p-3 rounded-xl transition-all duration-300 hover:bg-gradient-to-br hover:from-blue-50 hover:to-purple-50 hover:transform hover:-translate-y-1 cursor-pointer"
-              >
-                <div className="font-bold text-sm text-gray-800 mb-2">
-                  {day.day}
-                </div>
-                
-                <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center shadow-md">
-                  <img
-                    src={`https://openweathermap.org/img/wn/${day.icon}@2x.png`}
-                    alt="weather icon"
-                    className="w-10 h-10"
-                  />
-                </div>
-                
-                <div className="mb-2">
-                  <div className="font-bold text-blue-600 text-lg">
-                    {day.maxTemp}°
-                  </div>
-                  <div className="text-gray-500 text-sm">
-                    {day.minTemp}°
-                  </div>
-                </div>
-                
-                <div className="text-xs text-gray-600 leading-tight px-1">
-                  {day.description}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
+      <View style={styles.weeklyForecastContainer}>
+        <Text style={styles.subTitle}>תחזית ל-7 ימים</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.weeklyScroll}>
+          {weeklyForecast.map((day, index) => (
+            <View key={index} style={styles.dayContainer}>
+              <Text style={styles.dayText}>{day.day}</Text>
+              <View style={styles.iconBackground}>
+                <Image
+                  source={{ uri: `https://openweathermap.org/img/wn/${day.icon}@2x.png` }}
+                  style={styles.dayIcon}
+                />
+              </View>
+              <View style={styles.temps}>
+                <Text style={styles.maxTemp}>{day.maxTemp}°</Text>
+                <Text style={styles.minTemp}>{day.minTemp}°</Text>
+              </View>
+              <Text style={styles.dayDesc}>{day.description}</Text>
+            </View>
+          ))}
+        </ScrollView>
+      </View>
 
-      {/* כפתורים */}
-      <div className="text-center">
-        <button 
-          onClick={requestLocation}
-          className="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-200 transform hover:scale-105 shadow-md mb-4"
-        >
-          🔄 עדכן מיקום
-        </button>
-        
-        <p className="text-sm text-gray-500">
-          *תחזית מדומה למטרות הדגמה
-        </p>
-      </div>
-    </div>
+      {/* כפתור עדכון */}
+      <TouchableOpacity onPress={requestLocation} style={styles.updateButton}>
+        <Text style={styles.updateButtonText}>🔄 עדכן מיקום</Text>
+      </TouchableOpacity>
+
+      <Text style={styles.note}>*תחזית מדומה למטרות הדגמה</Text>
+    </ScrollView>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    padding: 16,
+    backgroundColor: '#dbeafe',
+    flexGrow: 1,
+    alignItems: 'center',
+  },
+  centered: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#555',
+  },
+  errorContainer: {
+    backgroundColor: '#fee2e2',
+    borderRadius: 16,
+    padding: 20,
+    width: '90%',
+  },
+  errorIcon: {
+    fontSize: 64,
+    color: '#dc2626',
+    marginBottom: 12,
+  },
+  errorText: {
+    fontSize: 18,
+    color: '#b91c1c',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  retryButton: {
+    backgroundColor: '#2563eb',
+    paddingVertical: 12,
+    paddingHorizontal: 30,
+    borderRadius: 12,
+    alignSelf: 'center',
+  },
+  retryButtonText: {
+    color: '#fff',
+    fontSize: 16,
+  },
+  infoText: {
+    fontSize: 16,
+    color: '#555',
+  },
+  currentWeatherContainer: {
+    marginBottom: 32,
+    alignItems: 'center',
+    width: '100%',
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    marginBottom: 12,
+    color: '#1e40af',
+  },
+  weatherBox: {
+    backgroundColor: 'rgba(255,255,255,0.8)',
+    padding: 20,
+    borderRadius: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 4,
+    width: '100%',
+  },
+  weatherIcon: {
+    width: 100,
+    height: 100,
+  },
+  tempText: {
+    fontSize: 40,
+    fontWeight: 'bold',
+    color: '#2563eb',
+  },
+  descText: {
+    fontSize: 18,
+    marginTop: 6,
+    color: '#374151',
+  },
+  weeklyForecastContainer: {
+    width: '100%',
+    marginBottom: 32,
+  },
+  subTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#1e40af',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  weeklyScroll: {
+    paddingLeft: 8,
+  },
+  dayContainer: {
+    backgroundColor: 'rgba(255,255,255,0.9)',
+    padding: 12,
+    borderRadius: 16,
+    marginRight: 12,
+    alignItems: 'center',
+    width: 90,
+  },
+  dayText: {
+    fontWeight: 'bold',
+    marginBottom: 8,
+    color: '#1e40af',
+  },
+  iconBackground: {
+    backgroundColor: '#3b82f6',
+    borderRadius: 50,
+    padding: 8,
+    marginBottom: 8,
+  },
+  dayIcon: {
+    width: 40,
+    height: 40,
+  },
+  temps: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 6,
+    marginBottom: 4,
+  },
+  maxTemp: {
+    fontWeight: 'bold',
+    color: '#2563eb',
+  },
+  minTemp: {
+    color: '#6b7280',
+  },
+  dayDesc: {
+    fontSize: 12,
+    color: '#374151',
+    textAlign: 'center',
+  },
+  updateButton: {
+    backgroundColor: '#2563eb',
+    paddingVertical: 14,
+    paddingHorizontal: 40,
+    borderRadius: 12,
+    marginBottom: 12,
+  },
+  updateButtonText: {
+    color: 'white',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  note: {
+    fontSize: 12,
+    color: '#6b7280',
+    textAlign: 'center',
+  },
+});
