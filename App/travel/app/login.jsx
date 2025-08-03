@@ -18,39 +18,45 @@ export default function LoginScreen() {
   const [loading, setLoading] = useState(false);
 
   const handleLogin = async () => {
-    // Validate inputs
     if (!identifier.trim() || !password) {
       Alert.alert('Missing Fields', 'Please enter both email/username and password');
       return;
     }
 
+    if (typeof post !== 'function') {
+      Alert.alert('Internal Error', 'Service is currently unavailable, please try again later.');
+      return;
+    }
+
     setLoading(true);
-    
+
     try {
-      console.log('Attempting login with:', { identifier: identifier.trim() });
-      
       const response = await post('auth/login', { 
         identifier: identifier.trim(),
         password 
       });
 
-      console.log('Login response:', response);
+      if (!response) {
+        Alert.alert('Error', 'No response from server, please try again.');
+        return;
+      }
 
       if (response.success && response.token) {
-        Alert.alert('Success', 'Login successful!');
-        // TODO: Save token to AsyncStorage here
-        // await AsyncStorage.setItem('userToken', response.token);
-        // await AsyncStorage.setItem('userData', JSON.stringify(response.user));
-        
+        Alert.alert('Success', 'You have successfully logged in!');
         router.replace('/(tabs)/home');
       } else {
-        Alert.alert(
-          'Login Failed', 
-          response.message || 'Invalid credentials'
-        );
+        if (response.message && (
+            response.message.toLowerCase().includes('invalid') ||
+            response.message.toLowerCase().includes('incorrect') ||
+            response.message.toLowerCase().includes('username') ||
+            response.message.toLowerCase().includes('password')
+          )) {
+          Alert.alert('Error', 'Invalid username or password, please try again.');
+        } else {
+          Alert.alert('Error', response.message || 'An error occurred, please try again.');
+        }
       }
     } catch (error) {
-      console.error('Login error:', error);
       Alert.alert(
         'Connection Error', 
         'Could not connect to server. Please check your internet connection.'
@@ -73,7 +79,7 @@ export default function LoginScreen() {
         autoCapitalize="none"
         autoCorrect={false}
         keyboardType="default"
-        editable={!loading}
+        editable={true} // Always editable
       />
 
       <TextInput
@@ -82,7 +88,7 @@ export default function LoginScreen() {
         onChangeText={setPassword}
         style={styles.input}
         secureTextEntry
-        editable={!loading}
+        editable={true} // Always editable
       />
 
       <TouchableOpacity
@@ -97,11 +103,11 @@ export default function LoginScreen() {
         )}
       </TouchableOpacity>
 
-    <TouchableOpacity style={styles.linkButton} disabled={loading}>
-      <Text style={styles.linkText}>
-        Don't have an account? Sign up on web.
-      </Text>
-    </TouchableOpacity>
+      <TouchableOpacity style={styles.linkButton} disabled={loading}>
+        <Text style={styles.linkText}>
+          Don't have an account? Sign up on web.
+        </Text>
+      </TouchableOpacity>
 
     </View>
   );
