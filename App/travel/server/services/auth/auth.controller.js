@@ -1,8 +1,16 @@
-import { insertUser, findUserByEmail } from './auth.model.js';
+import { insertUser, findUserByEmail,getUserCollection  } from './auth.model.js';
 import jwt from 'jsonwebtoken';
 
 const secretKey = process.env.JWT_SECRET || process.env.JWT_SECRET_KEY;
-
+export async function getAllUsers(req, res) {
+  try {
+    const usersCol = await getUserCollection();
+    const users = await usersCol.find({}).toArray();
+    res.json(users);
+  } catch (error) {
+    console.error('Error fetching users:', error);
+    res.status(500).json({ message: 'Failed to fetch users' });
+  }}
 export async function registerUser(req, res) {
   const { email, password, name } = req.body;
 
