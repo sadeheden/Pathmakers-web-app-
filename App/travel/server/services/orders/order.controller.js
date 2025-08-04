@@ -4,11 +4,12 @@ import { connectDB } from '../auth/auth.db.js';
 
 function cleanId(id) {
   try {
-    return new ObjectId(id);
+    return new ObjectId(String(id)); // ✅ always ensure it's a string
   } catch {
     return null;
   }
 }
+
 
 export async function createOrder(req, res) {
   if (!req.user?.id && !req.user?.userId) return res.status(401).json({ message: 'Unauthorized' });
@@ -64,12 +65,13 @@ export async function getUserOrders(req, res) {
   }
 
   try {
-    const userId = req.user.id || req.user.userId;
+const userId = req.user.id;
     const db = await connectDB();
 
-    const orders = await db.collection('orders')
-      .find({ user_id: new ObjectId(userId) })
-      .toArray();
+   const orders = await db.collection('orders')
+  .find({ user_id: new ObjectId(String(userId)) }) // ✅ fix here
+  .toArray();
+
 
     const cityCol = db.collection('city');
     const flightCol = db.collection('flights');

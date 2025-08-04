@@ -47,6 +47,8 @@ app.use(express.json());
 app.use('/api/auth', authRouter);
 app.use('/api/orders', orderRouter);
 
+// server.js or routes/order.router.js
+app.use('/api/orders', authenticateUser);  
 
 // בסיסי
 app.get('/', (req, res) => {
