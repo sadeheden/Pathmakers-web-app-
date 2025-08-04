@@ -12,9 +12,8 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 
-// פונקציה עם timeout עבור fetch
 function fetchWithTimeout(resource, options = {}) {
-  const { timeout = 10000 } = options; // ברירת מחדל 10 שניות
+  const { timeout = 10000 } = options;
 
   return Promise.race([
     fetch(resource, options),
@@ -62,8 +61,13 @@ export default function Profile() {
         }
 
         const data = await response.json();
-        console.log('📦 Orders received:', data.length);
-        setOrders(data || []);
+        console.log('📦 Orders received:', data);
+
+        if (!data.success) {
+          throw new Error(data.message || 'Failed to load orders');
+        }
+
+        setOrders(data.orders || []);
       } catch (err) {
         console.error('🔥 Load data error:', err);
         Alert.alert('Error', err.message || 'Failed to load data');
@@ -190,4 +194,3 @@ const styles = StyleSheet.create({
     fontSize: 18,
   },
 });
-
