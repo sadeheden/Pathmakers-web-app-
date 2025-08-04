@@ -11,11 +11,15 @@ import {
   Platform,
   KeyboardAvoidingView,
   ScrollView,
+  Image,
 } from 'react-native';
 
-import { Picker } from '@react-native-picker/picker';  // ייבוא תקין של Picker
+import { Picker } from '@react-native-picker/picker';
+import { useNavigation } from '@react-navigation/native';
 
-// טבלת שערי המרה לדוגמה לכל עיר עם מטבעות מקומיים (שערים פיקטיביים)
+// הכנס כאן את הלוגו שלך
+const logo = require('../assets/images/logo.png');
+
 const exchangeRates = {
   Paris: { Euro: 1, USD: 1.1 },
   London: { GBP: 1, USD: 1.25 },
@@ -36,6 +40,8 @@ const exchangeRates = {
 const cities = Object.keys(exchangeRates);
 
 const CurrencyConverter = () => {
+  const navigation = useNavigation();
+
   const [amount, setAmount] = useState('');
   const [selectedCity, setSelectedCity] = useState(cities[0]);
   const [selectedCurrency, setSelectedCurrency] = useState(
@@ -44,8 +50,11 @@ const CurrencyConverter = () => {
   const [converted, setConverted] = useState('');
   const [isConverting, setIsConverting] = useState(false);
 
-  // תיקון: useRef לשמירת ערך האנימציה בין רינדורים
   const fadeAnim = useRef(new Animated.Value(0)).current;
+
+  const goHome = () => {
+    navigation.navigate('(tabs)', { screen: 'Home' });
+  };
 
   const handleConvert = () => {
     const numericAmount = parseFloat(amount);
@@ -101,9 +110,14 @@ const CurrencyConverter = () => {
         contentContainerStyle={styles.contentContainer}
         keyboardShouldPersistTaps="handled"
       >
+        {/* לוגו לחיצה לניווט הביתה */}
+        <TouchableOpacity onPress={goHome} style={styles.logoTouchable}>
+          <Image source={logo} style={styles.logo} resizeMode="contain" />
+        </TouchableOpacity>
+
         <Text style={styles.title}>💱 Currency Converter</Text>
 
-        <Text style={styles.label}>🏙️ בחר עיר:</Text>
+        <Text style={styles.label}>🏙️ Select City:</Text>
         <View style={styles.pickerWrapper}>
           <Picker
             selectedValue={selectedCity}
@@ -116,7 +130,7 @@ const CurrencyConverter = () => {
           </Picker>
         </View>
 
-        <Text style={styles.label}>💰 בחר מטבע:</Text>
+        <Text style={styles.label}>💰 Select Currency:</Text>
         <View style={styles.pickerWrapper}>
           <Picker
             selectedValue={selectedCurrency}
@@ -129,7 +143,7 @@ const CurrencyConverter = () => {
           </Picker>
         </View>
 
-        <Text style={styles.label}>💵 הכנס סכום ב-USD:</Text>
+        <Text style={styles.label}>💵 Enter Amount in USD:</Text>
         <TextInput
           style={styles.input}
           placeholder="0.00"
@@ -146,7 +160,7 @@ const CurrencyConverter = () => {
           {isConverting ? (
             <ActivityIndicator color="#fff" size="small" />
           ) : (
-            <Text style={styles.buttonText}>🔄 המר מטבע</Text>
+            <Text style={styles.buttonText}>🔄 Convert Currency</Text>
           )}
         </TouchableOpacity>
 
@@ -156,7 +170,7 @@ const CurrencyConverter = () => {
               ${amount} USD = {converted} {selectedCurrency}
             </Text>
             <Text style={styles.infoText}>
-              שער החליפין ב-{selectedCity}: 1 USD = {exchangeRates[selectedCity][selectedCurrency]} {selectedCurrency}
+              Exchange rate in {selectedCity}: 1 USD = {exchangeRates[selectedCity][selectedCurrency]} {selectedCurrency}
             </Text>
           </Animated.View>
         )}
@@ -170,12 +184,21 @@ export default CurrencyConverter;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f0f4ff',
+    backgroundColor: '#ffffffff',
   },
   contentContainer: {
     flexGrow: 1,
     justifyContent: 'center',
     padding: 24,
+  },
+  logoTouchable: {
+    width: 35,
+    height: 30,
+    marginBottom: 60,
+  },
+  logo: {
+    width: '100%',
+    height: '100%',
   },
   title: {
     fontSize: 28,
@@ -233,7 +256,7 @@ const styles = StyleSheet.create({
   resultText: {
     fontSize: 32,
     fontWeight: 'bold',
-    color: '#003366', // כחול כהה יותר
+    color: '#003366',
     textAlign: 'center',
     marginBottom: 8,
   },

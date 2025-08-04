@@ -465,22 +465,21 @@ export default function HomeScreen() {
             activeOpacity={0.8}
             onPress={() => navigation.navigate('calculator')}
           >
-            <Text style={styles.bottomButtonText}>💱 מחשבון המרה</Text>
+            <Text style={styles.bottomButtonText}>💱 Currency Converter</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.bottomButton}
             activeOpacity={0.8}
-            onPress={() => navigation.navigate('Translate')}
+            onPress={() => navigation.navigate('Support')}
           >
-            <Text style={styles.bottomButtonText}>🌐 תרגום</Text>
+            <Text style={styles.bottomButtonText}>🌐 Support</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
     </View>
   );
 }
-
 const styles = StyleSheet.create({
   gradientBackground: {
     flex: 1,
@@ -511,7 +510,7 @@ const styles = StyleSheet.create({
   backgroundColor: '#fff',
   borderTopWidth: 1,
   borderTopColor: '#ddd',
-  marginTop: 20,
+  marginTop: 40,
 },
 
 bottomButton: {
