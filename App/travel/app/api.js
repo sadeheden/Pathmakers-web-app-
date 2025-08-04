@@ -1,4 +1,5 @@
 const base_url = "https://pathmakers-web-app-app-travel.onrender.com/api";
+
 export async function get(endpoint) {
   try {
     const response = await fetch(`${base_url}/${endpoint}`);
