@@ -14,12 +14,9 @@ import {
   Image,
 } from 'react-native';
 
-import { Picker } from '@react-native-picker/picker';
-import { useNavigation } from '@react-navigation/native';
+import { Picker } from '@react-native-picker/picker';  // ייבוא תקין של Picker
 
-// הכנס כאן את הלוגו שלך
-const logo = require('../assets/images/logo.png');
-
+// טבלת שערי המרה לדוגמה לכל עיר עם מטבעות מקומיים (שערים פיקטיביים)
 const exchangeRates = {
   Paris: { Euro: 1, USD: 1.1 },
   London: { GBP: 1, USD: 1.25 },
@@ -56,40 +53,45 @@ const CurrencyConverter = () => {
     navigation.navigate('(tabs)', { screen: 'Home' });
   };
 
-  const handleConvert = () => {
-    const numericAmount = parseFloat(amount);
-    if (!isNaN(numericAmount) && numericAmount > 0) {
-      setIsConverting(true);
-      setConverted('');
-      setTimeout(() => {
-        const rate = exchangeRates[selectedCity][selectedCurrency];
-        const result = numericAmount * rate;
-        setConverted(result.toFixed(2));
-        setIsConverting(false);
-        fadeIn();
-      }, 800);
-    } else {
-      setConverted('');
-    }
-  };
-
-  const onCityChange = (city) => {
-    setSelectedCity(city);
-    const firstCurrency = Object.keys(exchangeRates[city])[0];
-    setSelectedCurrency(firstCurrency);
+ const handleConvert = () => {
+  const numericAmount = parseFloat(amount);
+  if (!isNaN(numericAmount) && numericAmount > 0) {
+    setIsConverting(true);
     setConverted('');
-  };
+    setTimeout(() => {
+      const rate = exchangeRates[selectedCity][selectedCurrency];
+      const result = numericAmount / rate; // Convert *to USD*
+      setConverted(result.toFixed(2));
+      setIsConverting(false);
+      fadeIn();
+    }, 800);
+  } else {
+    setConverted('');
+  }
+};
 
-  useEffect(() => {
-    if (amount && !isNaN(parseFloat(amount))) {
-      const timeoutId = setTimeout(() => {
-        handleConvert();
-      }, 500);
-      return () => clearTimeout(timeoutId);
-    } else {
-      setConverted('');
-    }
-  }, [amount, selectedCity, selectedCurrency]);
+
+const onCityChange = (city) => {
+  setSelectedCity(city);
+  const firstCurrency = Object.keys(exchangeRates[city])[0];
+  setSelectedCurrency(firstCurrency);
+
+  // trigger conversion if amount already entered
+  if (amount && !isNaN(parseFloat(amount))) handleConvert();
+};
+
+
+useEffect(() => {
+  if (amount && !isNaN(parseFloat(amount))) {
+    const timeoutId = setTimeout(() => {
+      handleConvert();
+    }, 500);
+    return () => clearTimeout(timeoutId);
+  } else {
+    setConverted('');
+  }
+}, [amount, selectedCity, selectedCurrency]);
+
 
   const fadeIn = () => {
     fadeAnim.setValue(0);
@@ -117,7 +119,7 @@ const CurrencyConverter = () => {
 
         <Text style={styles.title}>💱 Currency Converter</Text>
 
-        <Text style={styles.label}>🏙️ Select City:</Text>
+        <Text style={styles.label}>🏙️ בחר עיר:</Text>
         <View style={styles.pickerWrapper}>
           <Picker
             selectedValue={selectedCity}
@@ -130,7 +132,7 @@ const CurrencyConverter = () => {
           </Picker>
         </View>
 
-        <Text style={styles.label}>💰 Select Currency:</Text>
+        <Text style={styles.label}>💰 בחר מטבע:</Text>
         <View style={styles.pickerWrapper}>
           <Picker
             selectedValue={selectedCurrency}
@@ -143,7 +145,7 @@ const CurrencyConverter = () => {
           </Picker>
         </View>
 
-        <Text style={styles.label}>💵 Enter Amount in USD:</Text>
+        <Text style={styles.label}>💵 הכנס סכום ב-USD:</Text>
         <TextInput
           style={styles.input}
           placeholder="0.00"
@@ -160,7 +162,7 @@ const CurrencyConverter = () => {
           {isConverting ? (
             <ActivityIndicator color="#fff" size="small" />
           ) : (
-            <Text style={styles.buttonText}>🔄 Convert Currency</Text>
+            <Text style={styles.buttonText}>🔄 המר מטבע</Text>
           )}
         </TouchableOpacity>
 
@@ -170,7 +172,7 @@ const CurrencyConverter = () => {
               ${amount} USD = {converted} {selectedCurrency}
             </Text>
             <Text style={styles.infoText}>
-              Exchange rate in {selectedCity}: 1 USD = {exchangeRates[selectedCity][selectedCurrency]} {selectedCurrency}
+              שער החליפין ב-{selectedCity}: 1 USD = {exchangeRates[selectedCity][selectedCurrency]} {selectedCurrency}
             </Text>
           </Animated.View>
         )}
@@ -212,17 +214,38 @@ const styles = StyleSheet.create({
     color: '#1e40af',
     marginBottom: 8,
   },
-  pickerWrapper: {
-    backgroundColor: '#fff',
-    borderRadius: 10,
-    marginBottom: 160,
-    borderWidth: 1,
-    borderColor: '#d1d5db',
-  },
-  picker: {
-    height: 50,
-    width: '100%',
-  },
+  pickerItem: {
+  color: '#090e16ff', // Dark readable text
+  fontSize: 16,
+},
+
+ pickerWrapper: {
+  backgroundColor: '#fff',
+  borderRadius: 12,
+  marginBottom: 20,
+  borderWidth: 1,
+  borderColor: '#cbd5e1',
+  overflow: 'hidden',
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: 1 },
+  shadowOpacity: 0.1,
+  shadowRadius: 3,
+  elevation: 2,
+},
+picker: {
+  height: 44,
+  width: '100%',
+  fontSize: 16,
+  color: '#111827',
+},
+label: {
+  fontSize: 16,
+  fontWeight: '600',
+  color: '#334155',
+  marginBottom: 6,
+  marginTop: 12,
+},
+
   input: {
     backgroundColor: '#fff',
     padding: 16,
@@ -248,7 +271,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   resultBox: {
-    backgroundColor: '#e0f2fe',
+    backgroundColor: '#dbe9f3ff',
     padding: 16,
     borderRadius: 10,
     alignItems: 'center',
