@@ -35,3 +35,9 @@ export async function getUserCollection() {
   const database = await connectDB();
   return database.collection('Users');
 }
+// auth.db.js
+
+export async function getLoginCollection() {
+  const database = await connectDB();
+  return database.collection('LoginLogs');
+}

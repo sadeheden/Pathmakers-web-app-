@@ -1,4 +1,5 @@
 import { getUserCollection } from './auth.db.js';
+import { logUserLogin } from './auth.model.js';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 
@@ -65,11 +66,12 @@ export async function loginUser(req, res) {
     }
 
     // Generate token
-    const token = jwt.sign(
-      { userId: user._id }, 
-      jwtSecret, 
-      { expiresIn: '7d' }
-    );
+   const token = jwt.sign(
+  { userId: user._id },
+  jwtSecret,
+  { expiresIn: '30d' } // ⬅️ update from 7d to 30d
+);
+
 
     console.log('✅ Login successful for:', user.email || user.name || user.username);
 
@@ -121,3 +123,15 @@ export async function debugUsers(req, res) {
   }
   
 }
+await logUserLogin(user._id, req); // 👈 Log login event
+
+return res.status(200).json({
+  success: true,
+  token,
+  user: {
+    id: user._id,
+    email: user.email,
+    name: user.name || user.username,
+    profile_image: user.profile_image || null,
+  }
+});
