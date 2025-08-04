@@ -1,7 +1,4 @@
-import { API_URL } from './config';
-
-const base_url = API_URL;
-
+const base_url = "https://pathmakers-web-app-app-travel.onrender.com/api";
 export async function get(endpoint) {
   try {
     const response = await fetch(`${base_url}/${endpoint}`);
@@ -16,6 +13,7 @@ export async function get(endpoint) {
     throw error;
   }
 }
+
 export async function post(endpoint, data) {
   try {
     const response = await fetch(`${base_url}/${endpoint}`, {
