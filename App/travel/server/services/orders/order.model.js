@@ -1,8 +1,5 @@
-import { ObjectId } from "mongodb";
-import {
-  findOrdersByUserIdFromDb,
-  insertOrderToDb
-} from "./order.db.js";
+import { ObjectId } from 'mongodb';
+import { findOrdersByUserIdFromDb, insertOrderToDb } from './order.db.js';
 
 export default class Order {
   constructor(data = {}) {
@@ -37,9 +34,6 @@ export default class Order {
     };
 
     const result = await insertOrderToDb(orderDoc);
-    return {
-      _id: result.insertedId,
-      ...orderDoc
-    };
+    return { _id: result.insertedId, ...orderDoc };
   }
 }
