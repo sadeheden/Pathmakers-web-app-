@@ -65,7 +65,7 @@ export async function getUserOrders(req, res) {
   }
 
   try {
-const userId = req.user.id;
+  const userId = req.user?.id;
     const db = await connectDB();
 
    const orders = await db.collection('orders')
