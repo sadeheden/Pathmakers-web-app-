@@ -172,7 +172,7 @@ const renderOrder = ({ item }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#eef6fc',
+    backgroundColor: '#eef2f593',
     alignItems: 'center',
     padding: 30,
   },
