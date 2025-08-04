@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Image } from 'react-native';
+import { Image, StyleSheet, Platform } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -23,8 +23,8 @@ export default function TabsLayout() {
           const user = JSON.parse(userDataJson);
           setProfileImage(user?.profile_image);
         }
-      } catch (e) {
-        console.error('Error loading profile image', e);
+      } catch (err) {
+        console.error('Error loading profile image:', err);
       }
     };
     loadUserImage();
@@ -34,8 +34,16 @@ export default function TabsLayout() {
     <Tab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
-        tabBarActiveTintColor:  '#007AFF',
+        tabBarActiveTintColor: '#007AFF',
+        tabBarInactiveTintColor: '#A0A0A0',
+        tabBarLabelStyle: {
+          fontSize: 12,
+          paddingBottom: Platform.OS === 'ios' ? 8 : 4,
+        },
+        tabBarStyle: styles.tabBar,
         tabBarIcon: ({ color, size, focused }) => {
+          const iconSize = 28;
+
           if (route.name === 'Profile') {
             return (
               <Image
@@ -43,17 +51,17 @@ export default function TabsLayout() {
                   uri: profileImage || 'https://i.pravatar.cc/150?img=12',
                 }}
                 style={{
-                  width: size,
-                  height: size,
-                  borderRadius: size / 2,
+                  width: iconSize,
+                  height: iconSize,
+                  borderRadius: iconSize / 2,
                   borderWidth: focused ? 2 : 1,
-                  borderColor: focused ? '#4CAF50' : '#ccc',
+                  borderColor: focused ? '#007AFF' : '#ccc',
                 }}
               />
             );
           }
 
-          let iconName;
+          let iconName = '';
           switch (route.name) {
             case 'Home':
               iconName = 'home';
@@ -70,15 +78,27 @@ export default function TabsLayout() {
             default:
               iconName = 'ellipse';
           }
-          return <Ionicons name={iconName} size={size} color={color} />;
+
+          return <Ionicons name={iconName} size={iconSize} color={color} />;
         },
       })}
     >
-      <Tab.Screen name="Home" component={HomeScreen} options={{ title: 'בית' }} />
-      <Tab.Screen name="Map" component={MapScreen} options={{ title: 'מפה' }} />
-      <Tab.Screen name="Weather" component={WeatherScreen} options={{ title: 'מזג אוויר' }} />
-      <Tab.Screen name="Diary" component={DiaryScreen} options={{ title: 'יומן' }} />
-      <Tab.Screen name="Profile" component={ProfileScreen} options={{ title: 'פרופיל' }} />
+      <Tab.Screen name="Home" component={HomeScreen} />
+      <Tab.Screen name="Map" component={MapScreen} />
+      <Tab.Screen name="Weather" component={WeatherScreen} />
+      <Tab.Screen name="Diary" component={DiaryScreen} />
+      <Tab.Screen name="Profile" component={ProfileScreen} />
     </Tab.Navigator>
   );
 }
+
+const styles = StyleSheet.create({
+  tabBar: {
+    backgroundColor: '#ffffff',
+    borderTopWidth: 0.5,
+    borderTopColor: '#dcdcdc',
+    height: Platform.OS === 'ios' ? 90 : 70,
+    paddingBottom: Platform.OS === 'ios' ? 20 : 10,
+    paddingTop: 5,
+  },
+});

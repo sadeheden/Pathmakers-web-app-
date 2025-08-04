@@ -1,20 +1,20 @@
 import React, { useEffect, useState, useRef } from 'react';
 import {
   View, Text, StyleSheet, Image, TouchableOpacity, Alert,
-  ActivityIndicator, ScrollView, FlatList, Dimensions
+  ActivityIndicator, ScrollView, FlatList, Dimensions, Modal, TextInput
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 
 const screenWidth = Dimensions.get('window').width;
 
-const recommendations  = [
-  { id: '1', title: 'Phuket', image: require('../../assets/images/phuket.jpg') },
-  { id: '2', title: 'Paris', image: require('../../assets/images/paris.png') },
-  { id: '3', title: 'Dubai', image: require('../../assets/images/dubai.png') },
-  { id: '4', title: 'London', image: require('../../assets/images/london.png') },
-  { id: '5', title: 'Turkey', image: require('../../assets/images/turkey.png') },
-  { id: '6', title: 'Amsterdam', image: require('../../assets/images/amsterdam.png') },
+const recommendations = [
+  { id: '1', title: 'Phuket', image: require('../../assets/images/phuket.jpg'), description: 'A tropical paradise in Thailand.' },
+  { id: '2', title: 'Paris', image: require('../../assets/images/paris.png'), description: 'The romantic capital of France.' },
+  { id: '3', title: 'Dubai', image: require('../../assets/images/dubai.png'), description: 'A modern city in the UAE.' },
+  { id: '4', title: 'London', image: require('../../assets/images/london.png'), description: 'Historic and cultural UK hub.' },
+  { id: '5', title: 'Turkey', image: require('../../assets/images/turkey.png'), description: 'Where East meets West.' },
+  { id: '6', title: 'Amsterdam', image: require('../../assets/images/amsterdam.png'), description: 'Charming canals and culture.' },
 ];
 
 const userReviews = [
@@ -28,7 +28,10 @@ export default function HomeScreen() {
   const router = useRouter();
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [currentIndex, setCurrentIndex] = useState(0);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [modalContent, setModalContent] = useState('');
+  const [reviewModal, setReviewModal] = useState(false);
+  const [newReview, setNewReview] = useState('');
   const flatListRef = useRef();
 
   useEffect(() => {
@@ -49,14 +52,20 @@ export default function HomeScreen() {
     loadUserData();
   }, []);
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const nextIndex = (currentIndex + 1) % recommendations.length;
-      setCurrentIndex(nextIndex);
-      flatListRef.current?.scrollToIndex({ index: nextIndex, animated: true });
-    }, 5000);
-    return () => clearInterval(interval);
-  }, [currentIndex]);
+  const handleDestinationPress = (description) => {
+    setModalContent(description);
+    setModalVisible(true);
+  };
+
+  const handleReviewPress = () => {
+    setReviewModal(true);
+  };
+
+  const handleSaveReview = () => {
+    console.log('Saved review:', newReview);
+    setReviewModal(false);
+    setNewReview('');
+  };
 
   if (loading) {
     return (
@@ -68,8 +77,11 @@ export default function HomeScreen() {
 
   return (
     <ScrollView style={styles.scroll} contentContainerStyle={styles.container}>
-      <View style={styles.logoContainer}>
+      <View style={styles.topRow}>
         <Image source={require('../../assets/images/logo.png')} style={styles.logoSmall} />
+        <TouchableOpacity onPress={() => router.push('/weather')}>
+          <Text style={styles.weatherPreview}>🌤 27°C</Text>
+        </TouchableOpacity>
       </View>
 
       <Text style={styles.title}>
@@ -89,64 +101,104 @@ export default function HomeScreen() {
         horizontal
         data={recommendations}
         renderItem={({ item }) => (
-          <View style={styles.carouselItem}>
-            <Image source={item.image} style={styles.carouselImage} />
-            <Text style={styles.cardText}>{item.title}</Text>
-          </View>
+          <TouchableOpacity onPress={() => handleDestinationPress(item.description)}>
+            <View style={styles.carouselItem}>
+              <Image source={item.image} style={styles.carouselImage} />
+              <Text style={styles.cardText}>{item.title}</Text>
+            </View>
+          </TouchableOpacity>
         )}
         keyExtractor={(item) => item.id}
         showsHorizontalScrollIndicator={false}
-        pagingEnabled
-        scrollEnabled={false}
+        pagingEnabled={false}
+        scrollEnabled
       />
 
       <Text style={styles.sectionTitle}>Recommended by Travelers</Text>
       {userReviews.map(review => (
-        <View key={review.id} style={styles.reviewCard}>
-          <Image source={{ uri: review.avatar }} style={styles.avatar} />
-          <View>
-            <Text style={styles.reviewerName}>{review.name}</Text>
-            <Text>{review.comment}</Text>
+        <TouchableOpacity key={review.id} onPress={handleReviewPress}>
+          <View style={styles.reviewCard}>
+            <Image source={{ uri: review.avatar }} style={styles.avatar} />
+            <View>
+              <Text style={styles.reviewerName}>{review.name}</Text>
+              <Text>{review.comment}</Text>
+            </View>
           </View>
-        </View>
+        </TouchableOpacity>
       ))}
 
-      <TouchableOpacity
-        style={[styles.button, { backgroundColor:  '#007AFF', marginTop: 30 }]}
-        onPress={() => router.push('/chat')}
+      <Modal
+        transparent
+        visible={modalVisible}
+        animationType="slide"
+        onRequestClose={() => setModalVisible(false)}
       >
-        <Text style={styles.buttonText}>Create a Custom Itinerary</Text>
-      </TouchableOpacity>
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <Text>{modalContent}</Text>
+            <TouchableOpacity onPress={() => setModalVisible(false)}>
+              <Text style={styles.modalClose}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
+        transparent
+        visible={reviewModal}
+        animationType="slide"
+        onRequestClose={() => setReviewModal(false)}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <Text style={{ marginBottom: 10 }}>Leave a Comment</Text>
+            <TextInput
+              value={newReview}
+              onChangeText={setNewReview}
+              placeholder="Write your thoughts..."
+              style={styles.input}
+            />
+            <TouchableOpacity style={styles.button} onPress={handleSaveReview}>
+              <Text style={styles.buttonText}>Save</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => setReviewModal(false)}>
+              <Text style={styles.modalClose}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  scroll: { backgroundColor: '#cfeaf5ff' },
+  scroll: { backgroundColor: '#fff' },
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  container: {
+  container: { alignItems: 'center', padding: 20, paddingBottom: 100 },
+  topRow: {
+    width: '100%',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 20,
-    paddingBottom: 100,
+    marginTop: 50,
+    marginBottom: 10,
   },
-logoContainer: {
-  width: '100%',
-  flexDirection: 'row',
-  justifyContent: 'flex-start',
-  paddingHorizontal: 10,
-  marginBottom: 10,
-  marginTop: 30, // הוספתי את זה כדי להוריד את הלוגו קצת למטה
-},
-
   logoSmall: {
     width: 60,
     height: 60,
     resizeMode: 'contain',
+    marginLeft: 10,
+  },
+  weatherPreview: {
+    fontSize: 18,
+    marginRight: 15,
+    color: '#007AFF',
   },
   title: {
     fontSize: 26,
     fontWeight: 'bold',
     marginBottom: 10,
+    marginTop: 10,
     textAlign: 'center',
     color: '#2865c1ff',
   },
@@ -194,7 +246,7 @@ logoContainer: {
   reviewCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#9eaebdff', 
+    backgroundColor: '#f1f3f6',
     padding: 10,
     borderRadius: 12,
     marginVertical: 6,
@@ -213,5 +265,31 @@ logoContainer: {
   reviewerName: {
     fontWeight: 'bold',
     marginBottom: 4,
+  },
+  modalContainer: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    padding: 20,
+    borderRadius: 10,
+    width: '80%',
+    alignItems: 'center',
+  },
+  modalClose: {
+    color: '#007AFF',
+    marginTop: 10,
+    fontWeight: '600',
+  },
+  input: {
+    width: '100%',
+    borderColor: '#ccc',
+    borderWidth: 1,
+    borderRadius: 10,
+    padding: 10,
+    marginBottom: 10,
   },
 });

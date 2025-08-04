@@ -1,51 +1,73 @@
-// app/intro.jsx
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
 import { useRouter } from 'expo-router';
+
+const { width } = Dimensions.get('window');
 
 export default function IntroScreen() {
   const router = useRouter();
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Welcome to PathMakers</Text>
+      <Text style={styles.title}>Thank you for joining</Text>
+      <Text style={styles.appName}>PathMakers</Text>
+
       <Text style={styles.description}>
-        A smart app that supports your journey from start to finish – with a daily journal, interactive map, weather updates, and more!
+        A smart travel companion to guide you from planning to arrival — with realtime updates, maps, weather, and more.
       </Text>
 
       <TouchableOpacity style={styles.button} onPress={() => router.push('/login')}>
-        <Text style={styles.buttonText}>Start</Text>
+        <Text style={styles.buttonText}>Start Your Journey</Text>
       </TouchableOpacity>
     </View>
   );
 }
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#f9fafe',
+    padding: 30,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
-    backgroundColor: '#fff',
   },
   title: {
-    fontSize: 26,
+    fontSize: 24,
+    color: '#888',
+    fontWeight: '500',
+    marginBottom: 5,
+    textAlign: 'center',
+  },
+  appName: {
+    fontSize: 38,
     fontWeight: 'bold',
-    marginBottom: 20,
+    color: '#007AFF',
+    marginBottom: 30,
     textAlign: 'center',
   },
   description: {
     fontSize: 16,
+    color: '#555',
     textAlign: 'center',
-    marginBottom: 40,
+    maxWidth: width * 0.85,
+    marginBottom: 50,
+    lineHeight: 24,
   },
   button: {
     backgroundColor: '#007AFF',
-    paddingVertical: 12,
-    paddingHorizontal: 30,
-    borderRadius: 25,
+    paddingVertical: 14,
+    paddingHorizontal: 40,
+    borderRadius: 30,
+    elevation: 4, // Android shadow
+    shadowColor: '#000', // iOS shadow
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
   },
   buttonText: {
     color: '#fff',
     fontSize: 18,
+    fontWeight: '600',
+    textAlign: 'center',
   },
 });
