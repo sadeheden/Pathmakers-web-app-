@@ -87,25 +87,28 @@ export default function LoginScreen() {
         <Text style={styles.title}>Good to see you</Text>
         <Text style={styles.subtitle}>Sign in to your account</Text>
 
-        <TextInput
-          placeholder="Email or Username"
-          value={identifier}
-          onChangeText={setIdentifier}
-          style={styles.input}
-          autoCapitalize="none"
-          autoCorrect={false}
-          keyboardType="default"
-          editable={!loading}
-        />
+      <TextInput
+  placeholder="Email or Username"
+  placeholderTextColor="#777"
+  value={identifier}
+  onChangeText={setIdentifier}
+  style={[styles.input, styles.inputText]}
+  autoCapitalize="none"
+  autoCorrect={false}
+  keyboardType="default"
+  editable={!loading}
+/>
 
-        <TextInput
-          placeholder="Password"
-          value={password}
-          onChangeText={setPassword}
-          style={styles.input}
-          secureTextEntry
-          editable={!loading}
-        />
+<TextInput
+  placeholder="Password"
+  placeholderTextColor="#777"
+  value={password}
+  onChangeText={setPassword}
+  style={[styles.input, styles.inputText]}
+  secureTextEntry
+  editable={!loading}
+/>
+
 
         <TouchableOpacity
           style={[styles.button, loading && styles.buttonDisabled]}
@@ -136,7 +139,7 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   wrapper: {
     flex: 1,
-    backgroundColor: '#f5f7fa',
+    backgroundColor: '#ffffffff',
   },
   container: {
     flexGrow: 1,
@@ -155,6 +158,7 @@ const styles = StyleSheet.create({
     color: '#666',
     marginBottom: 32,
   },
+  
   input: {
     backgroundColor: '#fff',
     width: '100%',
@@ -163,7 +167,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     fontSize: 16,
     borderWidth: 1,
-    borderColor: '#e0e0e0',
+    borderColor: '#9e9c9cff',
     shadowColor: '#000',
     shadowOpacity: 0.05,
     shadowRadius: 4,

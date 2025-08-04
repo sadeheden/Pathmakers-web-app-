@@ -1,37 +1,60 @@
 import React, { useEffect, useState, useRef } from 'react';
 import {
   View, Text, StyleSheet, Image, TouchableOpacity, Alert,
-  ActivityIndicator, ScrollView, FlatList, Dimensions, Modal, TextInput
+  ActivityIndicator, ScrollView, FlatList, Dimensions, Modal
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useRouter } from 'expo-router';
+import { useNavigation } from '@react-navigation/native';
+import { LinearGradient } from 'expo-linear-gradient';
 
 const screenWidth = Dimensions.get('window').width;
 
 const recommendations = [
-  { id: '1', title: 'Phuket', image: require('../../assets/images/phuket.jpg'), description: 'A tropical paradise in Thailand.' },
-  { id: '2', title: 'Paris', image: require('../../assets/images/paris.png'), description: 'The romantic capital of France.' },
-  { id: '3', title: 'Dubai', image: require('../../assets/images/dubai.png'), description: 'A modern city in the UAE.' },
-  { id: '4', title: 'London', image: require('../../assets/images/london.png'), description: 'Historic and cultural UK hub.' },
-  { id: '5', title: 'Turkey', image: require('../../assets/images/turkey.png'), description: 'Where East meets West.' },
-  { id: '6', title: 'Amsterdam', image: require('../../assets/images/amsterdam.png'), description: 'Charming canals and culture.' },
+  { id: '1', title: 'Phuket', image: require('../../assets/images/phuket.jpg'), description: 'Explore beaches, temples, and nightlife.' },
+  { id: '2', title: 'Paris', image: require('../../assets/images/paris.png'), description: 'Romantic streets, Eiffel Tower, fine dining.' },
+  { id: '3', title: 'Dubai', image: require('../../assets/images/dubai.png'), description: 'Luxury shopping, Burj Khalifa, desert adventures.' },
+  { id: '4', title: 'London', image: require('../../assets/images/london.png'), description: 'Historic sites, Big Ben, cozy pubs.' },
+  { id: '5', title: 'Turkey', image: require('../../assets/images/turkey.png'), description: 'Markets, rich culture, hot air balloons.' },
+  { id: '6', title: 'Amsterdam', image: require('../../assets/images/amsterdam.png'), description: 'Canals, bikes, vibrant neighborhoods.' },
 ];
 
 const userReviews = [
-  { id: '1', name: 'Noa Levi', comment: 'An unforgettable experience!', avatar: 'https://i.pravatar.cc/150?img=5' },
-  { id: '2', name: 'Ori Cohen', comment: 'The app helped me a lot!', avatar: 'https://i.pravatar.cc/150?img=14' },
-  { id: '3', name: 'Yasmin Alon', comment: 'Super easy to use and really helpful during my trip.', avatar: 'https://i.pravatar.cc/150?img=32' },
-  { id: '4', name: 'Tal Bar', comment: 'My whole trip was smoother thanks to this app.', avatar: 'https://i.pravatar.cc/150?img=23' },
+  { 
+    id: '1', 
+    name: 'Noa Levi', 
+    likes: 3, 
+    dislikes: 0, 
+    tripText: 'Just returned from an amazing week in Phuket! The beaches were absolutely stunning and the local food scene exceeded all expectations. Would definitely go back!' 
+  },
+  { 
+    id: '2', 
+    name: 'Ori Cohen', 
+    likes: 5, 
+    dislikes: 1, 
+    tripText: 'Paris in spring is magical! Spent 5 days exploring museums, cafes, and hidden neighborhoods. The Eiffel Tower at sunset is a must-see experience.' 
+  },
+  { 
+    id: '3', 
+    name: 'Yasmin Alon', 
+    likes: 8, 
+    dislikes: 2, 
+    tripText: 'Dubai was incredible - from the towering Burj Khalifa to the traditional souks. Perfect blend of modern luxury and cultural heritage. Shopping was amazing!' 
+  },
+  { 
+    id: '4', 
+    name: 'Tal Bar', 
+    likes: 4, 
+    dislikes: 0, 
+    tripText: 'London has my heart! Cozy pubs, fascinating history, and friendly locals. The rainy weather just added to the authentic British experience.' 
+  },
 ];
 
 export default function HomeScreen() {
-  const router = useRouter();
+  const navigation = useNavigation();
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [modalVisible, setModalVisible] = useState(false);
-  const [modalContent, setModalContent] = useState('');
-  const [reviewModal, setReviewModal] = useState(false);
-  const [newReview, setNewReview] = useState('');
+  const [selectedDestination, setSelectedDestination] = useState(null);
+  const [selectedReview, setSelectedReview] = useState(null);
   const flatListRef = useRef();
 
   useEffect(() => {
@@ -52,244 +75,591 @@ export default function HomeScreen() {
     loadUserData();
   }, []);
 
-  const handleDestinationPress = (description) => {
-    setModalContent(description);
-    setModalVisible(true);
+  const handleWeatherPress = () => {
+    try {
+      console.log('Weather button pressed');
+      navigation.navigate('Weather');
+    } catch (error) {
+      console.error('Navigation error:', error);
+      Alert.alert('Navigation Error', 'Could not navigate to weather screen.');
+    }
   };
 
-  const handleReviewPress = () => {
-    setReviewModal(true);
+  const handleDiaryPress = () => {
+    try {
+      console.log('Diary button pressed');
+      navigation.navigate('Diary');
+    } catch (error) {
+      console.error('Navigation error:', error);
+      Alert.alert('Navigation Error', 'Could not navigate to diary screen.');
+    }
   };
 
-  const handleSaveReview = () => {
-    console.log('Saved review:', newReview);
-    setReviewModal(false);
-    setNewReview('');
+  const handleLike = (id) => {
+    const review = userReviews.find(r => r.id === id);
+    if (review) {
+      review.likes++;
+      setSelectedReview({ ...review });
+    }
+  };
+
+  const handleDislike = (id) => {
+    const review = userReviews.find(r => r.id === id);
+    if (review) {
+      review.dislikes++;
+      setSelectedReview({ ...review });
+    }
   };
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#2865c1ff" />
-      </View>
+      <LinearGradient colors={['#f1f1f1ff', '#e0dde2ff']} style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#ffffff" />
+        <Text style={styles.loadingText}>Loading your adventure...</Text>
+      </LinearGradient>
     );
   }
 
   return (
-    <ScrollView style={styles.scroll} contentContainerStyle={styles.container}>
-      <View style={styles.topRow}>
-        <Image source={require('../../assets/images/logo.png')} style={styles.logoSmall} />
-        <TouchableOpacity onPress={() => router.push('/weather')}>
-          <Text style={styles.weatherPreview}>🌤 27°C</Text>
-        </TouchableOpacity>
-      </View>
+<View style={styles.appBackground}>
 
-      <Text style={styles.title}>
-        Welcome, {user?.name && user.name.trim() !== '' ? user.name : 'Dear Traveler'}!
-      </Text>
-      <Text style={styles.subtitle}>
-        The app that guides you throughout your trip — with a schedule, map, weather, and more!
-      </Text>
-
-      <TouchableOpacity style={styles.button} onPress={() => router.push('/diary')}>
-        <Text style={styles.buttonText}>Start Your Day</Text>
-      </TouchableOpacity>
-
-      <Text style={styles.sectionTitle}>Recommended destinations</Text>
-      <FlatList
-        ref={flatListRef}
-        horizontal
-        data={recommendations}
-        renderItem={({ item }) => (
-          <TouchableOpacity onPress={() => handleDestinationPress(item.description)}>
-            <View style={styles.carouselItem}>
-              <Image source={item.image} style={styles.carouselImage} />
-              <Text style={styles.cardText}>{item.title}</Text>
+      <ScrollView style={styles.scroll} contentContainerStyle={styles.container}>
+        {/* Header Section */}
+        <View style={styles.topContainer}>
+          <View style={styles.logoContainer}>
+            <Image source={require('../../assets/images/logo.png')} style={styles.logoSmall} />
+          </View>
+          <TouchableOpacity 
+            onPress={handleWeatherPress} 
+            style={styles.weatherPreview}
+            activeOpacity={0.8}
+          >
+            <View style={styles.weatherContent}>
+              <Text style={styles.weatherIcon}>☀️</Text>
+              <Text style={styles.weatherText}>27°C</Text>
             </View>
           </TouchableOpacity>
-        )}
-        keyExtractor={(item) => item.id}
-        showsHorizontalScrollIndicator={false}
-        pagingEnabled={false}
-        scrollEnabled
-      />
+        </View>
 
-      <Text style={styles.sectionTitle}>Recommended by Travelers</Text>
-      {userReviews.map(review => (
-        <TouchableOpacity key={review.id} onPress={handleReviewPress}>
-          <View style={styles.reviewCard}>
-            <Image source={{ uri: review.avatar }} style={styles.avatar} />
-            <View>
-              <Text style={styles.reviewerName}>{review.name}</Text>
-              <Text>{review.comment}</Text>
+        {/* Welcome Section */}
+        <View style={styles.welcomeSection}>
+          <Text style={styles.title}>
+            Welcome back, {user?.name && user.name.trim() !== '' ? user.name : 'Explorer'}! 
+          </Text>
+          <Text style={styles.subtitle}>
+            Ready for your next adventure? Discover amazing destinations and plan your perfect trip with personalized recommendations.
+          </Text>
+        </View>
+
+        {/* CTA Button */}
+        <TouchableOpacity 
+          style={styles.ctaButton} 
+          onPress={handleDiaryPress}
+          activeOpacity={0.8}
+        >
+          <LinearGradient
+            colors={['#6d6ca8ff', '#6d6ca8ff#']}
+            style={styles.buttonGradient}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+          >
+            <Text style={styles.ctaButtonText}> Start Your Journey</Text>
+          </LinearGradient>
+        </TouchableOpacity>
+
+        {/* Destinations Section */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}> Trending Destinations</Text>
+            <Text style={styles.sectionSubtitle}>Handpicked just for you</Text>
+          </View>
+          
+          <FlatList
+            ref={flatListRef}
+            horizontal
+            data={recommendations}
+            renderItem={({ item }) => (
+              <TouchableOpacity
+                onPress={() => setSelectedDestination(item)}
+                style={styles.destinationCard}
+                activeOpacity={0.9}
+              >
+                <Image source={item.image} style={styles.destinationImage} />
+                <LinearGradient
+                  colors={['transparent', 'rgba(214, 205, 205, 0.8)']}
+                  style={styles.destinationOverlay}
+                >
+                  <Text style={styles.destinationTitle}>{item.title}</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            )}
+            keyExtractor={(item) => item.id}
+            showsHorizontalScrollIndicator={false}
+            scrollEnabled={true}
+            contentContainerStyle={styles.destinationsList}
+          />
+        </View>
+
+        {/* Reviews Section */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}> Traveler Stories</Text>
+            <Text style={styles.sectionSubtitle}>Real experiences from real travelers</Text>
+          </View>
+          
+          {userReviews.map(review => (
+            <View key={review.id} style={styles.reviewCard}>
+              <View style={styles.reviewHeader}>
+                <Image 
+                  source={{ uri: `https://i.pravatar.cc/150?u=${review.id}` }} 
+                  style={styles.avatar} 
+                />
+                <View style={styles.reviewerInfo}>
+                  <Text style={styles.reviewerName}>{review.name}</Text>
+                  <Text style={styles.reviewDate}>2 days ago</Text>
+                </View>
+              </View>
+              
+              <Text style={styles.tripText}>{review.tripText}</Text>
+              
+              <View style={styles.reviewActions}>
+                <TouchableOpacity 
+                  onPress={() => handleLike(review.id)}
+                  style={styles.actionButton}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.actionIcon}>👍</Text>
+                  <Text style={styles.actionCount}>{review.likes}</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity 
+                  onPress={() => handleDislike(review.id)}
+                  style={styles.actionButton}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.actionIcon}>👎</Text>
+                  <Text style={styles.actionCount}>{review.dislikes}</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity 
+                  onPress={() => setSelectedReview(review)} 
+                  style={styles.replyButton}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.replyText}>💬 Reply</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          ))}
+        </View>
+
+        {/* Modals */}
+        <Modal
+          visible={!!selectedDestination}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setSelectedDestination(null)}
+        >
+          <View style={styles.modalContainer}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>{selectedDestination?.title}</Text>
+              <Text style={styles.modalDescription}>{selectedDestination?.description}</Text>
+              <TouchableOpacity 
+  onPress={() => setSelectedDestination(null)} 
+  style={styles.modalCloseButton}
+  activeOpacity={0.8}
+>
+  <Text style={styles.modalCloseButtonText}>Close</Text>
+</TouchableOpacity>
+
             </View>
           </View>
-        </TouchableOpacity>
-      ))}
+        </Modal>
 
-      <Modal
-        transparent
-        visible={modalVisible}
-        animationType="slide"
-        onRequestClose={() => setModalVisible(false)}
-      >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalContent}>
-            <Text>{modalContent}</Text>
-            <TouchableOpacity onPress={() => setModalVisible(false)}>
-              <Text style={styles.modalClose}>Close</Text>
-            </TouchableOpacity>
+        <Modal
+          visible={!!selectedReview}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setSelectedReview(null)}
+        >
+          <View style={styles.modalContainer}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>Reply to {selectedReview?.name}</Text>
+              <Text style={styles.modalDescription}>What did you think of their travel experience?</Text>
+              <View style={styles.modalActions}>
+                <TouchableOpacity 
+                  onPress={() => handleLike(selectedReview?.id)}
+                  style={styles.modalActionButton}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.modalActionIcon}>👍</Text>
+                  <Text style={styles.modalActionText}>Helpful</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  onPress={() => handleDislike(selectedReview?.id)}
+                  style={styles.modalActionButton}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.modalActionIcon}>👎</Text>
+                  <Text style={styles.modalActionText}>Not helpful</Text>
+                </TouchableOpacity>
+              </View>
+              <TouchableOpacity 
+                onPress={() => setSelectedReview(null)} 
+                style={styles.modalButton}
+                activeOpacity={0.8}
+              >
+                <LinearGradient
+                  colors={['#667eea', '#764ba2']}
+                  style={styles.modalButtonGradient}
+                >
+                  <Text style={styles.modalButtonText}>Close</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
           </View>
-        </View>
-      </Modal>
-
-      <Modal
-        transparent
-        visible={reviewModal}
-        animationType="slide"
-        onRequestClose={() => setReviewModal(false)}
-      >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalContent}>
-            <Text style={{ marginBottom: 10 }}>Leave a Comment</Text>
-            <TextInput
-              value={newReview}
-              onChangeText={setNewReview}
-              placeholder="Write your thoughts..."
-              style={styles.input}
-            />
-            <TouchableOpacity style={styles.button} onPress={handleSaveReview}>
-              <Text style={styles.buttonText}>Save</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => setReviewModal(false)}>
-              <Text style={styles.modalClose}>Cancel</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
-    </ScrollView>
+        </Modal>
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  scroll: { backgroundColor: '#fff' },
-  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  container: { alignItems: 'center', padding: 20, paddingBottom: 100 },
-  topRow: {
-    width: '100%',
+  gradientBackground: {
+    flex: 1,
+  },
+  scroll: {
+    flex: 1,
+  },
+  loadingContainer: { 
+    flex: 1, 
+    justifyContent: 'center', 
+    alignItems: 'center' 
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 18,
+    color: '#ffffff',
+    fontWeight: '600',
+  },
+  container: {
+    paddingHorizontal: 20,
+    paddingBottom: 100,
+  },
+  appBackground: {
+  flex: 1,
+  backgroundColor: '#ffffff',
+}
+,
+  topContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    justifyContent: 'space-between',
     marginTop: 50,
-    marginBottom: 10,
+    marginBottom: 30,
+  },
+  logoContainer: {
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderRadius: 20,
+    padding: 8,
   },
   logoSmall: {
-    width: 60,
-    height: 60,
+    width: 50,
+    height: 50,
     resizeMode: 'contain',
-    marginLeft: 10,
   },
   weatherPreview: {
-    fontSize: 18,
-    marginRight: 15,
-    color: '#007AFF',
+    backgroundColor: 'rgba(255,255,255,0.25)',
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backdropFilter: 'blur(10px)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    elevation: 5,
+  },
+  weatherContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  weatherIcon: {
+    fontSize: 20,
+  },
+  weatherText: {
+    color: '#7f8c8d',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  welcomeSection: {
+    backgroundColor: 'rgba(255,255,255,0.95)',
+    borderRadius: 25,
+    padding: 25,
+    marginBottom: 25,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 20,
+    elevation: 10,
   },
   title: {
-    fontSize: 26,
+    fontSize: 28,
     fontWeight: 'bold',
-    marginBottom: 10,
-    marginTop: 10,
+    marginBottom: 12,
     textAlign: 'center',
-    color: '#2865c1ff',
+    color: '#2d3748',
+    lineHeight: 34,
   },
   subtitle: {
     fontSize: 16,
     textAlign: 'center',
-    color: '#555',
-    marginBottom: 30,
+    color: '#718096',
     lineHeight: 24,
   },
-  button: {
-    backgroundColor: '#007AFF',
-    paddingVertical: 12,
-    paddingHorizontal: 30,
+  ctaButton: {
+    marginBottom: 30,
     borderRadius: 25,
+    shadowColor: '#ff6b6b',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 15,
+    elevation: 10,
   },
-  buttonText: {
-    color: '#fff',
-    fontSize: 18,
+ ctaButton: {
+  backgroundColor: '#007AFF', // light gray button background
+  paddingVertical: 14,
+  paddingHorizontal: 30,
+  borderRadius: 25,
+  alignItems: 'center',
+  marginBottom: 30,
+
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: 4 },
+  shadowOpacity: 0.1,
+  shadowRadius: 10,
+  elevation: 6,
+},
+ctaButtonText: {
+  color: '#ffffffff', // your specified subtle gray
+  fontSize: 20,
+  fontWeight: 'bold',
+},
+
+  section: {
+    marginBottom: 35,
   },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#333',
-    marginTop: 30,
-    marginBottom: 10,
-    alignSelf: 'flex-start',
+  sectionHeader: {
+    marginBottom: 20,
   },
-  carouselItem: {
-    alignItems: 'center',
-    marginRight: 15,
+ sectionTitle: {
+  fontSize: 24,
+  fontWeight: 'bold',
+  color: '#4a4a4a', // previously #ffffff
+  marginBottom: 5,
+},
+sectionSubtitle: {
+  fontSize: 14,
+  color: '#7f8c8d', // subtle gray
+},
+
+  destinationsList: {
+    paddingLeft: 5,
   },
-  carouselImage: {
-    width: screenWidth - 80,
-    height: 180,
-    borderRadius: 15,
+  destinationCard: {
+    marginRight: 20,
+    borderRadius: 20,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.25,
+    shadowRadius: 15,
+    elevation: 10,
+  },
+  destinationImage: {
+    width: screenWidth * 0.75,
+    height: 200,
     resizeMode: 'cover',
-    marginBottom: 5,
   },
-  cardText: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#444',
+  destinationOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 80,
+    justifyContent: 'flex-end',
+    padding: 20,
+  },
+  destinationTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#ffffff',
   },
   reviewCard: {
+    backgroundColor: 'rgba(255,255,255,0.95)',
+    borderRadius: 20,
+    padding: 20,
+    marginBottom: 15,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    elevation: 5,
+  },
+  reviewHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f1f3f6',
-    padding: 10,
-    borderRadius: 12,
-    marginVertical: 6,
-    width: '100%',
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    marginBottom: 15,
   },
   avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    marginRight: 12,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    marginRight: 15,
+    borderWidth: 2,
+    borderColor: '#667eea',
+  },
+  reviewerInfo: {
+    flex: 1,
   },
   reviewerName: {
+    fontSize: 16,
     fontWeight: 'bold',
-    marginBottom: 4,
+    color: '#2d3748',
+    marginBottom: 2,
+  },
+  reviewDate: {
+    fontSize: 12,
+    color: '#a0aec0',
+  },
+  tripText: {
+    fontSize: 15,
+    color: '#4a5568',
+    lineHeight: 22,
+    marginBottom: 15,
+  },
+  reviewActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 15,
+  },
+  actionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f7fafc',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 15,
+    gap: 5,
+  },
+  actionIcon: {
+    fontSize: 16,
+  },
+  actionCount: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#4a5568',
+  },
+  replyButton: {
+    marginLeft: 'auto',
+    backgroundColor: '#667eea',
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+    borderRadius: 15,
+  },
+  replyText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '600',
   },
   modalContainer: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    padding: 20,
   },
   modalContent: {
-    backgroundColor: '#fff',
-    padding: 20,
-    borderRadius: 10,
-    width: '80%',
+    backgroundColor: 'white',
+    padding: 25,
+    borderRadius: 25,
+    width: '100%',
+    maxWidth: 400,
     alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.3,
+    shadowRadius: 20,
+    elevation: 15,
   },
-  modalClose: {
-    color: '#007AFF',
-    marginTop: 10,
+  modalTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    marginBottom: 15,
+    color: '#2d3748',
+    textAlign: 'center',
+  },
+  modalDescription: {
+    fontSize: 16,
+    color: '#718096',
+    marginBottom: 25,
+    textAlign: 'center',
+    lineHeight: 22,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    gap: 20,
+    marginBottom: 25,
+  },
+  modalActionButton: {
+    alignItems: 'center',
+    backgroundColor: '#f7fafc',
+    paddingHorizontal: 20,
+    paddingVertical: 15,
+    borderRadius: 15,
+    minWidth: 80,
+  },
+  modalActionIcon: {
+    fontSize: 24,
+    marginBottom: 5,
+  },
+  modalActionText: {
+    fontSize: 12,
+    color: '#4a5568',
     fontWeight: '600',
   },
-  input: {
-    width: '100%',
-    borderColor: '#ccc',
-    borderWidth: 1,
-    borderRadius: 10,
-    padding: 10,
-    marginBottom: 10,
+  modalButton: {
+    borderRadius: 20,
+    overflow: 'hidden',
   },
+  modalButtonGradient: {
+    paddingVertical: 15,
+    paddingHorizontal: 30,
+    alignItems: 'center',
+  },
+  modalButtonText: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  modalCloseButton: {
+  backgroundColor: '#007AFF',
+  paddingVertical: 12,
+  paddingHorizontal: 30,
+  borderRadius: 20,
+  alignItems: 'center',
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: 4 },
+  shadowOpacity: 0.1,
+  shadowRadius: 10,
+  elevation: 5,
+  marginTop: 10,
+},
+modalCloseButtonText: {
+  color: '#ffffff',
+  fontSize: 16,
+  fontWeight: 'bold',
+}
+
 });
