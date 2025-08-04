@@ -7,6 +7,7 @@ import { ObjectId } from 'mongodb';
 import jwt from 'jsonwebtoken';
 
 import authRouter from './services/auth/auth.router.js';
+import orderRouter from './services/orders/order.router.js'; // <-- הוספת ה-import של ההזמנות
 import { connectDB } from './services/auth/auth.db.js';
 
 // Middleware לאימות JWT
@@ -38,12 +39,15 @@ app.use(cors());
 app.use(express.json());
 
 app.use('/api/auth', authRouter);
+app.use('/api/orders', orderRouter);  // <-- החיבור ל־orders
 
 app.get('/', (req, res) => {
   res.send('API is running');
 });
-
-// Route פרופיל עם אימות טוקן JWT
+app.get('/api', (req, res) => {
+  res.send('API base path is working');
+});
+// פרופיל משתמש
 app.get('/api/user/me', authenticateUser, async (req, res) => {
   try {
     const userId = req.user.userId;
@@ -52,15 +56,12 @@ app.get('/api/user/me', authenticateUser, async (req, res) => {
     const usersCol = db.collection('Users');
     const tripsCol = db.collection('orders');
 
-    // שליפת משתמש ללא סיסמה
     const user = await usersCol.findOne(
       { _id: new ObjectId(userId) },
       { projection: { password: 0 } }
     );
     if (!user) return res.status(404).json({ message: 'User not found' });
 
-    // בדוק אם user_id הוא ObjectId במסמכי הטיולים
-    // אם כן, המיר למטה, אחרת הסר את new ObjectId
     const trips = await tripsCol.find({ user_id: new ObjectId(userId) }).toArray();
 
     res.json({ user, trips });
@@ -70,6 +71,8 @@ app.get('/api/user/me', authenticateUser, async (req, res) => {
   }
 });
 
+
 app.listen(port, () => {
   console.log(`✅ Server is running on port ${port}`);
 });
+

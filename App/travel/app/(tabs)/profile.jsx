@@ -1,65 +1,79 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity, Alert, FlatList } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  Image,
+  TouchableOpacity,
+  Alert,
+  FlatList,
+  ActivityIndicator,
+} from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 
+// פונקציה עם timeout עבור fetch
+function fetchWithTimeout(resource, options = {}) {
+  const { timeout = 10000 } = options; // ברירת מחדל 10 שניות
+
+  return Promise.race([
+    fetch(resource, options),
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Request timed out')), timeout)
+    ),
+  ]);
+}
+
 export default function Profile() {
   const [user, setUser] = useState(null);
-  const [trips, setTrips] = useState([]);
+  const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
   useEffect(() => {
-    const loadProfile = async () => {
+    const loadData = async () => {
+      console.log('📥 Start loading data...');
       try {
-        console.log('Start loading profile');
         const token = await AsyncStorage.getItem('token');
-        console.log('Token:', token);
+        console.log('🔑 Token:', token);
 
         if (!token) {
-          console.log('No token found, redirecting to login');
+          console.log('🚪 No token found, redirecting to login');
           router.replace('/login');
           return;
         }
 
-        // קודם נטען את פרטי המשתמש השמורים ב-AsyncStorage (מבלי לשלוף שוב מהשרת)
         const userDataJson = await AsyncStorage.getItem('userData');
         if (userDataJson) {
-          const userData = JSON.parse(userDataJson);
-          console.log('Cached user data:', userData);
-          setUser(userData);
+          console.log('🗃️ Cached user data:', userDataJson);
+          setUser(JSON.parse(userDataJson));
         }
 
-        console.log('Fetching trips from server...');
-        const response = await fetch('http://10.0.2.2:3001/api/user/me', {
+        console.log('🌐 Fetching orders from server...');
+        const response = await fetchWithTimeout('http://10.0.0.8:3001/api/orders', {
           headers: { Authorization: `Bearer ${token}` },
+          timeout: 10000,
         });
-        console.log('Response status:', response.status);
 
         if (!response.ok) {
           const errorText = await response.text();
-          console.log('Response error text:', errorText);
-          throw new Error('Failed to fetch user data from server');
+          console.log('❌ Response error text:', errorText);
+          throw new Error('Failed to load orders');
         }
 
         const data = await response.json();
-        console.log('Trips data:', data.trips);
-        setTrips(data.trips || []);
-
-        // במידה ואין משתמש במטמון, נשמור עכשיו
-        if (!userDataJson && data.user) {
-          await AsyncStorage.setItem('userData', JSON.stringify(data.user));
-          setUser(data.user);
-        }
-      } catch (error) {
-        Alert.alert('Error', error.message);
-        console.error(error);
+        console.log('📦 Orders received:', data.length);
+        setOrders(data || []);
+      } catch (err) {
+        console.error('🔥 Load data error:', err);
+        Alert.alert('Error', err.message || 'Failed to load data');
       } finally {
         setLoading(false);
+        console.log('✅ Finished loading data. Loading state set to false.');
       }
     };
 
-    loadProfile();
+    loadData();
   }, []);
 
   const handleLogout = async () => {
@@ -67,19 +81,22 @@ export default function Profile() {
     router.replace('/login');
   };
 
-  const renderTrip = ({ item }) => (
+  const renderOrder = React.memo(({ item }) => (
     <View style={styles.tripCard}>
-      <Text style={styles.tripTitle}>Destination: {item.destination_city_id}</Text>
-      <Text>Departure: {item.departure_city_id}</Text>
-      <Text>Flight: {item.flight_id}</Text>
-      <Text>Total Price: ${item.total_price}</Text>
+      <Text style={styles.tripTitle}>Destination ID: {item.destination_city_id}</Text>
+      <Text>Departure ID: {item.departure_city_id}</Text>
+      <Text>Flight ID: {item.flight_id}</Text>
+      <Text>Hotel ID: {item.hotel_id}</Text>
+      <Text>Transport: {item.transportation || 'N/A'}</Text>
+      <Text>Price: ${item.total_price}</Text>
     </View>
-  );
+  ));
 
   if (loading) {
     return (
       <View style={[styles.container, { justifyContent: 'center' }]}>
-        <Text>Loading...</Text>
+        <ActivityIndicator size="large" color="#2865c1ff" />
+        <Text>Loading profile...</Text>
       </View>
     );
   }
@@ -90,21 +107,23 @@ export default function Profile() {
         source={{ uri: user?.profile_image || 'https://i.pravatar.cc/150?img=12' }}
         style={styles.avatar}
       />
-      <Text style={styles.name}>
-        {user?.name || user?.username || 'Traveler'}
-      </Text>
+      <Text style={styles.name}>{user?.name || user?.username || 'Traveler'}</Text>
       <Text style={styles.email}>{user?.email || 'no-email@example.com'}</Text>
 
       <Text style={styles.sectionTitle}>Your Trips</Text>
-      {trips.length === 0 ? (
+      {orders.length === 0 ? (
         <Text style={{ color: '#666', marginBottom: 20 }}>You have no trips yet.</Text>
       ) : (
         <FlatList
-          data={trips}
-          keyExtractor={(item) => item._id}
-          renderItem={renderTrip}
+          data={orders}
+          keyExtractor={(item) => item._id.toString()}
+          renderItem={renderOrder}
           style={{ width: '100%' }}
           contentContainerStyle={{ paddingBottom: 20 }}
+          initialNumToRender={10}
+          maxToRenderPerBatch={10}
+          windowSize={5}
+          removeClippedSubviews={true}
         />
       )}
 
@@ -171,3 +190,4 @@ const styles = StyleSheet.create({
     fontSize: 18,
   },
 });
+
