@@ -76,6 +76,8 @@ export async function loginUser(req, res) {
     console.log('✅ Login successful for:', user.email || user.name || user.username);
 
     // Return success response
+    await logUserLogin(user._id, req);
+
     return res.status(200).json({
       success: true,
       token,
@@ -84,18 +86,17 @@ export async function loginUser(req, res) {
         email: user.email,
         name: user.name || user.username,
         profile_image: user.profile_image || null,
-      }
+      },
     });
 
   } catch (error) {
     console.error('❌ Login error:', error);
-    return res.status(500).json({ 
-      success: false, 
-      message: 'Internal server error' 
+    return res.status(500).json({
+      success: false,
+      message: 'Internal server error',
     });
   }
 }
-
 // Debug endpoint to check users in database
 export async function debugUsers(req, res) {
   try {
@@ -121,17 +122,4 @@ export async function debugUsers(req, res) {
       error: error.message 
     });
   }
-  
 }
-await logUserLogin(user._id, req); // 👈 Log login event
-
-return res.status(200).json({
-  success: true,
-  token,
-  user: {
-    id: user._id,
-    email: user.email,
-    name: user.name || user.username,
-    profile_image: user.profile_image || null,
-  }
-});
