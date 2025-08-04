@@ -95,7 +95,6 @@ export default function Profile() {
       <Text>Price: ${item.total_price}</Text>
     </View>
   ));
-
   if (loading) {
     return (
       <View style={[styles.container, { justifyContent: 'center' }]}>
