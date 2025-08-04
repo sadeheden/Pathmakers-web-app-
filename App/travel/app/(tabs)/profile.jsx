@@ -93,16 +93,36 @@ export default function Profile() {
     router.replace('/login');
   };
 
-const renderOrder = ({ item }) => (
-  <View style={styles.tripCard}>
-    <Text style={styles.tripTitle}>Destination ID: {item.destination_city_id}</Text>
-    <Text>Departure ID: {item.departure_city_id}</Text>
-    <Text>Flight ID: {item.flight_id}</Text>
-    <Text>Hotel ID: {item.hotel_id}</Text>
-    <Text>Transport: {item.transportation || 'N/A'}</Text>
-    <Text>Price: ${item.total_price}</Text>
-  </View>
-);
+const [expandedOrderId, setExpandedOrderId] = useState(null);
+
+const toggleExpand = (orderId) => {
+  setExpandedOrderId((prev) => (prev === orderId ? null : orderId));
+};
+
+const renderOrder = ({ item }) => {
+  const isExpanded = expandedOrderId === item._id;
+  return (
+    <TouchableOpacity
+      style={styles.tripCard}
+      onPress={() => toggleExpand(item._id)}
+      activeOpacity={0.8}
+    >
+      <Text style={styles.tripTitle}>
+        Trip to {item.destination_city_name || item.destination_city_id}
+      </Text>
+      {isExpanded && (
+        <>
+          <Text>Departure: {item.departure_city_name || item.departure_city_id}</Text>
+          <Text>Flight: {item.flight_name || item.flight_id}</Text>
+          <Text>Hotel: {item.hotel_name || item.hotel_id}</Text>
+          <Text>Transport: {item.transportation || 'N/A'}</Text>
+          <Text>Price: ${item.total_price}</Text>
+        </>
+      )}
+    </TouchableOpacity>
+  );
+};
+
 
   if (loading) {
     return (
@@ -115,12 +135,15 @@ const renderOrder = ({ item }) => (
 
   return (
     <View style={styles.container}>
-      <Image
-        source={{ uri: user?.profile_image || 'https://i.pravatar.cc/150?img=12' }}
-        style={styles.avatar}
-      />
-      <Text style={styles.name}>{user?.name || user?.username || 'Traveler'}</Text>
-      <Text style={styles.email}>{user?.email || 'no-email@example.com'}</Text>
+      <View style={styles.profileSection}>
+  <Image
+    source={{ uri: user?.profile_image || 'https://i.pravatar.cc/150?img=12' }}
+    style={styles.avatar}
+  />
+  <Text style={styles.name}>{user?.name || user?.username || 'Traveler'}</Text>
+  <Text style={styles.email}>{user?.email || 'no-email@example.com'}</Text>
+</View>
+
 
       <Text style={styles.sectionTitle}>Your Trips</Text>
       {orders.length === 0 ? (
@@ -190,8 +213,22 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     marginBottom: 6,
   },
+  profileSection: {
+  marginTop: '30%',
+  alignItems: 'center',
+  
+  
+},avatar: {
+  width: 140,           // 👈 Slightly larger image
+  height: 140,
+  borderRadius: 70,
+  marginBottom: 16,
+  borderWidth: 2,
+  borderColor: '#6f7377ff',
+},
+
   button: {
-    backgroundColor: '#ff3b30',
+    backgroundColor: '#007AFF',
     paddingVertical: 12,
     paddingHorizontal: 40,
     borderRadius: 25,
