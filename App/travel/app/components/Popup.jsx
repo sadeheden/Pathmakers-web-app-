@@ -10,12 +10,18 @@ export default function Popup({
   confirmText = 'OK',
   cancelText = 'Cancel',
   showCancel = false,
+  type = 'info', // ✅ Add type
 }) {
+  const isError = type === 'error';
+  const isSuccess = type === 'success';
+
   return (
     <Modal transparent animationType="fade" visible={visible} onRequestClose={onClose}>
       <View style={styles.overlay}>
-        <View style={styles.popup}>
-          <Text style={styles.title}>{title}</Text>
+        <View style={[styles.popup, isError && styles.errorBox, isSuccess && styles.successBox]}>
+          <Text style={[styles.title, isError && styles.errorTitle, isSuccess && styles.successTitle]}>
+            {title}
+          </Text>
           <Text style={styles.message}>{message}</Text>
 
           <View style={styles.buttonRow}>
@@ -47,16 +53,17 @@ const styles = StyleSheet.create({
   popup: {
     backgroundColor: '#fff',
     width: '80%',
-    borderRadius: 20, // more rounded
+    borderRadius: 20,
     padding: 24,
     elevation: 5,
-    alignItems: 'center', // center text and buttons
+    alignItems: 'center',
   },
   title: {
     fontSize: 20,
     fontWeight: 'bold',
     marginBottom: 12,
     textAlign: 'center',
+    color: '#222',
   },
   message: {
     fontSize: 16,
@@ -73,7 +80,7 @@ const styles = StyleSheet.create({
     minWidth: 120,
     paddingVertical: 12,
     paddingHorizontal: 20,
-    borderRadius: 30, // rounder corners
+    borderRadius: 30,
     marginTop: 8,
     alignItems: 'center',
   },
@@ -87,5 +94,19 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: 'bold',
     fontSize: 16,
+  },
+  errorBox: {
+    borderColor: '#838383ff',
+    borderWidth: 2,
+  },
+  errorTitle: {
+    color: '#e74c3c',
+  },
+  successBox: {
+    borderColor: '#838383ff',
+    borderWidth: 2,
+  },
+  successTitle: {
+    color: '#27ae60',
   },
 });

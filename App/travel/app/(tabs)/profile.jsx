@@ -93,16 +93,17 @@ export default function Profile() {
     router.replace('/login');
   };
 
-  const renderOrder = React.memo(({ item }) => (
-    <View style={styles.tripCard}>
-      <Text style={styles.tripTitle}>Destination ID: {item.destination_city_id}</Text>
-      <Text>Departure ID: {item.departure_city_id}</Text>
-      <Text>Flight ID: {item.flight_id}</Text>
-      <Text>Hotel ID: {item.hotel_id}</Text>
-      <Text>Transport: {item.transportation || 'N/A'}</Text>
-      <Text>Price: ${item.total_price}</Text>
-    </View>
-  ));
+const renderOrder = ({ item }) => (
+  <View style={styles.tripCard}>
+    <Text style={styles.tripTitle}>Destination ID: {item.destination_city_id}</Text>
+    <Text>Departure ID: {item.departure_city_id}</Text>
+    <Text>Flight ID: {item.flight_id}</Text>
+    <Text>Hotel ID: {item.hotel_id}</Text>
+    <Text>Transport: {item.transportation || 'N/A'}</Text>
+    <Text>Price: ${item.total_price}</Text>
+  </View>
+);
+
   if (loading) {
     return (
       <View style={[styles.container, { justifyContent: 'center' }]}>

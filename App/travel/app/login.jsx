@@ -24,59 +24,73 @@ export default function LoginScreen() {
     visible: false,
     title: '',
     message: '',
+      type: 'info',
   });
 
-  const handleLogin = async () => {
-    if (!identifier.trim() || !password) {
+const handleLogin = async () => {
+  if (!identifier.trim() || !password) {
+    setPopup({
+      visible: true,
+      title: 'Missing Fields',
+      message: 'Please enter both email/username and password',
+      type: 'error',
+    });
+    return;
+  }
+
+  setLoading(true);
+  try {
+    const response = await post('auth/login', {
+      identifier: identifier.trim(),
+      password,
+    });
+
+    if (!response || !response.success || !response.token || !response.user) {
       setPopup({
         visible: true,
-        title: 'Missing Fields',
-        message: 'Please enter both email/username and password',
+        title: 'Login Failed',
+        message: response?.message || 'Invalid username or password.',
+        type: 'error',
       });
       return;
     }
 
-    setLoading(true);
-    try {
-      const response = await post('auth/login', {
-        identifier: identifier.trim(),
-        password,
-      });
+    await AsyncStorage.setItem('token', response.token);
+    await AsyncStorage.setItem('userData', JSON.stringify(response.user));
 
-      if (!response || !response.success || !response.token || !response.user) {
-        setPopup({
-          visible: true,
-          title: 'Login Failed',
-          message: response?.message || 'Unknown error',
-        });
-        setLoading(false);
-        return;
-      }
+    setPopup({
+      visible: true,
+      title: 'Success',
+      message: 'Logged in!',
+      type: 'success',
+    });
 
-      await AsyncStorage.setItem('token', response.token);
-      await AsyncStorage.setItem('userData', JSON.stringify(response.user));
+    setTimeout(() => {
+      setPopup(prev => ({ ...prev, visible: false }));
+      router.replace('/home');
+    }, 1200);
 
-      setPopup({
-        visible: true,
-        title: 'Success',
-        message: 'Logged in!',
-      });
+  } catch (err) {
+    console.error('Login Error:', err);
 
-      setTimeout(() => {
-        setPopup(prev => ({ ...prev, visible: false }));
-        router.replace('/home');
-      }, 1200);
-    } catch (err) {
-      console.error('Login Error:', err);
-      setPopup({
-        visible: true,
-        title: 'Connection Error',
-        message: 'Could not connect to server.',
-      });
-    } finally {
-      setLoading(false);
+    // ✅ If `err` has a response or message, show it
+    let errorMessage = 'Could not connect to server.';
+    if (err?.message) {
+      errorMessage = err.message;
     }
-  };
+
+    setPopup({
+      visible: true,
+      title: 'Connection Error',
+      message: errorMessage,
+      type: 'error',
+    });
+
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   return (
     <KeyboardAvoidingView
@@ -124,13 +138,15 @@ export default function LoginScreen() {
         </TouchableOpacity>
 
         <Popup
-          visible={popup.visible}
-          title={popup.title}
-          message={popup.message}
-          onClose={() => setPopup(prev => ({ ...prev, visible: false }))}
-          onConfirm={() => setPopup(prev => ({ ...prev, visible: false }))}
-          showCancel={false}
-        />
+  visible={popup.visible}
+  title={popup.title}
+  message={popup.message}
+  type={popup.type}
+  onClose={() => setPopup(prev => ({ ...prev, visible: false }))}
+  onConfirm={() => setPopup(prev => ({ ...prev, visible: false }))}
+  showCancel={false}
+/>
+
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -195,4 +211,6 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
   },
+ 
+
 });
