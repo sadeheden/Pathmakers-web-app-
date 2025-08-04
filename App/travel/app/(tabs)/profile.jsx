@@ -29,57 +29,64 @@ export default function Profile() {
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
-  useEffect(() => {
-    const loadData = async () => {
-      console.log('📥 Start loading data...');
-      try {
-        const token = await AsyncStorage.getItem('token');
-        console.log('🔑 Token:', token);
+ useEffect(() => {
+  const loadData = async () => {
+    console.log('📥 Start loading data...');
+    try {
+      // READ & CLEAN YOUR TOKEN
+      const raw = await AsyncStorage.getItem('token');
+      const token = raw?.replace(/^"|"$/g, '') || null;
+      console.log('🔑 Clean token:', token);
 
-        if (!token) {
-          console.log('🚪 No token found, redirecting to login');
-          router.replace('/login');
-          return;
-        }
+      if (!token) {
+        console.log('🚪 No token found, redirecting to login');
+        router.replace('/login');
+        return;
+      }
 
-        const userDataJson = await AsyncStorage.getItem('userData');
-        if (userDataJson) {
-          console.log('🗃️ Cached user data:', userDataJson);
-          setUser(JSON.parse(userDataJson));
-        }
+      // LOAD CACHED USER DATA
+      const userDataJson = await AsyncStorage.getItem('userData');
+      if (userDataJson) {
+        console.log('🗃️ Cached user data:', userDataJson);
+        setUser(JSON.parse(userDataJson));
+      }
 
-        console.log('🌐 Fetching orders from server...');
-        const response = await fetchWithTimeout('https://pathmakers-web-app-app-travel.onrender.com/api/orders', {
+      // FETCH ORDERS WITH THE CLEAN TOKEN
+      console.log('🌐 Fetching orders from server...');
+      const response = await fetchWithTimeout(
+        'https://pathmakers-web-app-app-travel.onrender.com/api/orders',
+        {
           headers: { Authorization: `Bearer ${token}` },
           timeout: 10000,
-        });
-
-       if (!response.ok) {
-  const errorData = await response.json().catch(() => null);
-  console.log('❌ Response error body:', errorData);
-  throw new Error(errorData?.message || 'Failed to load orders');
-}
-
-
-        const data = await response.json();
-        console.log('📦 Orders received:', data);
-
-        if (!data.success) {
-          throw new Error(data.message || 'Failed to load orders');
         }
+      );
 
-        setOrders(data.orders || []);
-      } catch (err) {
-        console.error('🔥 Load data error:', err);
-        Alert.alert('Error', err.message || 'Failed to load data');
-      } finally {
-        setLoading(false);
-        console.log('✅ Finished loading data. Loading state set to false.');
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => null);
+        console.log('❌ Response error body:', errorData);
+        throw new Error(errorData?.message || 'Failed to load orders');
       }
-    };
 
-    loadData();
-  }, []);
+      const data = await response.json();
+      console.log('📦 Orders received:', data);
+
+      if (!data.success) {
+        throw new Error(data.message || 'Failed to load orders');
+      }
+
+      setOrders(data.orders || []);
+    } catch (err) {
+      console.error('🔥 Load data error:', err);
+      Alert.alert('Error', err.message || 'Failed to load data');
+    } finally {
+      setLoading(false);
+      console.log('✅ Finished loading data. Loading state set to false.');
+    }
+  };
+
+  loadData();
+}, []);
+
 
   const handleLogout = async () => {
     await AsyncStorage.clear();

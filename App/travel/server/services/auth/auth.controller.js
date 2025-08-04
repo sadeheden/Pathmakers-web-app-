@@ -2,6 +2,8 @@ import { getUserCollection } from './auth.db.js';
 import { logUserLogin } from './auth.model.js';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
+ import dotenv from 'dotenv';
+ dotenv.config();
 
 export async function loginUser(req, res) {
   try {
@@ -66,11 +68,11 @@ export async function loginUser(req, res) {
     }
 
     // Generate token
-   const token = jwt.sign(
-  { userId: user._id },
-  jwtSecret,
-  { expiresIn: '30d' } // ⬅️ update from 7d to 30d
-);
+  const token = jwt.sign(
+   { id: user._id.toString() },
+   jwtSecret,         // ← make sure this matches your .env key
+   { expiresIn: '1d' }
+ );
 
 
     console.log('✅ Login successful for:', user.email || user.name || user.username);

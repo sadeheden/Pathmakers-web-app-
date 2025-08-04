@@ -25,7 +25,7 @@ export async function loginUser(req, res) {
     // ✅ FIXED: Create token with correct payload
    const token = jwt.sign(
   { id: user._id.toString() },  // ✅ use "id" consistently
-  process.env.JWT_SECRET,
+    jwtSecret, 
   { expiresIn: '1d' }
 );
 
@@ -45,8 +45,9 @@ export async function loginUser(req, res) {
     res.status(500).json({ success: false, message: 'Server error' });
   }
 }
-
-const secretKey = process.env.JWT_SECRET || process.env.JWT_SECRET_KEY;
+ const jwtSecret = process.env.JWT_SECRET 
+                || 'temp_secret_12345_remove_this_in_production';
+const secretKey = jwtSecret ;
 
 export default function authenticateUser(req, res, next) {
   const authHeader = req.headers.authorization;
