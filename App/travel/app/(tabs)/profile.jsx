@@ -87,7 +87,6 @@ export default function Profile() {
   loadData();
 }, []);
 
-
   const handleLogout = async () => {
     await AsyncStorage.clear();
     router.replace('/login');

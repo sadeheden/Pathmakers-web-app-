@@ -262,26 +262,44 @@ export default function HomeScreen() {
   const handlePaymentSuccess = async () => {
     setPaymentCompleted(true);
     setShowPaymentModal(false);
-    try {
-      // Example API call - uncomment and modify as needed
-      /*
+      try {
       const token = await AsyncStorage.getItem('token');
-      const response = await fetch('http://your-api.com/api/order', {
+      const response = await fetch('http://10.0.0.8:3001/api/orders', {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          departureCityId: 'ben-gurion',
-          destinationCityId: selectedDestination.slug,
-          flightId: selectedDestination.flight,
-          totalPrice: selectedDestination.price,
-          tripDate: '2026-03-15',
-        }),
+        
+          body: JSON.stringify({
+   departureCityId: '6807610adc218773e0652244', // או 'ben-gurion'
+  destinationCityId: selectedDestination.id, // או מה שיש לך עבור מזהה יעד
+  flightId: selectedDestination.flight ? selectedDestination.flight.id : null,
+  hotelId: selectedDestination.hotel ? selectedDestination.hotel.id : null,
+  paymentMethod: 'credit_card',
+  totalPrice: selectedDestination.price,
+  tripDate: '2026-03-15',
+    }),
       });
-      */
-      Alert.alert('Success!', 'Your trip has been booked successfully!');
+console.log('ORDER BODY:', {
+  departureCityId: '6807610adc218773e0652244',
+  destinationCityId: selectedDestination.id,
+  flightId: selectedDestination.flightId,
+  hotelId: selectedDestination.hotelId,
+  paymentMethod: 'credit_card',
+  totalPrice: selectedDestination.price,
+});
+
+      if (!response.ok) {
+        // ניסיון לקרוא הודעת שגיאה מהשרת
+        const errorData = await response.json().catch(() => null);
+        throw new Error(errorData?.message || 'Failed to save order on server');
+      }
+
+      const responseData = await response.json();
+      console.log('Order saved on server:', responseData);
+
+      Alert.alert('Success!', 'Your trip has been booked successfully on server!');
     } catch (error) {
       console.error('Error saving order:', error);
       Alert.alert('Warning', 'Trip booked but failed to save to server.');
@@ -466,7 +484,6 @@ export default function HomeScreen() {
             onPress={() => navigation.navigate('calculator')}
           >
             <Text style={styles.bottomButtonText}>💱 Currency Converter</Text>
-            <Text style={styles.bottomButtonText}>Currency Convertor</Text>
           </TouchableOpacity>
 
           <TouchableOpacity

@@ -47,7 +47,7 @@ const SupportScreen = () => {
   };
 
   const goHome = () => {
-   navigation.navigate('(tabs)', { screen: 'Home' });
+   navigation.navigate('(tabs)', { screen: 'home' });
   };
 
   return (
