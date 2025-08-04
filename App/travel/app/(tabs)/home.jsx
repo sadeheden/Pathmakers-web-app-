@@ -1,7 +1,16 @@
 import React, { useEffect, useState, useRef } from 'react';
 import {
-  View, Text, StyleSheet, Image, TouchableOpacity, Alert,
-  ActivityIndicator, ScrollView, FlatList, Dimensions, Modal
+  View,
+  Text,
+  StyleSheet,
+  Image,
+  TouchableOpacity,
+  Alert,
+  ActivityIndicator,
+  ScrollView,
+  FlatList,
+  Dimensions,
+  Modal,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
@@ -11,95 +20,22 @@ const screenWidth = Dimensions.get('window').width;
 
 // Enhanced cities array with more details
 const cities = [
-  { 
-    id: '1', 
-    name: 'Phuket', 
-    slug: 'phuket', 
-    flight: 'PG123',
-    image: require('../../assets/images/phuket.jpg'), 
-    description: 'Explore beaches, temples, and nightlife.',
-    price: 1400
-  },
-  { 
-    id: '2', 
-    name: 'Paris', 
-    slug: 'paris', 
-    flight: 'AF123',
-    image: require('../../assets/images/paris.png'), 
-    description: 'Romantic streets, Eiffel Tower, fine dining.',
-    price: 1800
-  },
-  { 
-    id: '3', 
-    name: 'Dubai', 
-    slug: 'dubai', 
-    flight: 'EK654',
-    image: require('../../assets/images/dubai.png'), 
-    description: 'Luxury shopping, Burj Khalifa, desert adventures.',
-    price: 2100
-  },
-  { 
-    id: '4', 
-    name: 'London', 
-    slug: 'london', 
-    flight: 'BA890',
-    image: require('../../assets/images/london.png'), 
-    description: 'Historic sites, Big Ben, cozy pubs.',
-    price: 1900
-  },
-  { 
-    id: '5', 
-    name: 'Turkey', 
-    slug: 'turkey', 
-    flight: 'TK101',
-    image: require('../../assets/images/turkey.png'), 
-    description: 'Markets, rich culture, hot air balloons.',
-    price: 1600
-  },
-  { 
-    id: '6', 
-    name: 'Amsterdam', 
-    slug: 'amsterdam', 
-    flight: 'KL202',
-    image: require('../../assets/images/amsterdam.png'), 
-    description: 'Canals, bikes, vibrant neighborhoods.',
-    price: 1700
-  },
+  { id: '1', name: 'Phuket', slug: 'phuket', flight: 'PG123', image: require('../../assets/images/phuket.jpg'), description: 'Explore beaches, temples, and nightlife.', price: 1400 },
+  { id: '2', name: 'Paris', slug: 'paris', flight: 'AF123', image: require('../../assets/images/paris.png'), description: 'Romantic streets, Eiffel Tower, fine dining.', price: 1800 },
+  { id: '3', name: 'Dubai', slug: 'dubai', flight: 'EK654', image: require('../../assets/images/dubai.png'), description: 'Luxury shopping, Burj Khalifa, desert adventures.', price: 2100 },
+  { id: '4', name: 'London', slug: 'london', flight: 'BA890', image: require('../../assets/images/london.png'), description: 'Historic sites, Big Ben, cozy pubs.', price: 1900 },
+  { id: '5', name: 'Turkey', slug: 'turkey', flight: 'TK101', image: require('../../assets/images/turkey.png'), description: 'Markets, rich culture, hot air balloons.', price: 1600 },
+  { id: '6', name: 'Amsterdam', slug: 'amsterdam', flight: 'KL202', image: require('../../assets/images/amsterdam.png'), description: 'Canals, bikes, vibrant neighborhoods.', price: 1700 },
 ];
-
 
 const CARDS_PER_PAGE = 6;
 const AUTO_ROTATE_SECONDS = 10;
 
 const userReviews = [
-  { 
-    id: '1', 
-    name: 'Noa Levi', 
-    likes: 3, 
-    dislikes: 0, 
-    tripText: 'Just returned from an amazing week in Phuket! The beaches were absolutely stunning and the local food scene exceeded all expectations. Would definitely go back!' 
-  },
-  { 
-    id: '2', 
-    name: 'Ori Cohen', 
-    likes: 5, 
-    dislikes: 1, 
-    tripText: 'Paris in spring is magical! Spent 5 days exploring museums, cafes, and hidden neighborhoods. The Eiffel Tower at sunset is a must-see experience.' 
-  },
-  { 
-    id: '3', 
-    name: 'Yasmin Alon', 
-    likes: 8, 
-    dislikes: 2, 
-    tripText: 'Dubai was incredible - from the towering Burj Khalifa to the traditional souks. Perfect blend of modern luxury and cultural heritage. Shopping was amazing!' 
-  },
-  { 
-    id: '4', 
-    name: 'Tal Bar', 
-    likes: 4, 
-    dislikes: 0, 
-    tripText: 'London has my heart! Cozy pubs, fascinating history, and friendly locals. The rainy weather just added to the authentic British experience.' 
-  },
+  { id: '1', name: 'Noa Levi', likes: 3, dislikes: 0, tripText: 'Just returned from an amazing week in Phuket! The beaches were absolutely stunning and the local food scene exceeded all expectations. Would definitely go back!' },
+  { id: '2', name: 'Ori Cohen', likes: 5, dislikes: 1, tripText: 'Paris in spring is magical! Spent 5 days exploring museums, cafes, and hidden neighborhoods. The Eiffel Tower at sunset is a must-see experience.' },
+  { id: '3', name: 'Yasmin Alon', likes: 8, dislikes: 2, tripText: 'Dubai was incredible - from the towering Burj Khalifa to the traditional souks. Perfect blend of modern luxury and cultural heritage. Shopping was amazing!' },
+  { id: '4', name: 'Tal Bar', likes: 4, dislikes: 0, tripText: 'London has my heart! Cozy pubs, fascinating history, and friendly locals. The rainy weather just added to the authentic British experience.' },
 ];
 
 // Payment Modal Component
@@ -136,6 +72,7 @@ const PaymentModal = ({ visible, onClose, selectedCity, onPaymentSuccess }) => {
     setTimeout(() => {
       setPaymentSuccess(false);
       onPaymentSuccess();
+
       // Reset form
       setFullName('');
       setCardNumber('');
@@ -157,12 +94,7 @@ const PaymentModal = ({ visible, onClose, selectedCity, onPaymentSuccess }) => {
   if (!visible) return null;
 
   return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="slide"
-      onRequestClose={onClose}
-    >
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <View style={styles.modalContainer}>
         <View style={styles.paymentModalContent}>
           {paymentSuccess ? (
@@ -180,25 +112,21 @@ const PaymentModal = ({ visible, onClose, selectedCity, onPaymentSuccess }) => {
               <Text style={styles.paymentSubtitle}>
                 {selectedCity?.name} - ${selectedCity?.price}
               </Text>
-              
               {error ? <Text style={styles.errorText}>{error}</Text> : null}
-
               <View style={styles.inputContainer}>
                 <Text style={styles.inputLabel}>Full Name</Text>
-                <Text 
+                <Text
                   style={styles.textInput}
                   onPress={() => {
-                    // In a real app, you'd use TextInput
                     Alert.prompt('Full Name', 'Enter your full name', setFullName);
                   }}
                 >
                   {fullName || 'Tap to enter full name'}
                 </Text>
               </View>
-
               <View style={styles.inputContainer}>
                 <Text style={styles.inputLabel}>Card Number</Text>
-                <Text 
+                <Text
                   style={styles.textInput}
                   onPress={() => {
                     Alert.prompt('Card Number', 'Enter 16-digit card number', (text) => {
@@ -209,11 +137,10 @@ const PaymentModal = ({ visible, onClose, selectedCity, onPaymentSuccess }) => {
                   {cardNumber || '**** **** **** ****'}
                 </Text>
               </View>
-
               <View style={styles.rowContainer}>
                 <View style={[styles.inputContainer, { flex: 1, marginRight: 10 }]}>
                   <Text style={styles.inputLabel}>Expiry</Text>
-                  <Text 
+                  <Text
                     style={styles.textInput}
                     onPress={() => {
                       Alert.prompt('Expiry Date', 'Enter MM/YY', setExpiryDate);
@@ -222,10 +149,9 @@ const PaymentModal = ({ visible, onClose, selectedCity, onPaymentSuccess }) => {
                     {expiryDate || 'MM/YY'}
                   </Text>
                 </View>
-                
                 <View style={[styles.inputContainer, { flex: 1, marginLeft: 10 }]}>
                   <Text style={styles.inputLabel}>CVV</Text>
-                  <Text 
+                  <Text
                     style={styles.textInput}
                     onPress={() => {
                       Alert.prompt('CVV', 'Enter 3-digit CVV', setCvv);
@@ -235,25 +161,12 @@ const PaymentModal = ({ visible, onClose, selectedCity, onPaymentSuccess }) => {
                   </Text>
                 </View>
               </View>
-
-              <TouchableOpacity 
-                style={styles.payButton} 
-                onPress={handlePayment}
-                activeOpacity={0.8}
-              >
-                <LinearGradient
-                  colors={['#667eea', '#764ba2']}
-                  style={styles.payButtonGradient}
-                >
+              <TouchableOpacity style={styles.payButton} onPress={handlePayment} activeOpacity={0.8}>
+                <LinearGradient colors={['#667eea', '#764ba2']} style={styles.payButtonGradient}>
                   <Text style={styles.payButtonText}>Pay ${selectedCity?.price}</Text>
                 </LinearGradient>
               </TouchableOpacity>
-
-              <TouchableOpacity 
-                style={styles.cancelButton} 
-                onPress={onClose}
-                activeOpacity={0.8}
-              >
+              <TouchableOpacity style={styles.cancelButton} onPress={onClose} activeOpacity={0.8}>
                 <Text style={styles.cancelButtonText}>Cancel</Text>
               </TouchableOpacity>
             </>
@@ -266,6 +179,7 @@ const PaymentModal = ({ visible, onClose, selectedCity, onPaymentSuccess }) => {
 
 export default function HomeScreen() {
   const navigation = useNavigation();
+
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [selectedDestination, setSelectedDestination] = useState(null);
@@ -297,11 +211,8 @@ export default function HomeScreen() {
   // Auto-rotate carousel
   useEffect(() => {
     const interval = setInterval(() => {
-      setCarouselIndex(prevIndex => 
-        (prevIndex + CARDS_PER_PAGE) % cities.length
-      );
+      setCarouselIndex((prevIndex) => (prevIndex + CARDS_PER_PAGE) % cities.length);
     }, AUTO_ROTATE_SECONDS * 1000);
-
     return () => clearInterval(interval);
   }, []);
 
@@ -333,7 +244,7 @@ export default function HomeScreen() {
   };
 
   const handleLike = (id) => {
-    const review = userReviews.find(r => r.id === id);
+    const review = userReviews.find((r) => r.id === id);
     if (review) {
       review.likes++;
       setSelectedReview({ ...review });
@@ -341,7 +252,7 @@ export default function HomeScreen() {
   };
 
   const handleDislike = (id) => {
-    const review = userReviews.find(r => r.id === id);
+    const review = userReviews.find((r) => r.id === id);
     if (review) {
       review.dislikes++;
       setSelectedReview({ ...review });
@@ -351,8 +262,6 @@ export default function HomeScreen() {
   const handlePaymentSuccess = async () => {
     setPaymentCompleted(true);
     setShowPaymentModal(false);
-    
-    // Here you would typically save the order to your backend
     try {
       // Example API call - uncomment and modify as needed
       /*
@@ -360,7 +269,7 @@ export default function HomeScreen() {
       const response = await fetch('http://your-api.com/api/order', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`,
+          Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -368,11 +277,10 @@ export default function HomeScreen() {
           destinationCityId: selectedDestination.slug,
           flightId: selectedDestination.flight,
           totalPrice: selectedDestination.price,
-          tripDate: '2026-03-15'
+          tripDate: '2026-03-15',
         }),
       });
       */
-      
       Alert.alert('Success!', 'Your trip has been booked successfully!');
     } catch (error) {
       console.error('Error saving order:', error);
@@ -390,10 +298,7 @@ export default function HomeScreen() {
   }
 
   // Get visible cities for carousel
-  const visibleCities = [
-    ...cities,
-    ...cities.slice(0, CARDS_PER_PAGE)
-  ].slice(carouselIndex, carouselIndex + CARDS_PER_PAGE);
+  const visibleCities = [...cities, ...cities.slice(0, CARDS_PER_PAGE)].slice(carouselIndex, carouselIndex + CARDS_PER_PAGE);
 
   return (
     <View style={styles.appBackground}>
@@ -403,11 +308,7 @@ export default function HomeScreen() {
           <View style={styles.logoContainer}>
             <Image source={require('../../assets/images/logo.png')} style={styles.logoSmall} />
           </View>
-          <TouchableOpacity 
-            onPress={handleWeatherPress} 
-            style={styles.weatherPreview}
-            activeOpacity={0.8}
-          >
+          <TouchableOpacity onPress={handleWeatherPress} style={styles.weatherPreview} activeOpacity={0.8}>
             <View style={styles.weatherContent}>
               <Text style={styles.weatherIcon}>☀️</Text>
               <Text style={styles.weatherText}>27°C</Text>
@@ -418,7 +319,7 @@ export default function HomeScreen() {
         {/* Welcome Section */}
         <View style={styles.welcomeSection}>
           <Text style={styles.title}>
-            Welcome back, {user?.name && user.name.trim() !== '' ? user.name : 'Explorer'}! 
+            Welcome back, {user?.name && user.name.trim() !== '' ? user.name : 'Explorer'}!
           </Text>
           <Text style={styles.subtitle}>
             Ready for your next adventure? Discover amazing destinations and plan your perfect trip with personalized recommendations.
@@ -426,11 +327,7 @@ export default function HomeScreen() {
         </View>
 
         {/* CTA Button */}
-        <TouchableOpacity 
-          style={styles.ctaButton} 
-          onPress={handleDiaryPress}
-          activeOpacity={0.8}
-        >
+        <TouchableOpacity style={styles.ctaButton} onPress={handleDiaryPress} activeOpacity={0.8}>
           <Text style={styles.ctaButtonText}>🚀 Start Your Journey</Text>
         </TouchableOpacity>
 
@@ -440,22 +337,14 @@ export default function HomeScreen() {
             <Text style={styles.sectionTitle}>✈️ Book Your Next Trip</Text>
             <Text style={styles.sectionSubtitle}>Handpicked destinations with instant booking</Text>
           </View>
-          
           <FlatList
             ref={flatListRef}
             horizontal
             data={visibleCities}
             renderItem={({ item }) => (
-              <TouchableOpacity
-                onPress={() => handleCityPress(item)}
-                style={styles.destinationCard}
-                activeOpacity={0.9}
-              >
+              <TouchableOpacity onPress={() => handleCityPress(item)} style={styles.destinationCard} activeOpacity={0.9}>
                 <Image source={item.image} style={styles.destinationImage} />
-                <LinearGradient
-                  colors={['transparent', 'rgba(0, 0, 0, 0.8)']}
-                  style={styles.destinationOverlay}
-                >
+                <LinearGradient colors={['transparent', 'rgba(0, 0, 0, 0.8)']} style={styles.destinationOverlay}>
                   <Text style={styles.destinationTitle}>{item.name}</Text>
                   <Text style={styles.destinationPrice}>From ${item.price}</Text>
                   <Text style={styles.destinationFlight}>✈️ {item.flight}</Text>
@@ -475,46 +364,26 @@ export default function HomeScreen() {
             <Text style={styles.sectionTitle}>💬 Traveler Stories</Text>
             <Text style={styles.sectionSubtitle}>Real experiences from real travelers</Text>
           </View>
-          
-          {userReviews.map(review => (
+          {userReviews.map((review) => (
             <View key={review.id} style={styles.reviewCard}>
               <View style={styles.reviewHeader}>
-                <Image 
-                  source={{ uri: `https://i.pravatar.cc/150?u=${review.id}` }} 
-                  style={styles.avatar} 
-                />
+                <Image source={{ uri: `https://i.pravatar.cc/150?u=${review.id}` }} style={styles.avatar} />
                 <View style={styles.reviewerInfo}>
                   <Text style={styles.reviewerName}>{review.name}</Text>
                   <Text style={styles.reviewDate}>2 days ago</Text>
                 </View>
               </View>
-              
               <Text style={styles.tripText}>{review.tripText}</Text>
-              
               <View style={styles.reviewActions}>
-                <TouchableOpacity 
-                  onPress={() => handleLike(review.id)}
-                  style={styles.actionButton}
-                  activeOpacity={0.7}
-                >
+                <TouchableOpacity onPress={() => handleLike(review.id)} style={styles.actionButton} activeOpacity={0.7}>
                   <Text style={styles.actionIcon}>👍</Text>
                   <Text style={styles.actionCount}>{review.likes}</Text>
                 </TouchableOpacity>
-                
-                <TouchableOpacity 
-                  onPress={() => handleDislike(review.id)}
-                  style={styles.actionButton}
-                  activeOpacity={0.7}
-                >
+                <TouchableOpacity onPress={() => handleDislike(review.id)} style={styles.actionButton} activeOpacity={0.7}>
                   <Text style={styles.actionIcon}>👎</Text>
                   <Text style={styles.actionCount}>{review.dislikes}</Text>
                 </TouchableOpacity>
-                
-                <TouchableOpacity 
-                  onPress={() => setSelectedReview(review)} 
-                  style={styles.replyButton}
-                  activeOpacity={0.7}
-                >
+                <TouchableOpacity onPress={() => setSelectedReview(review)} style={styles.replyButton} activeOpacity={0.7}>
                   <Text style={styles.replyText}>💬 Reply</Text>
                 </TouchableOpacity>
               </View>
@@ -524,12 +393,7 @@ export default function HomeScreen() {
 
         {/* Intro Popup Modal */}
         {selectedDestination && showIntroPopup && (
-          <Modal
-            visible={showIntroPopup}
-            transparent
-            animationType="slide"
-            onRequestClose={() => setShowIntroPopup(false)}
-          >
+          <Modal visible={showIntroPopup} transparent animationType="slide" onRequestClose={() => setShowIntroPopup(false)}>
             <View style={styles.modalContainer}>
               <View style={styles.modalContent}>
                 <TouchableOpacity
@@ -542,26 +406,14 @@ export default function HomeScreen() {
                 >
                   <Text style={styles.modalCloseXText}>✕</Text>
                 </TouchableOpacity>
-
                 <Text style={styles.modalTitle}>🎯 You've Selected {selectedDestination.name}!</Text>
                 <Text style={styles.modalDescription}>
-                  ✈️ Awesome! You're about to see your trip details to {selectedDestination.name}.
-                  This includes flight number, departure info, and trip dates.
+                  ✈️ Awesome! You're about to see your trip details to {selectedDestination.name}. This includes flight number, departure info, and trip dates.
                 </Text>
-                <Text style={styles.modalDescription}>
-                  Click Continue to review and proceed to payment.
-                </Text>
+                <Text style={styles.modalDescription}>Click Continue to review and proceed to payment.</Text>
                 <Text style={styles.priceHighlight}>Price: ${selectedDestination.price} per person</Text>
-                
-                <TouchableOpacity 
-                  style={styles.continueButton}
-                  onPress={() => setShowIntroPopup(false)}
-                  activeOpacity={0.8}
-                >
-                  <LinearGradient
-                    colors={['#667eea', '#764ba2']}
-                    style={styles.continueButtonGradient}
-                  >
+                <TouchableOpacity style={styles.continueButton} onPress={() => setShowIntroPopup(false)} activeOpacity={0.8}>
+                  <LinearGradient colors={['#667eea', '#764ba2']} style={styles.continueButtonGradient}>
                     <Text style={styles.continueButtonText}>Continue</Text>
                   </LinearGradient>
                 </TouchableOpacity>
@@ -572,12 +424,7 @@ export default function HomeScreen() {
 
         {/* Trip Details Modal */}
         {selectedDestination && !paymentCompleted && !showPaymentModal && !showIntroPopup && (
-          <Modal
-            visible={!!selectedDestination}
-            transparent
-            animationType="slide"
-            onRequestClose={() => setSelectedDestination(null)}
-          >
+          <Modal visible={!!selectedDestination} transparent animationType="slide" onRequestClose={() => setSelectedDestination(null)}>
             <View style={styles.modalContainer}>
               <View style={styles.modalContent}>
                 <TouchableOpacity
@@ -587,159 +434,21 @@ export default function HomeScreen() {
                 >
                   <Text style={styles.modalCloseXText}>✕</Text>
                 </TouchableOpacity>
-
-                <Text style={styles.modalTitle}>🎫 Your Trip is Ready!</Text>
-                
-                <View style={styles.modalImageWrapper}>
-                  <Image
-                    source={selectedDestination.image}
-                    style={styles.modalCityImage}
-                  />
-                </View>
-
-                <View style={styles.tripDetails}>
-                  <Text style={styles.tripDetailItem}>
-                    <Text style={styles.tripDetailLabel}>🌍 Destination:</Text> {selectedDestination.name}
-                  </Text>
-                  <Text style={styles.tripDetailItem}>
-                    <Text style={styles.tripDetailLabel}>🛫 Departure:</Text> Israel (Ben-Gurion Airport)
-                  </Text>
-                  <Text style={styles.tripDetailItem}>
-                    <Text style={styles.tripDetailLabel}>✈️ Flight:</Text> {selectedDestination.flight}
-                  </Text>
-                  <Text style={styles.tripDetailItem}>
-                    <Text style={styles.tripDetailLabel}>📅 Trip Date:</Text> March 15, 2026
-                  </Text>
-                  <Text style={styles.tripDetailItem}>
-                    <Text style={styles.tripDetailLabel}>🔄 Return:</Text> March 22, 2026
-                  </Text>
-                  <Text style={styles.tripDetailItem}>
-                    <Text style={styles.tripDetailLabel}>💰 Total Price:</Text> ${selectedDestination.price}
-                  </Text>
-                </View>
-
-                <TouchableOpacity 
-                  style={styles.payNowButton}
-                  onPress={() => setShowPaymentModal(true)}
-                  activeOpacity={0.8}
-                >
-                  <LinearGradient
-                    colors={['#28a745', '#20c997']}
-                    style={styles.payNowButtonGradient}
-                  >
-                    <Text style={styles.payNowButtonText}>💳 Pay Now - ${selectedDestination.price}</Text>
+                <Text style={styles.modalTitle}>{selectedDestination.name} - Trip Details</Text>
+                <Text style={styles.modalDescription}>Flight: {selectedDestination.flight}</Text>
+                <Text style={styles.modalDescription}>Price: ${selectedDestination.price}</Text>
+                <Text style={styles.modalDescription}>
+                  Description: {selectedDestination.description}
+                </Text>
+                <TouchableOpacity style={styles.bookButton} onPress={() => setShowPaymentModal(true)} activeOpacity={0.8}>
+                  <LinearGradient colors={['#667eea', '#764ba2']} style={styles.bookButtonGradient}>
+                    <Text style={styles.bookButtonText}>Book Now</Text>
                   </LinearGradient>
                 </TouchableOpacity>
               </View>
             </View>
           </Modal>
         )}
-
-        {/* Payment Success Modal */}
-        {paymentCompleted && selectedDestination && (
-          <Modal
-            visible={paymentCompleted}
-            transparent
-            animationType="slide"
-            onRequestClose={() => setSelectedDestination(null)}
-          >
-            <View style={styles.modalContainer}>
-              <View style={styles.modalContent}>
-                <TouchableOpacity
-                  style={styles.modalCloseX}
-                  onPress={() => {
-                    setSelectedDestination(null);
-                    setPaymentCompleted(false);
-                  }}
-                  activeOpacity={0.8}
-                >
-                  <Text style={styles.modalCloseXText}>✕</Text>
-                </TouchableOpacity>
-
-                <Text style={styles.successIcon}>🎉</Text>
-                <Text style={styles.modalTitle}>Payment Successful!</Text>
-                
-                <View style={styles.successDetails}>
-                  <Text style={styles.successDetailItem}>
-                    🌍 Destination: {selectedDestination.name}
-                  </Text>
-                  <Text style={styles.successDetailItem}>
-                    ✈️ Flight: {selectedDestination.flight}
-                  </Text>
-                  <Text style={styles.successDetailItem}>
-                    📅 Trip Date: March 15, 2026
-                  </Text>
-                  <Text style={styles.successDetailItem}>
-                    🔄 Return: March 22, 2026
-                  </Text>
-                  <Text style={styles.successDetailItem}>
-                    💰 Total: ${selectedDestination.price}
-                  </Text>
-                </View>
-                
-                <Text style={styles.successMessage}>
-                  ✅ Thank you for your purchase! Your trip is confirmed.
-                </Text>
-                
-                <TouchableOpacity 
-                  style={styles.closeSuccessButton}
-                  onPress={() => {
-                    setSelectedDestination(null);
-                    setPaymentCompleted(false);
-                  }}
-                  activeOpacity={0.8}
-                >
-                  <Text style={styles.closeSuccessButtonText}>Close</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </Modal>
-        )}
-
-        {/* Review Reply Modal */}
-        <Modal
-          visible={!!selectedReview}
-          transparent
-          animationType="slide"
-          onRequestClose={() => setSelectedReview(null)}
-        >
-          <View style={styles.modalContainer}>
-            <View style={styles.modalContent}>
-              <Text style={styles.modalTitle}>Reply to {selectedReview?.name}</Text>
-              <Text style={styles.modalDescription}>What did you think of their travel experience?</Text>
-              <View style={styles.modalActions}>
-                <TouchableOpacity 
-                  onPress={() => handleLike(selectedReview?.id)}
-                  style={styles.modalActionButton}
-                  activeOpacity={0.8}
-                >
-                  <Text style={styles.modalActionIcon}>👍</Text>
-                  <Text style={styles.modalActionText}>Helpful</Text>
-                </TouchableOpacity>
-                <TouchableOpacity 
-                  onPress={() => handleDislike(selectedReview?.id)}
-                  style={styles.modalActionButton}
-                  activeOpacity={0.8}
-                >
-                  <Text style={styles.modalActionIcon}>👎</Text>
-                  <Text style={styles.modalActionText}>Not helpful</Text>
-                </TouchableOpacity>
-              </View>
-              <TouchableOpacity 
-                onPress={() => setSelectedReview(null)} 
-                style={styles.modalButton}
-                activeOpacity={0.8}
-              >
-                <LinearGradient
-                  colors={['#667eea', '#764ba2']}
-                  style={styles.modalButtonGradient}
-                >
-                  <Text style={styles.modalButtonText}>Close</Text>
-                </LinearGradient>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </Modal>
 
         {/* Payment Modal */}
         <PaymentModal
@@ -748,6 +457,25 @@ export default function HomeScreen() {
           selectedCity={selectedDestination}
           onPaymentSuccess={handlePaymentSuccess}
         />
+
+        {/* ** ======= הכפתורים החדשים בתחתית ======= ** */}
+        <View style={styles.bottomButtonsContainer}>
+          <TouchableOpacity
+            style={styles.bottomButton}
+            activeOpacity={0.8}
+            onPress={() => navigation.navigate('calculator')}
+          >
+            <Text style={styles.bottomButtonText}>💱 מחשבון המרה</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.bottomButton}
+            activeOpacity={0.8}
+            onPress={() => navigation.navigate('Translate')}
+          >
+            <Text style={styles.bottomButtonText}>🌐 תרגום</Text>
+          </TouchableOpacity>
+        </View>
       </ScrollView>
     </View>
   );
@@ -775,6 +503,34 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 100,
   },
+  bottomButtonsContainer: {
+  flexDirection: 'row',
+  justifyContent: 'space-around',
+  paddingVertical: 15,
+  paddingHorizontal: 20,
+  backgroundColor: '#fff',
+  borderTopWidth: 1,
+  borderTopColor: '#ddd',
+  marginTop: 20,
+},
+
+bottomButton: {
+  backgroundColor: '#667eea',
+  paddingVertical: 12,
+  paddingHorizontal: 25,
+  borderRadius: 25,
+  elevation: 3,
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: 2 },
+  shadowOpacity: 0.3,
+  shadowRadius: 3,
+},
+
+bottomButtonText: {
+  color: 'white',
+  fontWeight: '600',
+  fontSize: 16,
+},
   appBackground: {
     flex: 1,
     backgroundColor: '#ffffff',
