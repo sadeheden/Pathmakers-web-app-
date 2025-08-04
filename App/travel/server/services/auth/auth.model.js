@@ -8,10 +8,13 @@ export async function findUserByEmail(email) {
 
 export async function logUserLogin(userId, req) {
   try {
-    console.log('🟡 logUserLogin called with userId:', userId);
+    console.log('🟡 logUserLogin called'); // Confirm function is hit
+    console.log('👉 userId:', userId);
+    console.log('👉 IP:', req.headers['x-forwarded-for'] || req.socket.remoteAddress);
+    console.log('👉 User-Agent:', req.headers['user-agent']);
 
     const logins = await getLoginCollection();
-    console.log('📦 Got LoginLogs collection');
+    console.log('📦 got LoginLogs collection');
 
     const logEntry = {
       userId,
@@ -20,12 +23,12 @@ export async function logUserLogin(userId, req) {
       userAgent: req.headers['user-agent'],
     };
 
-    console.log('📝 Log entry:', logEntry);
+    console.log('📄 Inserting log entry:', logEntry);
 
     const result = await logins.insertOne(logEntry);
-    console.log('✅ Login log inserted with ID:', result.insertedId);
-  } catch (error) {
-    console.error('❌ Failed to insert login log:', error);
+    console.log('✅ Log inserted with ID:', result.insertedId);
+
+  } catch (err) {
+    console.error('❌ Error logging login:', err);
   }
 }
-
