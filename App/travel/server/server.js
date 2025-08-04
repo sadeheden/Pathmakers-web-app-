@@ -4,24 +4,32 @@ import { fileURLToPath } from 'url';
 import express from 'express';
 import cors from 'cors';
 import { ObjectId } from 'mongodb';
+import jwt from 'jsonwebtoken';
 
 import authRouter from './services/auth/auth.router.js';
-import authenticateUser from './services/middlewares/authenticateUser.js';
-import { connectDB } from './services/auth/auth.db.js'; 
+import { connectDB } from './services/auth/auth.db.js';
 
-// חשבון נתיבים ב-ESM
+// Middleware לאימות JWT
+function authenticateUser(req, res, next) {
+  const authHeader = req.headers['authorization'];
+  if (!authHeader) return res.status(401).json({ success: false, message: 'Unauthorized - no token' });
+  const token = authHeader.split(' ')[1];
+  if (!token) return res.status(401).json({ success: false, message: 'Unauthorized - no token' });
+
+  try {
+    const payload = jwt.verify(token, process.env.JWT_SECRET);
+    req.user = payload;
+    next();
+  } catch (err) {
+    return res.status(401).json({ success: false, message: 'Unauthorized - invalid token' });
+  }
+}
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// טוען קודם את .env.local מהתיקיה server
 dotenv.config({ path: path.resolve(__dirname, '.env.local') });
 dotenv.config({ path: path.resolve(__dirname, '.env') });
-
-console.log('🔧 Environment check:', {
-  JWT_SECRET: process.env.JWT_SECRET ? 'LOADED ✅' : 'MISSING ❌',
-  CONNECTION_STRING: process.env.CONNECTION_STRING ? 'LOADED ✅' : 'MISSING ❌',
-  PORT: process.env.PORT || 'DEFAULT',
-});
 
 const app = express();
 const port = process.env.PORT || 3001;
@@ -31,29 +39,29 @@ app.use(express.json());
 
 app.use('/api/auth', authRouter);
 
-// רוטת בדיקה בסיסית
 app.get('/', (req, res) => {
   res.send('API is running');
 });
 
-// רוטת פרופיל - מחזירה את פרטי המשתמש והטיולים שלו
+// Route פרופיל עם אימות טוקן JWT
 app.get('/api/user/me', authenticateUser, async (req, res) => {
   try {
-    const userId = req.user.userId; // מזהה המשתמש מ-JWT
-    
+    const userId = req.user.userId;
+
     const db = await connectDB();
     const usersCol = db.collection('Users');
-    const tripsCol = db.collection('ordres'); // אוסף הטיולים
+    const tripsCol = db.collection('orders');
 
-    // שליפת פרטי המשתמש ללא סיסמה
+    // שליפת משתמש ללא סיסמה
     const user = await usersCol.findOne(
       { _id: new ObjectId(userId) },
       { projection: { password: 0 } }
     );
     if (!user) return res.status(404).json({ message: 'User not found' });
 
-    // שליפת הטיולים לפי user_id (אם user_id הוא מחרוזת, תשאיר ככה)
-    const trips = await tripsCol.find({ user_id: userId }).toArray();
+    // בדוק אם user_id הוא ObjectId במסמכי הטיולים
+    // אם כן, המיר למטה, אחרת הסר את new ObjectId
+    const trips = await tripsCol.find({ user_id: new ObjectId(userId) }).toArray();
 
     res.json({ user, trips });
   } catch (error) {
@@ -61,8 +69,6 @@ app.get('/api/user/me', authenticateUser, async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 });
-
-console.log('🌍 CONNECTION_STRING =', process.env.CONNECTION_STRING);
 
 app.listen(port, () => {
   console.log(`✅ Server is running on port ${port}`);
