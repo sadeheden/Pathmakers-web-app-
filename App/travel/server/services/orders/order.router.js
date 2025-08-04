@@ -9,6 +9,7 @@ router.get('/test', (req, res) => {
 });
 
 router.post('/', authenticateUser, createOrder);
-router.get('/', authenticateUser, getUserOrders);
+router.get('/', authenticateUser, getUserOrders); 
+
 
 export default router;

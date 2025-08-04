@@ -47,6 +47,9 @@ app.use(express.json());
 app.use('/api/auth', authRouter);
 app.use('/api/orders', orderRouter);
 
+// server.js or routes/order.router.js
+app.use('/api/orders', authenticateUser);  
+
 // בסיסי
 app.get('/', (req, res) => {
   res.send('API is running');
@@ -65,14 +68,16 @@ app.get('/api/user/me', authenticateUser, async (req, res) => {
     const usersCol = db.collection('Users');
     const ordersCol = db.collection('orders');
 
-    const user = await usersCol.findOne(
-      { _id: new ObjectId(userId) },
-      { projection: { password: 0 } }
-    );
+  const user = await usersCol.findOne(
+  { _id: new ObjectId(String(userId)) },
+  { projection: { password: 0 } }
+);
+
 
     if (!user) return res.status(404).json({ message: 'User not found' });
 
-    const orders = await ordersCol.find({ user_id: new ObjectId(userId) }).toArray();
+   const orders = await ordersCol.find({ user_id: new ObjectId(String(userId)) }).toArray();
+
 
     res.json({ user, orders });
   } catch (error) {

@@ -29,72 +29,81 @@ export default function Profile() {
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
-  useEffect(() => {
-    const loadData = async () => {
-      console.log('📥 Start loading data...');
-      try {
-        const token = await AsyncStorage.getItem('token');
-        console.log('🔑 Token:', token);
+ useEffect(() => {
+  const loadData = async () => {
+    console.log('📥 Start loading data...');
+    try {
+      // READ & CLEAN YOUR TOKEN
+      const raw = await AsyncStorage.getItem('token');
+      const token = raw?.replace(/^"|"$/g, '') || null;
+      console.log('🔑 Clean token:', token);
 
-        if (!token) {
-          console.log('🚪 No token found, redirecting to login');
-          router.replace('/login');
-          return;
-        }
+      if (!token) {
+        console.log('🚪 No token found, redirecting to login');
+        router.replace('/login');
+        return;
+      }
 
-        const userDataJson = await AsyncStorage.getItem('userData');
-        if (userDataJson) {
-          console.log('🗃️ Cached user data:', userDataJson);
-          setUser(JSON.parse(userDataJson));
-        }
+      // LOAD CACHED USER DATA
+      const userDataJson = await AsyncStorage.getItem('userData');
+      if (userDataJson) {
+        console.log('🗃️ Cached user data:', userDataJson);
+        setUser(JSON.parse(userDataJson));
+      }
 
-        console.log('🌐 Fetching orders from server...');
-        const response = await fetchWithTimeout('http://10.0.0.8:3001/api/orders', {
+      // FETCH ORDERS WITH THE CLEAN TOKEN
+      console.log('🌐 Fetching orders from server...');
+      const response = await fetchWithTimeout(
+        'https://pathmakers-web-app-app-travel.onrender.com/api/orders',
+        {
           headers: { Authorization: `Bearer ${token}` },
           timeout: 10000,
-        });
-
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.log('❌ Response error text:', errorText);
-          throw new Error('Failed to load orders');
         }
+      );
 
-        const data = await response.json();
-        console.log('📦 Orders received:', data);
-
-        if (!data.success) {
-          throw new Error(data.message || 'Failed to load orders');
-        }
-
-        setOrders(data.orders || []);
-      } catch (err) {
-        console.error('🔥 Load data error:', err);
-        Alert.alert('Error', err.message || 'Failed to load data');
-      } finally {
-        setLoading(false);
-        console.log('✅ Finished loading data. Loading state set to false.');
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => null);
+        console.log('❌ Response error body:', errorData);
+        throw new Error(errorData?.message || 'Failed to load orders');
       }
-    };
 
-    loadData();
-  }, []);
+      const data = await response.json();
+      console.log('📦 Orders received:', data);
+
+      if (!data.success) {
+        throw new Error(data.message || 'Failed to load orders');
+      }
+
+      setOrders(data.orders || []);
+    } catch (err) {
+      console.error('🔥 Load data error:', err);
+      Alert.alert('Error', err.message || 'Failed to load data');
+    } finally {
+      setLoading(false);
+      console.log('✅ Finished loading data. Loading state set to false.');
+    }
+  };
+
+  loadData();
+}, []);
+
 
   const handleLogout = async () => {
     await AsyncStorage.clear();
     router.replace('/login');
   };
 
-  const renderOrder = React.memo(({ item }) => (
-    <View style={styles.tripCard}>
-      <Text style={styles.tripTitle}>Destination ID: {item.destination_city_id}</Text>
-      <Text>Departure ID: {item.departure_city_id}</Text>
-      <Text>Flight ID: {item.flight_id}</Text>
-      <Text>Hotel ID: {item.hotel_id}</Text>
-      <Text>Transport: {item.transportation || 'N/A'}</Text>
-      <Text>Price: ${item.total_price}</Text>
-    </View>
-  ));
+const renderOrder = ({ item }) => (
+  <View style={styles.tripCard}>
+    <Text style={styles.tripTitle}>Destination ID: {item.destination_city_id}</Text>
+    <Text>Departure ID: {item.departure_city_id}</Text>
+    <Text>Flight ID: {item.flight_id}</Text>
+    <Text>Hotel ID: {item.hotel_id}</Text>
+    <Text>Transport: {item.transportation || 'N/A'}</Text>
+    <Text>Price: ${item.total_price}</Text>
+  </View>
+);
+
   if (loading) {
     return (
       <View style={[styles.container, { justifyContent: 'center' }]}>
