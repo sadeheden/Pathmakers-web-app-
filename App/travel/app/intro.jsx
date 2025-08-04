@@ -14,7 +14,7 @@ export default function IntroScreen() {
       </Text>
 
       <TouchableOpacity style={styles.button} onPress={() => router.push('/login')}>
-        <Text style={styles.buttonText}>המשך</Text>
+        <Text style={styles.buttonText}>Start</Text>
       </TouchableOpacity>
     </View>
   );

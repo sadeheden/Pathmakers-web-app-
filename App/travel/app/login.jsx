@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
+import Popup from './components/Popup';
 import {
   View, Text, TextInput, TouchableOpacity,
-  StyleSheet, Alert, ActivityIndicator
+  StyleSheet, ActivityIndicator
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
@@ -12,10 +13,19 @@ export default function LoginScreen() {
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [popup, setPopup] = useState({
+    visible: false,
+    title: '',
+    message: '',
+  });
 
   const handleLogin = async () => {
     if (!identifier.trim() || !password) {
-      Alert.alert('Missing Fields', 'Please enter both email/username and password');
+      setPopup({
+        visible: true,
+        title: 'Missing Fields',
+        message: 'Please enter both email/username and password',
+      });
       return;
     }
 
@@ -27,7 +37,11 @@ export default function LoginScreen() {
       });
 
       if (!response || !response.success || !response.token || !response.user) {
-        Alert.alert('Login Failed', response?.message || 'Unknown error');
+        setPopup({
+          visible: true,
+          title: 'Login Failed',
+          message: response?.message || 'Unknown error',
+        });
         setLoading(false);
         return;
       }
@@ -35,11 +49,25 @@ export default function LoginScreen() {
       await AsyncStorage.setItem('token', response.token);
       await AsyncStorage.setItem('userData', JSON.stringify(response.user));
 
-      Alert.alert('Success', 'Logged in!');
-      router.replace('/home'); // ודא שיש מסך כזה (app/home.jsx)
+      setPopup({
+        visible: true,
+        title: 'Success',
+        message: 'Logged in!',
+      });
+
+      // Navigate after a short delay to allow popup to show
+      setTimeout(() => {
+        setPopup(prev => ({ ...prev, visible: false }));
+        router.replace('/home');
+      }, 1500);
+
     } catch (err) {
       console.error('Login Error:', err);
-      Alert.alert('Connection Error', 'Could not connect to server.');
+      setPopup({
+        visible: true,
+        title: 'Connection Error',
+        message: 'Could not connect to server.',
+      });
     } finally {
       setLoading(false);
     }
@@ -54,7 +82,6 @@ export default function LoginScreen() {
         placeholder="Email or Username"
         value={identifier}
         onChangeText={(text) => {
-          // מונע ניווט בטעות בגלל Expo Router
           if (!loading) setIdentifier(text);
         }}
         style={styles.input}
@@ -83,9 +110,20 @@ export default function LoginScreen() {
           : <Text style={styles.buttonText}>Sign In</Text>
         }
       </TouchableOpacity>
+
+    <Popup
+  visible={popup.visible}
+  title={popup.title}
+  message={popup.message}
+  onClose={() => setPopup(prev => ({ ...prev, visible: false }))}
+  onConfirm={() => setPopup(prev => ({ ...prev, visible: false }))}
+  showCancel={false}
+/>
+
     </View>
   );
 }
+
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 24, justifyContent: 'center', backgroundColor: '#fff' },
   title: { fontSize: 32, fontWeight: 'bold', marginBottom: 8, textAlign: 'center', color: '#333' },
