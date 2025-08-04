@@ -6,7 +6,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import HomeScreen from './home';
 import MapScreen from './map';
-import WeatherScreen from './weather';
 import DiaryScreen from './diary';
 import ProfileScreen from './profile';
 
@@ -69,9 +68,7 @@ export default function TabsLayout() {
             case 'Map':
               iconName = 'map';
               break;
-            case 'Weather':
-              iconName = 'cloud';
-              break;
+          
             case 'Diary':
               iconName = 'calendar';
               break;
@@ -85,8 +82,12 @@ export default function TabsLayout() {
     >
       <Tab.Screen name="Home" component={HomeScreen} />
       <Tab.Screen name="Map" component={MapScreen} />
-      <Tab.Screen name="Weather" component={WeatherScreen} />
-      <Tab.Screen name="Diary" component={DiaryScreen} />
+    <Tab.Screen
+  name="Diary"
+  component={DiaryScreen}
+  options={{ tabBarLabel: 'Planner' }}
+/>
+
       <Tab.Screen name="Profile" component={ProfileScreen} />
     </Tab.Navigator>
   );
