@@ -1,11 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
   TextInput,
   StyleSheet,
   TouchableOpacity,
-  Picker,
   ActivityIndicator,
   Animated,
   Easing,
@@ -13,6 +12,8 @@ import {
   KeyboardAvoidingView,
   ScrollView,
 } from 'react-native';
+
+import { Picker } from '@react-native-picker/picker';  // ייבוא תקין של Picker
 
 // טבלת שערי המרה לדוגמה לכל עיר עם מטבעות מקומיים (שערים פיקטיביים)
 const exchangeRates = {
@@ -43,7 +44,8 @@ const CurrencyConverter = () => {
   const [converted, setConverted] = useState('');
   const [isConverting, setIsConverting] = useState(false);
 
-  const fadeAnim = new Animated.Value(0);
+  // תיקון: useRef לשמירת ערך האנימציה בין רינדורים
+  const fadeAnim = useRef(new Animated.Value(0)).current;
 
   const handleConvert = () => {
     const numericAmount = parseFloat(amount);
@@ -95,7 +97,10 @@ const CurrencyConverter = () => {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       style={styles.container}
     >
-      <ScrollView contentContainerStyle={styles.contentContainer} keyboardShouldPersistTaps="handled">
+      <ScrollView
+        contentContainerStyle={styles.contentContainer}
+        keyboardShouldPersistTaps="handled"
+      >
         <Text style={styles.title}>💱 Currency Converter</Text>
 
         <Text style={styles.label}>🏙️ בחר עיר:</Text>
@@ -187,7 +192,7 @@ const styles = StyleSheet.create({
   pickerWrapper: {
     backgroundColor: '#fff',
     borderRadius: 10,
-    marginBottom: 16,
+    marginBottom: 160,
     borderWidth: 1,
     borderColor: '#d1d5db',
   },
@@ -226,9 +231,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   resultText: {
-    fontSize: 20,
+    fontSize: 32,
     fontWeight: 'bold',
-    color: '#075985',
+    color: '#003366', // כחול כהה יותר
+    textAlign: 'center',
+    marginBottom: 8,
   },
   infoText: {
     marginTop: 8,

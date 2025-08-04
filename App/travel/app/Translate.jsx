@@ -30,16 +30,16 @@ export default function TranslatorScreen() {
       return;
     }
       try {
-    const response = await fetch('https://libretranslate.de/translate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        q: text,
-        source: sourceLang,
-        target: targetLang,
-        format: 'text',
-      }),
-    });
+          const res = await fetch('https://libretranslate.de/translate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          q: inputText,
+          source: sourceLang,
+          target: targetLang,
+          format: 'text',
+        }),
+        });
 
       const data = await res.json();
       setTranslatedText(data.translatedText || 'Translation failed');
