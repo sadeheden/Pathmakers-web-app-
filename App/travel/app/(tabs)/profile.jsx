@@ -49,16 +49,17 @@ export default function Profile() {
         }
 
         console.log('🌐 Fetching orders from server...');
-        const response = await fetchWithTimeout('http://10.0.0.8:3001/api/orders', {
+        const response = await fetchWithTimeout('https://pathmakers-web-app-app-travel.onrender.com/api/orders', {
           headers: { Authorization: `Bearer ${token}` },
           timeout: 10000,
         });
 
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.log('❌ Response error text:', errorText);
-          throw new Error('Failed to load orders');
-        }
+       if (!response.ok) {
+  const errorData = await response.json().catch(() => null);
+  console.log('❌ Response error body:', errorData);
+  throw new Error(errorData?.message || 'Failed to load orders');
+}
+
 
         const data = await response.json();
         console.log('📦 Orders received:', data);
@@ -85,16 +86,16 @@ export default function Profile() {
     router.replace('/login');
   };
 
-  const renderOrder = React.memo(({ item }) => (
-    <View style={styles.tripCard}>
-      <Text style={styles.tripTitle}>Destination ID: {item.destination_city_id}</Text>
-      <Text>Departure ID: {item.departure_city_id}</Text>
-      <Text>Flight ID: {item.flight_id}</Text>
-      <Text>Hotel ID: {item.hotel_id}</Text>
-      <Text>Transport: {item.transportation || 'N/A'}</Text>
-      <Text>Price: ${item.total_price}</Text>
-    </View>
-  ));
+const renderOrder = React.memo(({ item }) => (
+  <View style={styles.tripCard}>
+    <Text style={styles.tripTitle}>Destination: {item.destination_city_name}</Text>
+    <Text>Departure: {item.departure_city_name}</Text>
+    <Text>Flight: {item.flight_name}</Text>
+    <Text>Hotel: {item.hotel_name}</Text>
+    <Text>Transport: {item.transportation || 'N/A'}</Text>
+    <Text>Price: ${item.total_price}</Text>
+  </View>
+));
 
   if (loading) {
     return (

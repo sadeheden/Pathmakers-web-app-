@@ -3,16 +3,12 @@ import { findOrdersByUserIdFromDb, insertOrderToDb } from './order.db.js';
 
 export default class Order {
   constructor(data = {}) {
-    this.user_id = new ObjectId(data.user_id);
-    this.departure_city_id = new ObjectId(data.departure_city_id);
-    this.destination_city_id = new ObjectId(data.destination_city_id);
-    this.flight_id = new ObjectId(data.flight_id);
-    this.hotel_id = new ObjectId(data.hotel_id);
-    this.attractions = data.attractions || [];
-    this.transportation = data.transportation || null;
-    this.payment_method = data.payment_method || null;
-    this.total_price = data.total_price || 0;
-    this.created_at = data.created_at || new Date();
+  this.user_id = new ObjectId(String(data.user_id));
+this.departure_city_id = new ObjectId(String(data.departure_city_id));
+this.destination_city_id = new ObjectId(String(data.destination_city_id));
+this.flight_id = new ObjectId(String(data.flight_id));
+this.hotel_id = new ObjectId(String(data.hotel_id));
+
   }
 
   static async findByUserId(userId) {

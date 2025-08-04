@@ -1,5 +1,6 @@
 import Order from './order.model.js';
 import { ObjectId } from 'mongodb';
+import { connectDB } from '../auth/auth.db.js';
 
 function cleanId(id) {
   try {
@@ -58,12 +59,41 @@ export async function createOrder(req, res) {
 }
 
 export async function getUserOrders(req, res) {
-  if (!req.user?.id && !req.user?.userId) return res.status(401).json({ message: 'Unauthorized' });
+  if (!req.user?.id && !req.user?.userId) {
+    return res.status(401).json({ message: 'Unauthorized' });
+  }
 
   try {
     const userId = req.user.id || req.user.userId;
-    const orders = await Order.findByUserId(userId);
-    res.status(200).json(orders);
+    const db = await connectDB();
+
+    const orders = await db.collection('orders')
+      .find({ user_id: new ObjectId(userId) })
+      .toArray();
+
+    const cityCol = db.collection('city');
+    const flightCol = db.collection('flights');
+    const hotelCol = db.collection('hotels');
+
+    const populatedOrders = await Promise.all(
+      orders.map(async (order) => {
+        const departureCity = await cityCol.findOne({ _id: order.departure_city_id });
+        const destinationCity = await cityCol.findOne({ _id: order.destination_city_id });
+        const flight = await flightCol.findOne({ _id: order.flight_id });
+        const hotel = await hotelCol.findOne({ _id: order.hotel_id });
+
+        return {
+          ...order,
+          departure_city_name: departureCity?.name || 'Unknown',
+          destination_city_name: destinationCity?.name || 'Unknown',
+          flight_name: flight?.name || 'Unknown',
+          hotel_name: hotel?.name || 'Unknown',
+        };
+      })
+    );
+
+    res.status(200).json({ success: true, orders: populatedOrders });
+
   } catch (err) {
     console.error('Get orders error:', err);
     res.status(500).json({ message: 'Internal Server Error' });

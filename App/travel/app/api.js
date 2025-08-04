@@ -2,12 +2,20 @@ const base_url = "https://pathmakers-web-app-app-travel.onrender.com/api";
 
 export async function get(endpoint) {
   try {
-    const response = await fetch(`${base_url}/${endpoint}`);
+    const token = await AsyncStorage.getItem('token'); // 👈 get token
+
+    const response = await fetch(`${base_url}/${endpoint}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`, // 👈 include it
+      },
+    });
+
     if (!response.ok) {
       const errorText = await response.text();
       console.error('Error response text:', errorText);
       throw new Error('Network response was not ok');
     }
+
     return await response.json();
   } catch (error) {
     console.error('Error fetching data:', error);
