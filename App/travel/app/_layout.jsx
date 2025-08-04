@@ -8,8 +8,7 @@ export default function RootLayout() {
       <Stack.Screen name="splash" />
       <Stack.Screen name="intro" />
       <Stack.Screen name="login" />
-      <Stack.Screen name="(tabs)" />
-         <Stack.Screen name="Translate" /> 
+
       <Stack.Screen name="calculator" />
     </Stack>
   );

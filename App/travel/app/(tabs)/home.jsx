@@ -328,13 +328,13 @@ export default function HomeScreen() {
 
         {/* CTA Button */}
         <TouchableOpacity style={styles.ctaButton} onPress={handleDiaryPress} activeOpacity={0.8}>
-          <Text style={styles.ctaButtonText}>🚀 Start Your Journey</Text>
+          <Text style={styles.ctaButtonText}> Start Your Journey</Text>
         </TouchableOpacity>
 
         {/* Enhanced Destinations Section */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>✈️ Book Your Next Trip</Text>
+            <Text style={styles.sectionTitle}> Book Your Next Trip</Text>
             <Text style={styles.sectionSubtitle}>Handpicked destinations with instant booking</Text>
           </View>
           <FlatList
@@ -361,7 +361,7 @@ export default function HomeScreen() {
         {/* Reviews Section */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>💬 Traveler Stories</Text>
+            <Text style={styles.sectionTitle}> Traveler Stories</Text>
             <Text style={styles.sectionSubtitle}>Real experiences from real travelers</Text>
           </View>
           {userReviews.map((review) => (
@@ -465,16 +465,9 @@ export default function HomeScreen() {
             activeOpacity={0.8}
             onPress={() => navigation.navigate('calculator')}
           >
-            <Text style={styles.bottomButtonText}>💱 מחשבון המרה</Text>
+            <Text style={styles.bottomButtonText}>Currency Convertor</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.bottomButton}
-            activeOpacity={0.8}
-            onPress={() => navigation.navigate('Translate')}
-          >
-            <Text style={styles.bottomButtonText}>🌐 תרגום</Text>
-          </TouchableOpacity>
         </View>
       </ScrollView>
     </View>
