@@ -191,7 +191,8 @@ export async function createOrder(req, res) {
     });
 
     const savedOrder = await newOrder.save();
-    const orderObj = savedOrder.toObject();
+  const orderObj = savedOrder;
+
     
     console.log("✅ Order saved successfully:", orderObj._id);
     
@@ -257,7 +258,7 @@ export async function getUserOrders(req, res) {
   
   try {
     const userId = String(req.user.id);
-    const orders = await Order.find({ user_id: userId }).lean();
+const orders = await Order.findByUserId(userId);
     console.log(" Retrieved orders:", orders.length);
     return res.status(200).json(orders);
   } catch (err) {

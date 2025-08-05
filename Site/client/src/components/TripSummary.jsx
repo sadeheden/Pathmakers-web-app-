@@ -19,32 +19,99 @@ const TripSummary = ({ userResponses, setUserResponses, setCurrentStep, setPayme
             return;
         }
 
+        // Helper function to extract and clean ID
+        const extractId = (item) => {
+            if (!item) return null;
+            
+            let id = null;
+            if (typeof item === 'string') {
+                id = item;
+            } else if (typeof item === 'object' && item.id) {
+                id = item.id;
+            } else if (typeof item === 'object' && item._id) {
+                id = item._id;
+            }
+            
+            if (!id) return null;
+            
+            // Clean compound IDs - extract only the ObjectId part
+            if (typeof id === 'string') {
+                // For IDs like "68075f88dc218773e0652230_1", extract the first part
+                const parts = id.split(/[-_]/);
+                const cleanedId = parts[0];
+                
+                // Validate it's a proper 24-character hex ObjectId
+                if (/^[a-f\d]{24}$/i.test(cleanedId)) {
+                    return cleanedId;
+                }
+            }
+            
+            return null;
+        };
+
+        // Special function for hotel ID extraction since hotels are stored differently
+        const extractHotelId = (item) => {
+            if (!item) return null;
+            
+            // If it's an object with hotel details, try to find the city ID and hotel index
+            if (typeof item === 'object') {
+                // Check if we have the raw hotel object with city info
+                if (item.id && typeof item.id === 'string') {
+                    // For compound hotel IDs like "68075dd4f110a359e23cd001-1"
+                    const parts = item.id.split('-');
+                    if (parts.length >= 1) {
+                        const cityId = parts[0];
+                        if (/^[a-f\d]{24}$/i.test(cityId)) {
+                            return cityId; // Return the city ID for now
+                        }
+                    }
+                }
+                
+                // Check for _id property
+                if (item._id) {
+                    return extractId(item._id);
+                }
+            }
+            
+            // Try normal ID extraction as fallback
+            return extractId(item);
+        };
+
         let selectedAttractions = userResponses["Select attractions to visit"];
         if (!Array.isArray(selectedAttractions)) {
             selectedAttractions = selectedAttractions ? [selectedAttractions] : [];
         }
 
         const orderData = {
-            departureCityId: String(userResponses["What is your departure city?"]?.id),
-            destinationCityId: String(userResponses["What is your destination city?"]?.id),
-            flightId: String(userResponses["Select your flight"]?.id),
-            hotelId: userResponses["Select your hotel"]?.id || null,
-            attractions: Array.isArray(userResponses["Select attractions to visit"])
-                ? userResponses["Select attractions to visit"].map(a => String(a.id))
-                : [String(userResponses["Select attractions to visit"]?.id)],
+            departureCityId: extractId(userResponses["What is your departure city?"]),
+            destinationCityId: extractId(userResponses["What is your destination city?"]),
+            flightId: extractId(userResponses["Select your flight"]),
+            hotelId: extractHotelId(userResponses["Select your hotel"]),
+            attractions: selectedAttractions.map(a => extractId(a)).filter(Boolean),
             transportation: userResponses["Select your mode of transportation"] || null,
             paymentMethod: userResponses["Select payment method"] || "Unknown",
             totalPrice: calculateTotalPrice(userResponses),
-            paymentStatus: "Completed"
         };
 
         console.log("🧪 Checking IDs before sending:");
+        console.log("Raw departure city:", userResponses["What is your departure city?"]);
+        console.log("Raw destination city:", userResponses["What is your destination city?"]);
+        console.log("Raw flight:", userResponses["Select your flight"]);
+        console.log("Raw hotel:", userResponses["Select your hotel"]);
+        console.log("Raw attractions:", userResponses["Select attractions to visit"]);
+        
+        console.log("🔍 Extracted IDs:");
         console.log("departureCityId:", orderData.departureCityId);
         console.log("destinationCityId:", orderData.destinationCityId);
         console.log("flightId:", orderData.flightId);
         console.log("hotelId:", orderData.hotelId);
-        console.log("Hotel ID:", userResponses["Select your hotel"]?.id);
         console.log("attractions:", orderData.attractions);
+
+        // If hotelId is still null, let's try to use the destination city ID as fallback
+        if (!orderData.hotelId && orderData.destinationCityId) {
+            console.log("⚠️ Hotel ID is null, using destination city ID as fallback");
+            orderData.hotelId = orderData.destinationCityId;
+        }
 
         console.log("🔍 Sending Order Data:", orderData);
 
@@ -98,18 +165,82 @@ const TripSummary = ({ userResponses, setUserResponses, setCurrentStep, setPayme
             const userData = await userResponse.json();
             console.log("✅ Fetched User:", userData);
 
+            // Helper function to extract and clean ID
+            const extractId = (item) => {
+                if (!item) return null;
+                
+                let id = null;
+                if (typeof item === 'string') {
+                    id = item;
+                } else if (typeof item === 'object' && item.id) {
+                    id = item.id;
+                } else if (typeof item === 'object' && item._id) {
+                    id = item._id;
+                }
+                
+                if (!id) return null;
+                
+                // Clean compound IDs - extract only the ObjectId part
+                if (typeof id === 'string') {
+                    // For IDs like "68075f88dc218773e0652230_1", extract the first part
+                    const parts = id.split(/[-_]/);
+                    const cleanedId = parts[0];
+                    
+                    // Validate it's a proper 24-character hex ObjectId
+                    if (/^[a-f\d]{24}$/i.test(cleanedId)) {
+                        return cleanedId;
+                    }
+                }
+                
+                return null;
+            };
+
+            // Special function for hotel ID extraction since hotels are stored differently
+            const extractHotelId = (item) => {
+                if (!item) return null;
+                
+                // If it's an object with hotel details, try to find the city ID and hotel index
+                if (typeof item === 'object') {
+                    // Check if we have the raw hotel object with city info
+                    if (item.id && typeof item.id === 'string') {
+                        // For compound hotel IDs like "68075dd4f110a359e23cd001-1"
+                        const parts = item.id.split('-');
+                        if (parts.length >= 1) {
+                            const cityId = parts[0];
+                            if (/^[a-f\d]{24}$/i.test(cityId)) {
+                                return cityId; // Return the city ID for now
+                            }
+                        }
+                    }
+                    
+                    // Check for _id property
+                    if (item._id) {
+                        return extractId(item._id);
+                    }
+                }
+                
+                // Try normal ID extraction as fallback
+                return extractId(item);
+            };
+
             const orderData = {
-                departureCityId: cleanId(userResponses["What is your departure city?"]?.id),
-                destinationCityId: cleanId(userResponses["What is your destination city?"]?.id),
-                flightId: cleanId(userResponses["Select your flight"]?.id),
-                hotelId: cleanId(userResponses["Select your hotel"]?.id),
+                departureCityId: extractId(userResponses["What is your departure city?"]),
+                destinationCityId: extractId(userResponses["What is your destination city?"]),
+                flightId: extractId(userResponses["Select your flight"]),
+                hotelId: extractHotelId(userResponses["Select your hotel"]),
                 attractions: Array.isArray(userResponses["Select attractions to visit"])
-                    ? userResponses["Select attractions to visit"].map(a => cleanId(a.id))
-                    : [cleanId(userResponses["Select attractions to visit"]?.id)],
+                    ? userResponses["Select attractions to visit"].map(a => extractId(a)).filter(Boolean)
+                    : [extractId(userResponses["Select attractions to visit"])].filter(Boolean),
                 transportation: userResponses["Select your mode of transportation"] || null,
                 paymentMethod: userResponses["Select payment method"] || "Unknown",
                 totalPrice: calculateTotalPrice(userResponses),
             };
+
+            // If hotelId is still null, let's try to use the destination city ID as fallback
+            if (!orderData.hotelId && orderData.destinationCityId) {
+                console.log("⚠️ Hotel ID is null, using destination city ID as fallback");
+                orderData.hotelId = orderData.destinationCityId;
+            }
 
             console.log("🔍 Sending Order Data:", orderData);
 
