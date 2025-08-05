@@ -233,8 +233,8 @@ export async function getOrderPDF(req, res) {
       .fillColor(textColor)
       .text(`From: ${departureCity?.city || "N/A"}`, 60, sectionY + 25)
       .text(`To: ${destinationCity?.city || "N/A"}`, 60, sectionY + 45)
-      .text(`Airline: ${flight?.airline || "N/A"}`, 60, sectionY + 65)
-      .text(`Price: $${flight?.price?.toFixed(2) || "0.00"}`, 60, sectionY + 85);
+    .text(`Airline: ${flight?.airlines?.[0]?.name || "N/A"}`, 60, sectionY + 65)
+.text(`Price: $${flight?.airlines?.[0]?.price?.toFixed(2) || "0.00"}`, 60, sectionY + 85)
 
     // Hotel Box
     drawBox(310, sectionY - 5, colWidth, 120);
@@ -248,8 +248,9 @@ export async function getOrderPDF(req, res) {
       .font("Helvetica")
       .fontSize(12)
       .fillColor(textColor)
-      .text(`Name: ${hotel?.name || "N/A"}`, 320, sectionY + 25)
-      .text(`Price/night: $${hotel?.price?.toFixed(2) || "0.00"}`, 320, sectionY + 45);
+     .text(`Name: ${hotel?.hotels?.[0]?.name || "N/A"}`, 320, sectionY + 25)
+.text(`Price/night: $${hotel?.hotels?.[0]?.price?.toFixed(2) || "0.00"}`, 320, sectionY + 45)
+
 
     doc.moveDown(7);
 
@@ -367,7 +368,7 @@ export async function getUserOrders(req, res) {
         ]);
 
         return {
-          ...order,
+        ...order.toObject?.(), 
           _id: order._id?.toString?.() || null,
           user_id: order.user_id?.toString?.() || null,
           departure_city_id: order.departure_city_id?.toString?.() || null,
@@ -383,8 +384,8 @@ export async function getUserOrders(req, res) {
           // Human-readable names
           departure_city_name: departureCity?.city || "Unknown",
           destination_city_name: destinationCity?.city || "Unknown",
-          flight_name: flight?.airline || "Unknown",
-          hotel_name: hotel?.name || "Unknown",
+        flight_name: flight?.airlines?.[0]?.name || "Unknown",
+      hotel_name: hotel?.hotels?.[0]?.name || "Unknown",
           attraction_names: attractions
             ? attractions.filter(Boolean).map(a => a.name)
             : [],

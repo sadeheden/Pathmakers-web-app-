@@ -344,25 +344,28 @@ const PersonalArea = () => {
                 )}
     
                 {/* User Orders */}
-              {selectedOrder && (
+         {selectedOrder && (
   <div className="order-modal">
     <div className="order-modal-content">
       <button className="close-modal" onClick={() => setSelectedOrder(null)}>✖</button>
       <h2>Order Details</h2>
 
       <p><strong>Order ID:</strong> {selectedOrder._id}</p>
-    <p><strong>Departure City:</strong> {selectedOrder.departure_city_name || selectedOrder.departure_city_id}</p>
-<p><strong>Destination City:</strong> {selectedOrder.destination_city_name || selectedOrder.destination_city_id}</p>
-<p><strong>Flight:</strong> {selectedOrder.flight_name || selectedOrder.flight_id}</p>
-<p><strong>Hotel:</strong> {selectedOrder.hotel_name || selectedOrder.hotel_id}</p>
-<p><strong>Attractions:</strong> 
-  {selectedOrder.attraction_names?.length
-    ? selectedOrder.attraction_names.join(", ")
-    : "None"}
-</p>
-      <p><strong>Transportation:</strong> {selectedOrder.transportation || "N/A"}</p>
+      <p><strong>Departure City:</strong> {selectedOrder.departure_city_name || selectedOrder.departure_city_id}</p>
+      <p><strong>Destination City:</strong> {selectedOrder.destination_city_name || selectedOrder.destination_city_id}</p>
+      
+      <p><strong>Flight:</strong> {selectedOrder.flight_name || selectedOrder.flight_id || "Not selected"}</p>
+      <p><strong>Hotel:</strong> {selectedOrder.hotel_name || selectedOrder.hotel_id || "Not selected"}</p>
+
+      <p><strong>Attractions:</strong> 
+        {Array.isArray(selectedOrder.attraction_names) && selectedOrder.attraction_names.length > 0
+          ? selectedOrder.attraction_names.join(", ")
+          : "None"}
+      </p>
+
+      <p><strong>Transportation:</strong> {selectedOrder.transportation || "Not selected"}</p>
       <p><strong>Payment Method:</strong> {selectedOrder.payment_method}</p>
-      <p><strong>Total Price:</strong> ${selectedOrder.total_price}</p>
+      <p><strong>Total Price:</strong> ${Number(selectedOrder.total_price).toLocaleString()}</p>
       <p><strong>Created At:</strong> {new Date(selectedOrder.created_at).toLocaleString()}</p>
     </div>
   </div>

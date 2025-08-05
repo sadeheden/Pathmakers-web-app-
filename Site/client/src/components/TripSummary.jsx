@@ -291,6 +291,7 @@ const TripSummary = ({ userResponses, setUserResponses, setCurrentStep, setPayme
         setCurrentStep(0);
         setPaymentCompleted(false);
         localStorage.removeItem("userResponses");
+        localStorage.removeItem("orderSaved"); 
         localStorage.setItem("currentStep", "0");
     };
 
@@ -315,10 +316,17 @@ const TripSummary = ({ userResponses, setUserResponses, setCurrentStep, setPayme
                     <button className="download-btn" onClick={handleDownloadSummary}>Download Receipt</button>
                     <button
                         className="personal-area-btn"
-                        onClick={async () => {
-                            await handleSaveOrder();
-                            navigate("/personal-area");
-                        }}
+                       onClick={async () => {
+                    const alreadySaved = localStorage.getItem("orderSaved");
+
+                    if (!alreadySaved) {
+                        await handleSaveOrder();
+                        localStorage.setItem("orderSaved", "true"); // ✅ mark as saved
+                    }
+
+                    navigate("/personal-area");
+                }}
+
                     >
                         Go to Personal Area
                     </button>
