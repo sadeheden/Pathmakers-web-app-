@@ -377,7 +377,8 @@ const PersonalArea = () => {
             <ul className="orders-list">
                 {orders.map((order, index) => (
                     <li key={index} className="order-item">
-                        <strong>Route:</strong> {order.departure_city_id} → {order.destination_city_id}, ${order.total_price}
+                       <strong>Route:</strong>{" "}
+{order.departure_city_name || order.departure_city_id} → {order.destination_city_name || order.destination_city_id}, ${order.total_price}
                         <button className="view-details-button" onClick={() => handleViewOrderDetails(order)}>
                             View Details
                         </button>
