@@ -263,8 +263,8 @@ const TripSummary = ({ userResponses, setUserResponses, setCurrentStep, setPayme
 
             await new Promise(resolve => setTimeout(resolve, 1000));
 
-            const pdfResponse = await fetch(`http://localhost:4000/api/order/${savedOrder.id}/pdf`, {
-                method: "GET",
+           const pdfResponse = await fetch(`http://localhost:4000/api/order/${savedOrder._id}/pdf`, {
+     method: "GET",
                 headers: {
                     "Authorization": `Bearer ${token}`
                 }
