@@ -20,13 +20,14 @@ const screenWidth = Dimensions.get('window').width;
 
 // Enhanced cities array with more details
 const cities = [
-  { id: '1', name: 'Phuket', slug: 'phuket', flight: 'PG123', image: require('../../assets/images/phuket.jpg'), description: 'Explore beaches, temples, and nightlife.', price: 1400 },
-  { id: '2', name: 'Paris', slug: 'paris', flight: 'AF123', image: require('../../assets/images/paris.png'), description: 'Romantic streets, Eiffel Tower, fine dining.', price: 1800 },
-  { id: '3', name: 'Dubai', slug: 'dubai', flight: 'EK654', image: require('../../assets/images/dubai.png'), description: 'Luxury shopping, Burj Khalifa, desert adventures.', price: 2100 },
-  { id: '4', name: 'London', slug: 'london', flight: 'BA890', image: require('../../assets/images/london.png'), description: 'Historic sites, Big Ben, cozy pubs.', price: 1900 },
-  { id: '5', name: 'Turkey', slug: 'turkey', flight: 'TK101', image: require('../../assets/images/turkey.png'), description: 'Markets, rich culture, hot air balloons.', price: 1600 },
-  { id: '6', name: 'Amsterdam', slug: 'amsterdam', flight: 'KL202', image: require('../../assets/images/amsterdam.png'), description: 'Canals, bikes, vibrant neighborhoods.', price: 1700 },
+  { id: '1', name: 'Phuket', slug: 'phuket', flight: 'PG123', image: require('../../assets/images/phuket.jpg'), description: 'Explore beaches, temples, and nightlife.', hotel: 'Phuket Grand Hotel', price: 1400 },
+  { id: '2', name: 'Paris', slug: 'paris', flight: 'AF123', image: require('../../assets/images/paris.png'), description: 'Romantic streets, Eiffel Tower, fine dining.', hotel: 'Hotel Parisienne', price: 1800 },
+  { id: '3', name: 'Dubai', slug: 'dubai', flight: 'EK654', image: require('../../assets/images/dubai.png'), description: 'Luxury shopping, Burj Khalifa, desert adventures.', hotel: 'Dubai Luxury Suites', price: 2100 },
+  { id: '4', name: 'London', slug: 'london', flight: 'BA890', image: require('../../assets/images/london.png'), description: 'Historic sites, Big Ben, cozy pubs.', hotel: 'The London Palace', price: 1900 },
+  { id: '5', name: 'Turkey', slug: 'turkey', flight: 'TK101', image: require('../../assets/images/turkey.png'), description: 'Markets, rich culture, hot air balloons.', hotel: 'Istanbul Grand Hotel', price: 1600 },
+  { id: '6', name: 'Amsterdam', slug: 'amsterdam', flight: 'KL202', image: require('../../assets/images/amsterdam.png'), description: 'Canals, bikes, vibrant neighborhoods.', hotel: 'Amsterdam Central Hotel', price: 1700 },
 ];
+
 
 const CARDS_PER_PAGE = 6;
 const AUTO_ROTATE_SECONDS = 10;
@@ -259,52 +260,86 @@ export default function HomeScreen() {
     }
   };
 
-  const handlePaymentSuccess = async () => {
-    setPaymentCompleted(true);
-    setShowPaymentModal(false);
-      try {
-      const token = await AsyncStorage.getItem('token');
-      const response = await fetch('http://10.0.0.8:3001/api/orders', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        
-          body: JSON.stringify({
-   departureCityId: '6807610adc218773e0652244', // או 'ben-gurion'
-  destinationCityId: selectedDestination.id, // או מה שיש לך עבור מזהה יעד
-  flightId: selectedDestination.flight ? selectedDestination.flight.id : null,
-  hotelId: selectedDestination.hotel ? selectedDestination.hotel.id : null,
-  paymentMethod: 'credit_card',
-  totalPrice: selectedDestination.price,
-  tripDate: '2026-03-15',
-    }),
-      });
-console.log('ORDER BODY:', {
-  departureCityId: '6807610adc218773e0652244',
-  destinationCityId: selectedDestination.id,
-  flightId: selectedDestination.flightId,
-  hotelId: selectedDestination.hotelId,
-  paymentMethod: 'credit_card',
-  totalPrice: selectedDestination.price,
-});
+ // פונקציה לשליפת מזהה כללי
+const extractId = (item) => {
+  if (!item) return null;
 
-      if (!response.ok) {
-        // ניסיון לקרוא הודעת שגיאה מהשרת
-        const errorData = await response.json().catch(() => null);
-        throw new Error(errorData?.message || 'Failed to save order on server');
-      }
+  let id = null;
+  if (typeof item === 'string') {
+    id = item;
+  } else if (typeof item === 'object' && item.id) {
+    id = item.id;
+  } else if (typeof item === 'object' && item._id) {
+    id = item._id;
+  }
 
-      const responseData = await response.json();
-      console.log('Order saved on server:', responseData);
+  if (!id) return null;
 
-      Alert.alert('Success!', 'Your trip has been booked successfully on server!');
-    } catch (error) {
-      console.error('Error saving order:', error);
-      Alert.alert('Warning', 'Trip booked but failed to save to server.');
+  if (typeof id === 'string') {
+    const parts = id.split(/[-_]/);
+    const cleanedId = parts[0];
+
+    if (/^[a-f\d]{24}$/i.test(cleanedId)) {
+      return cleanedId;
     }
+  }
+
+  return null;
+};
+
+// פונקציה לשליפת מזהה של מלון
+const extractHotelId = (hotelObj) => {
+  if (!hotelObj) return null;
+  if (typeof hotelObj === 'object' && hotelObj.hotel) {
+    return extractId(hotelObj.hotel);
+  }
+  return extractId(hotelObj);
+};
+
+// הפונקציה שנקראת כאשר התשלום הצליח
+const handlePaymentSuccess = async () => {
+  setPaymentCompleted(true);
+  setShowPaymentModal(false);
+
+  const orderData = {
+    departureCityId: extractId(departureCity),
+    destinationCityId: extractId(selectedDestination),
+    flightId: extractId(selectedDestination?.flight),
+    hotelId: extractHotelId(selectedDestination?.hotel),
+    attractions: selectedAttractions.map(a => extractId(a)).filter(Boolean),
+    transportation: selectedTransportation || null,
+    paymentMethod: selectedPaymentMethod || "Unknown",
+    totalPrice: selectedDestination?.price || 0,
+    tripDate: '2026-03-15',
   };
+console.log('Price selected by user:', orderData.totalPrice);
+  try {
+    const token = await AsyncStorage.getItem('token');
+    const response = await fetch('http://10.0.0.8:3001/api/orders', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(orderData),
+    });
+
+    console.log('ORDER BODY:', orderData);
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => null);
+      throw new Error(errorData?.message || 'Failed to save order on server');
+    }
+
+    const responseData = await response.json();
+    console.log('Order saved on server:', responseData);
+    Alert.alert('Success!', 'Your trip has been booked successfully on server!');
+  } catch (error) {
+    console.error('Error saving order:', error);
+    Alert.alert('Warning', 'Trip booked but failed to save to server.');
+  }
+};
+
 
   if (loading) {
     return (

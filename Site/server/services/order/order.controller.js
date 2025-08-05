@@ -75,7 +75,7 @@ export async function createOrder(req, res) {
       ? attractions.map(a => cleanId(a)).filter(Boolean)
       : [];
 
-    // Create new order
+    // Create new order instance
     const newOrder = new Order({
       user_id: String(req.user.id),
       departure_city_id: depClean,
@@ -89,26 +89,30 @@ export async function createOrder(req, res) {
       created_at: new Date(),
     });
 
+    console.log("💾 Saving new order:", newOrder);
+
     const savedOrder = await newOrder.save();
-  const orderObj = savedOrder;
 
-    
-    console.log("✅ Order saved successfully:", orderObj._id);
-    
-   
-   const responseOrder = {
-  ...orderObj,
-  _id: orderObj._id.toString(),
-  user_id: orderObj.user_id?.toString?.() || null,
-  departure_city_id: orderObj.departure_city_id?.toString?.() || null,
-  destination_city_id: orderObj.destination_city_id?.toString?.() || null,
-  flight_id: orderObj.flight_id?.toString?.() || null,
-  hotel_id: orderObj.hotel_id?.toString?.() || null,
-  attractions: orderObj.attractions?.map(a => a.toString?.()) || []
-};
+    // בניית אובייקט תגובה פשוט עם כל השדות הדרושים במחרוזות
+    const responseOrder = {
+      _id: savedOrder._id.toString(),
+      user_id: savedOrder.user_id?.toString() || null,
+      departure_city_id: savedOrder.departure_city_id?.toString() || null,
+      destination_city_id: savedOrder.destination_city_id?.toString() || null,
+      flight_id: savedOrder.flight_id?.toString() || null,
+      hotel_id: savedOrder.hotel_id?.toString() || null,
+      attractions: Array.isArray(savedOrder.attractions)
+        ? savedOrder.attractions.map(id => id.toString())
+        : [],
+      transportation: savedOrder.transportation,
+      payment_method: savedOrder.payment_method,
+      total_price: savedOrder.total_price,
+      created_at: savedOrder.created_at,
+    };
 
-res.status(201).json(responseOrder);
+    console.log("✅ Order saved successfully:", responseOrder._id);
 
+    return res.status(201).json(responseOrder);
 
   } catch (err) {
     console.error("❌ Error creating order:", err);
@@ -136,58 +140,195 @@ export async function getOrderPDF(req, res) {
         : Promise.resolve([])
     ]);
 
-    // Set headers to stream the PDF directly
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader("Content-Disposition", `inline; filename="order-${orderId}.pdf"`);
 
-    // Create and stream the PDF directly
     const doc = new pdfkit({ size: "A4", margins: { top: 50, bottom: 50, left: 50, right: 50 } });
-    doc.pipe(res); // 📢 No saving to file system, directly to browser
+    doc.pipe(res);
 
-    // PDF content
-    doc.font("Helvetica-Bold").fontSize(24).fillColor("#1F618D")
-      .text("PathMakers - Travel Receipt", { align: "center" });
-    doc.moveDown().fontSize(14).fillColor("black")
-      .text(`Order ID: ${orderId}`, { align: "center" })
-      .text(`Date: ${new Date().toLocaleDateString()}`, { align: "center" })
-      .moveDown(1.5);
+    // צבעים
+    const primaryColor = "#2A3E5B";  // כחול כהה מודרני
+    const secondaryColor = "#F4F7FA"; // רקע בהיר
+    const accentColor = "#FF6F61";   // אדום כתום למגע עיצובי
+    const textColor = "#333333";
 
-    doc.font("Helvetica-Bold").fontSize(16).text("Customer Details", { underline: true });
-    doc.font("Helvetica").fontSize(12).text(`Username: ${req.user?.username || req.user?.name || 'User'}`).moveDown();
-
-    doc.font("Helvetica-Bold").fontSize(16).text("Flight Details", { underline: true });
-    doc.font("Helvetica").fontSize(12)
-      .text(`From: ${departureCity?.city || 'N/A'}`)
-      .text(`To: ${destinationCity?.city || 'N/A'}`)
-      .text(`Flight: ${flight?.airline || 'N/A'} - $${flight?.price || 0}`).moveDown();
-
-    doc.font("Helvetica-Bold").fontSize(16).text("Hotel Details", { underline: true });
-    doc.font("Helvetica").fontSize(12)
-      .text(`Hotel: ${hotel?.name || 'N/A'} - $${hotel?.price || 0}/night`).moveDown();
-
-    doc.font("Helvetica-Bold").fontSize(16).text("Attractions", { underline: true });
-    if (attractions.length > 0) {
-      attractions.forEach(attr => {
-        if (attr) doc.font("Helvetica").fontSize(12).text(`• ${attr.name} - $${attr.price || 0}`);
-      });
-    } else {
-      doc.font("Helvetica").fontSize(12).text("No attractions selected");
+    // פונקציה לעיצוב קופסאות תוכן
+    function drawBox(x, y, width, height) {
+      doc
+        .roundedRect(x, y, width, height, 8)
+        .fillOpacity(0.07)
+        .fill(secondaryColor)
+        .strokeColor(primaryColor)
+        .lineWidth(1)
+        .stroke()
+        .fillOpacity(1);
     }
 
-    doc.moveDown();
-    doc.font("Helvetica-Bold").fontSize(16).text("Transportation", { underline: true });
-    doc.font("Helvetica").fontSize(12).text(`Mode: ${order.transportation || 'N/A'}`).moveDown();
+    // --- HEADER ---
+    doc
+      .fillColor(primaryColor)
+      .font("Helvetica-Bold")
+      .fontSize(28)
+      .text("PathMakers", { align: "center" });
 
-    doc.font("Helvetica-Bold").fontSize(16).text("Payment Details", { underline: true });
-    doc.font("Helvetica").fontSize(12).text(`Method: ${order.payment_method}`);
-    doc.fontSize(14).fillColor("#E74C3C")
-      .text(`Total Price: $${order.total_price}`, { align: "right" });
+    doc
+      .moveDown(0.2)
+      .fontSize(16)
+      .fillColor(textColor)
+      .text("Travel Receipt", { align: "center" })
+      .moveDown(1.5);
 
-    doc.fillColor("black").moveDown(2)
-      .font("Helvetica-Oblique").fontSize(10).fillColor("#555")
-      .text("Thank you for booking with PathMakers!", { align: "center" });
+    // --- Order info bar ---
+    const orderInfoY = doc.y;
+    drawBox(50, orderInfoY - 5, 500, 60);
+    doc
+      .fillColor(primaryColor)
+      .fontSize(12)
+      .font("Helvetica-Bold")
+      .text("Order ID:", 60, orderInfoY);
+    doc
+      .font("Helvetica")
+      .text(orderId, 130, orderInfoY);
 
-    doc.end(); // ✅ Important: ends the stream
+    doc
+      .font("Helvetica-Bold")
+      .text("Date:", 350, orderInfoY);
+    doc
+      .font("Helvetica")
+      .text(new Date(order.created_at).toLocaleDateString(), 390, orderInfoY);
+
+    doc.moveDown(4);
+
+    // --- CUSTOMER DETAILS BOX ---
+    let sectionY = doc.y;
+    drawBox(50, sectionY - 5, 500, 60);
+    doc
+      .fillColor(primaryColor)
+      .font("Helvetica-Bold")
+      .fontSize(16)
+      .text("Customer Details", 60, sectionY);
+    doc
+      .font("Helvetica")
+      .fontSize(12)
+      .fillColor(textColor)
+      .text(`Username: ${req.user?.username || req.user?.name || "User"}`, 60, sectionY + 25);
+
+    doc.moveDown(5);
+
+    // --- FLIGHT & HOTEL DETAILS side by side ---
+    const colWidth = 240;
+    sectionY = doc.y;
+
+    // Flight Box
+    drawBox(50, sectionY - 5, colWidth, 120);
+    doc
+      .fillColor(primaryColor)
+      .font("Helvetica-Bold")
+      .fontSize(16)
+      .text("Flight Details", 60, sectionY);
+
+    doc
+      .font("Helvetica")
+      .fontSize(12)
+      .fillColor(textColor)
+      .text(`From: ${departureCity?.city || "N/A"}`, 60, sectionY + 25)
+      .text(`To: ${destinationCity?.city || "N/A"}`, 60, sectionY + 45)
+      .text(`Airline: ${flight?.airline || "N/A"}`, 60, sectionY + 65)
+      .text(`Price: $${flight?.price?.toFixed(2) || "0.00"}`, 60, sectionY + 85);
+
+    // Hotel Box
+    drawBox(310, sectionY - 5, colWidth, 120);
+    doc
+      .fillColor(primaryColor)
+      .font("Helvetica-Bold")
+      .fontSize(16)
+      .text("Hotel Details", 320, sectionY);
+
+    doc
+      .font("Helvetica")
+      .fontSize(12)
+      .fillColor(textColor)
+      .text(`Name: ${hotel?.name || "N/A"}`, 320, sectionY + 25)
+      .text(`Price/night: $${hotel?.price?.toFixed(2) || "0.00"}`, 320, sectionY + 45);
+
+    doc.moveDown(7);
+
+    // --- ATTRACTIONS (full width) ---
+    sectionY = doc.y;
+    const boxHeight = Math.max(60, 20 * (attractions.length || 1));
+    drawBox(50, sectionY - 5, 500, boxHeight + 30);
+
+    doc
+      .fillColor(primaryColor)
+      .font("Helvetica-Bold")
+      .fontSize(16)
+      .text("Attractions", 60, sectionY);
+
+    doc.font("Helvetica").fontSize(12).fillColor(textColor);
+    if (attractions.length > 0) {
+      let yOffset = sectionY + 25;
+      attractions.forEach(attr => {
+        if (attr) {
+          doc.text(`• ${attr.name} - $${attr.price?.toFixed(2) || "0.00"}`, 60, yOffset);
+          yOffset += 20;
+        }
+      });
+    } else {
+      doc
+        .font("Helvetica-Oblique")
+        .fillColor("#999999")
+        .text("No attractions selected", 60, sectionY + 25);
+    }
+
+    doc.moveDown(7);
+
+    // --- TRANSPORTATION ---
+    sectionY = doc.y;
+    drawBox(50, sectionY - 5, 500, 50);
+    doc
+      .fillColor(primaryColor)
+      .font("Helvetica-Bold")
+      .fontSize(16)
+      .text("Transportation", 60, sectionY);
+
+    doc
+      .font("Helvetica")
+      .fontSize(12)
+      .fillColor(textColor)
+      .text(order.transportation || "N/A", 60, sectionY + 25);
+
+    doc.moveDown(5);
+
+    // --- PAYMENT DETAILS ---
+    sectionY = doc.y;
+    drawBox(50, sectionY - 5, 500, 70);
+    doc
+      .fillColor(primaryColor)
+      .font("Helvetica-Bold")
+      .fontSize(16)
+      .text("Payment Details", 60, sectionY);
+
+    doc
+      .font("Helvetica")
+      .fontSize(12)
+      .fillColor(textColor)
+      .text(`Method: ${order.payment_method}`, 60, sectionY + 25);
+
+    doc
+      .font("Helvetica-Bold")
+      .fontSize(22)
+      .fillColor(accentColor)
+      .text(`Total Price: $${order.total_price.toFixed(2)}`, 400, sectionY + 20, { align: "right" });
+
+    // --- FOOTER ---
+    doc.moveDown(5);
+    doc
+      .fontSize(10)
+      .fillColor("#AAAAAA")
+      .font("Helvetica-Oblique")
+      .text("Thank you for booking with PathMakers.", { align: "center" });
+
+    doc.end();
 
   } catch (err) {
     console.error("❌ getOrderPDF error:", err);

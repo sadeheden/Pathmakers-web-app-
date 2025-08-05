@@ -49,6 +49,19 @@ export async function createOrder(req, res) {
     if (missing.length) {
       return res.status(400).json({ message: `Missing fields: ${missing.join(', ')}` });
     }
+    console.log('Received totalPrice:', totalPrice);
+console.log('Preparing new order with:', {
+  user_id: req.user.id || req.user.userId,
+  departure_city_id: cleanId(departureCityId),
+  destination_city_id: cleanId(destinationCityId),
+  flight_id: cleanId(flightId),
+  hotel_id: cleanId(hotelId),
+  attractions: Array.isArray(attractions) ? attractions.map(cleanId).filter(Boolean) : [],
+  transportation,
+  payment_method: paymentMethod,
+  total_price: totalPrice,
+  created_at: new Date(),
+});
 
     const newOrder = new Order({
       user_id: req.user.id || req.user.userId,
