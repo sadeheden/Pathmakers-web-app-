@@ -48,7 +48,8 @@ const PersonalArea = () => {
             // Filter unique orders based on Departure & Destination
             const uniqueOrdersMap = new Map();
             data.forEach(order => {
-                const key = `${order.departureCity}-${order.destinationCity}`;
+              const key = `${order.departure_city_id}-${order.destination_city_id}`;
+
     
                 // Keep only the most recent or highest-priced order
                 if (!uniqueOrdersMap.has(key) || uniqueOrdersMap.get(key).createdAt < order.createdAt) {
@@ -343,21 +344,30 @@ const PersonalArea = () => {
                 )}
     
                 {/* User Orders */}
-                {selectedOrder && (
-    <div className="order-modal">
-        <div className="order-modal-content">
-            <button className="close-modal" onClick={() => setSelectedOrder(null)}>✖</button>
-            <h2>Order Details</h2>
-            
-            <p><strong>Order ID:</strong> {selectedOrder.id}</p>
-            <p><strong>Departure:</strong> {selectedOrder.departureCity}</p>
-            <p><strong>Destination:</strong> {selectedOrder.destinationCity}</p>
-            <p><strong>Total Price:</strong> ${selectedOrder.totalPrice}</p>
+              {selectedOrder && (
+  <div className="order-modal">
+    <div className="order-modal-content">
+      <button className="close-modal" onClick={() => setSelectedOrder(null)}>✖</button>
+      <h2>Order Details</h2>
 
-
-        </div>
+      <p><strong>Order ID:</strong> {selectedOrder._id}</p>
+    <p><strong>Departure City:</strong> {selectedOrder.departure_city_name || selectedOrder.departure_city_id}</p>
+<p><strong>Destination City:</strong> {selectedOrder.destination_city_name || selectedOrder.destination_city_id}</p>
+<p><strong>Flight:</strong> {selectedOrder.flight_name || selectedOrder.flight_id}</p>
+<p><strong>Hotel:</strong> {selectedOrder.hotel_name || selectedOrder.hotel_id}</p>
+<p><strong>Attractions:</strong> 
+  {selectedOrder.attraction_names?.length
+    ? selectedOrder.attraction_names.join(", ")
+    : "None"}
+</p>
+      <p><strong>Transportation:</strong> {selectedOrder.transportation || "N/A"}</p>
+      <p><strong>Payment Method:</strong> {selectedOrder.payment_method}</p>
+      <p><strong>Total Price:</strong> ${selectedOrder.total_price}</p>
+      <p><strong>Created At:</strong> {new Date(selectedOrder.created_at).toLocaleString()}</p>
     </div>
+  </div>
 )}
+
 
 
 {activeTab === "orders" && (
@@ -367,7 +377,7 @@ const PersonalArea = () => {
             <ul className="orders-list">
                 {orders.map((order, index) => (
                     <li key={index} className="order-item">
-                        <strong>Route:</strong> {order.departureCity} → {order.destinationCity}, ${order.totalPrice}
+                        <strong>Route:</strong> {order.departure_city_id} → {order.destination_city_id}, ${order.total_price}
                         <button className="view-details-button" onClick={() => handleViewOrderDetails(order)}>
                             View Details
                         </button>

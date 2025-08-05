@@ -199,16 +199,63 @@ export async function getOrderPDF(req, res) {
 
 
 // GET /api/order
+// GET /api/order
 export async function getUserOrders(req, res) {
   if (!req.user?.id) return res.status(401).json({ message: "Unauthorized" });
-  
+
   try {
     const userId = String(req.user.id);
-const orders = await Order.findByUserId(userId);
-    console.log(" Retrieved orders:", orders.length);
-    return res.status(200).json(orders);
+    const rawOrders = await Order.findByUserId(userId);
+    console.log("📦 Retrieved orders:", rawOrders.length);
+
+    const enrichedOrders = await Promise.all(
+      rawOrders.map(async (order) => {
+        const [
+          departureCity,
+          destinationCity,
+          flight,
+          hotel,
+          attractions
+        ] = await Promise.all([
+          City.findById(order.departure_city_id).catch(() => null),
+          City.findById(order.destination_city_id).catch(() => null),
+          Flight.findById(order.flight_id).catch(() => null),
+          Hotel.findById(order.hotel_id).catch(() => null),
+          order.attractions?.length
+            ? Promise.all(order.attractions.map(id => Attraction.findById(id).catch(() => null)))
+            : []
+        ]);
+
+        return {
+          ...order,
+          _id: order._id?.toString?.() || null,
+          user_id: order.user_id?.toString?.() || null,
+          departure_city_id: order.departure_city_id?.toString?.() || null,
+          destination_city_id: order.destination_city_id?.toString?.() || null,
+          flight_id: order.flight_id?.toString?.() || null,
+          hotel_id: order.hotel_id?.toString?.() || null,
+          attractions: order.attractions?.map(a => a.toString?.()) || [],
+          total_price: order.total_price,
+          created_at: order.created_at,
+          payment_method: order.payment_method,
+          transportation: order.transportation,
+
+          // Human-readable names
+          departure_city_name: departureCity?.city || "Unknown",
+          destination_city_name: destinationCity?.city || "Unknown",
+          flight_name: flight?.airline || "Unknown",
+          hotel_name: hotel?.name || "Unknown",
+          attraction_names: attractions
+            ? attractions.filter(Boolean).map(a => a.name)
+            : [],
+        };
+      })
+    );
+
+    return res.status(200).json({ success: true, orders: enrichedOrders });
+
   } catch (err) {
-    console.error("❌ Error fetching orders:", err);
+    console.error("❌ Error fetching enriched orders:", err);
     return res.status(500).json({ message: "Internal Server Error" });
   }
 }
