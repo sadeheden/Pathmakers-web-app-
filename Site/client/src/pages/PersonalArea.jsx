@@ -47,8 +47,8 @@ const PersonalArea = () => {
     
             // Filter unique orders based on Departure & Destination
             const uniqueOrdersMap = new Map();
-            data.forEach(order => {
-              const key = `${order.departure_city_id}-${order.destination_city_id}`;
+       data.orders.forEach(order => {
+             const key = `${order.departure_city_id}-${order.destination_city_id}`;
 
     
                 // Keep only the most recent or highest-priced order
