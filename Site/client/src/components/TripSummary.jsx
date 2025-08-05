@@ -1,4 +1,6 @@
 import React from "react";
+import { jsPDF } from "jspdf";
+import autoTable from "jspdf-autotable";
 import { useNavigate } from "react-router-dom";
 import { calculateTotalPrice, cleanId } from "../utils/travelUtils";
 
@@ -86,7 +88,7 @@ const TripSummary = ({ userResponses, setUserResponses, setCurrentStep, setPayme
             departureCityId: extractId(userResponses["What is your departure city?"]),
             destinationCityId: extractId(userResponses["What is your destination city?"]),
             flightId: extractId(userResponses["Select your flight"]),
-            hotelId: extractHotelId(userResponses["Select your hotel"]),
+          hotelId: extractHotelId(userResponses["Select your hotel"]),
             attractions: selectedAttractions.map(a => extractId(a)).filter(Boolean),
             transportation: userResponses["Select your mode of transportation"] || null,
             paymentMethod: userResponses["Select payment method"] || "Unknown",
@@ -227,7 +229,7 @@ const TripSummary = ({ userResponses, setUserResponses, setCurrentStep, setPayme
                 departureCityId: extractId(userResponses["What is your departure city?"]),
                 destinationCityId: extractId(userResponses["What is your destination city?"]),
                 flightId: extractId(userResponses["Select your flight"]),
-                hotelId: extractHotelId(userResponses["Select your hotel"]),
+             hotelId: extractHotelId(userResponses["Select your hotel"]),
                 attractions: Array.isArray(userResponses["Select attractions to visit"])
                     ? userResponses["Select attractions to visit"].map(a => extractId(a)).filter(Boolean)
                     : [extractId(userResponses["Select attractions to visit"])].filter(Boolean),
@@ -286,6 +288,96 @@ const TripSummary = ({ userResponses, setUserResponses, setCurrentStep, setPayme
         }
     };
 
+// If you want a logo, import it (as Base64 or file)
+// import logo from "../assets/logo.png";
+
+const handleGeneratePDF = () => {
+  const doc = new jsPDF();
+  const lineHeight = 10;
+  let y = 20;
+
+  const get = (q) => userResponses[q]?.name || userResponses[q] || "N/A";
+  const getList = (q) =>
+    Array.isArray(userResponses[q])
+      ? userResponses[q].map((a) => a.name || a).join(", ")
+      : userResponses[q]?.name || "N/A";
+
+  // ===== Add logo (optional) =====
+  // doc.addImage(logo, "PNG", 80, y, 50, 20);
+  // y += 25;
+
+  // ===== Header =====
+  doc.setFontSize(18);
+  doc.setTextColor("#2A3E5B");
+  doc.text("PathMakers AI - Travel Receipt", 105, y, { align: "center" });
+  y += lineHeight * 2;
+
+  doc.setFontSize(12);
+  doc.setTextColor("black");
+  doc.text(`Date: ${new Date().toLocaleDateString()}`, 20, y);
+  y += lineHeight;
+
+  doc.text(`✅ Payment Status: Completed`, 20, y);
+  y += lineHeight * 2;
+
+  // ===== Table Content =====
+  autoTable(doc, {
+    startY: y,
+      tableWidth: 'wrap',
+    head: [["Order", "Details"]],
+    body: [
+      ["Departure City", get("What is your departure city?")],
+      ["Destination City", get("What is your destination city?")],
+      ["Flight", get("Select your flight")],
+      ["Hotel", get("Select your hotel")],
+      ["Attractions", getList("Select attractions to visit")],
+      ["Transportation", get("Select your mode of transportation")],
+      ["Payment Method", get("Select payment method")],
+    ],
+    styles: { overflow: 'linebreak',
+  cellPadding: 3, fontSize: 11 },
+    headStyles: {
+      fillColor: [42, 62, 91], // dark blue
+      textColor: [255, 255, 255],
+      halign: "center",
+    },
+    columnStyles: {
+        0: { cellWidth: 60 }, 
+     1: { cellWidth: 120 } 
+    },
+  });
+
+  // ===== Total Price Highlight =====
+  y = doc.lastAutoTable.finalY + 10;
+  doc.setFontSize(14);
+  doc.setTextColor("#2A3E5B");
+  doc.setFont("helvetica", "bold");
+  doc.text(
+    `Total Paid: $${calculateTotalPrice(userResponses).toFixed(2)}`,
+    20,
+    y
+  );
+
+  // ===== Footer =====
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(10);
+  doc.setTextColor("gray");
+  doc.text(
+    "Thank you for booking with PathMakers AI!",
+    105,
+    285,
+    { align: "center" }
+  );
+  doc.text(
+    "Contact us: info@pathmakers.com | +1-800-555-TRVL",
+    105,
+    292,
+    { align: "center" }
+  );
+
+  doc.save("trip-receipt.pdf");
+};
+
     const handleRestartTrip = () => {
         setUserResponses({});
         setCurrentStep(0);
@@ -313,7 +405,7 @@ const TripSummary = ({ userResponses, setUserResponses, setCurrentStep, setPayme
                     <h3>Total Paid: ${calculateTotalPrice(userResponses)}</h3>
                 </div>
                 <div className="summary-buttons">
-                    <button className="download-btn" onClick={handleDownloadSummary}>Download Receipt</button>
+                    <button className="download-btn" onClick={handleGeneratePDF}>Download Receipt</button>
                     <button
                         className="personal-area-btn"
                        onClick={async () => {
