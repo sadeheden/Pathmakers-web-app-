@@ -136,162 +136,33 @@ const TripSummary = ({ userResponses, setUserResponses, setCurrentStep, setPayme
             const savedOrder = await response.json();
             console.log("✅ Order saved successfully!", savedOrder);
             localStorage.setItem("orderSaved", "true");
+            // Optional: fetch all orders if not already in context
+                const ordersRes = await fetch("http://localhost:4000/api/order", {
+                headers: { "Authorization": `Bearer ${token}` },
+                });
+                const { orders } = await ordersRes.json();
+
+                // Find the full enriched order with all city/flight/hotel names
+              const enrichedOrder = orders.find(o => o._id === savedOrder._id);
+if (!enrichedOrder) {
+  alert("Could not match saved order.");
+  return;
+}
+handleGeneratePDF(enrichedOrder); // ✅ Generate PDF
+
+
 
         } catch (error) {
             console.error("⚠️ Error saving order:", error);
             alert("⚠️ An error occurred while saving your order. Please try again.");
         }
-    };
-
-    const handleDownloadSummary = async () => {
-        try {
-            const token = localStorage.getItem("authToken");
-
-            if (!token) {
-                console.error("❌ No token found. User might not be logged in.");
-                alert("⚠️ You must be logged in to download receipt.");
-                return;
-            }
-            const userResponse = await fetch("http://localhost:4000/api/auth/user", {
-                method: "GET",
-                headers: {
-                    "Authorization": `Bearer ${token}`,
-                    "Content-Type": "application/json"
-                }
-            });
-
-            if (!userResponse.ok) {
-                throw new Error("❌ Failed to fetch user details.");
-            }
-
-            const userData = await userResponse.json();
-            console.log("✅ Fetched User:", userData);
-
-            // Helper function to extract and clean ID
-            const extractId = (item) => {
-                if (!item) return null;
-                
-                let id = null;
-                if (typeof item === 'string') {
-                    id = item;
-                } else if (typeof item === 'object' && item.id) {
-                    id = item.id;
-                } else if (typeof item === 'object' && item._id) {
-                    id = item._id;
-                }
-                
-                if (!id) return null;
-                
-                // Clean compound IDs - extract only the ObjectId part
-                if (typeof id === 'string') {
-                    // For IDs like "68075f88dc218773e0652230_1", extract the first part
-                    const parts = id.split(/[-_]/);
-                    const cleanedId = parts[0];
-                    
-                    // Validate it's a proper 24-character hex ObjectId
-                    if (/^[a-f\d]{24}$/i.test(cleanedId)) {
-                        return cleanedId;
-                    }
-                }
-                
-                return null;
-            };
-
-            // Special function for hotel ID extraction since hotels are stored differently
-            const extractHotelId = (item) => {
-                if (!item) return null;
-                
-                // If it's an object with hotel details, try to find the city ID and hotel index
-                if (typeof item === 'object') {
-                    // Check if we have the raw hotel object with city info
-                    if (item.id && typeof item.id === 'string') {
-                        // For compound hotel IDs like "68075dd4f110a359e23cd001-1"
-                        const parts = item.id.split('-');
-                        if (parts.length >= 1) {
-                            const cityId = parts[0];
-                            if (/^[a-f\d]{24}$/i.test(cityId)) {
-                                return cityId; // Return the city ID for now
-                            }
-                        }
-                    }
-                    
-                    // Check for _id property
-                    if (item._id) {
-                        return extractId(item._id);
-                    }
-                }
-                
-                // Try normal ID extraction as fallback
-                return extractId(item);
-            };
-
-            const orderData = {
-                departureCityId: extractId(userResponses["What is your departure city?"]),
-                destinationCityId: extractId(userResponses["What is your destination city?"]),
-                flightId: extractId(userResponses["Select your flight"]),
-             hotelId: extractHotelId(userResponses["Select your hotel"]),
-                attractions: Array.isArray(userResponses["Select attractions to visit"])
-                    ? userResponses["Select attractions to visit"].map(a => extractId(a)).filter(Boolean)
-                    : [extractId(userResponses["Select attractions to visit"])].filter(Boolean),
-                transportation: userResponses["Select your mode of transportation"] || null,
-                paymentMethod: userResponses["Select payment method"] || "Unknown",
-                totalPrice: calculateTotalPrice(userResponses),
-            };
-
-            // If hotelId is still null, let's try to use the destination city ID as fallback
-            if (!orderData.hotelId && orderData.destinationCityId) {
-                console.log("⚠️ Hotel ID is null, using destination city ID as fallback");
-                orderData.hotelId = orderData.destinationCityId;
-            }
-
-            console.log("🔍 Sending Order Data:", orderData);
-
-            const response = await fetch("http://localhost:4000/api/order", {
-                method: "POST",
-                headers: {
-                    "Authorization": `Bearer ${token}`,
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify(orderData)
-            });
-
-            if (!response.ok) {
-                console.error("❌ Failed to save order:", response.status);
-                return;
-            }
-
-            const savedOrder = await response.json();
-            console.log("✅ Order saved successfully:", savedOrder);
-
-            await new Promise(resolve => setTimeout(resolve, 1000));
-
-           const pdfResponse = await fetch(`http://localhost:4000/api/order/${savedOrder._id}/pdf`, {
-     method: "GET",
-                headers: {
-                    "Authorization": `Bearer ${token}`
-                }
-            });
-
-            if (!pdfResponse.ok) {
-                console.error("❌ Failed to fetch PDF:", pdfResponse.status);
-                alert("❌ Failed to generate PDF receipt. Try again.");
-                return;
-            }
-
-            const pdfBlob = await pdfResponse.blob();
-            const pdfUrl = URL.createObjectURL(pdfBlob);
-            window.open(pdfUrl, "_blank");
-
-        } catch (error) {
-            console.error("⚠️ Error saving order or fetching PDF:", error);
-            alert("⚠️ An error occurred. Please try again.");
-        }
-    };
+};
 
 // If you want a logo, import it (as Base64 or file)
 // import logo from "../assets/logo.png";
 
-const handleGeneratePDF = () => {
+
+const handleGeneratePDF = (order) => {
   const doc = new jsPDF();
   const lineHeight = 10;
   let y = 20;
@@ -303,8 +174,8 @@ const handleGeneratePDF = () => {
       : userResponses[q]?.name || "N/A";
 
   // ===== Add logo (optional) =====
-  // doc.addImage(logo, "PNG", 80, y, 50, 20);
-  // y += 25;
+//    doc.addImage(logo, "PNG", 80, y, 50, 20);
+//    y += 25;
 
   // ===== Header =====
   doc.setFontSize(18);
@@ -314,12 +185,12 @@ const handleGeneratePDF = () => {
 
   doc.setFontSize(12);
   doc.setTextColor("black");
+  doc.text(` Payment Status: Completed`, 20, y);
+  y += lineHeight * 2;
+doc.text(`Order #: ${order?._id || "Unknown"}`, 20, y); // ✅ Order Number here
+  y += lineHeight;
   doc.text(`Date: ${new Date().toLocaleDateString()}`, 20, y);
   y += lineHeight;
-
-  doc.text(`✅ Payment Status: Completed`, 20, y);
-  y += lineHeight * 2;
-
   // ===== Table Content =====
   autoTable(doc, {
     startY: y,
@@ -405,7 +276,7 @@ const handleGeneratePDF = () => {
                     <h3>Total Paid: ${calculateTotalPrice(userResponses)}</h3>
                 </div>
                 <div className="summary-buttons">
-                    <button className="download-btn" onClick={handleGeneratePDF}>Download Receipt</button>
+                    <button className="download-btn" onClick={handleSaveOrder}>Download Receipt</button>
                     <button
                         className="personal-area-btn"
                        onClick={async () => {
