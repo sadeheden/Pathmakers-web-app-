@@ -1,51 +1,74 @@
-import { getAllCitiesFromDatabase, getCityById, saveCityToDatabase, updateCityInDatabase, deleteCityInDatabase } from './cities.db.js';
+import { 
+  getAllCitiesFromDatabase, 
+  getCityById, 
+  getCityByNameFromDatabase,
+  saveCityToDatabase, 
+  updateCityInDatabase, 
+  deleteCityInDatabase 
+} from './cities.db.js';
 
 export default class City {
-    constructor(city) {
-        this.city = city; // Name of the city
-    }
- 
-    // Static method to find all cities
-  static async findAll() {
-    return await getAllCitiesFromDatabase();  // לא עוטף ב־try-catch, נותן ל־controller לטפל בשגיאה
-}
+  constructor(city) {
+    this.city = city; // שם העיר
+  }
 
- 
-    // Static method to find a city by ID
-    static async findById(id) {
-        try {
-            return await getCityById(id); // fetching from the database
-        } catch (error) {
-            throw new Error('An error occurred while fetching the city.');
-        }
-    }
- 
-    // Static method to delete a city
-    static async delete(id) {
-        try {
-            return await deleteCityInDatabase(id); // deleting from the database
-        } catch (error) {
-            throw new Error('An error occurred while deleting the city.');
-        }
-    }
- 
-    // Instance method to save a new city
-async save() {
+  static async findAll() {
+    return await getAllCitiesFromDatabase();
+  }
+
+  static async findById(id) {
     try {
-        // Pass only the city name to the database function
-        return await saveCityToDatabase({ city: this.city }); // saving to the database
+      return await getCityById(id);
     } catch (error) {
-        throw new Error('An error occurred while saving the city.');
+      throw new Error('An error occurred while fetching the city.');
     }
-}
- 
-// Instance method to update a city
-async update(id) {
+  }
+
+  static async findByName(cityName) {
     try {
-        // Pass only the city name and the id to the database function
-        return await updateCityInDatabase({ city: this.city }, id); // updating in the database
+      return await getCityByNameFromDatabase(cityName);
     } catch (error) {
-        throw new Error('An error occurred while updating the city.');
+      throw new Error('An error occurred while fetching the city by name.');
     }
-}
+  }
+
+  static async delete(id) {
+    try {
+      return await deleteCityInDatabase(id);
+    } catch (error) {
+      throw new Error('An error occurred while deleting the city.');
+    }
+  }
+
+  async save() {
+    try {
+      return await saveCityToDatabase({ city: this.city });
+    } catch (error) {
+      throw new Error('An error occurred while saving the city.');
+    }
+  }
+
+  async update(id) {
+    try {
+      return await updateCityInDatabase({ city: this.city }, id);
+    } catch (error) {
+      throw new Error('An error occurred while updating the city.');
+    }
+  }
+  static async updateById(id, updateData) {
+    try {
+      const db = await connect();
+      const collection = db.collection('cities');
+      
+      const result = await collection.findOneAndUpdate(
+        { _id: new ObjectId(id) },
+        { $set: updateData },
+        { returnDocument: 'after' }
+      );   
+      return result.value;
+    } catch (error) {
+      console.error('Error updating city by ID:', error);
+      throw error;
+    }
+  }
 }

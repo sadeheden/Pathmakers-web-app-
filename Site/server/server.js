@@ -17,6 +17,7 @@ import hotelRoutes from './services/hotel/hotel.router.js';
 import authRouter from './services/auth/auth.router.js';
 import orderRouter from './services/order/order.router.js';
 import uploadRouter from './services/upload/upload.router.js'; 
+import managerRouter from './services/manager/manager.routes.js';
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -38,13 +39,14 @@ app.use('/api/hotels', hotelRoutes);
 app.use('/api/auth', authRouter);
 app.use('/api/order', orderRouter);
 app.use('/api/upload', uploadRouter);
+app.use('/api/manager', managerRouter);
 
-// 🛑 404
+// 🛑 טיפול ב-404
 app.use((req, res, next) => {
   res.status(404).json({ error: '🔍 Route not found', path: req.originalUrl });
 });
 
-// 🧯 500
+// 🧯 טיפול בשגיאות 500
 app.use((err, req, res, next) => {
   console.error('🔥 Error:', err.stack);
   res.status(500).json({ error: 'Something broke!' });
