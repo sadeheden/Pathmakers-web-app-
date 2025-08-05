@@ -18,13 +18,13 @@ html, body, #root {
 }
 .floating-support-btn {
   position: fixed;
-  bottom: 100px;
+  bottom: 40px;
   left: 20px;
   z-index: 999;
   background-color: #004e75;
   color: white;
   border: none;
-  border-radius: 20px;
+  border-radius: 30px;
   padding: 14px 15px;
   font-size: 25px;
   font-weight: bold;
