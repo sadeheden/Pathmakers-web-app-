@@ -18,7 +18,7 @@ function toObjectIdOrString(id) {
 export default class Order {
   constructor(data = {}) {
     // For user_id, we need ObjectId for database operations
-    this.user_id = isValidObjectId(data.user_id) ? new ObjectId(data.user_id) : null;
+    this.user_id = isValidObjectId(data.user_id) ?  ObjectId(data.user_id) : null;
     
     // All IDs should be ObjectIds based on your database format
     this.departure_city_id = toObjectIdOrString(data.departure_city_id);
@@ -33,13 +33,19 @@ export default class Order {
     this.created_at = data.created_at || new Date();
   }
 
-  static async findByUserId(userId) {
+   static async findByUserId(userId) {
     return findOrdersByUserIdFromDb(userId);
   }
 
   static async findByOrderId(orderId) {
     return findOrderByIdFromDb(orderId);
   }
+
+  static async findById(orderId) {
+    return findOrderByIdFromDb(orderId);
+  }
+
+
 
   async save() {
     // Validate required fields

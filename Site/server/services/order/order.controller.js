@@ -1,21 +1,12 @@
 // Updated order.controller.js
 
 import Order from './order.model.js';
-import { v4 as uuidv4 } from "uuid";
 import pdfkit from "pdfkit";
-import fs from "fs";
-import path from "path";
-import { fileURLToPath } from "url";
 import City from "../cities/cities.model.js";
 import Flight from "../flights/flights.model.js";
 import Hotel from "../hotel/hotel.model.js";
 import Attraction from "../attraction/att.model.js";
 
-// Fix __dirname in ES modules
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const pdfDir = path.join(__dirname, "../../data/pdfs");
-if (!fs.existsSync(pdfDir)) fs.mkdirSync(pdfDir, { recursive: true });
 
 // ===== Helper Functions =====
 
@@ -34,99 +25,7 @@ function cleanId(id) {
   return null;
 }
 
-// Enhanced PDF generation with better error handling
-async function generateOrderPDF(order, username) {
-  try {
-    const orderId = order._id.toString();
-    const pdfPath = path.join(pdfDir, `${orderId}.pdf`);
-    const doc = new pdfkit({ size: "A4", margins: { top: 50, bottom: 50, left: 50, right: 50 } });
-    const stream = fs.createWriteStream(pdfPath);
-    doc.pipe(stream);
 
-    // Fetch related data
-    const [departureCity, destinationCity, flight, hotel, attractions] = await Promise.all([
-      City.findById(order.departure_city_id).catch(() => null),
-      City.findById(order.destination_city_id).catch(() => null),
-      Flight.findById(order.flight_id).catch(() => null),
-      Hotel.findById(order.hotel_id).catch(() => null),
-      order.attractions.length > 0 
-        ? Promise.all(order.attractions.map(id => Attraction.findById(id).catch(() => null)))
-        : Promise.resolve([])
-    ]);
-
-    // Header
-    doc.font("Helvetica-Bold").fontSize(24).fillColor("#1F618D")
-       .text("PathMakers - Travel Receipt", { align: "center" });
-    doc.moveDown().fontSize(14).fillColor("black")
-       .text(`Order ID: ${orderId}`, { align: "center" })
-       .text(`Date: ${new Date().toLocaleDateString()}`, { align: "center" })
-       .moveDown(1.5);
-
-    // Customer Details
-    doc.font("Helvetica-Bold").fontSize(16).text("Customer Details", { underline: true });
-    doc.font("Helvetica").fontSize(12).text(`Username: ${username}`).moveDown();
-
-    // Flight Details
-    doc.font("Helvetica-Bold").fontSize(16).text("Flight Details", { underline: true });
-    doc.font("Helvetica").fontSize(12)
-       .text(`From: ${departureCity?.city || 'N/A'}`)
-       .text(`To: ${destinationCity?.city || 'N/A'}`)
-       .text(`Flight: ${flight?.airline || 'N/A'} - $${flight?.price || 0}`)
-       .moveDown();
-
-    // Hotel Details
-    doc.font("Helvetica-Bold").fontSize(16).text("Hotel Details", { underline: true });
-    doc.font("Helvetica").fontSize(12)
-       .text(`Hotel: ${hotel?.name || 'N/A'} - $${hotel?.price || 0}/night`)
-       .moveDown();
-
-    // Attractions
-    doc.font("Helvetica-Bold").fontSize(16).text("Attractions", { underline: true });
-    if (attractions.length > 0) {
-      attractions.forEach(attr => {
-        if (attr) {
-          doc.font("Helvetica").fontSize(12)
-             .text(`• ${attr.name} - $${attr.price || 0}`);
-        }
-      });
-    } else {
-      doc.font("Helvetica").fontSize(12).text("No attractions selected");
-    }
-    doc.moveDown();
-
-    // Transportation & Payment
-    doc.font("Helvetica-Bold").fontSize(16).text("Transportation", { underline: true });
-    doc.font("Helvetica").fontSize(12).text(`Mode: ${order.transportation || 'N/A'}`).moveDown();
-
-    doc.font("Helvetica-Bold").fontSize(16).text("Payment Details", { underline: true });
-    doc.font("Helvetica").fontSize(12).text(`Method: ${order.payment_method}`);
-    doc.fontSize(14).fillColor("#E74C3C")
-       .text(`Total Price: $${order.total_price}`, { align: "right" });
-
-    // Footer
-    doc.fillColor("black").moveDown(2)
-       .font("Helvetica-Oblique").fontSize(10).fillColor("#555")
-       .text("Thank you for booking with PathMakers!", { align: "center" });
-
-    doc.end();
-
-    return new Promise((resolve, reject) => {
-      stream.on('finish', () => {
-        console.log(`✅ PDF generated successfully: ${pdfPath}`);
-        resolve(pdfPath);
-      });
-      stream.on('error', (err) => {
-        console.error(`❌ PDF generation failed: ${err.message}`);
-        reject(err);
-      });
-    });
-  } catch (error) {
-    console.error("❌ PDF generation error:", error);
-    throw error;
-  }
-}
-
-// ===== Controller Functions =====
 
 // POST /api/order
 export async function createOrder(req, res) {
@@ -196,11 +95,20 @@ export async function createOrder(req, res) {
     
     console.log("✅ Order saved successfully:", orderObj._id);
     
-    // Generate PDF in background (don't block response)
-    generateOrderPDF(orderObj, req.user.username || req.user.name || 'User')
-      .catch(err => console.error("Background PDF generation error:", err));
+   
+   const responseOrder = {
+  ...orderObj,
+  _id: orderObj._id.toString(),
+  user_id: orderObj.user_id?.toString?.() || null,
+  departure_city_id: orderObj.departure_city_id?.toString?.() || null,
+  destination_city_id: orderObj.destination_city_id?.toString?.() || null,
+  flight_id: orderObj.flight_id?.toString?.() || null,
+  hotel_id: orderObj.hotel_id?.toString?.() || null,
+  attractions: orderObj.attractions?.map(a => a.toString?.()) || []
+};
 
-    res.status(201).json(orderObj);
+res.status(201).json(responseOrder);
+
 
   } catch (err) {
     console.error("❌ Error creating order:", err);
@@ -209,41 +117,78 @@ export async function createOrder(req, res) {
 }
 
 // GET /api/order/:orderId/pdf
+// GET /api/order/:orderId/pdf
 export async function getOrderPDF(req, res) {
   try {
     const orderId = req.params.orderId;
-    const pdfPath = path.join(pdfDir, `${orderId}.pdf`);
-    
-    // Check if PDF exists
-    if (!fs.existsSync(pdfPath)) {
-      // Try to regenerate PDF
-      const order = await Order.findById(orderId);
-      if (!order) {
-        return res.status(404).json({ message: "Order not found" });
-      }
-      
-      // Generate PDF if it doesn't exist
-      try {
-        await generateOrderPDF(order, req.user.username || req.user.name || 'User');
-      } catch (pdfError) {
-        console.error("❌ PDF generation failed:", pdfError);
-        return res.status(500).json({ message: "PDF generation failed" });
-      }
+    const order = await Order.findById(orderId);
+    if (!order) {
+      return res.status(404).json({ message: "Order not found" });
     }
-    
+
+    const [departureCity, destinationCity, flight, hotel, attractions] = await Promise.all([
+      City.findById(order.departure_city_id).catch(() => null),
+      City.findById(order.destination_city_id).catch(() => null),
+      Flight.findById(order.flight_id).catch(() => null),
+      Hotel.findById(order.hotel_id).catch(() => null),
+      order.attractions.length > 0
+        ? Promise.all(order.attractions.map(id => Attraction.findById(id).catch(() => null)))
+        : Promise.resolve([])
+    ]);
+
+    // Set headers to stream the PDF directly
     res.setHeader("Content-Type", "application/pdf");
-    res.setHeader("Content-Disposition", `attachment; filename="order-${orderId}.pdf"`);
-    
-    const stream = fs.createReadStream(pdfPath);
-    stream.pipe(res);
-    
-    stream.on('error', (err) => {
-      console.error("❌ PDF stream error:", err);
-      if (!res.headersSent) {
-        res.status(500).json({ message: "PDF streaming failed" });
-      }
-    });
-    
+    res.setHeader("Content-Disposition", `inline; filename="order-${orderId}.pdf"`);
+
+    // Create and stream the PDF directly
+    const doc = new pdfkit({ size: "A4", margins: { top: 50, bottom: 50, left: 50, right: 50 } });
+    doc.pipe(res); // 📢 No saving to file system, directly to browser
+
+    // PDF content
+    doc.font("Helvetica-Bold").fontSize(24).fillColor("#1F618D")
+      .text("PathMakers - Travel Receipt", { align: "center" });
+    doc.moveDown().fontSize(14).fillColor("black")
+      .text(`Order ID: ${orderId}`, { align: "center" })
+      .text(`Date: ${new Date().toLocaleDateString()}`, { align: "center" })
+      .moveDown(1.5);
+
+    doc.font("Helvetica-Bold").fontSize(16).text("Customer Details", { underline: true });
+    doc.font("Helvetica").fontSize(12).text(`Username: ${req.user?.username || req.user?.name || 'User'}`).moveDown();
+
+    doc.font("Helvetica-Bold").fontSize(16).text("Flight Details", { underline: true });
+    doc.font("Helvetica").fontSize(12)
+      .text(`From: ${departureCity?.city || 'N/A'}`)
+      .text(`To: ${destinationCity?.city || 'N/A'}`)
+      .text(`Flight: ${flight?.airline || 'N/A'} - $${flight?.price || 0}`).moveDown();
+
+    doc.font("Helvetica-Bold").fontSize(16).text("Hotel Details", { underline: true });
+    doc.font("Helvetica").fontSize(12)
+      .text(`Hotel: ${hotel?.name || 'N/A'} - $${hotel?.price || 0}/night`).moveDown();
+
+    doc.font("Helvetica-Bold").fontSize(16).text("Attractions", { underline: true });
+    if (attractions.length > 0) {
+      attractions.forEach(attr => {
+        if (attr) doc.font("Helvetica").fontSize(12).text(`• ${attr.name} - $${attr.price || 0}`);
+      });
+    } else {
+      doc.font("Helvetica").fontSize(12).text("No attractions selected");
+    }
+
+    doc.moveDown();
+    doc.font("Helvetica-Bold").fontSize(16).text("Transportation", { underline: true });
+    doc.font("Helvetica").fontSize(12).text(`Mode: ${order.transportation || 'N/A'}`).moveDown();
+
+    doc.font("Helvetica-Bold").fontSize(16).text("Payment Details", { underline: true });
+    doc.font("Helvetica").fontSize(12).text(`Method: ${order.payment_method}`);
+    doc.fontSize(14).fillColor("#E74C3C")
+      .text(`Total Price: $${order.total_price}`, { align: "right" });
+
+    doc.fillColor("black").moveDown(2)
+      .font("Helvetica-Oblique").fontSize(10).fillColor("#555")
+      .text("Thank you for booking with PathMakers!", { align: "center" });
+
+    doc.end(); // ✅ Important: ends the stream
+
   } catch (err) {
     console.error("❌ getOrderPDF error:", err);
     if (!res.headersSent) {
@@ -251,6 +196,7 @@ export async function getOrderPDF(req, res) {
     }
   }
 }
+
 
 // GET /api/order
 export async function getUserOrders(req, res) {
