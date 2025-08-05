@@ -78,25 +78,6 @@ export async function getCityByName(req, res) {
     return res.status(500).json({ error: 'Internal server error.' });
   }
 }
-
-// הוספת עיר חדשה
-export async function addCity(req, res) {
-  const { city } = req.body;
-
-  if (!city) {
-    return res.status(400).json({ error: 'City name is required.' });
-  }
-
-  const newCity = new City(city);
-
-  try {
-    const result = await newCity.save();
-    return res.status(201).json(result);
-  } catch (error) {
-    return res.status(500).json({ error: 'An error occurred while adding the city.' });
-  }
-}
-
 // עדכון עיר
 export async function updateCity(req, res) {
   const { id } = req.params;
