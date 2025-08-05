@@ -14,7 +14,7 @@ export default function RealChat() {
         "Act as a travel agent. Answer questions with full explanations and step-by-step thinking.",
     },
   ]);
-  const [showLoading, setShowLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   const askAI = useCallback(async () => {
     try {
@@ -38,11 +38,11 @@ export default function RealChat() {
         ...prevMessages,
         {
           role: "assistant",
-          content: "מצטער, אירעה שגיאה. אנא נסה שוב.",
+          content: "Sorry, an error occurred. Please try again.",
         },
       ]);
     } finally {
-      setShowLoading(false);
+      setIsLoading(false);
     }
   }, [messages, token]);
 
@@ -51,7 +51,7 @@ export default function RealChat() {
       messages.length > 1 &&
       messages[messages.length - 1].role === "user"
     ) {
-      setShowLoading(true);
+      setIsLoading(true);
       askAI();
     }
   }, [messages, askAI]);
@@ -72,15 +72,15 @@ export default function RealChat() {
 
   return (
     <div className="realChat">
-      {/* טקסט AI TRIPER למעלה */}
+      {/* Top header */}
       <div className="ai-triper-header">Real Chat</div>
 
       <h1 className="realChat">
-AI TRIPER — your travel sidekick that plans your trip, suggests cool spots, and answers all your questions.
-
+        AI TRIPER — your travel sidekick that plans your trip, suggests cool spots,
+        and answers all your questions.
       </h1>
 
-      {/* ריבוע ההודעות */}
+      {/* Chat message box */}
       <div className="chat-box">
         {messages
           .filter((m) => m.role !== "system")
@@ -98,7 +98,7 @@ AI TRIPER — your travel sidekick that plans your trip, suggests cool spots, an
           ))}
       </div>
 
-      {/* שורת הקלט */}
+      {/* Input row */}
       <div className="input-container">
         <input
           type="text"
@@ -106,24 +106,32 @@ AI TRIPER — your travel sidekick that plans your trip, suggests cool spots, an
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyPress={handleKeyPress}
-          placeholder="הקלד הודעה..."
-          disabled={showLoading}
+          placeholder="Type a message..."
+          disabled={isLoading}
+          spellCheck={false}
+          autoComplete="off"
+          autoCorrect="off"
+          autoCapitalize="off"
         />
-        <button 
-          className="realChat" 
+        <button
+          className="realChat"
           onClick={handleSend}
-          disabled={showLoading || !text.trim()}
+          disabled={isLoading || !text.trim()}
+          aria-label="Send message"
         >
-          שליחה
+          Send
         </button>
       </div>
 
-      {/* טוען */}
-      {showLoading && (
+      {/* Loading overlay */}
+      {isLoading && (
         <div id="loader" className="realChat">
           <RingLoader color="#6633cc" size={60} />
         </div>
       )}
+
+      {/* Footer (optional) */}
+      {/* <footer className="realChat-footer">Powered by AI TRIPER</footer> */}
     </div>
   );
 }
