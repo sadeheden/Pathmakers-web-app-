@@ -1,13 +1,16 @@
 /* Phone Landing Page Styles */
 .phone-landing-container {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-direction: row-reverse; /* Reverse the order of elements */
-    width: 100%;
-    background-color: #ebe9e97b;
-    padding: 15px; /* Reduced padding for smaller screens */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: row-reverse;
+  width: 100%;
+  background-color: #ebe9e97b;
+  padding: 15px;
+  min-height: calc(100vh - 160px); /* 👈 adjusts for header + footer height */
+  box-sizing: border-box;
 }
+
 
 /* Mockup (Left) */
 .phone-mockup {
@@ -25,13 +28,7 @@ body {
     width: 100%;
 }
 
-/* Fix issue with 100vw width */
-.phone-landing-container {
-    max-width: 100%; /* Ensures it doesn't exceed the screen width */
-    width: 100%;
-    overflow: hidden; /* Ensures no unexpected scrolling */
-    box-sizing: border-box; /* Includes padding in the width calculation */
-}
+
 
 /* Adjust inner elements */
 .text-content {
@@ -45,9 +42,12 @@ body {
 
 /* Ensure images scale properly */
 .mockup-image {
-    max-width: 100%; /* Prevents the image from exceeding container width */
-    height: auto;
+  max-width: 100%;
+  max-height: 400px;  /* ✅ Add this! Limits tall image */
+  height: auto;
+  object-fit: contain; /* Ensures clean scaling */
 }
+
 
 .subtitle {
     font-size: 1.2rem; /* Smaller subtitle size */
