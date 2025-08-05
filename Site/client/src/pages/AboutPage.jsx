@@ -1,7 +1,10 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom'; // ✅ Import useNavigate
 import '../assets/styles/AboutPage.css';
 
 const AboutPage = () => {
+  const navigate = useNavigate(); // ✅ Initialize navigate
+
   return (
     <div className="container">
       <h1>Who Are We?</h1>
@@ -26,14 +29,13 @@ const AboutPage = () => {
       <div className="cta">
         <p>Book your next adventure with us — we're the best at what we do!</p>
       </div>
-   <button 
-  className="floating-support-btn"
-  onClick={() => navigate('/support')}
->
-  💬 Support
-</button>
+
+      <button 
+        className="floating-support-btn"
+        onClick={() => navigate('/support')}
+      >💬 Support
+      </button>
     </div>
-    
   );
 };
 

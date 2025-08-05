@@ -24,6 +24,16 @@ function cleanId(id) {
   }
   return null;
 }
+function extractIndex(compoundId) {
+  if (typeof compoundId !== 'string') return 0;
+  const parts = compoundId.split(/[-_]/);
+  return parts.length > 1 ? parseInt(parts[1], 10) : 0;
+}
+
+function extractCityId(compoundId) {
+  if (typeof compoundId !== 'string') return null;
+  return compoundId.split(/[-_]/)[0];
+}
 
 
 
@@ -60,8 +70,9 @@ export async function createOrder(req, res) {
     // Clean and validate IDs
     const depClean = cleanId(departureCityId);
     const dstClean = cleanId(destinationCityId);
-    const fltClean = cleanId(flightId);
-    const htlClean = cleanId(hotelId);
+const fltClean = cleanId(flightId);
+const htlClean = cleanId(hotelId);
+
     
     if (!depClean || !dstClean || !fltClean || !htlClean) {
       console.error("❌ Invalid ID format:", {
@@ -120,226 +131,7 @@ export async function createOrder(req, res) {
   }
 }
 
-// GET /api/order/:orderId/pdf
-// GET /api/order/:orderId/pdf
-export async function getOrderPDF(req, res) {
-  try {
-    const orderId = req.params.orderId;
-    const order = await Order.findById(orderId);
-    if (!order) {
-      return res.status(404).json({ message: "Order not found" });
-    }
 
-    const [departureCity, destinationCity, flight, hotel, attractions] = await Promise.all([
-      City.findById(order.departure_city_id).catch(() => null),
-      City.findById(order.destination_city_id).catch(() => null),
-      Flight.findById(order.flight_id).catch(() => null),
-      Hotel.findById(order.hotel_id).catch(() => null),
-      order.attractions.length > 0
-        ? Promise.all(order.attractions.map(id => Attraction.findById(id).catch(() => null)))
-        : Promise.resolve([])
-    ]);
-
-    res.setHeader("Content-Type", "application/pdf");
-    res.setHeader("Content-Disposition", `inline; filename="order-${orderId}.pdf"`);
-
-    const doc = new pdfkit({ size: "A4", margins: { top: 50, bottom: 50, left: 50, right: 50 } });
-    doc.pipe(res);
-
-    // צבעים
-    const primaryColor = "#2A3E5B";  // כחול כהה מודרני
-    const secondaryColor = "#F4F7FA"; // רקע בהיר
-    const accentColor = "#FF6F61";   // אדום כתום למגע עיצובי
-    const textColor = "#333333";
-
-    // פונקציה לעיצוב קופסאות תוכן
-    function drawBox(x, y, width, height) {
-      doc
-        .roundedRect(x, y, width, height, 8)
-        .fillOpacity(0.07)
-        .fill(secondaryColor)
-        .strokeColor(primaryColor)
-        .lineWidth(1)
-        .stroke()
-        .fillOpacity(1);
-    }
-
-    // --- HEADER ---
-    doc
-      .fillColor(primaryColor)
-      .font("Helvetica-Bold")
-      .fontSize(28)
-      .text("PathMakers", { align: "center" });
-
-    doc
-      .moveDown(0.2)
-      .fontSize(16)
-      .fillColor(textColor)
-      .text("Travel Receipt", { align: "center" })
-      .moveDown(1.5);
-
-    // --- Order info bar ---
-    const orderInfoY = doc.y;
-    drawBox(50, orderInfoY - 5, 500, 60);
-    doc
-      .fillColor(primaryColor)
-      .fontSize(12)
-      .font("Helvetica-Bold")
-      .text("Order ID:", 60, orderInfoY);
-    doc
-      .font("Helvetica")
-      .text(orderId, 130, orderInfoY);
-
-    doc
-      .font("Helvetica-Bold")
-      .text("Date:", 350, orderInfoY);
-    doc
-      .font("Helvetica")
-      .text(new Date(order.created_at).toLocaleDateString(), 390, orderInfoY);
-
-    doc.moveDown(4);
-
-    // --- CUSTOMER DETAILS BOX ---
-    let sectionY = doc.y;
-    drawBox(50, sectionY - 5, 500, 60);
-    doc
-      .fillColor(primaryColor)
-      .font("Helvetica-Bold")
-      .fontSize(16)
-      .text("Customer Details", 60, sectionY);
-    doc
-      .font("Helvetica")
-      .fontSize(12)
-      .fillColor(textColor)
-      .text(`Username: ${req.user?.username || req.user?.name || "User"}`, 60, sectionY + 25);
-
-    doc.moveDown(5);
-
-    // --- FLIGHT & HOTEL DETAILS side by side ---
-    const colWidth = 240;
-    sectionY = doc.y;
-
-    // Flight Box
-    drawBox(50, sectionY - 5, colWidth, 120);
-    doc
-      .fillColor(primaryColor)
-      .font("Helvetica-Bold")
-      .fontSize(16)
-      .text("Flight Details", 60, sectionY);
-
-    doc
-      .font("Helvetica")
-      .fontSize(12)
-      .fillColor(textColor)
-      .text(`From: ${departureCity?.city || "N/A"}`, 60, sectionY + 25)
-      .text(`To: ${destinationCity?.city || "N/A"}`, 60, sectionY + 45)
-    .text(`Airline: ${flight?.airlines?.[0]?.name || "N/A"}`, 60, sectionY + 65)
-.text(`Price: $${flight?.airlines?.[0]?.price?.toFixed(2) || "0.00"}`, 60, sectionY + 85)
-
-    // Hotel Box
-    drawBox(310, sectionY - 5, colWidth, 120);
-    doc
-      .fillColor(primaryColor)
-      .font("Helvetica-Bold")
-      .fontSize(16)
-      .text("Hotel Details", 320, sectionY);
-
-    doc
-      .font("Helvetica")
-      .fontSize(12)
-      .fillColor(textColor)
-     .text(`Name: ${hotel?.hotels?.[0]?.name || "N/A"}`, 320, sectionY + 25)
-.text(`Price/night: $${hotel?.hotels?.[0]?.price?.toFixed(2) || "0.00"}`, 320, sectionY + 45)
-
-
-    doc.moveDown(7);
-
-    // --- ATTRACTIONS (full width) ---
-    sectionY = doc.y;
-    const boxHeight = Math.max(60, 20 * (attractions.length || 1));
-    drawBox(50, sectionY - 5, 500, boxHeight + 30);
-
-    doc
-      .fillColor(primaryColor)
-      .font("Helvetica-Bold")
-      .fontSize(16)
-      .text("Attractions", 60, sectionY);
-
-    doc.font("Helvetica").fontSize(12).fillColor(textColor);
-    if (attractions.length > 0) {
-      let yOffset = sectionY + 25;
-      attractions.forEach(attr => {
-        if (attr) {
-          doc.text(`• ${attr.name} - $${attr.price?.toFixed(2) || "0.00"}`, 60, yOffset);
-          yOffset += 20;
-        }
-      });
-    } else {
-      doc
-        .font("Helvetica-Oblique")
-        .fillColor("#999999")
-        .text("No attractions selected", 60, sectionY + 25);
-    }
-
-    doc.moveDown(7);
-
-    // --- TRANSPORTATION ---
-    sectionY = doc.y;
-    drawBox(50, sectionY - 5, 500, 50);
-    doc
-      .fillColor(primaryColor)
-      .font("Helvetica-Bold")
-      .fontSize(16)
-      .text("Transportation", 60, sectionY);
-
-    doc
-      .font("Helvetica")
-      .fontSize(12)
-      .fillColor(textColor)
-      .text(order.transportation || "N/A", 60, sectionY + 25);
-
-    doc.moveDown(5);
-
-    // --- PAYMENT DETAILS ---
-    sectionY = doc.y;
-    drawBox(50, sectionY - 5, 500, 70);
-    doc
-      .fillColor(primaryColor)
-      .font("Helvetica-Bold")
-      .fontSize(16)
-      .text("Payment Details", 60, sectionY);
-
-    doc
-      .font("Helvetica")
-      .fontSize(12)
-      .fillColor(textColor)
-      .text(`Method: ${order.payment_method}`, 60, sectionY + 25);
-
-    doc
-      .font("Helvetica-Bold")
-      .fontSize(22)
-      .fillColor(accentColor)
-      .text(`Total Price: $${order.total_price.toFixed(2)}`, 400, sectionY + 20, { align: "right" });
-
-    // --- FOOTER ---
-    doc.moveDown(5);
-    doc
-      .fontSize(10)
-      .fillColor("#AAAAAA")
-      .font("Helvetica-Oblique")
-      .text("Thank you for booking with PathMakers.", { align: "center" });
-
-    doc.end();
-
-  } catch (err) {
-    console.error("❌ getOrderPDF error:", err);
-    if (!res.headersSent) {
-      res.status(500).json({ message: "Internal Server Error" });
-    }
-  }
-}
-
-// GET /api/order
 // GET /api/order
 export async function getUserOrders(req, res) {
   if (!req.user?.id) return res.status(401).json({ message: "Unauthorized" });
@@ -349,23 +141,30 @@ export async function getUserOrders(req, res) {
     const rawOrders = await Order.findByUserId(userId);
     console.log("📦 Retrieved orders:", rawOrders.length);
 
-    const enrichedOrders = await Promise.all(
-      rawOrders.map(async (order) => {
-        const [
-          departureCity,
-          destinationCity,
-          flight,
-          hotel,
-          attractions
-        ] = await Promise.all([
-          City.findById(order.departure_city_id).catch(() => null),
-          City.findById(order.destination_city_id).catch(() => null),
-          Flight.findById(order.flight_id).catch(() => null),
-          Hotel.findById(order.hotel_id).catch(() => null),
-          order.attractions?.length
-            ? Promise.all(order.attractions.map(id => Attraction.findById(id).catch(() => null)))
-            : []
-        ]);
+  const enrichedOrders = await Promise.all(
+  rawOrders.map(async (order) => {
+    const [
+      departureCity,
+      destinationCity,
+      flight,
+      hotel,
+      attractions
+    ] = await Promise.all([
+      City.findById(order.departure_city_id).catch(() => null),
+      City.findById(order.destination_city_id).catch(() => null),
+      Flight.findById(cleanId(order.flight_id)).catch(() => null),
+Hotel.findById(cleanId(order.hotel_id)).catch(() => null),
+      order.attractions?.length
+        ? Promise.all(order.attractions.map(id => Attraction.findById(id).catch(() => null)))
+        : []
+        
+    ]);
+
+const flightIndex = extractIndex(order.flight_id);
+const hotelIndex = extractIndex(order.hotel_id);
+
+const selectedFlight = flight?.airlines?.[flightIndex] || null;
+const selectedHotel = hotel?.hotels?.[hotelIndex] || null;
 
         return {
         ...order.toObject?.(), 
@@ -384,8 +183,8 @@ export async function getUserOrders(req, res) {
           // Human-readable names
           departure_city_name: departureCity?.city || "Unknown",
           destination_city_name: destinationCity?.city || "Unknown",
-        flight_name: flight?.airlines?.[0]?.name || "Unknown",
-      hotel_name: hotel?.hotels?.[0]?.name || "Unknown",
+flight_name: selectedFlight?.name || "Unknown",
+hotel_name: selectedHotel?.name || "Unknown",
           attraction_names: attractions
             ? attractions.filter(Boolean).map(a => a.name)
             : [],

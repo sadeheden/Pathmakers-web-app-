@@ -32,7 +32,7 @@ body {
   WRAPPER
 ==============================================================================*/
 .trips-page {
-  max-width: 1200px;
+  max-width: 1350px;
   margin: 0 auto;
   padding: 0 1rem 4rem;
 }
@@ -41,29 +41,43 @@ body {
   HEADER / INTRO (matches screenshot)
 ==============================================================================*/
 .trip-intro {
-  background: #fff;
-  padding: 10rem 2rem 4rem;
+  background: linear-gradient(135deg, #d8e9f8, #234a7771);
+  /* or try: background: linear-gradient(to right, #e0f7fa, #fce4ec); */
+  padding: 6rem 2rem 4rem;
   text-align: center;
+  margin-top: 1rem;
   margin-bottom: 5rem;
+  color: var(--clr-text);
+  border-radius: var(--radius-lg);
+    animation: fadeInUp 0.7s ease forwards;
+}
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
+
 .trip-title {
-  font-family: 'Noto Sans', sans-serif;
-  font-size: clamp(2rem, 2vw, 2rem);
-  font-weight: 900;
-  color: #000;
-  line-height: 1.6;
-  margin-bottom: 1rem;
+  font-size: clamp(2.2rem, 5vw, 3.5rem);
+  font-weight: 800;
+  color: #1f2937;
+  letter-spacing: -0.03em;
 }
 
 .trip-subtitle {
-  font-family: 'Plus Jakarta Sans', sans-serif;
   font-size: 1.125rem;
   color: #4a5568;
   max-width: 700px;
   margin: 0 auto 2.5rem;
-  line-height: 1.6;
+  line-height: 1.8;
 }
+
 
 /* Icons row */
 .trip-icons {

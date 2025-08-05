@@ -1,15 +1,13 @@
 .footer {
   background: #004e75;
-   position:static;
-     left: 0;
-  bottom: 0;
-  width: 100vw;
-  z-index: 999;
+  width: 100%;
   color: #afdce7;
-  padding: 6.2rem 1.3rem 1.3rem 4.3rem;
+  padding: 1rem 2rem;
   font-size: 1.04rem;
   box-shadow: 0 -2px 24px 0 rgba(0,0,0,0.09);
+  margin-top: auto; /* This makes it stick to the bottom in a flex layout */
 }
+
 
 .footer-content {
   max-width: 1200px;

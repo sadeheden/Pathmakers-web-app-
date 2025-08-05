@@ -1,10 +1,13 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom'; // ✅ Import this
 import '../assets/styles/DownloadApp.css';
 import appleImg from '../assets/images/apple.png';
 import androidImg from '../assets/images/android.png';
 import mockupImage from '../assets/images/mockup.png';
 
 const DownloadApp = () => {
+    const navigate = useNavigate(); // ✅ Initialize it
+
     const handleDownload = (platform) => {
         if (platform === 'ios') {
             window.location.href = 'https://www.apple.com/store';
@@ -22,7 +25,7 @@ const DownloadApp = () => {
 
             {/* Content (Right Side) */}
             <div className="text-content">
-                <h1 className="title">Enjoy our app </h1>
+                <h1 className="title">Enjoy our app</h1>
 
                 {/* Download Buttons */}
                 <div className="download-buttons">
@@ -36,12 +39,14 @@ const DownloadApp = () => {
                     </button>
                 </div>
             </div>
+
+            {/* Floating Support Button */}
             <button 
-  className="floating-support-btn"
-  onClick={() => navigate('/support')}
->
-  💬 Support
-</button>
+                className="floating-support-btn"
+                onClick={() => navigate('/support')} // ✅ Will now work
+            >
+                💬 Support
+            </button>
         </div>
     );
 };
