@@ -1,0 +1,203 @@
+import React from "react";
+import { useNavigate } from "react-router-dom";
+import { calculateTotalPrice, cleanId } from "../utils/travelUtils";
+
+const TripSummary = ({ userResponses, setUserResponses, setCurrentStep, setPaymentCompleted }) => {
+    const navigate = useNavigate();
+
+    const handleSaveOrder = async () => {
+        const token = localStorage.getItem("authToken");
+        if (!token) {
+            console.error("❌ No token found. User might not be logged in.");
+            alert("⚠️ You must be logged in to save an order.");
+            return;
+        }
+
+        if (!userResponses) {
+            console.error("❌ No user responses found!");
+            alert("⚠️ No order details available.");
+            return;
+        }
+
+        let selectedAttractions = userResponses["Select attractions to visit"];
+        if (!Array.isArray(selectedAttractions)) {
+            selectedAttractions = selectedAttractions ? [selectedAttractions] : [];
+        }
+
+        const orderData = {
+            departureCityId: String(userResponses["What is your departure city?"]?.id),
+            destinationCityId: String(userResponses["What is your destination city?"]?.id),
+            flightId: String(userResponses["Select your flight"]?.id),
+            hotelId: userResponses["Select your hotel"]?.id || null,
+            attractions: Array.isArray(userResponses["Select attractions to visit"])
+                ? userResponses["Select attractions to visit"].map(a => String(a.id))
+                : [String(userResponses["Select attractions to visit"]?.id)],
+            transportation: userResponses["Select your mode of transportation"] || null,
+            paymentMethod: userResponses["Select payment method"] || "Unknown",
+            totalPrice: calculateTotalPrice(userResponses),
+            paymentStatus: "Completed"
+        };
+
+        console.log("🧪 Checking IDs before sending:");
+        console.log("departureCityId:", orderData.departureCityId);
+        console.log("destinationCityId:", orderData.destinationCityId);
+        console.log("flightId:", orderData.flightId);
+        console.log("hotelId:", orderData.hotelId);
+        console.log("Hotel ID:", userResponses["Select your hotel"]?.id);
+        console.log("attractions:", orderData.attractions);
+
+        console.log("🔍 Sending Order Data:", orderData);
+
+        try {
+            const response = await fetch("http://localhost:4000/api/order", {
+                method: "POST",
+                headers: {
+                    "Authorization": `Bearer ${token}`,
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(orderData),
+            });
+
+            if (!response.ok) {
+                const errorMessage = await response.text();
+                console.error("❌ Failed to save order:", response.status, errorMessage);
+                alert(`Error: ${errorMessage}`);
+                return;
+            }
+            const savedOrder = await response.json();
+            console.log("✅ Order saved successfully!", savedOrder);
+            localStorage.setItem("orderSaved", "true");
+
+        } catch (error) {
+            console.error("⚠️ Error saving order:", error);
+            alert("⚠️ An error occurred while saving your order. Please try again.");
+        }
+    };
+
+    const handleDownloadSummary = async () => {
+        try {
+            const token = localStorage.getItem("authToken");
+
+            if (!token) {
+                console.error("❌ No token found. User might not be logged in.");
+                alert("⚠️ You must be logged in to download receipt.");
+                return;
+            }
+            const userResponse = await fetch("http://localhost:4000/api/auth/user", {
+                method: "GET",
+                headers: {
+                    "Authorization": `Bearer ${token}`,
+                    "Content-Type": "application/json"
+                }
+            });
+
+            if (!userResponse.ok) {
+                throw new Error("❌ Failed to fetch user details.");
+            }
+
+            const userData = await userResponse.json();
+            console.log("✅ Fetched User:", userData);
+
+            const orderData = {
+                departureCityId: cleanId(userResponses["What is your departure city?"]?.id),
+                destinationCityId: cleanId(userResponses["What is your destination city?"]?.id),
+                flightId: cleanId(userResponses["Select your flight"]?.id),
+                hotelId: cleanId(userResponses["Select your hotel"]?.id),
+                attractions: Array.isArray(userResponses["Select attractions to visit"])
+                    ? userResponses["Select attractions to visit"].map(a => cleanId(a.id))
+                    : [cleanId(userResponses["Select attractions to visit"]?.id)],
+                transportation: userResponses["Select your mode of transportation"] || null,
+                paymentMethod: userResponses["Select payment method"] || "Unknown",
+                totalPrice: calculateTotalPrice(userResponses),
+            };
+
+            console.log("🔍 Sending Order Data:", orderData);
+
+            const response = await fetch("http://localhost:4000/api/order", {
+                method: "POST",
+                headers: {
+                    "Authorization": `Bearer ${token}`,
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(orderData)
+            });
+
+            if (!response.ok) {
+                console.error("❌ Failed to save order:", response.status);
+                return;
+            }
+
+            const savedOrder = await response.json();
+            console.log("✅ Order saved successfully:", savedOrder);
+
+            await new Promise(resolve => setTimeout(resolve, 1000));
+
+            const pdfResponse = await fetch(`http://localhost:4000/api/order/${savedOrder.id}/pdf`, {
+                method: "GET",
+                headers: {
+                    "Authorization": `Bearer ${token}`
+                }
+            });
+
+            if (!pdfResponse.ok) {
+                console.error("❌ Failed to fetch PDF:", pdfResponse.status);
+                alert("❌ Failed to generate PDF receipt. Try again.");
+                return;
+            }
+
+            const pdfBlob = await pdfResponse.blob();
+            const pdfUrl = URL.createObjectURL(pdfBlob);
+            window.open(pdfUrl, "_blank");
+
+        } catch (error) {
+            console.error("⚠️ Error saving order or fetching PDF:", error);
+            alert("⚠️ An error occurred. Please try again.");
+        }
+    };
+
+    const handleRestartTrip = () => {
+        setUserResponses({});
+        setCurrentStep(0);
+        setPaymentCompleted(false);
+        localStorage.removeItem("userResponses");
+        localStorage.setItem("currentStep", "0");
+    };
+
+    return (
+        <div className="trip-summary-container">
+            <div className="summary-box">
+                <h2>🎉 Trip Confirmed!</h2>
+                <p><strong>✅ Payment Status:</strong> Completed</p>
+                <div className="summary-details">
+                    <p><strong>Departure City:</strong> {userResponses["What is your departure city?"]?.name || "N/A"}</p>
+                    <p><strong>Destination City:</strong> {userResponses["What is your destination city?"]?.name || "N/A"}</p>
+                    <p><strong>Flight:</strong> {userResponses["Select your flight"]?.name || "N/A"}</p>
+                    <p><strong>Hotel:</strong> {userResponses["Select your hotel"]?.name || "N/A"}</p>
+                    <p><strong>Attractions:</strong> {Array.isArray(userResponses["Select attractions to visit"])
+                        ? userResponses["Select attractions to visit"].map(attr => attr.name).join(", ")
+                        : userResponses["Select attractions to visit"]?.name || "N/A"}</p>
+                    <p><strong>Transportation:</strong> {userResponses["Select your mode of transportation"] || "N/A"}</p>
+                    <p><strong>Payment Method:</strong> {userResponses["Select payment method"] || "N/A"}</p>
+                    <h3>Total Paid: ${calculateTotalPrice(userResponses)}</h3>
+                </div>
+                <div className="summary-buttons">
+                    <button className="download-btn" onClick={handleDownloadSummary}>Download Receipt</button>
+                    <button
+                        className="personal-area-btn"
+                        onClick={async () => {
+                            await handleSaveOrder();
+                            navigate("/personal-area");
+                        }}
+                    >
+                        Go to Personal Area
+                    </button>
+                    <button className="personal-area-btn" onClick={handleRestartTrip}>
+                        Plan Another Trip
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+export default TripSummary;
