@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import { HfInference } from '@huggingface/inference';
 
 dotenv.config();
 
@@ -8,7 +9,7 @@ console.log("🌿 Loaded ENV variables:");
 console.log("🔗 CONNECTION_STRING:", process.env.CONNECTION_STRING);
 console.log("🗄️ DB_NAME:", process.env.DB_NAME);
 console.log("🔐 JWT_SECRET_KEY:", process.env.JWT_SECRET_KEY ? "[OK]" : "[MISSING]");
-
+console.log("🤖 HF_TOKEN:", process.env.HF_TOKEN ? "[OK]" : "[MISSING]");
 // 📦 ייבוא ראוטים
 import citiesRouter from './services/cities/cities.router.js';
 import attractionRoutes from './services/attraction/att.router.js';
@@ -29,6 +30,20 @@ app.use(express.json());
 // 🌐 בדיקת חיבור ראשוני
 app.get('/', (req, res) => {
   res.send('🌍 PathMakers API is running!');
+});
+// 🤖 Proxy Hugging Face chat request
+app.post('/api/chat', async (req, res) => {
+  try {
+    const { messages } = req.body;
+    const response = await hf.chatCompletion({
+      model: 'meta-llama/Llama-3.1-8B-Instruct',
+      messages,
+    });
+    res.json(response);
+  } catch (err) {
+    console.error("❌ HF Error:", err);
+    res.status(500).json({ error: 'Failed to fetch chat response' });
+  }
 });
 
 // 📦 רישום ראוטים

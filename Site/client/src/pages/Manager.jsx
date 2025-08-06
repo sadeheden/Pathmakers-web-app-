@@ -228,13 +228,12 @@ const fetchCityData = async () => {
           });
         }
             
-await fetch(`http://localhost:4000/api/cities/${cityData._id}/attractions`, {
-  method: "PUT",
+await fetch(`http://localhost:4000/api/manager/city/${cityData._id}/attractions`, {
+  method: "POST",
   headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({
-    attractions: [...(cityData.attractions || []), ...newAttractionsData],
-  }),
+  body: JSON.stringify({ attractions: newAttractionsData }),
 });
+
 
 
 

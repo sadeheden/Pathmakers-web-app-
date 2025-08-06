@@ -21,7 +21,7 @@ export default function RealChat() {
       const client = new HfInference(token);
 
       const answer = await client.chatCompletion({
-        model: "meta-llama/Llama-3.2-3B-Instruct",
+        model: "meta-llama/Llama-3.1-8B-Instruct",
         messages,
         temperature: 0.5,
         max_tokens: 2048,

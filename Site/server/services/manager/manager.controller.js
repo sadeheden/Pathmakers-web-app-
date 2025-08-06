@@ -1,4 +1,6 @@
 import { connectDB } from '../auth/auth.db.js';
+import { ObjectId } from 'mongodb';
+
 
 export const getManagerDashboardData = async (req, res) => {
   try {
@@ -77,5 +79,53 @@ export const getManagerDashboardData = async (req, res) => {
   } catch (err) {
     console.error('Error in getManagerDashboardData:', err);
     res.status(500).json({ message: 'Error fetching dashboard data' });
+  }
+};
+// Add new attractions to the 'attractions' collection and associate them with a city
+export const insertAttractionsForCity = async (req, res) => {
+  try {
+    const db = await connectDB();
+    const { cityId } = req.params;
+    const { attractions } = req.body;
+
+    if (!cityId || !Array.isArray(attractions)) {
+      return res.status(400).json({ message: "Invalid data" });
+    }
+
+    const cityObjectId = new ObjectId(cityId);
+    const city = await db.collection("city").findOne({ _id: cityObjectId });
+    if (!city) return res.status(404).json({ message: "City not found" });
+
+    // Enrich attractions with city data
+    const enrichedAttractions = attractions.map((a) => ({
+      ...a,
+      city: city.city, // name of the city
+      cityId: cityObjectId, // optional: for easier querying
+    }));
+
+    const result = await db.collection("attractions").insertMany(enrichedAttractions);
+
+    res.status(200).json({ message: "✅ Attractions inserted", count: result.insertedCount });
+  } catch (err) {
+    console.error("Error inserting attractions:", err);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+// One-time cleanup: remove embedded attractions array from all cities
+export const cleanupCityAttractionsField = async (req, res) => {
+  try {
+    const db = await connectDB();
+
+    const result = await db.collection("city").updateMany(
+      { attractions: { $exists: true } },
+      { $unset: { attractions: "" } }
+    );
+
+    res.status(200).json({
+      message: `🧹 Removed attractions field from ${result.modifiedCount} city documents.`,
+    });
+  } catch (err) {
+    console.error("Error during city cleanup:", err);
+    res.status(500).json({ message: "Internal server error during cleanup." });
   }
 };
