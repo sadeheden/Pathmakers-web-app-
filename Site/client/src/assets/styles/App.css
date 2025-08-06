@@ -18,7 +18,7 @@ html, body, #root {
 }
 .floating-support-btn {
   position: fixed;
-  bottom: 40px;
+  bottom: 90px;
   left: 20px;
   z-index: 999;
   background-color: #004e75;
@@ -33,7 +33,7 @@ html, body, #root {
   transition: width 0.3s ease, background-color 0.3s ease, padding 0.3s ease;
   overflow: hidden;
   white-space: nowrap;
-  width: 58px; /* collapsed size */
+  width: 54px; /* collapsed size */
 }
 
 /* Label is hidden initially */
