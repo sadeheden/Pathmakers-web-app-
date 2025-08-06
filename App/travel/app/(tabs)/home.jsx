@@ -69,7 +69,6 @@ const PaymentModal = ({ visible, onClose, selectedCity, onPaymentSuccess }) => {
 
     setError('');
     setPaymentSuccess(true);
-
     setTimeout(() => {
       setPaymentSuccess(false);
       onPaymentSuccess();
@@ -230,7 +229,7 @@ export default function HomeScreen() {
   const handleDiaryPress = () => {
     try {
       console.log('Diary button pressed');
-      navigation.navigate('Diary');
+      navigation.navigate('RealChat');
     } catch (error) {
       console.error('Navigation error:', error);
       Alert.alert('Navigation Error', 'Could not navigate to diary screen.');

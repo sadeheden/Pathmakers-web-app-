@@ -5,16 +5,19 @@ import express from 'express';
 import cors from 'cors';
 import { ObjectId } from 'mongodb';
 import jwt from 'jsonwebtoken';
+import { HfInference } from '@huggingface/inference';  // <-- ייבוא Hugging Face
 
 import authRouter from './services/auth/auth.router.js';
 import orderRouter from './services/orders/order.router.js';
 import { connectDB } from './services/auth/auth.db.js';
 
 // ----- Load environment variables -----
-// טען רק את קובץ הסביבה המתאים (לדוגמה .env.local)
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 dotenv.config({ path: path.resolve(__dirname, '.env.local') });
+
+// ----- יצירת מופע Hugging Face עם טוקן -----
+const hf = new HfInference(process.env.HF_TOKEN);
 
 // ----- Middleware לאימות JWT -----
 function authenticateUser(req, res, next) {
@@ -47,8 +50,31 @@ app.use(express.json());
 app.use('/api/auth', authRouter);
 app.use('/api/orders', orderRouter);
 
-// server.js or routes/order.router.js
-app.use('/api/orders', authenticateUser);  
+// אם רוצים להגן על כל הזמנות עם אימות:
+app.use('/api/orders', authenticateUser);
+
+// ----- Hugging Face chat route -----
+app.post('/api/chat', async (req, res) => {
+  try {
+    const { messages } = req.body;
+    if (!messages || !Array.isArray(messages)) {
+      return res.status(400).json({ error: 'Messages array is required' });
+    }
+
+    const response = await hf.chatCompletion({
+      model: 'meta-llama/Llama-3.1-8B-Instruct',
+      messages,
+      temperature: 0.5,
+      max_tokens: 2048,
+      top_p: 0.7,
+    });
+
+    res.json(response);
+  } catch (err) {
+    console.error("❌ Hugging Face API error:", err);
+    res.status(500).json({ error: 'Failed to fetch chat response' });
+  }
+});
 
 // בסיסי
 app.get('/', (req, res) => {
@@ -61,23 +87,20 @@ app.get('/api', (req, res) => {
 // פרופיל משתמש עם הזמנות
 app.get('/api/user/me', authenticateUser, async (req, res) => {
   try {
-    // שים לב: ב־JWT payload שומר את ה-id בשדה userId (בדוק שזה אכן שם המפתח)
     const userId = req.user.userId || req.user.id;
 
     const db = await connectDB();
     const usersCol = db.collection('Users');
     const ordersCol = db.collection('orders');
 
-  const user = await usersCol.findOne(
-  { _id: new ObjectId(String(userId)) },
-  { projection: { password: 0 } }
-);
-
+    const user = await usersCol.findOne(
+      { _id: new ObjectId(String(userId)) },
+      { projection: { password: 0 } }
+    );
 
     if (!user) return res.status(404).json({ message: 'User not found' });
 
-   const orders = await ordersCol.find({ user_id: new ObjectId(String(userId)) }).toArray();
-
+    const orders = await ordersCol.find({ user_id: new ObjectId(String(userId)) }).toArray();
 
     res.json({ user, orders });
   } catch (error) {
