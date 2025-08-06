@@ -1,131 +1,193 @@
 import { connectDB } from '../auth/auth.db.js';
 import { ObjectId } from 'mongodb';
+import City from './../cities/cities.model.js'; 
+import Attraction from './../attraction/att.model.js';
 
+export const addExistingAttractionToCity = async (req, res) => {
+  const { cityId, attractionId } = req.params;
 
-export const getManagerDashboardData = async (req, res) => {
+  console.log("➡️ קיבלתי בקשה להוסיף אטרקציה לעיר");
+  console.log("📌 cityId:", cityId);
+  console.log("📌 attractionId:", attractionId);
+
   try {
-    const db = await connectDB();
+    const city = await City.findById(cityId);
+    console.log("✅ עיר שנמצאה:", city?.name);
 
-    // פונקציה לניקוי מזהים מורכבים
-    function cleanId(id) {
-      if (!id) return null;
+    const existingAttraction = await Attraction.findById(attractionId);
+    console.log("✅ אטרקציה שנמצאה:", existingAttraction?.name);
 
-      if (typeof id === 'object' && id.toString) {
-        // במקרה שזו ObjectId או אובייקט דומה
-        const strId = id.toString();
-        // מחלץ את 24 התווים של ה־ObjectId
-        const match = strId.match(/^[0-9a-fA-F]{24}/);
-        return match ? match[0] : null;
-      }
-
-      if (typeof id === 'string') {
-        // ניקוי מחרוזת (לפעמים יש תווים נוספים)
-        const cleaned = id.split(/[-_]/)[0];
-        return /^[0-9a-fA-F]{24}$/.test(cleaned) ? cleaned : null;
-      }
-
-      return null;
-    }
-
-    // טען את כל ההזמנות
-    const orders = await db.collection('orders').find().toArray();
-
-    // טען את כל הערים - ודא ששמך collection נכון (city או cities)
-    const cities = await db.collection('city').find().toArray();
-
-    console.log('Cities loaded from DB:', cities);
-
-    const cityMap = {};
-    cities.forEach(city => {
-      const idStr = city._id.toString();
-      cityMap[idStr] = city.city; // שדה שם העיר
+    city.attractions.push({
+      name: existingAttraction.name,
+      price: existingAttraction.price,
+      description: existingAttraction.description,
+      openingHours: existingAttraction.openingHours,
+      image: existingAttraction.image,
     });
 
-    const totalOrders = orders.length;
-    const totalRevenue = orders.reduce((sum, order) => sum + (order.total_price || 0), 0);
-
-    // Debug: בדוק דוגמאות מזהים מההזמנות
-    console.log('Sample order destination_city_ids:', orders.slice(0, 5).map(o => o.destination_city_id));
-
-    const mostPopularDestinations = {};
-
-    for (const order of orders) {
-      const rawCityId = order.destination_city_id;
-      const cleanedCityId = cleanId(rawCityId) || (rawCityId ? rawCityId.toString() : null);
-
-      console.log(`Processing: rawCityId=${rawCityId}, cleanedCityId=${cleanedCityId}`);
-
-      const cityName = cityMap[cleanedCityId];
-      if (!cityName) {
-        console.log(`❌ City not found for ID: ${cleanedCityId}`);
-        console.log('Available city IDs:', Object.keys(cityMap));
-      } else {
-        console.log(`✅ Found city: ${cityName} for ID: ${cleanedCityId}`);
-      }
-      const finalCityName = cityName || `Unknown City (${cleanedCityId})`;
-      mostPopularDestinations[finalCityName] = (mostPopularDestinations[finalCityName] || 0) + 1;
-    }
-    const sortedDestinations = Object.entries(mostPopularDestinations).sort((a, b) => b[1] - a[1]);
-    const topDestinations = sortedDestinations.slice(0, 3).map(([destination, count]) => ({
-      destination,
-      count,
-    }));
+    await city.save();
+    console.log("✅ נשמרה העיר עם האטרקציה החדשה");
 
     res.status(200).json({
-      totalOrders,
-      totalRevenue,
-      topDestinations,
+      message: '✅ האטרקציה נוספה בהצלחה למערך של העיר',
+      cityId: city._id,
+      attractionAdded: {
+        name: existingAttraction.name,
+        price: existingAttraction.price,
+      },
     });
-  } catch (err) {
-    console.error('Error in getManagerDashboardData:', err);
-    res.status(500).json({ message: 'Error fetching dashboard data' });
+  } catch (error) {
+    console.error('🔥 שגיאה:', error);
+    res.status(500).json({ error: 'שגיאה פנימית בשרת' });
   }
 };
-// Add new attractions to the 'attractions' collection and associate them with a city
-export const insertAttractionsForCity = async (req, res) => {
+
+// **פונקציה חדשה** - הוספת אטרקציות חדשות ישירות למערך attractions בתוך מסמך העיר
+export const addNewAttractionsToCity = async (req, res) => {
   try {
     const db = await connectDB();
     const { cityId } = req.params;
     const { attractions } = req.body;
 
-    if (!cityId || !Array.isArray(attractions)) {
-      return res.status(400).json({ message: "Invalid data" });
+    // בדיקת נתונים חובה
+    if (!cityId) {
+      return res.status(400).json({ message: "Missing cityId" });
+    }
+
+    if (!attractions || !Array.isArray(attractions) || attractions.length === 0) {
+      return res.status(400).json({ 
+        message: "attractions must be a non-empty array" 
+      });
     }
 
     const cityObjectId = new ObjectId(cityId);
-    const city = await db.collection("city").findOne({ _id: cityObjectId });
-    if (!city) return res.status(404).json({ message: "City not found" });
 
-    // Enrich attractions with city data
-    const enrichedAttractions = attractions.map((a) => ({
-      ...a,
-      city: city.city, // name of the city
-      cityId: cityObjectId, // optional: for easier querying
-    }));
+    // בדיקה שהעיר קיימת
+    const city = await db.collection("cities").findOne({ _id: cityObjectId });
+    if (!city) {
+      return res.status(404).json({ message: "City not found" });
+    }
 
-    const result = await db.collection("attractions").insertMany(enrichedAttractions);
+    // בדיקת ותיקוף כל האטרקציות
+    const validAttractions = [];
+    const errors = [];
 
-    res.status(200).json({ message: "✅ Attractions inserted", count: result.insertedCount });
+    for (let i = 0; i < attractions.length; i++) {
+      const attraction = attractions[i];
+      
+      if (!attraction.name || !attraction.openingHours || attraction.price === undefined) {
+        errors.push(`Attraction ${i + 1}: Missing required fields`);
+        continue;
+      }
+
+      // בדיקה אם האטרקציה כבר קיימת במערך
+      if (city.attractions && city.attractions.some(existing => existing.name === attraction.name)) {
+        errors.push(`Attraction ${i + 1}: "${attraction.name}" already exists in the city`);
+        continue;
+      }
+
+      validAttractions.push({
+        name: attraction.name.trim(),
+        openingHours: attraction.openingHours.trim(),
+        price: parseFloat(attraction.price)
+      });
+    }
+
+    if (errors.length > 0) {
+      return res.status(400).json({ 
+        message: "Validation errors found",
+        errors 
+      });
+    }
+
+    if (validAttractions.length === 0) {
+      return res.status(400).json({ message: "No valid attractions to add" });
+    }
+
+    // הוספת כל האטרקציות למערך attractions בתוך מסמך העיר
+    const result = await db.collection("cities").updateOne(
+      { _id: cityObjectId },
+      { $push: { attractions: { $each: validAttractions } } }
+    );
+
+    if (result.modifiedCount === 0) {
+      return res.status(500).json({ message: "Failed to add attractions to city" });
+    }
+
+    // החזרת העיר המעודכנת
+    const updatedCity = await db.collection("cities").findOne({ _id: cityObjectId });
+
+    res.status(201).json({
+      message: `✅ ${validAttractions.length} attractions added to city successfully`,
+      addedAttractions: validAttractions,
+      city: updatedCity
+    });
+
   } catch (err) {
-    console.error("Error inserting attractions:", err);
+    console.error("Error adding new attractions to city:", err);
     res.status(500).json({ message: "Internal server error" });
   }
 };
-// One-time cleanup: remove embedded attractions array from all cities
-export const cleanupCityAttractionsField = async (req, res) => {
+
+// הוספת אטרקציה קיימת למסמך אטרקציות (הקוד הקיים שלך)
+export const addExistingAttractionToAttractionsDoc = async (req, res) => {
   try {
     const db = await connectDB();
+    const { docId, attractionId } = req.params;
 
-    const result = await db.collection("city").updateMany(
-      { attractions: { $exists: true } },
-      { $unset: { attractions: "" } }
+    if (!docId || !attractionId) {
+      return res.status(400).json({ message: "Missing docId or attractionId" });
+    }
+
+    const docObjectId = new ObjectId(docId);
+    const attractionObjectId = new ObjectId(attractionId);
+
+    // מוצאים את המסמך שבו רוצים להוסיף את האטרקציה
+    const doc = await db.collection("attractions").findOne({ _id: docObjectId });
+    if (!doc) return res.status(404).json({ message: "Document not found" });
+
+    // מוצאים את האטרקציה הקיימת להוספה
+    const attraction = await db.collection("attractions").findOne({ _id: attractionObjectId });
+    if (!attraction) return res.status(404).json({ message: "Attraction not found" });
+
+    // מוודאים שיש מערך attractions במסמך
+    if (!Array.isArray(doc.attractions)) {
+      await db.collection("attractions").updateOne(
+        { _id: docObjectId },
+        { $set: { attractions: [] } }
+      );
+      doc.attractions = [];
+    }
+
+    // בדיקה אם האטרקציה כבר קיימת
+    const exists = doc.attractions.some(a => a.name === attraction.name);
+    if (exists) {
+      return res.status(400).json({ message: "Attraction already exists in the array" });
+    }
+
+    // הוספת האטרקציה למערך
+    const updateResult = await db.collection("attractions").updateOne(
+      { _id: docObjectId },
+      { $push: { attractions: {
+        name: attraction.name,
+        openingHours: attraction.openingHours,
+        price: attraction.price
+      } } }
     );
 
+    if (updateResult.modifiedCount === 0) {
+      return res.status(500).json({ message: "Failed to add attraction to document" });
+    }
+
+    const updatedDoc = await db.collection("attractions").findOne({ _id: docObjectId });
+
     res.status(200).json({
-      message: `🧹 Removed attractions field from ${result.modifiedCount} city documents.`,
+      message: "Attraction added successfully",
+      document: updatedDoc
     });
+   
   } catch (err) {
-    console.error("Error during city cleanup:", err);
-    res.status(500).json({ message: "Internal server error during cleanup." });
+    console.error("Error adding existing attraction to document:", err);
+    res.status(500).json({ message: "Internal server error" });
   }
 };

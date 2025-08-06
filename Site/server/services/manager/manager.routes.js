@@ -1,10 +1,17 @@
-// services/manager/manager.routes.js
 import express from 'express';
-import { getManagerDashboardData, cleanupCityAttractionsField ,insertAttractionsForCity } from './manager.controller.js';
+import { 
+  addExistingAttractionToAttractionsDoc,
+  addExistingAttractionToCity,
+  addNewAttractionsToCity
+} from './manager.controller.js';
+
 const router = express.Router();
 
-router.get('/dashboard', getManagerDashboardData);
-router.post('/city/:cityId/attractions', insertAttractionsForCity);
-router.post('/cleanup/cities', cleanupCityAttractionsField);
+// Routes קיימים
+router.post('/attractions/doc/:docId/addExistingAttraction/:attractionId', addExistingAttractionToAttractionsDoc);
+router.post('/city/:cityId/attractions/existing/:attractionId', addExistingAttractionToCity);
+
+// **Route חדש** להוספת אטרקציות חדשות למערך בתוך מסמך העיר
+router.post('/city/:cityId/addNewAttractions', addNewAttractionsToCity);
 
 export default router;

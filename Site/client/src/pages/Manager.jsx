@@ -140,7 +140,7 @@ const Manager = () => {
     }
   };
 
-  // כאן: רכיב UpdateCity מעודכן עם כפתורי שמירה נפרדים לכל סוג נתונים
+  // כאן: רכיב UpdateCity מעודכן עם אפשרות הוספת אטרקציות חדשות למערך הקיים
   const UpdateCity = () => {
     const [searchCity, setSearchCity] = useState("");
     const [cityData, setCityData] = useState(null);
@@ -152,54 +152,54 @@ const Manager = () => {
     const [newFlights, setNewFlights] = useState([
       { name: "", price: "", duration: "" },
     ]);
-const fetchCityData = async () => {
-  if (!searchCity) {
-    alert("Please enter a city name");
-    return;
-  }
 
-  try {
-    const response = await fetch(`http://localhost:4000/api/cities/name/${encodeURIComponent(searchCity)}`);
-
-    let data;
-
-    if (response.ok) {
-      data = await response.json();
-      console.log("✅ Loaded existing city data:", data);
-    } else if (response.status === 404) {
-      // עיר לא נמצאה - ניצור חדשה
-      const createResponse = await fetch("http://localhost:4000/api/cities", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ city: searchCity }),
-      });
-
-      if (!createResponse.ok) {
-        throw new Error("Failed to create new city");
+    const fetchCityData = async () => {
+      if (!searchCity) {
+        alert("Please enter a city name");
+        return;
       }
 
-      data = await createResponse.json();
-      alert(`✅ City '${searchCity}' created`);
-      console.log("🆕 Created new city data:", data);
-    } else {
-      throw new Error(`Failed to fetch city. Status: ${response.status}`);
-    }
+      try {
+        const response = await fetch(`http://localhost:4000/api/cities/name/${encodeURIComponent(searchCity)}`);
 
-    // עדכון ה-state עם הנתונים שהתקבלו
-    setCityData(data);
+        let data;
 
-    // איפוס שדות הקלט של אטרקציות, מלונות וטיסות
-    setNewAttractions([{ name: "", openingHours: "", price: "" }]);
-    setNewHotels([{ name: "", price: "" }]);
-    setNewFlights([{ name: "", price: "", duration: "" }]);
+        if (response.ok) {
+          data = await response.json();
+          console.log("✅ Loaded existing city data:", data);
+        } else if (response.status === 404) {
+          // עיר לא נמצאה - ניצור חדשה
+          const createResponse = await fetch("http://localhost:4000/api/cities", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ city: searchCity }),
+          });
 
-  } catch (err) {
-    console.error("Fetch error:", err);
-    alert("Error fetching or creating city data");
-    setCityData(null);
-  }
-};
+          if (!createResponse.ok) {
+            throw new Error("Failed to create new city");
+          }
 
+          data = await createResponse.json();
+          alert(`✅ City '${searchCity}' created`);
+          console.log("🆕 Created new city data:", data);
+        } else {
+          throw new Error(`Failed to fetch city. Status: ${response.status}`);
+        }
+
+        // עדכון ה-state עם הנתונים שהתקבלו
+        setCityData(data);
+
+        // איפוס שדות הקלט של אטרקציות, מלונות וטיסות
+        setNewAttractions([{ name: "", openingHours: "", price: "" }]);
+        setNewHotels([{ name: "", price: "" }]);
+        setNewFlights([{ name: "", price: "", duration: "" }]);
+
+      } catch (err) {
+        console.error("Fetch error:", err);
+        alert("Error fetching or creating city data");
+        setCityData(null);
+      }
+    };
 
     const addNewAttraction = () =>
       setNewAttractions([...newAttractions, { name: "", openingHours: "", price: "" }]);
@@ -207,121 +207,142 @@ const fetchCityData = async () => {
     const addNewFlight = () =>
       setNewFlights([...newFlights, { name: "", price: "", duration: "" }]);
 
+    // **פונקציה חדשה** לשמירת אטרקציות למערך attractions בתוך מסמך העיר
     const handleSaveAttractions = async () => {
       if (!cityData) {
         alert("Please load a city first");
         return;
       }
-      try {
-        
-        // בניית מערך האטרקציות החדשות
-        const newAttractionsData = [];
-        for (const attraction of newAttractions) {
-          if (!attraction.name || !attraction.openingHours || attraction.price === "") {
-            alert("Please fill all attraction fields (name, opening hours, price)");
-            return;
-          }
-          newAttractionsData.push({
-            name: attraction.name,
-            openingHours: attraction.openingHours,
-            price: parseFloat(attraction.price),
-          });
+      
+      // ולידציה של השדות
+      const validAttractions = [];
+      for (const attraction of newAttractions) {
+        if (!attraction.name || !attraction.openingHours || attraction.price === "") {
+          alert("Please fill all attraction fields (name, opening hours, price)");
+          return;
         }
-            
-await fetch(`http://localhost:4000/api/manager/city/${cityData._id}/attractions`, {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({ attractions: newAttractionsData }),
-});
+        validAttractions.push({
+          name: attraction.name.trim(),
+          openingHours: attraction.openingHours.trim(),
+          price: parseFloat(attraction.price),
+        });
+      }
 
+      if (validAttractions.length === 0) {
+        alert("No valid attractions to add");
+        return;
+      }
 
+      try {
+        // הוספת האטרקציות למערך attractions בתוך מסמך העיר באמצעות הקונטרולר החדש
+        const response = await fetch(`http://localhost:4000/api/manager/city/${cityData._id}/addNewAttractions`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ attractions: validAttractions }),
+        });
 
-
-    alert("Attractions updated successfully!");
-    setNewAttractions([{ name: "", openingHours: "", price: "" }]); // איפוס השדות
-    fetchCityData(); // טוען מחדש את נתוני העיר
-  } catch (error) {
-    console.error("Error updating attractions:", error);
-        alert("Error updating attractions");
+        if (response.ok) {
+          const result = await response.json();
+          alert(result.message || `✅ ${validAttractions.length} attractions added to city attractions array!`);
+          
+          // עדכון הנתונים המקומיים
+          if (result.city) {
+            setCityData(result.city);
+          } else {
+            // טוען מחדש את נתוני העיר
+            fetchCityData();
+          }
+          
+          // איפוס השדות
+          setNewAttractions([{ name: "", openingHours: "", price: "" }]);
+        } else {
+          const error = await response.json();
+          alert(`Error: ${error.message || 'Failed to add attractions'}`);
+        }
+      } catch (error) {
+        console.error("Error adding attractions:", error);
+        alert("Error adding attractions. Check console.");
       }
     };
-const handleSaveHotels = async () => {
-  if (!cityData) {
-    alert("Please load a city first");
-    return;
-  }
-  try {
-    // בניית מערך המלונות החדשים
-    const newHotelsData = [];
-    for (const hotel of newHotels) {
-      if (!hotel.name || hotel.price === "") {
-        alert("Please fill all hotel fields");
-        return;
-      }
-      newHotelsData.push({
-        name: hotel.name,
-        price: parseFloat(hotel.price),
-        stars: 3,
-      });
-    }
-    
-    // הוספת המלונות החדשים למערך הקיים
-    await fetch(`http://localhost:4000/api/cities/${cityData._id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        ...cityData,
-        hotels: [...(cityData.hotels || []), ...newHotelsData]
-      }),
-    });
-    
-    alert("Hotels added successfully!");
-    setNewHotels([{ name: "", price: "" }]); // איפוס השדות
-    fetchCityData(); // טוען מחדש את נתוני העיר
-  } catch (error) {
-    console.error("Error updating hotels:", error);
-    alert("Error updating hotels");
-  }
-};
 
-const handleSaveFlights = async () => {
-  if (!cityData) {
-    alert("Please load a city first");
-    return;
-  }
-  try {
-    // בניית מערך הטיסות החדשות
-    const newFlightsData = [];
-    for (const flight of newFlights) {
-      if (!flight.name || flight.price === "" || !flight.duration) {
-        alert("Please fill all flight fields (name, price, duration)");
+    const handleSaveHotels = async () => {
+      if (!cityData) {
+        alert("Please load a city first");
         return;
       }
-      newFlightsData.push({
-        name: flight.name,
-        price: parseFloat(flight.price),
-        duration: flight.duration,
-      });
-    }
-    
-    // הוספת הטיסות החדשות למערך הקיים
-    await fetch(`http://localhost:4000/api/cities/${cityData._id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        ...cityData,
-        flights: [...(cityData.flights || []), ...newFlightsData]
-      }),
-    });
-    
-    alert("Flights added successfully!");
-    setNewFlights([{ name: "", price: "", duration: "" }]); // איפוס השדות
-    fetchCityData(); // טוען מחדש את נתוני העיר
-  } catch (error) {
-    console.error("Error updating flights:", error);
-    alert("Error updating flights");
-  }
-};
+      try {
+        // בניית מערך המלונות החדשים
+        const newHotelsData = [];
+        for (const hotel of newHotels) {
+          if (!hotel.name || hotel.price === "") {
+            alert("Please fill all hotel fields");
+            return;
+          }
+          newHotelsData.push({
+            name: hotel.name,
+            price: parseFloat(hotel.price),
+            stars: 3,
+          });
+        }
+        
+        // הוספת המלונות החדשים למערך הקיים
+        await fetch(`http://localhost:4000/api/cities/${cityData._id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            ...cityData,
+            hotels: [...(cityData.hotels || []), ...newHotelsData]
+          }),
+        });
+        
+        alert("Hotels added successfully!");
+        setNewHotels([{ name: "", price: "" }]); // איפוס השדות
+        fetchCityData(); // טוען מחדש את נתוני העיר
+      } catch (error) {
+        console.error("Error updating hotels:", error);
+        alert("Error updating hotels");
+      }
+    };
+
+    const handleSaveFlights = async () => {
+      if (!cityData) {
+        alert("Please load a city first");
+        return;
+      }
+      try {
+        // בניית מערך הטיסות החדשות
+        const newFlightsData = [];
+        for (const flight of newFlights) {
+          if (!flight.name || flight.price === "" || !flight.duration) {
+            alert("Please fill all flight fields (name, price, duration)");
+            return;
+          }
+          newFlightsData.push({
+            name: flight.name,
+            price: parseFloat(flight.price),
+            duration: flight.duration,
+          });
+        }
+        
+        // הוספת הטיסות החדשות למערך הקיים
+        await fetch(`http://localhost:4000/api/cities/${cityData._id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            ...cityData,
+            flights: [...(cityData.flights || []), ...newFlightsData]
+          }),
+        });
+        
+        alert("Flights added successfully!");
+        setNewFlights([{ name: "", price: "", duration: "" }]); // איפוס השדות
+        fetchCityData(); // טוען מחדש את נתוני העיר
+      } catch (error) {
+        console.error("Error updating flights:", error);
+        alert("Error updating flights");
+      }
+    };
+
     return (
       <div className="update-city-container">
         <h1>Update City Data</h1>
@@ -351,7 +372,7 @@ const handleSaveFlights = async () => {
               <ul>
                 {cityData.attractions?.map((a, i) => (
                   <li key={i}>
-                    {a.name} - {a.description}
+                    {a.name} - {a.openingHours} - ${a.price}
                   </li>
                 ))}
               </ul>
@@ -360,7 +381,7 @@ const handleSaveFlights = async () => {
               <ul>
                 {cityData.flights?.map((f, i) => (
                   <li key={i}>
-                    Flight from {f.city} to {f.airline} - ${f.price}
+                    {f.name} - ${f.price} - {f.duration}
                   </li>
                 ))}
               </ul>
@@ -403,10 +424,20 @@ const handleSaveFlights = async () => {
             ))}
             <button onClick={addNewAttraction}>+ Add Another Attraction</button>
             <button
-              style={{ marginTop: 10, padding: "6px 12px", fontWeight: "bold" }}
+              style={{ 
+                marginTop: 10, 
+                marginLeft: 10,
+                padding: "8px 16px", 
+                fontWeight: "bold",
+                backgroundColor: "#4CAF50",
+                color: "white",
+                border: "none",
+                borderRadius: "4px",
+                cursor: "pointer"
+              }}
               onClick={handleSaveAttractions}
             >
-              Save Attractions
+              Save Attractions to City Array
             </button>
 
             <h3>Add New Hotels</h3>

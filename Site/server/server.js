@@ -51,9 +51,7 @@ import hotelRoutes from './services/hotel/hotel.router.js';
 import authRouter from './services/auth/auth.router.js';
 import orderRouter from './services/order/order.router.js';
 import uploadRouter from './services/upload/upload.router.js';
-import managerRouter from './services/manager/manager.routes.js';
-import newsletterRouter from './services/newsletter/newsletter.router.js';
-
+import managerRoutes from './services/manager/manager.routes.js';
 
 app.use('/api/cities', citiesRouter);
 app.use('/api/attractions', attractionRoutes);
@@ -62,9 +60,7 @@ app.use('/api/hotels', hotelRoutes);
 app.use('/api/auth', authRouter);
 app.use('/api/order', orderRouter);
 app.use('/api/upload', uploadRouter);
-app.use('/api/manager', managerRouter);
-app.use('/api/newsletter', newsletterRouter);
-
+app.use('/api/manager', managerRoutes);
 
 
 // 🛑 טיפול ב-404
