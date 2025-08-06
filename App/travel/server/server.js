@@ -24,7 +24,7 @@ app.post('/api/chat', async (req, res) => {
     }
 
       const response = await hf.chatCompletion({
-      model: 'TheBloke/vicuna-7b-1.1-HF', // מודל נתמך בפועל
+      model: "HuggingFaceH4/zephyr-7b-beta", // מודל נתמך בפועל
       messages,
       temperature: 0.5,
       max_tokens: 2048,
