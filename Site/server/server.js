@@ -3,42 +3,38 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import { HfInference } from '@huggingface/inference';
 
+// 🚀 טוען משתני סביבה
 dotenv.config();
 
-console.log("🌿 Loaded ENV variables:");
-console.log("🔗 CONNECTION_STRING:", process.env.CONNECTION_STRING);
-console.log("🗄️ DB_NAME:", process.env.DB_NAME);
-console.log("🔐 JWT_SECRET_KEY:", process.env.JWT_SECRET_KEY ? "[OK]" : "[MISSING]");
-console.log("🤖 HF_TOKEN:", process.env.HF_TOKEN ? "[OK]" : "[MISSING]");
-// 📦 ייבוא ראוטים
-import citiesRouter from './services/cities/cities.router.js';
-import attractionRoutes from './services/attraction/att.router.js';
-import flightsRoutes from './services/flights/flights.router.js';
-import hotelRoutes from './services/hotel/hotel.router.js';
-import authRouter from './services/auth/auth.router.js';
-import orderRouter from './services/order/order.router.js';
-import uploadRouter from './services/upload/upload.router.js'; 
-import managerRouter from './services/manager/manager.routes.js';
+// ✅ יצירת מופע של Hugging Face Client
+const hf = new HfInference(process.env.HF_TOKEN);
 
+// ✅ יצירת אפליקציית אקספרס
 const app = express();
 const PORT = process.env.PORT || 4000;
 
-// 🧱 Middlewares
-app.use(cors());
+// ✅ Middlewares
+app.use(cors({ origin: 'http://localhost:5173' })); // מתיר קריאות מה-React
 app.use(express.json());
 
-// 🌐 בדיקת חיבור ראשוני
+// ✅ בדיקת חיבור
 app.get('/', (req, res) => {
   res.send('🌍 PathMakers API is running!');
 });
-// 🤖 Proxy Hugging Face chat request
+
+// ✅ ראוט לשיחה עם Hugging Face
 app.post('/api/chat', async (req, res) => {
   try {
     const { messages } = req.body;
+
     const response = await hf.chatCompletion({
       model: 'meta-llama/Llama-3.1-8B-Instruct',
       messages,
+      temperature: 0.5,
+      max_tokens: 2048,
+      top_p: 0.7,
     });
+
     res.json(response);
   } catch (err) {
     console.error("❌ HF Error:", err);
@@ -46,7 +42,16 @@ app.post('/api/chat', async (req, res) => {
   }
 });
 
-// 📦 רישום ראוטים
+// ✅ ראוטים נוספים - אם יש לך מודולים אחרים
+import citiesRouter from './services/cities/cities.router.js';
+import attractionRoutes from './services/attraction/att.router.js';
+import flightsRoutes from './services/flights/flights.router.js';
+import hotelRoutes from './services/hotel/hotel.router.js';
+import authRouter from './services/auth/auth.router.js';
+import orderRouter from './services/order/order.router.js';
+import uploadRouter from './services/upload/upload.router.js';
+import managerRouter from './services/manager/manager.routes.js';
+
 app.use('/api/cities', citiesRouter);
 app.use('/api/attractions', attractionRoutes);
 app.use('/api/flights', flightsRoutes);
@@ -61,7 +66,7 @@ app.use((req, res, next) => {
   res.status(404).json({ error: '🔍 Route not found', path: req.originalUrl });
 });
 
-// 🧯 טיפול בשגיאות 500
+// 🧯 טיפול בשגיאות כלליות
 app.use((err, req, res, next) => {
   console.error('🔥 Error:', err.stack);
   res.status(500).json({ error: 'Something broke!' });

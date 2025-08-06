@@ -1,11 +1,9 @@
 import { useState, useEffect, useCallback } from "react";
 import Markdown from "react-markdown";
-import { HfInference } from "@huggingface/inference";
 import { RingLoader } from "react-spinners";
 import "../assets/styles/realChat.css";
 
 export default function RealChat() {
-  const [token] = useState(import.meta.env.VITE_HF_TOKEN);
   const [text, setText] = useState("");
   const [messages, setMessages] = useState([
     {
@@ -18,20 +16,25 @@ export default function RealChat() {
 
   const askAI = useCallback(async () => {
     try {
-      const client = new HfInference(token);
-
-      const answer = await client.chatCompletion({
-        model: "meta-llama/Llama-3.1-8B-Instruct",
-        messages,
-        temperature: 0.5,
-        max_tokens: 2048,
-        top_p: 0.7,
+      setIsLoading(true);
+      const response = await fetch("http://localhost:4000/api/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ messages }),
       });
 
-      setMessages((prevMessages) => [
-        ...prevMessages,
-        answer.choices[0].message,
-      ]);
+      const data = await response.json();
+
+      if (data.choices && data.choices.length > 0) {
+        setMessages((prevMessages) => [
+          ...prevMessages,
+          data.choices[0].message,
+        ]);
+      } else {
+        throw new Error("No valid response from AI");
+      }
     } catch (error) {
       console.error("Error calling AI:", error);
       setMessages((prevMessages) => [
@@ -44,14 +47,13 @@ export default function RealChat() {
     } finally {
       setIsLoading(false);
     }
-  }, [messages, token]);
+  }, [messages]);
 
   useEffect(() => {
     if (
       messages.length > 1 &&
       messages[messages.length - 1].role === "user"
     ) {
-      setIsLoading(true);
       askAI();
     }
   }, [messages, askAI]);
@@ -72,15 +74,15 @@ export default function RealChat() {
 
   return (
     <div className="realChat">
-      {/* Top header */}
+      {/* Header */}
       <div className="ai-triper-header">Real Chat</div>
 
       <h1 className="realChat">
-        AI TRIPER — your travel sidekick that plans your trip, suggests cool spots,
-        and answers all your questions.
+        AI TRIPER — your travel sidekick that plans your trip, suggests cool
+        spots, and answers all your questions.
       </h1>
 
-      {/* Chat message box */}
+      {/* Chat box */}
       <div className="chat-box">
         {messages
           .filter((m) => m.role !== "system")
@@ -98,7 +100,7 @@ export default function RealChat() {
           ))}
       </div>
 
-      {/* Input row */}
+      {/* Input */}
       <div className="input-container">
         <input
           type="text"
@@ -123,15 +125,12 @@ export default function RealChat() {
         </button>
       </div>
 
-      {/* Loading overlay */}
+      {/* Loader */}
       {isLoading && (
         <div id="loader" className="realChat">
           <RingLoader color="#6633cc" size={60} />
         </div>
       )}
-
-      {/* Footer (optional) */}
-      {/* <footer className="realChat-footer">Powered by AI TRIPER</footer> */}
     </div>
   );
 }
