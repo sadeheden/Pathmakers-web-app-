@@ -132,7 +132,8 @@ const PersonalArea = () => {
             const userData = await response.json();
             console.log("✅ User fetched successfully:", userData);
 
-            setUser(userData);
+         setUser({ ...userData, id: userData._id });
+
 
             // ✅ Set initial edit state with fetched data
    setEditedUser({
@@ -298,50 +299,23 @@ const PersonalArea = () => {
     
             <div className="containerPersonal">
                 {/* User Information */}
-                {activeTab === "userInfo" && (
-                    <>
-                        <h2 className="heading">User Details</h2>
-                        <div className="profileInfo">
-                            {user ? (
-                                <>
-                             {isEditing ? (
+             {activeTab === "userInfo" && (
   <>
-    <label>Username</label>
-    <input
-      type="text"
-      value={editedUser.username}
-      onChange={(e) => setEditedUser({ ...editedUser, username: e.target.value })}
-    />
-
-    <label>Email</label>
-    <input
-      type="email"
-      value={editedUser.email}
-      onChange={(e) => setEditedUser({ ...editedUser, email: e.target.value })}
-    />
-
-  
-
-    <button onClick={handleSaveProfile} className="button">Save</button>
-  </>
-) : (
-  <>
-    <p><strong>Username:</strong> {user.username}</p>
-    <p><strong>Email:</strong> {user.email}</p>
-   
-
-    <button onClick={handleEditProfile} className="button">Edit Profile</button>
+    <h2 className="heading">User Details</h2>
+    <div className="profileInfo">
+      {user ? (
+        <>
+          <p><strong>Username:</strong> {user.username}</p>
+          <p><strong>Email:</strong> {user.email}</p>
+        </>
+      ) : (
+        <p>Please log in to see your details.</p>
+      )}
+    </div>
   </>
 )}
 
 
-                                </>
-                            ) : (
-                                <p>Please log in to see your details.</p>
-                            )}
-                        </div>
-                    </>
-                )}
     
                 {/* User Orders */}
          {selectedOrder && (
