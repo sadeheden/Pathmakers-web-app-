@@ -115,7 +115,6 @@ export default function RealChatScreen() {
     </KeyboardAvoidingView>
   );
 }
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
