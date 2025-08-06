@@ -210,7 +210,13 @@ export async function updateUser(req, res) {
     const { db, client: c } = await getDB();
     client = c;
 
-    const userId = req.user.id;
+ const userId = req.user?.id || req.user?._id;
+
+if (!userId || !ObjectId.isValid(userId)) {
+  return res.status(400).json({ message: "Invalid or missing user ID" });
+}
+
+
 
     // Build update fields from body
     const updates = {};
@@ -223,7 +229,7 @@ export async function updateUser(req, res) {
     }
 
     const result = await db.collection("Users").findOneAndUpdate(
-      { _id: new ObjectId(userId) },
+      { _id:  ObjectId(userId) },
       { $set: updates },
       { returnDocument: "after" }
     );
