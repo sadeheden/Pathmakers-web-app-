@@ -20,11 +20,14 @@ export default class Order {
     // For user_id, we need ObjectId for database operations
     this.user_id = isValidObjectId(data.user_id) ? new ObjectId(data.user_id) : null;
     
-    // All IDs should be ObjectIds based on your database format
+    // City IDs should be ObjectIds
     this.departure_city_id = toObjectIdOrString(data.departure_city_id);
     this.destination_city_id = toObjectIdOrString(data.destination_city_id);
-    this.flight_id = toObjectIdOrString(data.flight_id);
-    this.hotel_id = toObjectIdOrString(data.hotel_id);
+    
+    // IMPORTANT: Store flight_id and hotel_id as strings to preserve compound format
+    // (e.g., "flight_id-2" instead of converting to ObjectId)
+    this.flight_id = data.flight_id; // Keep as string to preserve index
+    this.hotel_id = data.hotel_id;   // Keep as string to preserve index
     
     this.attractions = data.attractions || [];
     this.transportation = data.transportation || null;
@@ -33,7 +36,7 @@ export default class Order {
     this.created_at = data.created_at || new Date();
   }
 
-   static async findByUserId(userId) {
+  static async findByUserId(userId) {
     return findOrdersByUserIdFromDb(userId);
   }
 
@@ -45,7 +48,22 @@ export default class Order {
     return findOrderByIdFromDb(orderId);
   }
 
-
+  // Add toObject method for compatibility
+  toObject() {
+    return {
+      _id: this._id,
+      user_id: this.user_id,
+      departure_city_id: this.departure_city_id,
+      destination_city_id: this.destination_city_id,
+      flight_id: this.flight_id,
+      hotel_id: this.hotel_id,
+      attractions: this.attractions,
+      transportation: this.transportation,
+      payment_method: this.payment_method,
+      total_price: this.total_price,
+      created_at: this.created_at
+    };
+  }
 
   async save() {
     // Validate required fields
@@ -87,8 +105,8 @@ export default class Order {
       user_id: this.user_id,
       departure_city_id: this.departure_city_id,
       destination_city_id: this.destination_city_id,
-      flight_id: this.flight_id,
-      hotel_id: this.hotel_id,
+      flight_id: this.flight_id,  // Store as string to preserve compound format
+      hotel_id: this.hotel_id,    // Store as string to preserve compound format
       attractions: this.attractions,
       transportation: this.transportation,
       payment_method: this.payment_method,
@@ -101,6 +119,10 @@ export default class Order {
     try {
       const result = await insertOrderToDb(orderDoc);
       console.log("✅ Order saved successfully:", result._id);
+      
+      // Set the _id on this instance
+      this._id = result._id;
+      
       return result;
     } catch (error) {
       console.error("❌ Database save error:", error);

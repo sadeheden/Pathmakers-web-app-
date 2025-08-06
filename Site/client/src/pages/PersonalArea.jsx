@@ -6,30 +6,64 @@ const PersonalArea = () => {
     const [activeTab, setActiveTab] = useState("userInfo");
     const [user, setUser] = useState(null);
     const [email, setEmail] = useState("");
-    const [pdfUrl, setPdfUrl] = useState(null);
     const [selectedOrder, setSelectedOrder] = useState(null);
-
-    const [loading, setLoading] = useState(false); // State for loading
-    const [isEditing, setIsEditing] = useState(false); // State to toggle edit mode
-   const [editedUser, setEditedUser] = useState({
-  username: "",
-  email: "",
-
-});
-
-    
+    const [loading, setLoading] = useState(false);
+    const [isEditing, setIsEditing] = useState(false);
+    const [editedUser, setEditedUser] = useState({
+        username: "",
+        email: "",
+    });
     const [orders, setOrders] = useState([]);
     const navigate = useNavigate();
     
+    // ✅ Fetch user data function
+    const fetchUser = async () => {
+        try {
+            const token = localStorage.getItem("authToken");
+            if (!token) {
+                console.warn("⚠️ No token found. Redirecting to login...");
+                navigate("/login");
+                return null;
+            }
+
+            const response = await fetch("http://localhost:4000/api/auth/user", {
+                method: "GET",
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    "Content-Type": "application/json"
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error(`⚠️ Failed to fetch user, status: ${response.status}`);
+            }
+
+            const userData = await response.json();
+            console.log("✅ User data received:", userData);
+            
+            const formattedUser = { ...userData, id: userData._id };
+            setUser(formattedUser);
+            setEditedUser({
+                username: userData.username || "",
+                email: userData.email || ""
+            });
+
+            return formattedUser;
+        } catch (error) {
+            console.error("⚠️ Error fetching user session:", error);
+            return null;
+        }
+    };
+
+    // ✅ Fetch orders function
     const fetchOrders = async () => {
         try {
-          const token = localStorage.getItem("authToken");
-
+            const token = localStorage.getItem("authToken");
             if (!token) {
                 console.error("⚠️ No token found, please log in again.");
                 return;
             }
-    
+
             const response = await fetch("http://localhost:4000/api/order", {
                 method: "GET",
                 headers: {
@@ -37,161 +71,95 @@ const PersonalArea = () => {
                     "Content-Type": "application/json"
                 }
             });
-    
+
             if (!response.ok) {
                 throw new Error(`HTTP error! Status: ${response.status}`);
             }
-    
+
             const data = await response.json();
             console.log("✅ Orders received from API:", data);
-    
+
+            // Handle different response structures
+            let ordersArray = [];
+            if (Array.isArray(data)) {
+                ordersArray = data;
+            } else if (data.orders && Array.isArray(data.orders)) {
+                ordersArray = data.orders;
+            } else if (data.data && Array.isArray(data.data)) {
+                ordersArray = data.data;
+            }
+
             // Filter unique orders based on Departure & Destination
             const uniqueOrdersMap = new Map();
-       data.orders.forEach(order => {
-             const key = `${order.departure_city_id}-${order.destination_city_id}`;
-
-    
-                // Keep only the most recent or highest-priced order
-                if (!uniqueOrdersMap.has(key) || uniqueOrdersMap.get(key).createdAt < order.createdAt) {
+            ordersArray.forEach(order => {
+                const key = `${order.departure_city_id}-${order.destination_city_id}`;
+                
+                // Keep only the most recent order for each route
+                if (!uniqueOrdersMap.has(key) || 
+                    new Date(uniqueOrdersMap.get(key).created_at || uniqueOrdersMap.get(key).createdAt) < 
+                    new Date(order.created_at || order.createdAt)) {
                     uniqueOrdersMap.set(key, order);
                 }
             });
-    
+
             const uniqueOrders = Array.from(uniqueOrdersMap.values());
             console.log("✅ Unique Orders:", uniqueOrders);
-    
             setOrders(uniqueOrders);
         } catch (error) {
             console.error("⚠️ Failed to fetch orders:", error.message);
         }
     };
-    
-    
-    
-    // ✅ Fetch orders once user is loaded
+
+    // ✅ Initial data fetch
     useEffect(() => {
-        if (user && user.id) {
-            console.log("🔍 Fetching orders for user:", user.id);
-            fetchOrders();
-        }
-    }, [user]);
-    
-    
-    
-    
-    // ✅ Function to filter out duplicate orders based on departure and destination
-    const filterUniqueOrders = (ordersList) => {
-        const uniqueOrderMap = new Map();
-        
-        ordersList.forEach(order => {
-            // Create a unique key based on departure and destination
-            const orderKey = `${order.departureCity}-${order.destinationCity}`;
+        const initializeData = async () => {
+            console.log("🔄 Initializing user data...");
+            const userData = await fetchUser();
             
-            // If this combo doesn't exist yet, or if the current order has a higher price
-            // (assuming we might want the most recent/expensive one)
-            if (!uniqueOrderMap.has(orderKey) || 
-                uniqueOrderMap.get(orderKey).totalPrice < order.totalPrice) {
-                uniqueOrderMap.set(orderKey, order);
+            // Only fetch orders if user data was successfully retrieved
+            if (userData && userData.id) {
+                console.log("🔍 Fetching orders for user:", userData.id);
+                await fetchOrders();
             }
-        });
-        
-        // Convert the map values back to an array
-        return Array.from(uniqueOrderMap.values());
-    };
-    
-    // ✅ Ensure fetchOrders runs **only after** the user is set
-    useEffect(() => {
-        if (user && user.id) {
-            console.log("🔍 Fetching orders for user:", user.id);
-            fetchOrders();
-        }
-    }, [user]); // ✅ Runs only when `user` is updated
-    
-    
-    // ✅ Move `fetchUser` outside of useEffect
-    const fetchUser = async () => {
-        try {
-           const token = localStorage.getItem("authToken");
-
-            if (!token) {
-                console.warn("⚠️ No token found. Redirecting to login...");
-                setTimeout(() => navigate("/login"), 1000);
-                return;
-            }
-            const response = await fetch("http://localhost:4000/api/auth/user", { 
-                method: "GET",
-                headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" }
-            });
-            
-
-
-            if (!response.ok) {
-                throw new Error(`⚠️ Failed to fetch user, status: ${response.status}`);
-            }
-
-            const userData = await response.json();
-            console.log("✅ User fetched successfully:", userData);
-
-         setUser({ ...userData, id: userData._id });
-
-
-            // ✅ Set initial edit state with fetched data
-   setEditedUser({
-  username: userData.username || "",
-  email: userData.email || "",
-
-});
-
-
-
-        } catch (error) {
-            console.error("⚠️ Error fetching user session:", error);
-        }
-    };
-
-    useEffect(() => {
-        const fetchData = async () => {
-         const token = localStorage.getItem("authToken");
-            if (!token) {
-                console.warn("⚠️ No token found, redirecting to login.");
-                navigate("/login");
-                return;
-            }
-    
-            await fetchUser(); // ✅ Fetch user first
-    
-            setTimeout(() => { 
-                fetchOrders(); // ✅ Fetch orders after user is set
-            }, 500); // Small delay to ensure user is loaded first
         };
-        fetchData();
-    }, []);
-    
 
+        initializeData();
+    }, []); // Run only once on component mount
 
     const handleEditProfile = () => {
         setIsEditing(true);
     };
 
+    const calculateAge = (birthdate) => {
+        if (!birthdate) return "Not provided";
+
+        const birthDateObj = new Date(birthdate);
+        const today = new Date();
+        let age = today.getFullYear() - birthDateObj.getFullYear();
+        const monthDiff = today.getMonth() - birthDateObj.getMonth();
+
+        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDateObj.getDate())) {
+            age--;
+        }
+
+        return age;
+    };
+
     const handleSaveProfile = async () => {
         setLoading(true);
-   const token = localStorage.getItem("authToken");
+        const token = localStorage.getItem("authToken");
 
-    
-        // Ensure age is calculated before saving
-       const updatedData = {
-  username: editedUser.username,
-  email: editedUser.email,
+        const updatedData = {
+            username: editedUser.username,
+            email: editedUser.email,
+        };
 
-};
-
-    
         if (editedUser.birthdate) {
-            updatedData.age = calculateAge(editedUser.birthdate); // ✅ Save calculated age
+            updatedData.age = calculateAge(editedUser.birthdate);
         }
-    
-        console.log("🔍 Sending update:", updatedData); // ✅ Debugging
-    
+
+        console.log("🔍 Sending update:", updatedData);
+
         try {
             const response = await fetch("http://localhost:4000/api/auth/user", {
                 method: "PUT",
@@ -201,12 +169,12 @@ const PersonalArea = () => {
                 },
                 body: JSON.stringify(updatedData)
             });
-    
+
             const result = await response.json();
             console.log("🔍 Server response:", result);
-    
+
             if (response.ok) {
-                setUser(result); // ✅ Update user state
+                setUser(result);
                 setEditedUser(result);
                 setIsEditing(false);
                 console.log("✅ Profile updated successfully.");
@@ -221,32 +189,13 @@ const PersonalArea = () => {
             setLoading(false);
         }
     };
-    
-    
+
     const handleViewOrderDetails = (order) => {
         setSelectedOrder(order);
     };
-    
-    
-    const calculateAge = (birthdate) => {
-        if (!birthdate) return "Not provided"; // ✅ Ensures no invalid value
-    
-        const birthDateObj = new Date(birthdate);
-        const today = new Date();
-        let age = today.getFullYear() - birthDateObj.getFullYear();
-        const monthDiff = today.getMonth() - birthDateObj.getMonth();
-    
-        // Adjust for cases where the birthday hasn't occurred this year yet
-        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDateObj.getDate())) {
-            age--;
-        }
-    
-        return age;
-    };
-    
-    
+
     const handleLogout = () => {
-        localStorage.removeItem("token");
+        localStorage.removeItem("authToken"); // ✅ Fixed token key
         setUser(null);
         navigate("/login");
     };
@@ -257,7 +206,7 @@ const PersonalArea = () => {
             return;
         }
 
-        setLoading(true); // Set loading to true when starting the request
+        setLoading(true);
 
         try {
             const response = await fetch("http://localhost:4000/api/newsletter", {
@@ -268,7 +217,7 @@ const PersonalArea = () => {
 
             if (response.ok) {
                 alert("✅ Subscription successful, check your inbox!");
-                setEmail(""); // Clear input after success
+                setEmail("");
             } else {
                 const errorData = await response.json();
                 console.error("⚠️ Failed to subscribe:", errorData.message || response.status);
@@ -278,7 +227,7 @@ const PersonalArea = () => {
             console.error("⚠️ Error during subscription:", error);
             alert("⚠️ An error occurred. Please try again later.");
         } finally {
-            setLoading(false); // Set loading to false after request finishes
+            setLoading(false);
         }
     };
 
@@ -296,78 +245,79 @@ const PersonalArea = () => {
                     Sign Up for Newsletter
                 </button>
             </div>
-    
+
             <div className="containerPersonal">
                 {/* User Information */}
-             {activeTab === "userInfo" && (
-  <>
-    <h2 className="heading">User Details</h2>
-    <div className="profileInfo">
-      {user ? (
-        <>
-          <p><strong>Username:</strong> {user.username}</p>
-          <p><strong>Email:</strong> {user.email}</p>
-        </>
-      ) : (
-        <p>Please log in to see your details.</p>
-      )}
-    </div>
-  </>
-)}
+                {activeTab === "userInfo" && (
+                    <>
+                        <h2 className="heading">User Details</h2>
+                        <div className="profileInfo">
+                            {user ? (
+                                <>
+                                    <p><strong>Username:</strong> {user.username}</p>
+                                    <p><strong>Email:</strong> {user.email}</p>
+                                </>
+                            ) : (
+                                <div>
+                                    <p>Loading user data...</p>
+                                </div>
+                            )}
+                        </div>
+                    </>
+                )}
 
+                {/* Order Details Modal */}
+                {selectedOrder && (
+                    <div className="order-modal">
+                        <div className="order-modal-content">
+                            <button className="close-modal" onClick={() => setSelectedOrder(null)}>✖</button>
+                            <h2>Order Details</h2>
 
+                            <p><strong>Order ID:</strong> {selectedOrder._id || selectedOrder.id}</p>
+                            <p><strong>Departure City:</strong> {selectedOrder.departure_city_name || selectedOrder.departure_city_id}</p>
+                            <p><strong>Destination City:</strong> {selectedOrder.destination_city_name || selectedOrder.destination_city_id}</p>
+                            
+                            <p><strong>Flight:</strong> {selectedOrder.flight_name || selectedOrder.flight_id || "Not selected"}</p>
+                            <p><strong>Hotel:</strong> {selectedOrder.hotel_name || selectedOrder.hotel_id || "Not selected"}</p>
 
-    
+                            <p><strong>Attractions:</strong> 
+                                {Array.isArray(selectedOrder.attraction_names) && selectedOrder.attraction_names.length > 0
+                                    ? selectedOrder.attraction_names.join(", ")
+                                    : "None"}
+                            </p>
+
+                            <p><strong>Transportation:</strong> {selectedOrder.transportation || "Not selected"}</p>
+                            <p><strong>Payment Method:</strong> {selectedOrder.payment_method}</p>
+                            <p><strong>Total Price:</strong> ${Number(selectedOrder.total_price || 0).toLocaleString()}</p>
+                            <p><strong>Created At:</strong> {new Date(selectedOrder.created_at || selectedOrder.createdAt).toLocaleString()}</p>
+                        </div>
+                    </div>
+                )}
+
                 {/* User Orders */}
-         {selectedOrder && (
-  <div className="order-modal">
-    <div className="order-modal-content">
-      <button className="close-modal" onClick={() => setSelectedOrder(null)}>✖</button>
-      <h2>Order Details</h2>
-
-      <p><strong>Order ID:</strong> {selectedOrder._id}</p>
-      <p><strong>Departure City:</strong> {selectedOrder.departure_city_name || selectedOrder.departure_city_id}</p>
-      <p><strong>Destination City:</strong> {selectedOrder.destination_city_name || selectedOrder.destination_city_id}</p>
-      
-      <p><strong>Flight:</strong> {selectedOrder.flight_name || selectedOrder.flight_id || "Not selected"}</p>
-      <p><strong>Hotel:</strong> {selectedOrder.hotel_name || selectedOrder.hotel_id || "Not selected"}</p>
-
-      <p><strong>Attractions:</strong> 
-        {Array.isArray(selectedOrder.attraction_names) && selectedOrder.attraction_names.length > 0
-          ? selectedOrder.attraction_names.join(", ")
-          : "None"}
-      </p>
-
-      <p><strong>Transportation:</strong> {selectedOrder.transportation || "Not selected"}</p>
-      <p><strong>Payment Method:</strong> {selectedOrder.payment_method}</p>
-      <p><strong>Total Price:</strong> ${Number(selectedOrder.total_price).toLocaleString()}</p>
-      <p><strong>Created At:</strong> {new Date(selectedOrder.created_at).toLocaleString()}</p>
-    </div>
-  </div>
-)}
-
-
-
-{activeTab === "orders" && (
-    <>
-        <h2 className="heading">Your Previous Orders</h2>
-        {orders && orders.length > 0 ? ( 
-            <ul className="orders-list">
-                {orders.map((order, index) => (
-                    <li key={index} className="order-item">
-                       <strong>Route:</strong>{" "}
-{order.departure_city_name || order.departure_city_id} → {order.destination_city_name || order.destination_city_id}, ${order.total_price}
-                        <button className="view-details-button" onClick={() => handleViewOrderDetails(order)}>
-                            View Details
-                        </button>
-                    </li>
-                ))}
-            </ul>
-        ) : (
-            <p>No previous orders found.</p> // ✅ Ensure no undefined errors
-        )}
-    </>
-)}
+                {activeTab === "orders" && (
+                    <>
+                        <h2 className="heading">Your Previous Orders</h2>
+                        {orders && orders.length > 0 ? (
+                            <ul className="orders-list">
+                                {orders.map((order, index) => (
+                                    <li key={order._id || order.id || index} className="order-item">
+                                        <strong>Route:</strong>{" "}
+                                        {order.departure_city_name || order.departure_city_id} → {order.destination_city_name || order.destination_city_id}
+                                        , ${Number(order.total_price || 0).toLocaleString()}
+                                        <button className="view-details-button" onClick={() => handleViewOrderDetails(order)}>
+                                            View Details
+                                        </button>
+                                    </li>
+                                ))}
+                            </ul>
+                        ) : (
+                            <div>
+                                <p>No previous orders found.</p>
+                            </div>
+                        )}
+                    </>
+                )}
 
                 {/* Newsletter Subscription */}
                 {activeTab === "newsletter" && (
@@ -389,15 +339,15 @@ const PersonalArea = () => {
                     </>
                 )}
             </div>
+            
             <button 
-  className="floating-support-btn"
-  onClick={() => navigate('/support')}
->
-  💬 Support
-</button>
+                className="floating-support-btn"
+                onClick={() => navigate('/support')}
+            >
+                💬 Support
+            </button>
         </div>
     );   
 };
-    
 
 export default PersonalArea;
