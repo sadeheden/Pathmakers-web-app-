@@ -11,6 +11,8 @@ export default function RootLayout() {
       <Stack.Screen name="(tabs)" />
       <Stack.Screen name="Support" />
       <Stack.Screen name="calculator" />
+      <Stack.Screen name="RealChat" />
+
     </Stack>
   );
 }

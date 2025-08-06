@@ -22,51 +22,54 @@ export default function RealChatScreen() {
   ]);
   const [isLoading, setIsLoading] = useState(false);
 
-  const askAI = useCallback(async () => {
-    try {
-      setIsLoading(true);
-        const response = await fetch("https://pathmakers-web-app-app-travel.onrender.com/api/chat", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ messages }),
-      });
+ const askAI = useCallback(async (userMessage) => {
+  try {
+    setIsLoading(true);
 
-      const data = await response.json();
+    const response = await fetch("https://pathmakers-web-app-app-travel.onrender.com/api/chat", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ messages: [...messages, userMessage] }), // <--- כאן חשוב לשלוח את ההודעה החדשה יחד עם ההיסטוריה
+    });
 
-      if (data.choices && data.choices.length > 0) {
-        setMessages((prev) => [...prev, data.choices[0].message]);
-      } else {
-        throw new Error("Invalid response");
-      }
-    } catch (error) {
-      console.error("Error:", error);
+    if (!response.ok) {
+      const text = await response.text();
+      console.error("Server responded with error:", text);
+      throw new Error(`Server error: ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    if (data.choices && data.choices.length > 0) {
       setMessages((prev) => [
         ...prev,
-        {
-          role: "assistant",
-          content: "Sorry, an error occurred. Please try again.",
-        },
+        userMessage,
+        data.choices[0].message,
       ]);
-    } finally {
-      setIsLoading(false);
+    } else {
+      throw new Error("Invalid response");
     }
-  }, [messages]);
-
-  useEffect(() => {
-    if (
-      messages.length > 1 &&
-      messages[messages.length - 1].role === "user"
-    ) {
-      askAI();
-    }
-  }, [messages]);
+  } catch (error) {
+    console.error("Error:", error);
+    setMessages((prev) => [
+      ...prev,
+      {
+        role: "assistant",
+        content: "Sorry, an error occurred. Please try again.",
+      },
+    ]);
+  } finally {
+    setIsLoading(false);
+  }
+}, [messages]);
 
   const handleSend = () => {
     if (text.trim() === "") return;
-    setMessages([...messages, { role: "user", content: text }]);
+    const userMessage = { role: "user", content: text.trim() };
     setText("");
+    askAI(userMessage);
   };
 
   return (
@@ -107,7 +110,7 @@ export default function RealChatScreen() {
         <TouchableOpacity
           onPress={handleSend}
           disabled={isLoading || !text.trim()}
-          style={styles.sendButton}
+          style={[styles.sendButton, (isLoading || !text.trim()) && { opacity: 0.5 }]}
         >
           <Text style={styles.sendText}>Send</Text>
         </TouchableOpacity>
@@ -115,6 +118,7 @@ export default function RealChatScreen() {
     </KeyboardAvoidingView>
   );
 }
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,

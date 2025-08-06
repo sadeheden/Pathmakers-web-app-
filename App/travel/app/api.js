@@ -1,4 +1,7 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
 const base_url = "https://pathmakers-web-app-app-travel.onrender.com/api";
+
 
 export async function get(endpoint) {
   try {
@@ -25,9 +28,14 @@ export async function get(endpoint) {
 
 export async function post(endpoint, data) {
   try {
+    const token = await AsyncStorage.getItem('token'); // 👈 get token
+
     const res = await fetch(`${base_url}/${endpoint}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        ...(token && { 'Authorization': `Bearer ${token}` }), // add token if exists
+      },
       body: JSON.stringify(data),
     });
 
@@ -44,13 +52,15 @@ export async function post(endpoint, data) {
   }
 }
 
-
 export async function put(endpoint, data) {
   try {
+    const token = await AsyncStorage.getItem('token'); // 👈 get token
+
     const response = await fetch(`${base_url}/${endpoint}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
+        ...(token && { 'Authorization': `Bearer ${token}` }),
       },
       body: JSON.stringify(data),
     });
@@ -68,8 +78,13 @@ export async function put(endpoint, data) {
 
 export async function del(endpoint) {
   try {
+    const token = await AsyncStorage.getItem('token'); // 👈 get token
+
     const response = await fetch(`${base_url}/${endpoint}`, {
       method: 'DELETE',
+      headers: {
+        ...(token && { 'Authorization': `Bearer ${token}` }),
+      },
     });
     if (!response.ok) {
       const errorText = await response.text();

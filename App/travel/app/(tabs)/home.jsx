@@ -235,6 +235,15 @@ export default function HomeScreen() {
       Alert.alert('Navigation Error', 'Could not navigate to diary screen.');
     }
   };
+const handleRealChatPress = () => {
+  try {
+    console.log('RealChat button pressed');
+    navigation.navigate('RealChat');
+  } catch (error) {
+    console.error('Navigation error:', error);
+    Alert.alert('Navigation Error', 'Could not navigate to RealChat screen.');
+  }
+};
 
   const handleCityPress = (city) => {
     setSelectedDestination(city);
