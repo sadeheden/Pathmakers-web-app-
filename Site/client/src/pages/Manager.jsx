@@ -228,11 +228,14 @@ const fetchCityData = async () => {
           });
         }
             
-        await fetch(`http://localhost:4000/api/cities/${cityData._id}/attractions`, {
+await fetch(`http://localhost:4000/api/cities/${cityData._id}/attractions`, {
   method: "PUT",
   headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({ attractions: newAttractionsData }),
+  body: JSON.stringify({
+    attractions: [...(cityData.attractions || []), ...newAttractionsData],
+  }),
 });
+
 
 
     alert("Attractions updated successfully!");
