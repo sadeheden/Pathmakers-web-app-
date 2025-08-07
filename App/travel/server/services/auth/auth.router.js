@@ -5,8 +5,10 @@ import authenticateUser from '../middlewares/authenticateUser.js';
 const router = express.Router();
 
 // Public route
-router.post('/login', loginUser); 
-
+// router.post('/login', loginUser); 
+router.post('/login', (req, res) => {
+  res.send('Login endpoint');
+});
 // Protected route example
 router.get('/profile', authenticateUser, (req, res) => {
   res.json({ message: 'Welcome back!', user: req.user });
