@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState,useRef, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -10,6 +10,8 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from "react-native";
+import { SafeAreaView } from "react-native";
+
 
 export default function RealChatScreen() {
   const [text, setText] = useState("");
@@ -21,6 +23,7 @@ export default function RealChatScreen() {
     },
   ]);
   const [isLoading, setIsLoading] = useState(false);
+const scrollViewRef = useRef(null);
 
  const askAI = useCallback(async (userMessage) => {
   try {
@@ -72,53 +75,75 @@ export default function RealChatScreen() {
     askAI(userMessage);
   };
 
-  return (
+return (
+  <SafeAreaView style={styles.safeArea}>
     <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
     >
       <Text style={styles.header}>AI Triper - Chat</Text>
 
-      <ScrollView style={styles.chatBox} contentContainerStyle={{ paddingBottom: 80 }}>
-        {messages
-          .filter((m) => m.role !== "system")
-          .map((message, index) => (
-            <View
-              key={index}
-              style={[
-                styles.messageContainer,
-                message.role === "user" ? styles.userMessage : styles.botMessage,
-              ]}
-            >
-              <Text style={styles.messageText}>{message.content}</Text>
-            </View>
-          ))}
-        {isLoading && (
-          <ActivityIndicator size="large" color="#6633cc" style={{ marginTop: 10 }} />
-        )}
-      </ScrollView>
+      <View style={styles.chatWrapper}>
+       <ScrollView
+  ref={scrollViewRef}
+  style={styles.chatBox}
+  contentContainerStyle={{ paddingVertical: 10 }}
+  onContentSizeChange={() => {
+    scrollViewRef.current?.scrollToEnd({ animated: true });
+  }}
+  keyboardShouldPersistTaps="handled"
+>
+  {messages
+    .filter((m) => m.role !== "system")
+    .map((message, index) => (
+      <View
+        key={index}
+        style={[
+          styles.messageContainer,
+          message.role === "user"
+            ? styles.userMessage
+            : styles.botMessage,
+        ]}
+      >
+        <Text style={styles.messageText}>{message.content}</Text>
+      </View>
+    ))}
+  {isLoading && (
+    <ActivityIndicator
+      size="large"
+      color="#6633cc"
+      style={{ marginTop: 10 }}
+    />
+  )}
+</ScrollView>
 
-      <View style={styles.inputContainer}>
-        <TextInput
-          value={text}
-          onChangeText={setText}
-          placeholder="Type your message..."
-          style={styles.input}
-          editable={!isLoading}
-          onSubmitEditing={handleSend}
-        />
-        <TouchableOpacity
-          onPress={handleSend}
-          disabled={isLoading || !text.trim()}
-          style={[styles.sendButton, (isLoading || !text.trim()) && { opacity: 0.5 }]}
-        >
-          <Text style={styles.sendText}>Send</Text>
-        </TouchableOpacity>
+
+        <View style={styles.inputContainer}>
+          <TextInput
+            value={text}
+            onChangeText={setText}
+            placeholder="Type your message..."
+            style={styles.input}
+            editable={!isLoading}
+            onSubmitEditing={handleSend}
+          />
+          <TouchableOpacity
+            onPress={handleSend}
+            disabled={isLoading || !text.trim()}
+            style={[
+              styles.sendButton,
+              (isLoading || !text.trim()) && { opacity: 0.5 },
+            ]}
+          >
+            <Text style={styles.sendText}>Send</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </KeyboardAvoidingView>
-  );
+  </SafeAreaView>
+);
 }
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -183,4 +208,73 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontWeight: "bold",
   },
+  safeArea: {
+  flex: 1,
+  backgroundColor: "#6633cc",
+},
+container: {
+  flex: 1,
+  backgroundColor: "#fff",
+},
+header: {
+  fontSize: 20,
+  fontWeight: "bold",
+  textAlign: "center",
+  paddingVertical: 15,
+  backgroundColor: "#6633cc",
+  color: "#fff",
+},
+chatWrapper: {
+  flex: 1,
+},
+chatBox: {
+  flex: 1,
+  paddingHorizontal: 10,
+},
+messageContainer: {
+  padding: 10,
+  marginVertical: 5,
+  borderRadius: 10,
+  maxWidth: "80%",
+},
+userMessage: {
+  alignSelf: "flex-end",
+  backgroundColor: "#daf0ff",
+},
+botMessage: {
+  alignSelf: "flex-start",
+  backgroundColor: "#f1f1f1",
+},
+messageText: {
+  fontSize: 16,
+},
+inputContainer: {
+  flexDirection: "row",
+  padding: 10,
+  borderTopWidth: 1,
+  borderColor: "#ccc",
+  backgroundColor: "#fff",
+  alignItems: "center",
+},
+input: {
+  flex: 1,
+  height: 40,
+  borderWidth: 1,
+  borderColor: "#ccc",
+  borderRadius: 20,
+  paddingHorizontal: 15,
+  marginRight: 10,
+},
+sendButton: {
+  backgroundColor: "#6633cc",
+  borderRadius: 20,
+  paddingHorizontal: 15,
+  paddingVertical: 8,
+},
+sendText: {
+  color: "#fff",
+  fontWeight: "bold",
+},
+
+
 });
