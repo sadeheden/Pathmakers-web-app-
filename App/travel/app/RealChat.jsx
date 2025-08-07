@@ -1,4 +1,4 @@
-import React, { useState,useRef, useEffect, useCallback } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -11,62 +11,51 @@ import {
   Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native";
+import { HF_TOKEN } from "@env";
+import { HfInference } from "@huggingface/inference";
 
+const hf = new HfInference(HF_TOKEN);
 
 export default function RealChatScreen() {
   const [text, setText] = useState("");
-  const [messages, setMessages] = useState([
-    {
-      role: "system",
-      content:
-        "Act as a travel agent. Answer questions with full explanations and step-by-step thinking.",
-    },
-  ]);
+  const [messages, setMessages] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
-const scrollViewRef = useRef(null);
+  const scrollViewRef = useRef(null);
 
- const askAI = useCallback(async (userMessage) => {
-  try {
-    setIsLoading(true);
+  const askAI = useCallback(async (userMessage) => {
+    try {
+      setIsLoading(true);
 
-    const response = await fetch("https://pathmakers-web-app-app-travel.onrender.com/api/chat", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ messages: [...messages, userMessage] }), // <--- כאן חשוב לשלוח את ההודעה החדשה יחד עם ההיסטוריה
-    });
+      const systemPrompt = {
+        role: "system",
+        content: "Act as a travel agent. Answer questions with full explanations and step-by-step thinking.",
+      };
 
-    if (!response.ok) {
-      const text = await response.text();
-      console.error("Server responded with error:", text);
-      throw new Error(`Server error: ${response.status}`);
-    }
+      const chatPayload = [systemPrompt, ...messages, userMessage];
 
-    const data = await response.json();
+      const response = await hf.chatCompletion({
+        model: "meta-llama/Llama-3.1-8B-Instruct",
+        messages: chatPayload,
+        temperature: 0.7,
+        max_tokens: 150,
+      });
 
-    if (data.choices && data.choices.length > 0) {
+      if (response.choices?.[0]?.message?.content) {
+        setMessages((prev) => [...prev, userMessage, response.choices[0].message]);
+      } else {
+        throw new Error("No response from model.");
+      }
+    } catch (error) {
+      console.error("Error calling AI:", error);
       setMessages((prev) => [
         ...prev,
         userMessage,
-        data.choices[0].message,
+        { role: "assistant", content: "Sorry, an error occurred. Please try again." },
       ]);
-    } else {
-      throw new Error("Invalid response");
+    } finally {
+      setIsLoading(false);
     }
-  } catch (error) {
-    console.error("Error:", error);
-    setMessages((prev) => [
-      ...prev,
-      {
-        role: "assistant",
-        content: "Sorry, an error occurred. Please try again.",
-      },
-    ]);
-  } finally {
-    setIsLoading(false);
-  }
-}, [messages]);
+  }, [messages]);
 
   const handleSend = () => {
     if (text.trim() === "") return;
@@ -75,75 +64,68 @@ const scrollViewRef = useRef(null);
     askAI(userMessage);
   };
 
-return (
-  <SafeAreaView style={styles.safeArea}>
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-      keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
-    >
-      <Text style={styles.header}>AI Triper - Chat</Text>
-
-      <View style={styles.chatWrapper}>
-       <ScrollView
-  ref={scrollViewRef}
-  style={styles.chatBox}
-  contentContainerStyle={{ paddingVertical: 10 }}
-  onContentSizeChange={() => {
-    scrollViewRef.current?.scrollToEnd({ animated: true });
-  }}
-  keyboardShouldPersistTaps="handled"
->
-  {messages
-    .filter((m) => m.role !== "system")
-    .map((message, index) => (
-      <View
-        key={index}
-        style={[
-          styles.messageContainer,
-          message.role === "user"
-            ? styles.userMessage
-            : styles.botMessage,
-        ]}
+  return (
+    <SafeAreaView style={styles.safeArea}>
+      <KeyboardAvoidingView
+        style={styles.container}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
       >
-        <Text style={styles.messageText}>{message.content}</Text>
-      </View>
-    ))}
-  {isLoading && (
-    <ActivityIndicator
-      size="large"
-      color="#6633cc"
-      style={{ marginTop: 10 }}
-    />
-  )}
-</ScrollView>
-
-
-        <View style={styles.inputContainer}>
-          <TextInput
-            value={text}
-            onChangeText={setText}
-            placeholder="Type your message..."
-            style={styles.input}
-            editable={!isLoading}
-            onSubmitEditing={handleSend}
-          />
-          <TouchableOpacity
-            onPress={handleSend}
-            disabled={isLoading || !text.trim()}
-            style={[
-              styles.sendButton,
-              (isLoading || !text.trim()) && { opacity: 0.5 },
-            ]}
+        <Text style={styles.header}>AI Triper - Chat</Text>
+        <View style={styles.chatWrapper}>
+          <ScrollView
+            ref={scrollViewRef}
+            style={styles.chatBox}
+            contentContainerStyle={{ paddingVertical: 10 }}
+            onContentSizeChange={() => {
+              scrollViewRef.current?.scrollToEnd({ animated: true });
+            }}
+            keyboardShouldPersistTaps="handled"
           >
-            <Text style={styles.sendText}>Send</Text>
-          </TouchableOpacity>
+            {messages
+              .filter((m) => m.role !== "system")
+              .map((message, index) => (
+                <View
+                  key={index}
+                  style={[
+                    styles.messageContainer,
+                    message.role === "user" ? styles.userMessage : styles.botMessage,
+                  ]}
+                >
+                  <Text style={styles.messageText}>{message.content}</Text>
+                </View>
+              ))}
+            {isLoading && (
+              <ActivityIndicator size="large" color="#6633cc" style={{ marginTop: 10 }} />
+            )}
+          </ScrollView>
+
+          <View style={styles.inputContainer}>
+            <TextInput
+              value={text}
+              onChangeText={setText}
+              placeholder="Type your message..."
+              style={styles.input}
+              editable={!isLoading}
+              onSubmitEditing={handleSend}
+            />
+            <TouchableOpacity
+              onPress={handleSend}
+              disabled={isLoading || !text.trim()}
+              style={[
+                styles.sendButton,
+                (isLoading || !text.trim()) && { opacity: 0.5 },
+              ]}
+            >
+              <Text style={styles.sendText}>Send</Text>
+            </TouchableOpacity>
+          </View>
         </View>
-      </View>
-    </KeyboardAvoidingView>
-  </SafeAreaView>
-);
+      </KeyboardAvoidingView>
+    </SafeAreaView>
+  );
 }
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
