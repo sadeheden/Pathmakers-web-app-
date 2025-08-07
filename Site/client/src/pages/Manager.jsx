@@ -36,26 +36,28 @@ const Manager = () => {
     revenueByDate: [],
   });
 
-  // טען נתוני דשבורד כשעוברים ללשונית Dashboard
-  useEffect(() => {
-    if (activeItem === "Dashboard") {
-      fetch("http://localhost:4000/api/manager/dashboard")
-        .then((res) => res.json())
-        .then((data) => {
-          setDashboardData({
-            totalOrders: data.totalOrders,
-            totalRevenue: data.totalRevenue,
-          topDestinations: data.topDestinations.map(({ destination, count }) => ({
-  name: destination,
-  trips: count,
-})),
-            ordersByDate: data.ordersByDate || [],
-            revenueByDate: data.revenueByDate || [],
-          });
-        })
-        .catch((err) => console.error("Error loading dashboard data:", err));
-    }
-  }, [activeItem]);
+useEffect(() => {
+  if (activeItem === "Dashboard") {
+    fetch("http://localhost:4000/api/manager/dashboard")
+      .then((res) => res.json())
+      .then((data) => {
+        console.log("📊 revenueByDate:", data.revenueByDate); // <== Add this
+
+        setDashboardData({
+          totalOrders: data.totalOrders,
+          totalRevenue: data.totalRevenue,
+          topDestinations: (data.topDestinations || []).map(({ destination, count }) => ({
+            name: destination,
+            trips: count,
+          })),
+          ordersByDate: data.ordersByDate || [],
+          revenueByDate: data.revenueByDate || [],
+        });
+      })
+      .catch((err) => console.error("Error loading dashboard data:", err));
+  }
+}, [activeItem]);
+
 
   // פונקציות להוספת שורה חדשה בטפסים
   const addNewAttraction = () => {
@@ -681,7 +683,7 @@ const Manager = () => {
             </div>
             <div className="stat-card">
               <p className="stat-title">Revenue this month</p>
-              <p className="stat-value">${dashboardData.totalRevenue.toFixed(2)}</p>
+             <p className="stat-value">${(dashboardData.totalRevenue || 0).toFixed(2)}</p>
               <p className="stat-change-positive">+15%</p>
             </div>
             <div className="stat-card">

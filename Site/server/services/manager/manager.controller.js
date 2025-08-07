@@ -2,7 +2,12 @@ import { connectDB } from '../auth/auth.db.js';
 import { ObjectId } from 'mongodb';
 import City from './../cities/cities.model.js'; 
 import Attraction from './../attraction/att.model.js';
+import e from 'express';
 
+export async function getOrdersCollection() {
+  const db = await connectDB();
+  return db.collection("orders"); // 👈 this must match your real collection name
+}
 export const addExistingAttractionToCity = async (req, res) => {
   const { cityId, attractionId } = req.params;
 
@@ -41,24 +46,54 @@ export const addExistingAttractionToCity = async (req, res) => {
     res.status(500).json({ error: 'שגיאה פנימית בשרת' });
   }
 };
-export const getManagerDashboardData = async (req, res) => {
+export async function getManagerDashboardData(req, res) {
+  let client;
   try {
-    // Dummy or real data
-    res.json({
-      totalOrders: 42,
-      totalRevenue: 12345.67,
-      topDestinations: [
-        { destination: "Paris", count: 10 },
-        { destination: "New York", count: 8 },
-      ],
-      ordersByDate: [],
-      revenueByDate: [],
-    });
-  } catch (error) {
-    res.status(500).json({ message: "Failed to load dashboard data" });
-  }
-};
+    const { collection, client: c } = await getOrdersCollection();
+    client = c;
 
+    const totalOrders = await collection.countDocuments();
+
+    const allOrders = await collection.find({}).toArray();
+    const totalRevenue = allOrders.reduce((sum, o) => sum + (o.total_price || 0), 0);
+
+    const topDestinations = await collection.aggregate([
+      { $group: { _id: "$destination_city_name", count: { $sum: 1 } } },
+      { $sort: { count: -1 } },
+      { $limit: 5 }
+    ]).toArray();
+
+    const now = new Date();
+    const monthAgo = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    const revenueByDate = await collection.aggregate([
+      { $match: { created_at: { $gte: monthAgo } } },
+      {
+        $group: {
+          _id: { $dateToString: { format: "%Y-%m-%d", date: "$created_at" } },
+          revenue: { $sum: "$total_price" }
+        }
+      },
+      { $sort: { _id: 1 } }
+    ]).toArray();
+
+    res.json({
+      totalOrders,
+      totalRevenue,
+      topDestinations: topDestinations.map(d => ({
+        destination: d._id,
+        count: d.count
+      })),
+      revenueByDate
+    });
+
+  } catch (err) {
+    console.error("❌ Dashboard error:", err);
+    res.status(500).json({ error: "Failed to load dashboard data" });
+  } finally {
+    if (client) await client.close();
+  }
+}
 // **פונקציה חדשה** - הוספת אטרקציות חדשות ישירות למערך attractions בתוך מסמך העיר
 export const addNewAttractionsToCity = async (req, res) => {
   try {
