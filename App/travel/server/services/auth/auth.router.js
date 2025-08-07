@@ -5,10 +5,7 @@ import authenticateUser from '../middlewares/authenticateUser.js';
 const router = express.Router();
 
 // Public route
-// router.post('/login', loginUser); 
-router.post('/login', (req, res) => {
-  res.send('Login endpoint');
-});
+router.post('/login', loginUser);
 // Protected route example
 router.get('/profile', authenticateUser, (req, res) => {
   res.json({ message: 'Welcome back!', user: req.user });
@@ -22,5 +19,6 @@ router.get('/test-mongo', async (req, res) => {
     console.error('MongoDB test error:', error);
     res.status(500).json({ success: false, message: 'MongoDB connection failed' });
   }
+
 });
 export default router;

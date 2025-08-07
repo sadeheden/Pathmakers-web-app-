@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
-import { post } from './api.js'; // adjust if needed
+import { post } from '../utils/api.js'; // adjust if needed
 import Popup from './components/Popup'; // adjust if needed
 import { HF_TOKEN } from "@env";
 
