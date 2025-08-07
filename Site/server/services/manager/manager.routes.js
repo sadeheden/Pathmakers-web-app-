@@ -1,9 +1,9 @@
 import express from 'express';
-import { 
-  addExistingAttractionToAttractionsDoc,
+import {
+  getManagerDashboardData,
   addExistingAttractionToCity,
-  addNewAttractionsToCity,
-  getManagerDashboardData // <-- import the controller
+  addNewAttractionsToCity, // 👈 this must be exported
+  addExistingAttractionToAttractionsDoc
 } from './manager.controller.js';
 
 const router = express.Router();
