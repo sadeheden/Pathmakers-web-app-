@@ -47,71 +47,44 @@ export const addExistingAttractionToCity = async (req, res) => {
 };
 export const getManagerDashboardData = async (req, res) => {
   try {
-    const ordersCollection = await getOrdersCollection();
+    const db = await connectDB();
+    const ordersCollection = db.collection("orders");
 
     const startOfMonth = new Date("2025-08-01T00:00:00Z");
     const startOfNextMonth = new Date("2025-09-01T00:00:00Z");
 
-    // 📊 Revenue grouped by date
     const revenueByDate = await ordersCollection.aggregate([
-      {
-        $match: {
-          created_at: {
-            $gte: startOfMonth,
-            $lt: startOfNextMonth,
-          },
-        },
-      },
-      {
-        $group: {
-          _id: {
-            $dateToString: { format: "%Y-%m-%d", date: "$created_at" },
-          },
-          revenue: { $sum: "$total_price" },
-        },
-      },
+      { $match: { created_at: { $gte: startOfMonth, $lt: startOfNextMonth } } },
+      { $group: { _id: { $dateToString: { format: "%Y-%m-%d", date: "$created_at" } }, revenue: { $sum: "$total_price" } } },
       { $sort: { _id: 1 } },
-      {
-        $project: {
-          date: "$_id",
-          revenue: 1,
-          _id: 0,
-        },
-      },
+      { $project: { date: "$_id", revenue: 1, _id: 0 } }
     ]).toArray();
 
-    const totalOrders = await ordersCollection.countDocuments({
-      created_at: { $gte: startOfMonth, $lt: startOfNextMonth },
-    });
+    const totalOrders = await ordersCollection.countDocuments({ created_at: { $gte: startOfMonth, $lt: startOfNextMonth } });
 
     const totalRevenue = revenueByDate.reduce((sum, item) => sum + item.revenue, 0);
 
-    // 📍 Top destinations by count
     const topDestinations = await ordersCollection.aggregate([
-  {
-    $group: {
-      _id: "$destination_city_id",  // 🔍 field name must match your order document
-      count: { $sum: 1 },
-    },
-  },
-  { $sort: { count: -1 } },
-  { $limit: 5 },
-  {
-    $project: {
-      destination: "$_id",
-      count: 1,
-      _id: 0,
-    },
-  },
-]).toArray();
-
+      { $group: { _id: "$destination_city_id", trips: { $sum: 1 } } },
+      { $sort: { trips: -1 } },
+      { $limit: 5 },
+      {
+        $lookup: {
+          from: "cities",
+          localField: "_id",
+          foreignField: "_id",
+          as: "cityInfo"
+        }
+      },
+      { $unwind: "$cityInfo" },
+      { $project: { name: "$cityInfo.city", trips: 1, _id: 0 } }
+    ]).toArray();
 
     res.json({
       totalOrders,
       totalRevenue,
       topDestinations,
       revenueByDate,
-      ordersByDate: [], // You can add this if needed in the future
     });
   } catch (err) {
     console.error("❌ Dashboard error:", err);
