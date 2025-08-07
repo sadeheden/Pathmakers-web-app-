@@ -122,7 +122,7 @@ export const addNewAttractionsToCity = async (req, res) => {
     }
 
     // הוספת כל האטרקציות למערך attractions בתוך מסמך העיר
-    const result = await db.collection("cities").updateOne(
+    const result = await db.collection("attractions").updateOne(
       { _id: cityObjectId },
       { $push: { attractions: { $each: validAttractions } } }
     );
