@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const base_url = "https://pathmakers-web-app-app-travel.onrender.com/api";
+const base_url = "https://pathmakers-web-app-app-travel.onrender.com/api"; // Adjust this to your server's base URL
 
 
 export async function get(endpoint) {
@@ -28,16 +28,25 @@ export async function get(endpoint) {
 
 export async function post(endpoint, data) {
   try {
-    const token = await AsyncStorage.getItem('token'); // 👈 get token
+    const token = await AsyncStorage.getItem('token');
 
     const res = await fetch(`${base_url}/${endpoint}`, {
       method: 'POST',
       headers: { 
         'Content-Type': 'application/json',
-        ...(token && { 'Authorization': `Bearer ${token}` }), // add token if exists
+        ...(token && { 'Authorization': `Bearer ${token}` }),
       },
       body: JSON.stringify(data),
     });
+
+    const contentType = res.headers.get('content-type');
+
+    // Check if response is JSON
+    if (!contentType || !contentType.includes('application/json')) {
+      const text = await res.text();
+      console.error('❌ Non-JSON response:', text);
+      throw new Error('Received non-JSON response from server');
+    }
 
     const result = await res.json();
 
@@ -47,7 +56,7 @@ export async function post(endpoint, data) {
 
     return result;
   } catch (err) {
-    console.error('API Error:', err.message);
+    console.error('❌ API Error:', err.message || err);
     throw err;
   }
 }

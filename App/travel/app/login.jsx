@@ -14,7 +14,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import { post } from './api.js'; // adjust if needed
 import Popup from './components/Popup'; // adjust if needed
+import { HF_TOKEN } from "@env";
 
+console.log("Hugging Face Token:", HF_TOKEN); 
 export default function LoginScreen() {
   const router = useRouter();
   const [identifier, setIdentifier] = useState('');
