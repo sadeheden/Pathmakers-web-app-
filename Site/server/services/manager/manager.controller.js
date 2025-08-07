@@ -3,10 +3,13 @@ import { ObjectId } from 'mongodb';
 import City from './../cities/cities.model.js'; 
 import Attraction from './../attraction/att.model.js';
 
+// פונקציה לקבלת קולקציית ההזמנות (אופציונלי לשימוש חוזר)
 export async function getOrdersCollection() {
   const db = await connectDB();
-  return db.collection("orders"); // 👈 your actual orders collection
+  return db.collection("orders");
 }
+
+// הוספת אטרקציה קיימת למערך אטרקציות בעיר (מנג'ר)
 export const addExistingAttractionToCity = async (req, res) => {
   const { cityId, attractionId } = req.params;
 
@@ -16,11 +19,29 @@ export const addExistingAttractionToCity = async (req, res) => {
 
   try {
     const city = await City.findById(cityId);
+    if (!city) {
+      return res.status(404).json({ message: "City not found" });
+    }
     console.log("✅ עיר שנמצאה:", city?.name);
 
     const existingAttraction = await Attraction.findById(attractionId);
+    if (!existingAttraction) {
+      return res.status(404).json({ message: "Attraction not found" });
+    }
     console.log("✅ אטרקציה שנמצאה:", existingAttraction?.name);
 
+    // אם מערך האטרקציות לא קיים - אתחל אותו
+    if (!Array.isArray(city.attractions)) {
+      city.attractions = [];
+    }
+
+    // בדיקה אם האטרקציה כבר קיימת בעיר לפי שם
+    const exists = city.attractions.some(a => a.name === existingAttraction.name);
+    if (exists) {
+      return res.status(400).json({ message: "Attraction already exists in the city" });
+    }
+
+    // הוספת האטרקציה למערך העיר
     city.attractions.push({
       name: existingAttraction.name,
       price: existingAttraction.price,
@@ -45,54 +66,90 @@ export const addExistingAttractionToCity = async (req, res) => {
     res.status(500).json({ error: 'שגיאה פנימית בשרת' });
   }
 };
-export const getManagerDashboardData = async (req, res) => {
+
+// הוספת אטרקציות חדשות (רשימה) לעיר
+export const addNewAttractionsToCity = async (req, res) => {
   try {
     const db = await connectDB();
-    const ordersCollection = db.collection("orders");
+    const { cityId } = req.params;
+    const { attractions } = req.body;
 
-    const startOfMonth = new Date("2025-08-01T00:00:00Z");
-    const startOfNextMonth = new Date("2025-09-01T00:00:00Z");
+    if (!cityId) {
+      return res.status(400).json({ message: "Missing cityId" });
+    }
 
-    const revenueByDate = await ordersCollection.aggregate([
-      { $match: { created_at: { $gte: startOfMonth, $lt: startOfNextMonth } } },
-      { $group: { _id: { $dateToString: { format: "%Y-%m-%d", date: "$created_at" } }, revenue: { $sum: "$total_price" } } },
-      { $sort: { _id: 1 } },
-      { $project: { date: "$_id", revenue: 1, _id: 0 } }
-    ]).toArray();
+    if (!attractions || !Array.isArray(attractions) || attractions.length === 0) {
+      return res.status(400).json({ 
+        message: "attractions must be a non-empty array" 
+      });
+    }
 
-    const totalOrders = await ordersCollection.countDocuments({ created_at: { $gte: startOfMonth, $lt: startOfNextMonth } });
+    const cityObjectId = new ObjectId(cityId);
 
-    const totalRevenue = revenueByDate.reduce((sum, item) => sum + item.revenue, 0);
+    const city = await db.collection("cities").findOne({ _id: cityObjectId });
+    if (!city) {
+      return res.status(404).json({ message: "City not found" });
+    }
 
-    const topDestinations = await ordersCollection.aggregate([
-      { $group: { _id: "$destination_city_id", trips: { $sum: 1 } } },
-      { $sort: { trips: -1 } },
-      { $limit: 5 },
-      {
-        $lookup: {
-          from: "cities",
-          localField: "_id",
-          foreignField: "_id",
-          as: "cityInfo"
-        }
-      },
-      { $unwind: "$cityInfo" },
-      { $project: { name: "$cityInfo.city", trips: 1, _id: 0 } }
-    ]).toArray();
+    // בדיקת תקינות ואימות האטרקציות
+    const validAttractions = [];
+    const errors = [];
 
-    res.json({
-      totalOrders,
-      totalRevenue,
-      topDestinations,
-      revenueByDate,
+    for (let i = 0; i < attractions.length; i++) {
+      const attraction = attractions[i];
+      
+      if (!attraction.name || !attraction.openingHours || attraction.price === undefined) {
+        errors.push(`Attraction ${i + 1}: Missing required fields`);
+        continue;
+      }
+
+      if (city.attractions?.some(existing => existing.name === attraction.name)) {
+        errors.push(`Attraction ${i + 1}: "${attraction.name}" already exists in the city`);
+        continue;
+      }
+
+      validAttractions.push({
+        name: attraction.name.trim(),
+        openingHours: attraction.openingHours.trim(),
+        price: parseFloat(attraction.price)
+      });
+    }
+
+    if (errors.length > 0) {
+      return res.status(400).json({ 
+        message: "Validation errors found",
+        errors 
+      });
+    }
+
+    if (validAttractions.length === 0) {
+      return res.status(400).json({ message: "No valid attractions to add" });
+    }
+
+    const result = await db.collection("cities").updateOne(
+      { _id: cityObjectId },
+      { $push: { attractions: { $each: validAttractions } } }
+    );
+
+    if (result.modifiedCount === 0) {
+      return res.status(500).json({ message: "Failed to add attractions to city" });
+    }
+
+    const updatedCity = await db.collection("cities").findOne({ _id: cityObjectId });
+
+    res.status(201).json({
+      message: `✅ ${validAttractions.length} attractions added to city successfully`,
+      addedAttractions: validAttractions,
+      city: updatedCity
     });
+
   } catch (err) {
-    console.error("❌ Dashboard error:", err);
-    res.status(500).json({ message: "Dashboard failed", error: err.message });
+    console.error("Error adding new attractions to city:", err);
+    res.status(500).json({ message: "Internal server error" });
   }
 };
 
-// הוספת אטרקציה קיימת למסמך אטרקציות (הקוד הקיים שלך)
+// הוספת אטרקציה קיימת למסמך אטרקציות (collection "attractions")
 export const addExistingAttractionToAttractionsDoc = async (req, res) => {
   try {
     const db = await connectDB();
@@ -105,15 +162,12 @@ export const addExistingAttractionToAttractionsDoc = async (req, res) => {
     const docObjectId = new ObjectId(docId);
     const attractionObjectId = new ObjectId(attractionId);
 
-    // מוצאים את המסמך שבו רוצים להוסיף את האטרקציה
     const doc = await db.collection("attractions").findOne({ _id: docObjectId });
     if (!doc) return res.status(404).json({ message: "Document not found" });
 
-    // מוצאים את האטרקציה הקיימת להוספה
     const attraction = await db.collection("attractions").findOne({ _id: attractionObjectId });
     if (!attraction) return res.status(404).json({ message: "Attraction not found" });
 
-    // מוודאים שיש מערך attractions במסמך
     if (!Array.isArray(doc.attractions)) {
       await db.collection("attractions").updateOne(
         { _id: docObjectId },
@@ -122,13 +176,11 @@ export const addExistingAttractionToAttractionsDoc = async (req, res) => {
       doc.attractions = [];
     }
 
-    // בדיקה אם האטרקציה כבר קיימת
     const exists = doc.attractions.some(a => a.name === attraction.name);
     if (exists) {
       return res.status(400).json({ message: "Attraction already exists in the array" });
     }
 
-    // הוספת האטרקציה למערך
     const updateResult = await db.collection("attractions").updateOne(
       { _id: docObjectId },
       { $push: { attractions: {
@@ -154,87 +206,63 @@ export const addExistingAttractionToAttractionsDoc = async (req, res) => {
     res.status(500).json({ message: "Internal server error" });
   }
 };
-export const addNewAttractionsToCity = async (req, res) => {
+
+// הפונקציה הקיימת שלך לדשבורד עם סיכום הזמנות והכנסות לפי חודש
+export const getManagerDashboardData = async (req, res) => {
+    console.log("🔥 getManagerDashboardData called");
   try {
     const db = await connectDB();
-    const { cityId } = req.params;
-    const { attractions } = req.body;
+    const ordersCollection = db.collection("orders");
 
-    // Validate inputs
-    if (!cityId) {
-      return res.status(400).json({ message: "Missing cityId" });
+    // כאן ניתן לשנות את טווח התאריכים לפי הצורך
+    const startOfMonth = new Date("2025-08-01T00:00:00Z");
+    const startOfNextMonth = new Date("2025-09-01T00:00:00Z");
+
+    // הכנסות לפי תאריך
+    const revenueByDate = await ordersCollection.aggregate([
+      { $match: { created_at: { $gte: startOfMonth, $lt: startOfNextMonth } } },
+      { $group: { _id: { $dateToString: { format: "%Y-%m-%d", date: "$created_at" } }, revenue: { $sum: "$total_price" } } },
+      { $sort: { _id: 1 } },
+      { $project: { date: "$_id", revenue: 1, _id: 0 } }
+    ]).toArray();
+
+    const totalOrders = await ordersCollection.countDocuments({ created_at: { $gte: startOfMonth, $lt: startOfNextMonth } });
+    const totalRevenue = revenueByDate.reduce((sum, item) => sum + item.revenue, 0);
+
+const topDestinations = await ordersCollection.aggregate([
+  {
+    $group: {
+      _id: "$destination_city_id",
+      trips: { $sum: 1 }
     }
-
-    if (!attractions || !Array.isArray(attractions) || attractions.length === 0) {
-      return res.status(400).json({ 
-        message: "attractions must be a non-empty array" 
-      });
+  },
+  { $sort: { trips: -1 } },
+  { $limit: 5 },
+  {
+    $lookup: {
+      from: "city", // שם הקולקציה של הערים
+      localField: "_id",      // מזהה היעד בקבוצת ההזמנות (ObjectId)
+      foreignField: "_id",    // מזהה העיר בקולקציית city (ObjectId)
+      as: "cityInfo"
     }
+  },
+  { $unwind: "$cityInfo" },
+  { $project: { name: "$cityInfo.city", trips: 1, _id: 0 } }
+]).toArray();
 
-    const cityObjectId = new ObjectId(cityId);
+    console.log("totalOrders:", totalOrders);
+console.log("totalRevenue:", totalRevenue);
+console.log("topDestinations:", topDestinations);
+console.log("revenueByDate:", revenueByDate);
 
-    // Find the city
-    const city = await db.collection("cities").findOne({ _id: cityObjectId });
-    if (!city) {
-      return res.status(404).json({ message: "City not found" });
-    }
-
-    // Validate and sanitize attractions
-    const validAttractions = [];
-    const errors = [];
-
-    for (let i = 0; i < attractions.length; i++) {
-      const attraction = attractions[i];
-      
-      if (!attraction.name || !attraction.openingHours || attraction.price === undefined) {
-        errors.push(`Attraction ${i + 1}: Missing required fields`);
-        continue;
-      }
-
-      // Check for duplicates
-      if (city.attractions?.some(existing => existing.name === attraction.name)) {
-        errors.push(`Attraction ${i + 1}: "${attraction.name}" already exists in the city`);
-        continue;
-      }
-
-      validAttractions.push({
-        name: attraction.name.trim(),
-        openingHours: attraction.openingHours.trim(),
-        price: parseFloat(attraction.price)
-      });
-    }
-
-    if (errors.length > 0) {
-      return res.status(400).json({ 
-        message: "Validation errors found",
-        errors 
-      });
-    }
-
-    if (validAttractions.length === 0) {
-      return res.status(400).json({ message: "No valid attractions to add" });
-    }
-
-    // Add attractions to city
-    const result = await db.collection("cities").updateOne(
-      { _id: cityObjectId },
-      { $push: { attractions: { $each: validAttractions } } }
-    );
-
-    if (result.modifiedCount === 0) {
-      return res.status(500).json({ message: "Failed to add attractions to city" });
-    }
-
-    const updatedCity = await db.collection("cities").findOne({ _id: cityObjectId });
-
-    res.status(201).json({
-      message: `✅ ${validAttractions.length} attractions added to city successfully`,
-      addedAttractions: validAttractions,
-      city: updatedCity
+    res.json({
+      totalOrders,
+      totalRevenue,
+      topDestinations,
+      revenueByDate,
     });
-
   } catch (err) {
-    console.error("Error adding new attractions to city:", err);
-    res.status(500).json({ message: "Internal server error" });
+    console.error("❌ Dashboard error:", err);
+    res.status(500).json({ message: "Dashboard failed", error: err.message });
   }
 };

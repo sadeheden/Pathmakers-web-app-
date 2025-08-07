@@ -41,15 +41,11 @@ useEffect(() => {
     fetch("http://localhost:4000/api/manager/dashboard")
       .then((res) => res.json())
       .then((data) => {
-        console.log("📊 revenueByDate:", data.revenueByDate); // <== Add this
-
+        console.log("📊 Dashboard API data:", data);
         setDashboardData({
-          totalOrders: data.totalOrders,
-          totalRevenue: data.totalRevenue,
-          topDestinations: (data.topDestinations || []).map(({ destination, count }) => ({
-            name: destination,
-            trips: count,
-          })),
+          totalOrders: data.totalOrders || 0,
+          totalRevenue: data.totalRevenue || 0,
+          topDestinations: data.topDestinations || [],
           ordersByDate: data.ordersByDate || [],
           revenueByDate: data.revenueByDate || [],
         });
@@ -671,7 +667,7 @@ useEffect(() => {
         </>
       );
     }
-    if (activeItem === "Dashboard") {
+   if (activeItem === "Dashboard") {
       return (
         <>
           <h1 className="main-title">Dashboard</h1>
@@ -683,7 +679,7 @@ useEffect(() => {
             </div>
             <div className="stat-card">
               <p className="stat-title">Revenue this month</p>
-             <p className="stat-value">${(dashboardData.totalRevenue || 0).toFixed(2)}</p>
+              <p className="stat-value">${(dashboardData.totalRevenue || 0).toFixed(2)}</p>
               <p className="stat-change-positive">+15%</p>
             </div>
             <div className="stat-card">
@@ -695,35 +691,44 @@ useEffect(() => {
           <section className="graph-section">
             <div className="graph-card">
               <p className="graph-title">Trips by destination</p>
-              <ResponsiveContainer width="100%" height={200}>
-                <BarChart data={dashboardData.topDestinations}>
-                  <XAxis dataKey="name" />
-                  <YAxis />
-                  <Tooltip />
-                  <Bar dataKey="trips" fill="#47569e" />
-                </BarChart>
-              </ResponsiveContainer>
+              {dashboardData.topDestinations.length > 0 ? (
+                <ResponsiveContainer width="100%" height={200}>
+                  <BarChart data={dashboardData.topDestinations}>
+                    <XAxis dataKey="name" />
+                    <YAxis />
+                    <Tooltip />
+                    <Bar dataKey="trips" fill="#47569e" />
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <p>No trip destinations data available.</p>
+              )}
             </div>
             <div className="graph-card">
               <p className="graph-title">Revenue over time</p>
-              <ResponsiveContainer width="100%" height={200}>
-                <LineChart data={dashboardData.revenueByDate}>
-                  <XAxis dataKey="date" tickFormatter={(str) => str.slice(5)} />
-                  <YAxis />
-                  <Tooltip formatter={(value) => `$${value.toFixed(2)}`} />
-                  <Line
-                    type="monotone"
-                    dataKey="revenue"
-                    stroke="#47569e"
-                    strokeWidth={2}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
+              {dashboardData.revenueByDate.length > 0 ? (
+                <ResponsiveContainer width="100%" height={200}>
+                  <LineChart data={dashboardData.revenueByDate}>
+                    <XAxis dataKey="date" tickFormatter={(str) => str.slice(5)} />
+                    <YAxis />
+                    <Tooltip formatter={(value) => `$${value.toFixed(2)}`} />
+                    <Line
+                      type="monotone"
+                      dataKey="revenue"
+                      stroke="#47569e"
+                      strokeWidth={2}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              ) : (
+                <p>No revenue data available.</p>
+              )}
             </div>
           </section>
         </>
       );
     }
+
     if (activeItem === "Update City") {
       return <UpdateCity />;
     }
@@ -733,16 +738,13 @@ useEffect(() => {
         <>
           <h1 className="main-title">Popular Trips</h1>
           <section className="stats-section" style={{ marginBottom: 20 }}>
-            {tripsData.map(({ name, trips }) => (
-              <div
-                key={name}
-                className="stat-card"
-                style={{ width: "30%", minWidth: 150 }}
-              >
-                <p className="stat-title">{name}</p>
-                <p className="stat-value">{trips} Trips</p>
-              </div>
-            ))}
+          {dashboardData.topDestinations.map(({ name, trips }) => (
+          <div key={name} className="stat-card">
+            <p className="stat-title">{name}</p>
+            <p className="stat-value">{trips}</p>
+          </div>
+         ))}
+
           </section>
           <section className="graph-section">
             <div className="graph-card" style={{ width: "60%", margin: "0 auto" }}>
