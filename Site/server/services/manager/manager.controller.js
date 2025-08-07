@@ -41,6 +41,23 @@ export const addExistingAttractionToCity = async (req, res) => {
     res.status(500).json({ error: 'שגיאה פנימית בשרת' });
   }
 };
+export const getManagerDashboardData = async (req, res) => {
+  try {
+    // Dummy or real data
+    res.json({
+      totalOrders: 42,
+      totalRevenue: 12345.67,
+      topDestinations: [
+        { destination: "Paris", count: 10 },
+        { destination: "New York", count: 8 },
+      ],
+      ordersByDate: [],
+      revenueByDate: [],
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Failed to load dashboard data" });
+  }
+};
 
 // **פונקציה חדשה** - הוספת אטרקציות חדשות ישירות למערך attractions בתוך מסמך העיר
 export const addNewAttractionsToCity = async (req, res) => {

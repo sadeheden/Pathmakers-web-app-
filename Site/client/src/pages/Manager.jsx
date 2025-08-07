@@ -45,10 +45,10 @@ const Manager = () => {
           setDashboardData({
             totalOrders: data.totalOrders,
             totalRevenue: data.totalRevenue,
-            topDestinations: data.topDestinations.map(({ destination, count }) => ({
-              name: destination,
-              trips: count,
-            })),
+          topDestinations: data.topDestinations.map(({ destination, count }) => ({
+  name: destination,
+  trips: count,
+})),
             ordersByDate: data.ordersByDate || [],
             revenueByDate: data.revenueByDate || [],
           });
