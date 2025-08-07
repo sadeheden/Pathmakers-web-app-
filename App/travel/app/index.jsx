@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { View, Text } from 'react-native';
 import { router } from 'expo-router';
 
 export default function Index() {
@@ -8,5 +9,9 @@ export default function Index() {
     }, 100);
   }, []);
 
-  return null;
+  return (
+    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+      <Text>loading...</Text>
+    </View>
+  );
 }
