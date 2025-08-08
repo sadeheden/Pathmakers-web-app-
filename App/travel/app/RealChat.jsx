@@ -13,33 +13,33 @@ import {
 import { SafeAreaView } from "react-native";
 import { HF_TOKEN } from "@env";
 import { HfInference } from "@huggingface/inference";
-
+ 
 const hf = new HfInference(HF_TOKEN);
-
+ 
 export default function RealChatScreen() {
   const [text, setText] = useState("");
   const [messages, setMessages] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const scrollViewRef = useRef(null);
-
+ 
   const askAI = useCallback(async (userMessage) => {
     try {
       setIsLoading(true);
-
+ 
       const systemPrompt = {
         role: "system",
         content: "Act as a travel agent. Answer questions with full explanations and step-by-step thinking.",
       };
-
+ 
       const chatPayload = [systemPrompt, ...messages, userMessage];
-
+ 
       const response = await hf.chatCompletion({
         model: "meta-llama/Llama-3.1-8B-Instruct",
         messages: chatPayload,
         temperature: 0.7,
         max_tokens: 150,
       });
-
+ 
       if (response.choices?.[0]?.message?.content) {
         setMessages((prev) => [...prev, userMessage, response.choices[0].message]);
       } else {
@@ -56,14 +56,14 @@ export default function RealChatScreen() {
       setIsLoading(false);
     }
   }, [messages]);
-
+ 
   const handleSend = () => {
     if (text.trim() === "") return;
     const userMessage = { role: "user", content: text.trim() };
     setText("");
     askAI(userMessage);
   };
-
+ 
   return (
     <SafeAreaView style={styles.safeArea}>
       <KeyboardAvoidingView
@@ -99,7 +99,7 @@ export default function RealChatScreen() {
               <ActivityIndicator size="large" color="#6633cc" style={{ marginTop: 10 }} />
             )}
           </ScrollView>
-
+ 
           <View style={styles.inputContainer}>
             <TextInput
               value={text}
@@ -125,7 +125,7 @@ export default function RealChatScreen() {
     </SafeAreaView>
   );
 }
-
+ 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -256,7 +256,5 @@ sendButton: {
 sendText: {
   color: "#fff",
   fontWeight: "bold",
-},
-
-
+}, 
 });
