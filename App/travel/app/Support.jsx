@@ -45,11 +45,9 @@ const SupportScreen = () => {
       setMessage('');
     }
   };
-
   const goHome = () => {
    navigation.navigate('(tabs)', { screen: 'home' });
   };
-
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <TouchableOpacity onPress={goHome} style={styles.logoTouchable}>

@@ -160,14 +160,12 @@ const renderOrder = ({ item }) => {
           removeClippedSubviews={true}
         />
       )}
-
       <TouchableOpacity style={styles.button} onPress={handleLogout}>
         <Text style={styles.buttonText}>Logout</Text>
       </TouchableOpacity>
     </View>
   );
 }
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,

@@ -1,9 +1,40 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, Image, ActivityIndicator, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { 
+  MapPin, 
+  Thermometer, 
+  Wind, 
+  Droplets, 
+  Eye, 
+  Sunrise, 
+  Sunset, 
+  RefreshCw,
+  CloudRain,
+  Sun,
+  Cloud,
+  CloudSnow,
+  Zap,
+  Navigation,
+  Calendar
+} from 'lucide-react';
 
-// Function that generates fake weather for a city by name
+// Weather icons mapping
+const weatherIcons = {
+  '01d': Sun,
+  '01n': Sun,
+  '02d': Cloud,
+  '02n': Cloud,
+  '03d': Cloud,
+  '03n': Cloud,
+  '04d': Cloud,
+  '09d': CloudRain,
+  '10d': CloudRain,
+  '11d': Zap,
+  '13d': CloudSnow
+};
+
+// Generate fake weather data
 function generateFakeWeather(cityName) {
-  const icons = ['01d', '02d', '03d', '09d', '10d', '11d', '13d'];
+  const icons = ['01d', '02d', '03d', '09d', '10d', '11d', '13d', '04d'];
   const descriptions = [
     'Sunny and pleasant',
     'Partly cloudy',
@@ -12,43 +43,47 @@ function generateFakeWeather(cityName) {
     'Cloudy',
     'Heavy rain',
     'Light snow',
+    'Overcast'
   ];
   
-  const hash = cityName
-    ? cityName.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0)
-    : 0;
+  const hash = cityName ? cityName.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) : 0;
   
-  const temp = 15 + (hash % 20); // between 15 and 35 degrees
+  const temp = 15 + (hash % 20);
   const icon = icons[hash % icons.length];
   const description = descriptions[hash % descriptions.length];
+  const humidity = 40 + (hash % 40);
+  const windSpeed = 5 + (hash % 15);
+  const visibility = 8 + (hash % 7);
+  const uvIndex = 1 + (hash % 10);
   
-  return { temp, icon, description };
+  return { 
+    temp, 
+    icon, 
+    description, 
+    humidity, 
+    windSpeed, 
+    visibility, 
+    uvIndex,
+    feelsLike: temp + (hash % 6 - 3),
+    pressure: 1000 + (hash % 50)
+  };
 }
 
-// Function that generates a weekly forecast
 function generateWeeklyForecast(cityName) {
-  const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   const forecast = [];
   
   for (let i = 0; i < 7; i++) {
     const dayHash = cityName ? cityName.split('').reduce((acc, char) => acc + char.charCodeAt(0) + i * 123, 0) : i * 123;
     
     const icons = ['01d', '02d', '03d', '09d', '10d', '11d', '13d', '04d'];
-    const descriptions = [
-      'Sunny and pleasant',
-      'Partly cloudy', 
-      'Light rain',
-      'Stormy',
-      'Cloudy',
-      'Heavy rain',
-      'Light snow',
-      'Heavy clouds'
-    ];
+    const descriptions = ['Sunny', 'Partly cloudy', 'Light rain', 'Stormy', 'Cloudy', 'Heavy rain', 'Snow', 'Overcast'];
     
     const minTemp = 10 + (dayHash % 15);
     const maxTemp = minTemp + 5 + (dayHash % 10);
     const icon = icons[dayHash % icons.length];
     const description = descriptions[dayHash % descriptions.length];
+    const precipitationChance = dayHash % 100;
     
     const today = new Date();
     const futureDate = new Date(today);
@@ -56,38 +91,44 @@ function generateWeeklyForecast(cityName) {
     
     forecast.push({
       day: i === 0 ? 'Today' : daysOfWeek[futureDate.getDay()],
-      date: futureDate.toLocaleDateString('en-US'),
+      date: futureDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
       minTemp,
       maxTemp,
       icon,
-      description
+      description,
+      precipitationChance
     });
   }
   
   return forecast;
 }
 
-// Function simulating location permission with a list of cities
 function simulateLocationPermission() {
   return new Promise((resolve) => {
     setTimeout(() => {
       const cities = [
-        'Paris', 'London', 'New York', 'Tokyo', 'Rome', 'Los Angeles', 
-        'Berlin', 'Barcelona', 'Dubai', 'Amsterdam', 'San Francisco', 
-        'Madrid', 'Seoul'
+        'New York', 'Los Angeles', 'London', 'Paris', 'Tokyo', 'Dubai', 
+        'Sydney', 'Berlin', 'Barcelona', 'Amsterdam', 'Singapore', 'Mumbai'
       ];
       const randomCity = cities[Math.floor(Math.random() * cities.length)];
       resolve({ granted: true, city: randomCity });
-    }, 2000);
+    }, 1500);
   });
 }
 
-export default function WeatherByLocation() {
+const WeatherApp = () => {
   const [city, setCity] = useState(null);
   const [currentWeather, setCurrentWeather] = useState(null);
   const [weeklyForecast, setWeeklyForecast] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  // Update time every minute
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(new Date()), 60000);
+    return () => clearInterval(timer);
+  }, []);
 
   const requestLocation = async () => {
     try {
@@ -97,7 +138,7 @@ export default function WeatherByLocation() {
       const result = await simulateLocationPermission();
       
       if (!result.granted) {
-        setError('Location permission denied. Please try again or enter a city manually.');
+        setError('Location permission denied');
         setLoading(false);
         return;
       }
@@ -112,7 +153,7 @@ export default function WeatherByLocation() {
       setWeeklyForecast(forecast);
       
     } catch (error) {
-      setError('Unable to get location or weather data.');
+      setError('Unable to get weather data');
     } finally {
       setLoading(false);
     }
@@ -122,243 +163,200 @@ export default function WeatherByLocation() {
     requestLocation();
   }, []);
 
+  // Background gradient based on weather
+  const getBackgroundGradient = () => {
+    if (!currentWeather) return 'from-blue-400 via-purple-500 to-pink-500';
+    
+    const weatherType = currentWeather.icon;
+    const temp = currentWeather.temp;
+    
+    if (weatherType.includes('01')) return 'from-yellow-400 via-orange-500 to-red-500'; // Sunny
+    if (weatherType.includes('02') || weatherType.includes('03')) return 'from-blue-300 via-blue-400 to-blue-600'; // Cloudy
+    if (weatherType.includes('09') || weatherType.includes('10')) return 'from-gray-400 via-gray-600 to-gray-800'; // Rainy
+    if (weatherType.includes('11')) return 'from-purple-800 via-gray-900 to-black'; // Stormy
+    if (weatherType.includes('13')) return 'from-blue-100 via-blue-200 to-blue-400'; // Snow
+    
+    return temp > 25 ? 'from-orange-400 via-red-500 to-pink-600' : 'from-blue-400 via-purple-500 to-indigo-600';
+  };
+
   if (loading) {
     return (
-      <View style={styles.centered}>
-        <ActivityIndicator size="large" color="#1E90FF" />
-        <Text style={styles.loadingText}>Loading weekly weather forecast...</Text>
-      </View>
+      <div className="min-h-screen bg-gradient-to-br from-blue-400 via-purple-500 to-pink-500 flex items-center justify-center">
+        <div className="bg-white/20 backdrop-blur-lg rounded-3xl p-8 text-center">
+          <RefreshCw className="w-12 h-12 text-white animate-spin mx-auto mb-4" />
+          <h3 className="text-xl font-semibold text-white mb-2">Getting Your Weather</h3>
+          <p className="text-white/80">Fetching current location and forecast...</p>
+        </div>
+      </div>
     );
   }
 
   if (error) {
     return (
-      <View style={[styles.centered, styles.errorContainer]}>
-        <Text style={styles.errorIcon}>⚠️</Text>
-        <Text style={styles.errorText}>{error}</Text>
-        <TouchableOpacity onPress={requestLocation} style={styles.retryButton}>
-          <Text style={styles.retryButtonText}>Try Again</Text>
-        </TouchableOpacity>
-      </View>
+      <div className="min-h-screen bg-gradient-to-br from-red-400 via-pink-500 to-purple-600 flex items-center justify-center p-4">
+        <div className="bg-white/20 backdrop-blur-lg rounded-3xl p-8 text-center max-w-md">
+          <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+            <MapPin className="w-8 h-8 text-white" />
+          </div>
+          <h3 className="text-xl font-semibold text-white mb-2">Location Error</h3>
+          <p className="text-white/80 mb-6">{error}</p>
+          <button
+            onClick={requestLocation}
+            className="bg-white/20 hover:bg-white/30 text-white px-6 py-3 rounded-2xl font-medium transition-all duration-200 backdrop-blur-sm border border-white/20"
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
     );
   }
 
-  if (!currentWeather || !weeklyForecast) {
-    return (
-      <View style={styles.centered}>
-        <Text style={styles.infoText}>No weather information found.</Text>
-      </View>
-    );
-  }
+  const WeatherIcon = weatherIcons[currentWeather?.icon] || Cloud;
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      {/* Current Weather */}
-      <View style={styles.currentWeatherContainer}>
-        <Text style={styles.title}>Weather in {city}</Text>
-        <View style={styles.weatherBox}>
-          <Image
-            source={{ uri: `https://openweathermap.org/img/wn/${currentWeather.icon}@4x.png` }}
-            style={styles.weatherIcon}
-          />
-          <View>
-            <Text style={styles.tempText}>{currentWeather.temp.toFixed(1)}°C</Text>
-            <Text style={styles.descText}>{currentWeather.description}</Text>
-          </View>
-        </View>
-      </View>
+    <div className={`min-h-screen bg-gradient-to-br ${getBackgroundGradient()} transition-all duration-1000`}>
+      <div className="container mx-auto px-4 py-8 max-w-4xl">
+        
+        {/* Header */}
+        <div className="text-center mb-8">
+          <div className="flex items-center justify-center gap-2 text-white/90 mb-2">
+            <MapPin className="w-5 h-5" />
+            <span className="font-medium">{city}</span>
+          </div>
+          <p className="text-white/70 text-sm">
+            {currentTime.toLocaleDateString('en-US', { 
+              weekday: 'long', 
+              year: 'numeric', 
+              month: 'long', 
+              day: 'numeric' 
+            })}
+          </p>
+          <p className="text-white/70 text-sm">
+            {currentTime.toLocaleTimeString('en-US', { 
+              hour: '2-digit', 
+              minute: '2-digit' 
+            })}
+          </p>
+        </div>
 
-      {/* Weekly Forecast */}
-      <View style={styles.weeklyForecastContainer}>
-        <Text style={styles.subTitle}>7-Day Forecast</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.weeklyScroll}>
-          {weeklyForecast.map((day, index) => (
-            <View key={index} style={styles.dayContainer}>
-              <Text style={styles.dayText}>{day.day}</Text>
-              <View style={styles.iconBackground}>
-                <Image
-                  source={{ uri: `https://openweathermap.org/img/wn/${day.icon}@2x.png` }}
-                  style={styles.dayIcon}
-                />
-              </View>
-              <View style={styles.temps}>
-                <Text style={styles.maxTemp}>{day.maxTemp}°</Text>
-                <Text style={styles.minTemp}>{day.minTemp}°</Text>
-              </View>
-              <Text style={styles.dayDesc}>{day.description}</Text>
-            </View>
-          ))}
-        </ScrollView>
-      </View>
+        {/* Current Weather Card */}
+        <div className="bg-white/15 backdrop-blur-xl rounded-3xl p-8 mb-8 border border-white/20 shadow-2xl">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-4">
+              <div className="p-4 bg-white/20 rounded-2xl">
+                <WeatherIcon className="w-12 h-12 text-white" />
+              </div>
+              <div>
+                <h1 className="text-6xl font-bold text-white mb-2">
+                  {currentWeather?.temp}°
+                </h1>
+                <p className="text-white/80 text-lg capitalize">
+                  {currentWeather?.description}
+                </p>
+                <p className="text-white/60 text-sm">
+                  Feels like {currentWeather?.feelsLike}°
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={requestLocation}
+              className="p-3 bg-white/20 hover:bg-white/30 rounded-2xl transition-all duration-200 border border-white/20"
+            >
+              <RefreshCw className="w-6 h-6 text-white" />
+            </button>
+          </div>
 
-      {/* Update Button */}
-      <TouchableOpacity onPress={requestLocation} style={styles.updateButton}>
-        <Text style={styles.updateButtonText}>🔄 Update Location</Text>
-      </TouchableOpacity>
+          {/* Weather Details Grid */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="bg-white/10 rounded-2xl p-4 text-center backdrop-blur-sm">
+              <Wind className="w-6 h-6 text-white/80 mx-auto mb-2" />
+              <p className="text-white/60 text-xs uppercase tracking-wider">Wind</p>
+              <p className="text-white font-semibold">{currentWeather?.windSpeed} km/h</p>
+            </div>
+            
+            <div className="bg-white/10 rounded-2xl p-4 text-center backdrop-blur-sm">
+              <Droplets className="w-6 h-6 text-white/80 mx-auto mb-2" />
+              <p className="text-white/60 text-xs uppercase tracking-wider">Humidity</p>
+              <p className="text-white font-semibold">{currentWeather?.humidity}%</p>
+            </div>
+            
+            <div className="bg-white/10 rounded-2xl p-4 text-center backdrop-blur-sm">
+              <Eye className="w-6 h-6 text-white/80 mx-auto mb-2" />
+              <p className="text-white/60 text-xs uppercase tracking-wider">Visibility</p>
+              <p className="text-white font-semibold">{currentWeather?.visibility} km</p>
+            </div>
+            
+            <div className="bg-white/10 rounded-2xl p-4 text-center backdrop-blur-sm">
+              <Navigation className="w-6 h-6 text-white/80 mx-auto mb-2" />
+              <p className="text-white/60 text-xs uppercase tracking-wider">Pressure</p>
+              <p className="text-white font-semibold">{currentWeather?.pressure} hPa</p>
+            </div>
+          </div>
+        </div>
 
-      <Text style={styles.note}>*Fake forecast for demonstration purposes</Text>
-    </ScrollView>
+        {/* 7-Day Forecast */}
+        <div className="bg-white/15 backdrop-blur-xl rounded-3xl p-6 border border-white/20 shadow-2xl">
+          <div className="flex items-center gap-2 mb-6">
+            <Calendar className="w-6 h-6 text-white" />
+            <h2 className="text-xl font-semibold text-white">7-Day Forecast</h2>
+          </div>
+          
+          <div className="space-y-3">
+            {weeklyForecast?.map((day, index) => {
+              const DayIcon = weatherIcons[day.icon] || Cloud;
+              const isToday = index === 0;
+              
+              return (
+                <div 
+                  key={index}
+                  className={`flex items-center justify-between p-4 rounded-2xl transition-all duration-200 hover:bg-white/10 ${
+                    isToday ? 'bg-white/20' : 'bg-white/5'
+                  }`}
+                >
+                  <div className="flex items-center gap-4 flex-1">
+                    <div className="w-12">
+                      <p className={`font-medium ${isToday ? 'text-white' : 'text-white/80'}`}>
+                        {day.day}
+                      </p>
+                      <p className="text-white/60 text-xs">{day.date}</p>
+                    </div>
+                    
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-white/10 rounded-xl">
+                        <DayIcon className="w-6 h-6 text-white/80" />
+                      </div>
+                      <div>
+                        <p className="text-white/80 text-sm">{day.description}</p>
+                        {day.precipitationChance > 30 && (
+                          <p className="text-white/60 text-xs">
+                            {day.precipitationChance}% chance of rain
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="text-right">
+                    <div className="flex gap-2">
+                      <span className="text-white font-semibold">{day.maxTemp}°</span>
+                      <span className="text-white/60">{day.minTemp}°</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="text-center mt-8">
+          <p className="text-white/40 text-xs">
+            *Simulated weather data for demonstration purposes
+          </p>
+        </div>
+      </div>
+    </div>
   );
-}
+};
 
-const styles = StyleSheet.create({
-  container: {
-    padding: 16,
-    backgroundColor: '#dbeafe',
-    flexGrow: 1,
-    alignItems: 'center',
-  },
-  centered: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  loadingText: {
-    marginTop: 16,
-    fontSize: 16,
-    color: '#555',
-  },
-  errorContainer: {
-    backgroundColor: '#fee2e2',
-    borderRadius: 16,
-    padding: 20,
-    width: '90%',
-  },
-  errorIcon: {
-    fontSize: 64,
-    color: '#dc2626',
-    marginBottom: 12,
-  },
-  errorText: {
-    fontSize: 18,
-    color: '#b91c1c',
-    textAlign: 'center',
-    marginBottom: 20,
-  },
-  retryButton: {
-    backgroundColor: '#2563eb',
-    paddingVertical: 12,
-    paddingHorizontal: 30,
-    borderRadius: 12,
-    alignSelf: 'center',
-  },
-  retryButtonText: {
-    color: '#fff',
-    fontSize: 16,
-  },
-  infoText: {
-    fontSize: 16,
-    color: '#555',
-  },
-  currentWeatherContainer: {
-    marginBottom: 32,
-    alignItems: 'center',
-    width: '100%',
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    marginBottom: 12,
-    color: '#1e40af',
-  },
-  weatherBox: {
-    backgroundColor: 'rgba(255,255,255,0.8)',
-    padding: 20,
-    borderRadius: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 16,
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 4,
-    width: '100%',
-  },
-  weatherIcon: {
-    width: 100,
-    height: 100,
-  },
-  tempText: {
-    fontSize: 40,
-    fontWeight: 'bold',
-    color: '#2563eb',
-  },
-  descText: {
-    fontSize: 18,
-    marginTop: 6,
-    color: '#374151',
-  },
-  weeklyForecastContainer: {
-    width: '100%',
-    marginBottom: 32,
-  },
-  subTitle: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: '#1e40af',
-    marginBottom: 16,
-    textAlign: 'center',
-  },
-  weeklyScroll: {
-    paddingLeft: 8,
-  },
-  dayContainer: {
-    backgroundColor: 'rgba(255,255,255,0.9)',
-    padding: 12,
-    borderRadius: 16,
-    marginRight: 12,
-    alignItems: 'center',
-    width: 90,
-  },
-  dayText: {
-    fontWeight: 'bold',
-    marginBottom: 8,
-    color: '#1e40af',
-  },
-  iconBackground: {
-    backgroundColor: '#3b82f6',
-    borderRadius: 50,
-    padding: 8,
-    marginBottom: 8,
-  },
-  dayIcon: {
-    width: 40,
-    height: 40,
-  },
-  temps: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 6,
-    marginBottom: 4,
-  },
-  maxTemp: {
-    fontWeight: 'bold',
-    color: '#2563eb',
-  },
-  minTemp: {
-    color: '#6b7280',
-  },
-  dayDesc: {
-    fontSize: 12,
-    color: '#374151',
-    textAlign: 'center',
-  },
-  updateButton: {
-    backgroundColor: '#2563eb',
-    paddingVertical: 14,
-    paddingHorizontal: 40,
-    borderRadius: 12,
-    marginBottom: 12,
-  },
-  updateButtonText: {
-    color: 'white',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  note: {
-    fontSize: 12,
-    color: '#6b7280',
-    textAlign: 'center',
-  },
-});
+export default WeatherApp;

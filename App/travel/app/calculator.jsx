@@ -102,9 +102,8 @@ const CurrencyConverter = () => {
 
   // פונקציה לניווט לדף הבית
   const goHome = () => {
-    navigation.navigate('home'); // החלף לשם המסך שלך ל־home אם שונה
-  };
-
+   navigation.navigate('(tabs)', { screen: 'home' });
+  }; 
   return (
     <View style={styles.container}>
       {/* לוגו לחיצה */}

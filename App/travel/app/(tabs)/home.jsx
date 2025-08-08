@@ -274,16 +274,15 @@ export default function HomeScreen() {
     return () => clearInterval(interval);
   }, []);
 
-  const handleWeatherPress = () => {
-    try {
-      console.log('Weather button pressed');
-      navigation.navigate('Weather');
-    } catch (error) {
-      console.error('Navigation error:', error);
-      Alert.alert('Navigation Error', 'Could not navigate to weather screen.');
-    }
-  };
-
+const handleWeatherPress = () => {
+  try {
+    console.log('Weather button pressed');
+    navigation.navigate('(tabs)', { screen: 'weather' });
+  } catch (error) {
+    console.error('Navigation error:', error);
+    Alert.alert('Navigation Error', 'Could not navigate to weather screen.');
+  }
+};
   const handleDiaryPress = () => {
     try {
       console.log('Diary button pressed');
@@ -293,7 +292,6 @@ export default function HomeScreen() {
       Alert.alert('Navigation Error', 'Could not navigate to diary screen.');
     }
   };
-
   const handleRealChatPress = () => {
     try {
       console.log('RealChat button pressed');
@@ -360,7 +358,7 @@ export default function HomeScreen() {
 
       console.log('🔐 Token found, sending request...');
 
-      const response = await fetch('http://10.0.0.8:3001/api/orders', {
+      const response = await fetch('https://pathmakers-web-app-app-travel.onrender.com/api/orders', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -443,7 +441,6 @@ export default function HomeScreen() {
             </View>
           </TouchableOpacity>
         </View>
-
         {/* Welcome Section */}
         <View style={styles.welcomeSection}>
           <Text style={styles.title}>
