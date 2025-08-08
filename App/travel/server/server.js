@@ -4,20 +4,25 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
-import authRoutes from './services/auth/auth.router.js'; 
+import authRoutes from './services/auth/auth.router.js';
+import orderRoutes from './services/orders/order.router.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-dotenv.config({ path: path.resolve(__dirname, '../.env.local') });
+
+// טען dotenv פעם אחת עם הנתיב המדויק של הקובץ שלך
+dotenv.config({ path: path.resolve(__dirname, '.env.local') });
+
+console.log('Loaded CONNECTION_STRING:', process.env.CONNECTION_STRING);
 
 const app = express();
 const port = process.env.PORT || 3001;
 
-// ✅ Middleware
 app.use(cors());
 app.use(express.json());
-app.use('/api/auth', authRoutes); // ✅ Now it's defined
 
-// Start server
+app.use('/api/auth', authRoutes);
+app.use('/api/orders', orderRoutes);
+
 app.listen(port, () => {
   console.log(`🚀 Server listening on port ${port}`);
 });

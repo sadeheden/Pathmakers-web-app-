@@ -4,14 +4,17 @@ import { connectDB } from '../auth/auth.db.js';
 
 function cleanId(id) {
   try {
+    if (!id) return null;
     return new ObjectId(String(id));
-  } catch {
+  } catch (error) {
+    console.warn('⚠️ Invalid ObjectId:', id, error.message);
     return null;
   }
 }
 
 function toObjectId(id) {
   try {
+    if (!id) return null;
     return new ObjectId(String(id));
   } catch (err) {
     console.warn('⚠️ Invalid ObjectId:', id);
@@ -20,11 +23,12 @@ function toObjectId(id) {
 }
 
 export async function createOrder(req, res) {
-  console.log('📬 incoming departureCityId:', req.body.departureCityId);
-  console.log('📬 incoming destinationCityId:', req.body.destinationCityId);
+  console.log('📬 Creating new order for user:', req.user?.id || req.user?.userId);
+  console.log('📬 Request body:', JSON.stringify(req.body, null, 2));
 
-  if (!req.user?.id && !req.user?.userId)
+  if (!req.user?.id && !req.user?.userId) {
     return res.status(401).json({ message: 'Unauthorized' });
+  }
 
   try {
     const {
@@ -38,49 +42,98 @@ export async function createOrder(req, res) {
       totalPrice,
     } = req.body;
 
+    // Validation with detailed logging
     const missing = [];
     if (!departureCityId) missing.push('departureCityId');
     if (!destinationCityId) missing.push('destinationCityId');
     if (!flightId) missing.push('flightId');
     if (!hotelId) missing.push('hotelId');
     if (!paymentMethod) missing.push('paymentMethod');
-    if (totalPrice === undefined || totalPrice === null) missing.push('totalPrice');
+    if (totalPrice === undefined || totalPrice === null || totalPrice === '') {
+      missing.push('totalPrice');
+    }
 
     if (missing.length) {
-      return res.status(400).json({ message: `Missing fields: ${missing.join(', ')}` });
+      console.log('❌ Missing fields:', missing);
+      return res.status(400).json({ 
+        message: `Missing required fields: ${missing.join(', ')}`,
+        received: req.body
+      });
     }
-    console.log('Received totalPrice:', totalPrice);
-console.log('Preparing new order with:', {
-  user_id: req.user.id || req.user.userId,
-  departure_city_id: cleanId(departureCityId),
-  destination_city_id: cleanId(destinationCityId),
-  flight_id: cleanId(flightId),
-  hotel_id: cleanId(hotelId),
-  attractions: Array.isArray(attractions) ? attractions.map(cleanId).filter(Boolean) : [],
-  transportation,
-  payment_method: paymentMethod,
-  total_price: totalPrice,
-  created_at: new Date(),
-});
 
-    const newOrder = new Order({
-      user_id: req.user.id || req.user.userId,
-      departure_city_id: cleanId(departureCityId),
-      destination_city_id: cleanId(destinationCityId),
-      flight_id: cleanId(flightId),
-      hotel_id: cleanId(hotelId),
-      attractions: Array.isArray(attractions) ? attractions.map(cleanId).filter(Boolean) : [],
+    // Convert and validate ObjectIds
+    const userId = cleanId(req.user.id || req.user.userId);
+    const departureCityObjectId = cleanId(departureCityId);
+    const destinationCityObjectId = cleanId(destinationCityId);
+    const flightObjectId = cleanId(flightId);
+    const hotelObjectId = cleanId(hotelId);
+
+    if (!userId) {
+      return res.status(400).json({ message: 'Invalid user ID' });
+    }
+    if (!departureCityObjectId) {
+      return res.status(400).json({ message: 'Invalid departure city ID' });
+    }
+    if (!destinationCityObjectId) {
+      return res.status(400).json({ message: 'Invalid destination city ID' });
+    }
+    if (!flightObjectId) {
+      return res.status(400).json({ message: 'Invalid flight ID' });
+    }
+    if (!hotelObjectId) {
+      return res.status(400).json({ message: 'Invalid hotel ID' });
+    }
+
+    // Process attractions
+    const attractionIds = Array.isArray(attractions) 
+      ? attractions.map(cleanId).filter(Boolean) 
+      : [];
+
+    // Parse total price
+    const parsedTotalPrice = parseInt(totalPrice) || parseFloat(totalPrice) || 0;
+    if (parsedTotalPrice <= 0) {
+      return res.status(400).json({ message: 'Invalid total price' });
+    }
+
+    console.log('✅ Validation passed, creating order with:', {
+      user_id: userId,
+      departure_city_id: departureCityObjectId,
+      destination_city_id: destinationCityObjectId,
+      flight_id: flightObjectId,
+      hotel_id: hotelObjectId,
+      attractions: attractionIds,
       transportation,
       payment_method: paymentMethod,
-      total_price: totalPrice,
-      created_at: new Date(),
+      total_price: parsedTotalPrice,
     });
 
+    // Create order with pre-validated ObjectIds
+    const orderData = {
+      user_id: userId,
+      departure_city_id: departureCityObjectId,
+      destination_city_id: destinationCityObjectId,
+      flight_id: flightObjectId,
+      hotel_id: hotelObjectId,
+      attractions: attractionIds,
+      transportation,
+      payment_method: paymentMethod,
+      total_price: parsedTotalPrice,
+      created_at: new Date(),
+    };
+
+    const newOrder = new Order(orderData);
     const savedOrder = await newOrder.save();
+    
+    console.log('✅ Order saved successfully:', savedOrder._id);
     res.status(201).json(savedOrder);
+    
   } catch (err) {
-    console.error('Create order error:', err);
-    res.status(500).json({ message: 'Internal Server Error' });
+    console.error('❌ Create order error:', err);
+    console.error('Stack trace:', err.stack);
+    res.status(500).json({ 
+      message: 'Internal Server Error',
+      error: process.env.NODE_ENV === 'development' ? err.message : undefined
+    });
   }
 }
 
@@ -91,10 +144,16 @@ export async function getUserOrders(req, res) {
 
   try {
     const userId = req.user.id || req.user.userId;
+    const userObjectId = toObjectId(userId);
+    
+    if (!userObjectId) {
+      return res.status(400).json({ message: 'Invalid user ID' });
+    }
+
     const db = await connectDB();
 
     const orders = await db.collection('orders').aggregate([
-      { $match: { user_id: toObjectId(userId) } },
+      { $match: { user_id: userObjectId } },
       {
         $lookup: {
           from: 'city',
@@ -149,12 +208,18 @@ export async function getUserOrders(req, res) {
           flight_name: '$flight.name',
           hotel_name: '$hotel.name'
         }
-      }
+      },
+      { $sort: { created_at: -1 } }
     ]).toArray();
 
+    console.log(`✅ Found ${orders.length} orders for user ${userId}`);
     return res.status(200).json({ success: true, orders });
+    
   } catch (err) {
     console.error('❌ Get orders error:', err);
-    return res.status(500).json({ message: 'Internal Server Error' });
+    return res.status(500).json({ 
+      message: 'Internal Server Error',
+      error: process.env.NODE_ENV === 'development' ? err.message : undefined
+    });
   }
 }

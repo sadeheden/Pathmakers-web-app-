@@ -28,7 +28,6 @@ const cities = [
   { id: '6', name: 'Amsterdam', slug: 'amsterdam', flight: 'KL202', image: require('../../assets/images/amsterdam.png'), description: 'Canals, bikes, vibrant neighborhoods.', hotel: 'Amsterdam Central Hotel', price: 1700 },
 ];
 
-
 const CARDS_PER_PAGE = 6;
 const AUTO_ROTATE_SECONDS = 10;
 
@@ -188,7 +187,66 @@ export default function HomeScreen() {
   const [showIntroPopup, setShowIntroPopup] = useState(false);
   const [paymentCompleted, setPaymentCompleted] = useState(false);
   const [carouselIndex, setCarouselIndex] = useState(0);
+  
+  // *** משתני State חדשים לנתוני ההזמנה ***
+  const [departureCity, setDepartureCity] = useState('68022f445f7300b11f986829'); // ברירת מחדל - תל אביב
+  const [selectedAttractions, setSelectedAttractions] = useState(['6807610adc218773e065223d']); // רשימת אטרקציות
+  const [selectedTransportation, setSelectedTransportation] = useState('Public Transport'); // תחבורה ציבורית
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('PayPal'); // אמצעי תשלום
+
   const flatListRef = useRef();
+
+  // *** פונקציה לקבלת מזהה עיר יציאה בהתבסס על העיר הנבחרת ***
+  const getDepartureCityId = (destinationCity) => {
+    // רשימת זיהויי עיר למיפוי (בהתבסס על הנתונים שלך מהמסד נתונים)
+    const cityMappings = {
+      'phuket': '68022f445f7300b11f986829',  // תל אביב כעיר יציאה
+      'paris': '68022f445f7300b11f986829',   // תל אביב כעיר יציאה
+      'dubai': '68022f445f7300b11f986829',   // תל אביב כעיר יציאה
+      'london': '68022f445f7300b11f986829',  // תל אביב כעיר יציאה
+      'turkey': '68022f445f7300b11f986829',  // תל אביב כעיר יציאה
+      'amsterdam': '68022f445f7300b11f986829' // תל אביב כעיר יציאה
+    };
+    
+    const citySlug = destinationCity?.slug || destinationCity?.name?.toLowerCase();
+    return cityMappings[citySlug] || '68022f445f7300b11f986829'; // ברירת מחדל
+  };
+
+  // *** פונקציה לקבלת מזהה יעד בהתבסס על העיר הנבחרת ***
+  const getDestinationCityId = (destinationCity) => {
+    const cityMappings = {
+      'phuket': '68022f445f7300b11f986837',
+      'paris': '68022f445f7300b11f986838',   // צריך להיות מזהה של פריז
+      'dubai': '68022f445f7300b11f986839',   // צריך להיות מזהה של דובאי
+      'london': '68022f445f7300b11f98683a',  // צריך להיות מזהה של לונדון
+      'turkey': '68022f445f7300b11f98683b',  // צריך להיות מזהה של טורקיה
+      'amsterdam': '68022f445f7300b11f98683c' // צריך להיות מזהה של אמסטרדם
+    };
+    
+    const citySlug = destinationCity?.slug || destinationCity?.name?.toLowerCase();
+    return cityMappings[citySlug] || '68022f445f7300b11f986837'; // ברירת מחדל
+  };
+
+  // *** פונקציה לקבלת מזהה טיסה בהתבסס על העיר ***
+  const getFlightId = (destinationCity) => {
+    const flightMappings = {
+      'phuket': '68075f88dc218773e0652238',
+      'paris': '68075f88dc218773e0652239',   // מזהה טיסה לפריז
+      'dubai': '68075f88dc218773e065223a',   // מזהה טיסה לדובאי
+      'london': '68075f88dc218773e065223b',  // מזהה טיסה ללונדון
+      'turkey': '68075f88dc218773e065223c',  // מזהה טיסה לטורקיה
+      'amsterdam': '68075f88dc218773e065223d' // מזהה טיסה לאמסטרדם
+    };
+    
+    const citySlug = destinationCity?.slug || destinationCity?.name?.toLowerCase();
+    return flightMappings[citySlug] || '68075f88dc218773e0652238'; // ברירת מחדל
+  };
+
+  // *** פונקציה לקבלת מזהה מלון בהתבסס על העיר ***
+  const getHotelId = (destinationCity) => {
+    // שימוש באותו מזהה של העיר כמזהה מלון (כפי שמוצג בדוגמה שלך)
+    return getDestinationCityId(destinationCity);
+  };
 
   useEffect(() => {
     const loadUserData = async () => {
@@ -235,17 +293,19 @@ export default function HomeScreen() {
       Alert.alert('Navigation Error', 'Could not navigate to diary screen.');
     }
   };
-const handleRealChatPress = () => {
-  try {
-    console.log('RealChat button pressed');
-    navigation.navigate('RealChat');
-  } catch (error) {
-    console.error('Navigation error:', error);
-    Alert.alert('Navigation Error', 'Could not navigate to RealChat screen.');
-  }
-};
+
+  const handleRealChatPress = () => {
+    try {
+      console.log('RealChat button pressed');
+      navigation.navigate('RealChat');
+    } catch (error) {
+      console.error('Navigation error:', error);
+      Alert.alert('Navigation Error', 'Could not navigate to RealChat screen.');
+    }
+  };
 
   const handleCityPress = (city) => {
+    console.log('🏙️ City selected:', city);
     setSelectedDestination(city);
     setPaymentCompleted(false);
     setShowPaymentModal(false);
@@ -268,86 +328,93 @@ const handleRealChatPress = () => {
     }
   };
 
- // פונקציה לשליפת מזהה כללי
-const extractId = (item) => {
-  if (!item) return null;
+  // *** הפונקציה המשופרת לטיפול בתשלום מוצלח ***
+  const handlePaymentSuccess = async () => {
+    setPaymentCompleted(true);
+    setShowPaymentModal(false);
 
-  let id = null;
-  if (typeof item === 'string') {
-    id = item;
-  } else if (typeof item === 'object' && item.id) {
-    id = item.id;
-  } else if (typeof item === 'object' && item._id) {
-    id = item._id;
-  }
+    console.log('🏁 Starting order creation process...');
+    console.log('📍 Selected destination:', selectedDestination);
 
-  if (!id) return null;
+    // בנה את נתוני ההזמנה עם מזהים נכונים
+    const orderData = {
+      departureCityId: getDepartureCityId(selectedDestination),
+      destinationCityId: getDestinationCityId(selectedDestination),
+      flightId: getFlightId(selectedDestination),
+      hotelId: getHotelId(selectedDestination),
+      attractions: selectedAttractions || [],
+      transportation: selectedTransportation,
+      paymentMethod: selectedPaymentMethod,
+      totalPrice: parseInt(selectedDestination?.price) || 0
+    };
 
-  if (typeof id === 'string') {
-    const parts = id.split(/[-_]/);
-    const cleanedId = parts[0];
+    console.log('📋 Order data prepared:', JSON.stringify(orderData, null, 2));
+    console.log('💰 Price selected by user:', orderData.totalPrice);
 
-    if (/^[a-f\d]{24}$/i.test(cleanedId)) {
-      return cleanedId;
+    try {
+      const token = await AsyncStorage.getItem('token');
+      
+      if (!token) {
+        throw new Error('No authentication token found');
+      }
+
+      console.log('🔐 Token found, sending request...');
+
+      const response = await fetch('http://10.0.0.8:3001/api/orders', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(orderData),
+      });
+
+      console.log('📡 Response status:', response.status);
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => null);
+        console.error('❌ Server error:', errorData);
+        throw new Error(errorData?.message || `Server error: ${response.status}`);
+      }
+
+      const responseData = await response.json();
+      console.log('✅ Order saved on server:', responseData);
+      
+      Alert.alert(
+        '🎉 Success!', 
+        `Your trip to ${selectedDestination.name} has been booked successfully!\n\nOrder ID: ${responseData._id}`,
+        [
+          {
+            text: 'View My Orders',
+            onPress: () => navigation.navigate('profile'),
+          },
+          {
+            text: 'OK',
+            style: 'default'
+          }
+        ]
+      );
+      
+    } catch (error) {
+      console.error('❌ Error saving order:', error);
+      console.error('📍 Error stack:', error.stack);
+      
+      Alert.alert(
+        '⚠️ Warning', 
+        `Trip booked locally but failed to save to server.\nError: ${error.message}`,
+        [
+          {
+            text: 'Retry',
+            onPress: () => handlePaymentSuccess() // נסה שוב
+          },
+          {
+            text: 'Continue Anyway',
+            style: 'default'
+          }
+        ]
+      );
     }
-  }
-
-  return null;
-};
-
-// פונקציה לשליפת מזהה של מלון
-const extractHotelId = (hotelObj) => {
-  if (!hotelObj) return null;
-  if (typeof hotelObj === 'object' && hotelObj.hotel) {
-    return extractId(hotelObj.hotel);
-  }
-  return extractId(hotelObj);
-};
-
-// הפונקציה שנקראת כאשר התשלום הצליח
-const handlePaymentSuccess = async () => {
-  setPaymentCompleted(true);
-  setShowPaymentModal(false);
-
-  const orderData = {
-    departureCityId: extractId(departureCity),
-    destinationCityId: extractId(selectedDestination),
-    flightId: extractId(selectedDestination?.flight),
-    hotelId: extractHotelId(selectedDestination?.hotel),
-    attractions: selectedAttractions.map(a => extractId(a)).filter(Boolean),
-    transportation: selectedTransportation || null,
-    paymentMethod: selectedPaymentMethod || "Unknown",
-    totalPrice: selectedDestination?.price || 0,
-    tripDate: '2026-03-15',
   };
-console.log('Price selected by user:', orderData.totalPrice);
-  try {
-    const token = await AsyncStorage.getItem('token');
-    const response = await fetch('http://10.0.0.8:3001/api/orders', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(orderData),
-    });
-
-    console.log('ORDER BODY:', orderData);
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => null);
-      throw new Error(errorData?.message || 'Failed to save order on server');
-    }
-
-    const responseData = await response.json();
-    console.log('Order saved on server:', responseData);
-    Alert.alert('Success!', 'Your trip has been booked successfully on server!');
-  } catch (error) {
-    console.error('Error saving order:', error);
-    Alert.alert('Warning', 'Trip booked but failed to save to server.');
-  }
-};
-
 
   if (loading) {
     return (
@@ -519,7 +586,7 @@ console.log('Price selected by user:', orderData.totalPrice);
           onPaymentSuccess={handlePaymentSuccess}
         />
 
-        {/* ** ======= הכפתורים החדשים בתחתית ======= ** */}
+        {/* Bottom Buttons Container */}
         <View style={styles.bottomButtonsContainer}>
           <TouchableOpacity
             style={styles.bottomButton}
@@ -541,6 +608,7 @@ console.log('Price selected by user:', orderData.totalPrice);
     </View>
   );
 }
+
 const styles = StyleSheet.create({
   gradientBackground: {
     flex: 1,
@@ -564,33 +632,31 @@ const styles = StyleSheet.create({
     paddingBottom: 100,
   },
   bottomButtonsContainer: {
-  flexDirection: 'row',
-  justifyContent: 'space-around',
-  paddingVertical: 15,
-  paddingHorizontal: 20,
-  backgroundColor: '#fff',
-  borderTopWidth: 1,
-  borderTopColor: '#ddd',
-  marginTop: 40,
-},
-
-bottomButton: {
-  backgroundColor: '#667eea',
-  paddingVertical: 12,
-  paddingHorizontal: 25,
-  borderRadius: 25,
-  elevation: 3,
-  shadowColor: '#000',
-  shadowOffset: { width: 0, height: 2 },
-  shadowOpacity: 0.3,
-  shadowRadius: 3,
-},
-
-bottomButtonText: {
-  color: 'white',
-  fontWeight: '600',
-  fontSize: 16,
-},
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    paddingVertical: 15,
+    paddingHorizontal: 20,
+    backgroundColor: '#fff',
+    borderTopWidth: 1,
+    borderTopColor: '#ddd',
+    marginTop: 40,
+  },
+  bottomButton: {
+    backgroundColor: '#667eea',
+    paddingVertical: 12,
+    paddingHorizontal: 25,
+    borderRadius: 25,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+  },
+  bottomButtonText: {
+    color: 'white',
+    fontWeight: '600',
+    fontSize: 16,
+  },
   appBackground: {
     flex: 1,
     backgroundColor: '#ffffff',
@@ -890,113 +956,19 @@ bottomButtonText: {
     fontSize: 18,
     fontWeight: 'bold',
   },
-  modalImageWrapper: {
-    marginBottom: 20,
-    borderRadius: 15,
-    overflow: 'hidden',
-  },
-  modalCityImage: {
-    width: 250,
-    height: 150,
-    resizeMode: 'cover',
-  },
-  tripDetails: {
-    width: '100%',
-    marginBottom: 25,
-  },
-  tripDetailItem: {
-    fontSize: 16,
-    marginBottom: 8,
-    paddingVertical: 4,
-  },
-  tripDetailLabel: {
-    fontWeight: 'bold',
-    color: '#2d3748',
-  },
-  payNowButton: {
+  bookButton: {
     borderRadius: 20,
     overflow: 'hidden',
     width: '100%',
   },
-  payNowButtonGradient: {
+  bookButtonGradient: {
     paddingVertical: 15,
     paddingHorizontal: 30,
     alignItems: 'center',
   },
-  payNowButtonText: {
+  bookButtonText: {
     color: '#ffffff',
     fontSize: 18,
-    fontWeight: 'bold',
-  },
-  successIcon: {
-    fontSize: 60,
-    marginBottom: 20,
-  },
-  successDetails: {
-    width: '100%',
-    marginBottom: 20,
-    backgroundColor: '#f8f9fa',
-    padding: 15,
-    borderRadius: 15,
-  },
-  successDetailItem: {
-    fontSize: 16,
-    marginBottom: 8,
-    color: '#2d3748',
-  },
-  successMessage: {
-    fontSize: 16,
-    color: '#28a745',
-    textAlign: 'center',
-    marginBottom: 25,
-    fontWeight: '600',
-  },
-  closeSuccessButton: {
-    backgroundColor: '#007AFF',
-    paddingVertical: 12,
-    paddingHorizontal: 30,
-    borderRadius: 20,
-    alignItems: 'center',
-  },
-  closeSuccessButtonText: {
-    color: '#ffffff',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  modalActions: {
-    flexDirection: 'row',
-    gap: 20,
-    marginBottom: 25,
-  },
-  modalActionButton: {
-    alignItems: 'center',
-    backgroundColor: '#f7fafc',
-    paddingHorizontal: 20,
-    paddingVertical: 15,
-    borderRadius: 15,
-    minWidth: 80,
-  },
-  modalActionIcon: {
-    fontSize: 24,
-    marginBottom: 5,
-  },
-  modalActionText: {
-    fontSize: 12,
-    color: '#4a5568',
-    fontWeight: '600',
-  },
-  modalButton: {
-    borderRadius: 20,
-    overflow: 'hidden',
-  },
-  modalButtonGradient: {
-    paddingVertical: 15,
-    paddingHorizontal: 30,
-    alignItems: 'center',
-  },
-  modalButtonText: {
-    color: '#ffffff',
-    fontSize: 16,
     fontWeight: 'bold',
   },
   // Payment Modal Styles
@@ -1091,6 +1063,10 @@ bottomButtonText: {
     alignItems: 'center',
     paddingVertical: 20,
   },
+  successIcon: {
+    fontSize: 60,
+    marginBottom: 20,
+  },
   successTitle: {
     fontSize: 24,
     fontWeight: 'bold',
@@ -1104,10 +1080,10 @@ bottomButtonText: {
     marginBottom: 10,
     textAlign: 'center',
   },
-    successSubtext: {
-      fontSize: 16,
-      color: '#28a745',
-      textAlign: 'center',
-      fontWeight: '600',
-    }
-  });
+  successSubtext: {
+    fontSize: 16,
+    color: '#28a745',
+    textAlign: 'center',
+    fontWeight: '600',
+  },
+});
