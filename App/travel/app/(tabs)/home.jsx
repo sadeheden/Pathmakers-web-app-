@@ -197,19 +197,17 @@ export default function HomeScreen() {
   const flatListRef = useRef();
 
   // *** פונקציה לקבלת מזהה עיר יציאה בהתבסס על העיר הנבחרת ***
-  const getDepartureCityId = (destinationCity) => {
-    // רשימת זיהויי עיר למיפוי (בהתבסס על הנתונים שלך מהמסד נתונים)
+    const getDepartureCityId = (destinationCity) => {
     const cityMappings = {
       'phuket': '68022f445f7300b11f986829',  // תל אביב כעיר יציאה
-      'paris': '68022f445f7300b11f986829',   // תל אביב כעיר יציאה
-      'dubai': '68022f445f7300b11f986829',   // תל אביב כעיר יציאה
-      'london': '68022f445f7300b11f986829',  // תל אביב כעיר יציאה
-      'turkey': '68022f445f7300b11f986829',  // תל אביב כעיר יציאה
-      'amsterdam': '68022f445f7300b11f986829' // תל אביב כעיר יציאה
+      'paris': '68022f445f7300b11f986829',
+      'dubai': '68022f445f7300b11f986829',
+      'london': '68022f445f7300b11f986829',
+      'turkey': '68022f445f7300b11f986829',
+      'amsterdam': '68022f445f7300b11f986829'
     };
-    
     const citySlug = destinationCity?.slug || destinationCity?.name?.toLowerCase();
-    return cityMappings[citySlug] || '68022f445f7300b11f986829'; // ברירת מחדל
+    return cityMappings[citySlug] || '68022f445f7300b11f986829';
   };
 
   // *** פונקציה לקבלת מזהה יעד בהתבסס על העיר הנבחרת ***
@@ -366,9 +364,7 @@ const handleWeatherPress = () => {
         },
         body: JSON.stringify(orderData),
       });
-
       console.log('📡 Response status:', response.status);
-
       if (!response.ok) {
         const errorData = await response.json().catch(() => null);
         console.error('❌ Server error:', errorData);
@@ -381,10 +377,10 @@ const handleWeatherPress = () => {
       Alert.alert(
         '🎉 Success!', 
         `Your trip to ${selectedDestination.name} has been booked successfully!\n\nOrder ID: ${responseData._id}`,
-        [
+        [ 
           {
             text: 'View My Orders',
-            onPress: () => navigation.navigate('profile'),
+            onPress: () => navigation.navigate('(tabs)', { screen: 'profile' }),
           },
           {
             text: 'OK',
@@ -547,33 +543,49 @@ const handleWeatherPress = () => {
           </Modal>
         )}
 
-        {/* Trip Details Modal */}
-        {selectedDestination && !paymentCompleted && !showPaymentModal && !showIntroPopup && (
-          <Modal visible={!!selectedDestination} transparent animationType="slide" onRequestClose={() => setSelectedDestination(null)}>
-            <View style={styles.modalContainer}>
-              <View style={styles.modalContent}>
-                <TouchableOpacity
-                  style={styles.modalCloseX}
-                  onPress={() => setSelectedDestination(null)}
-                  activeOpacity={0.8}
-                >
-                  <Text style={styles.modalCloseXText}>✕</Text>
-                </TouchableOpacity>
-                <Text style={styles.modalTitle}>{selectedDestination.name} - Trip Details</Text>
-                <Text style={styles.modalDescription}>Flight: {selectedDestination.flight}</Text>
-                <Text style={styles.modalDescription}>Price: ${selectedDestination.price}</Text>
-                <Text style={styles.modalDescription}>
-                  Description: {selectedDestination.description}
-                </Text>
-                <TouchableOpacity style={styles.bookButton} onPress={() => setShowPaymentModal(true)} activeOpacity={0.8}>
-                  <LinearGradient colors={['#667eea', '#764ba2']} style={styles.bookButtonGradient}>
-                    <Text style={styles.bookButtonText}>Book Now</Text>
-                  </LinearGradient>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </Modal>
-        )}
+     {/* Trip Details Modal */}
+{selectedDestination && !paymentCompleted && !showPaymentModal && !showIntroPopup && (
+  <Modal visible={!!selectedDestination} transparent animationType="slide" onRequestClose={() => setSelectedDestination(null)}>
+    <View style={styles.modalContainer}>
+      <View style={styles.modalContent}>
+        <TouchableOpacity
+          style={styles.modalCloseX}
+          onPress={() => setSelectedDestination(null)}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.modalCloseXText}>✕</Text>
+        </TouchableOpacity>
+
+        <Text style={styles.modalTitle}>{selectedDestination.name} - Trip Details</Text>
+
+        <Text style={styles.modalDescription}>Flight: {selectedDestination.flight}</Text>
+
+        {/* כאן נוסיף שעת טיסה הלוך וחזור קבועה */}
+        <Text style={styles.modalDescription}>Departure Time: 06:00 AM</Text>
+        <Text style={styles.modalDescription}>Return Time: 05:00 PM</Text>
+
+        {/* תאריכים קבועים */}
+        <Text style={styles.modalDescription}>Dates: 13/3 - 18/3</Text>
+
+        {/* הצגת שם המלון */}
+        <Text style={styles.modalDescription}>Hotel: {selectedDestination.hotel}</Text>
+
+        <Text style={styles.modalDescription}>Price: ${selectedDestination.price}</Text>
+
+        <Text style={styles.modalDescription}>
+          Description: {selectedDestination.description}
+        </Text>
+
+        <TouchableOpacity style={styles.bookButton} onPress={() => setShowPaymentModal(true)} activeOpacity={0.8}>
+          <LinearGradient colors={['#667eea', '#764ba2']} style={styles.bookButtonGradient}>
+            <Text style={styles.bookButtonText}>Book Now</Text>
+          </LinearGradient>
+        </TouchableOpacity>
+      </View>
+    </View>
+  </Modal>
+)}
+
 
         {/* Payment Modal */}
         <PaymentModal

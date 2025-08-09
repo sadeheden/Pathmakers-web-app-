@@ -136,6 +136,7 @@ export async function createOrder(req, res) {
     });
   }
 }
+// תיקון פונקציית getUserOrders ב order.controller.js
 
 export async function getUserOrders(req, res) {
   if (!req.user?.id && !req.user?.userId) {
@@ -152,44 +153,57 @@ export async function getUserOrders(req, res) {
 
     const db = await connectDB();
 
+    console.log('🔍 Checking available collections...');
+    const collections = await db.listCollections().toArray();
+    console.log('📋 Available collections:', collections.map(c => c.name));
+
     const orders = await db.collection('orders').aggregate([
       { $match: { user_id: userObjectId } },
+      
+      // Lookup for departure city - בדוק את השם הנכון של הקולקציה
       {
         $lookup: {
-          from: 'city',
+          from: 'cities', // או 'city' - תלוי איך הקולקציה נקראת
           localField: 'departure_city_id',
           foreignField: '_id',
           as: 'departureCity'
         }
       },
       { $unwind: { path: '$departureCity', preserveNullAndEmptyArrays: true } },
+      
+      // Lookup for destination city
       {
         $lookup: {
-          from: 'city',
+          from: 'cities', // או 'city'
           localField: 'destination_city_id',
           foreignField: '_id',
           as: 'destinationCity'
         }
       },
       { $unwind: { path: '$destinationCity', preserveNullAndEmptyArrays: true } },
+      
+      // Lookup for flights
       {
         $lookup: {
-          from: 'flights',
+          from: 'flights', // וודא שהקולקציה הזו קיימת
           localField: 'flight_id',
           foreignField: '_id',
           as: 'flight'
         }
       },
       { $unwind: { path: '$flight', preserveNullAndEmptyArrays: true } },
+      
+      // Lookup for hotels
       {
         $lookup: {
-          from: 'hotels',
+          from: 'hotels', // וודא שהקולקציה הזו קיימת
           localField: 'hotel_id',
           foreignField: '_id',
           as: 'hotel'
         }
       },
       { $unwind: { path: '$hotel', preserveNullAndEmptyArrays: true } },
+      
       {
         $project: {
           _id: 1,
@@ -203,16 +217,28 @@ export async function getUserOrders(req, res) {
           payment_method: 1,
           total_price: 1,
           created_at: 1,
-          departure_city_name: '$departureCity.city',
-          destination_city_name: '$destinationCity.city',
-          flight_name: '$flight.name',
-          hotel_name: '$hotel.name'
+          
+          // שימוש בשדות הנכונים - בדוק איך הנתונים נשמרים בקולקציות
+          departure_city_name: { 
+            $ifNull: ['$departureCity.name', '$departureCity.city', '$departure_city_id'] 
+          },
+          destination_city_name: { 
+            $ifNull: ['$destinationCity.name', '$destinationCity.city', '$destination_city_id'] 
+          },
+          flight_name: { 
+            $ifNull: ['$flight.flight_number', '$flight.name', '$flight.airline', '$flight_id'] 
+          },
+          hotel_name: { 
+            $ifNull: ['$hotel.name', '$hotel.hotel_name', '$hotel_id'] 
+          }
         }
       },
       { $sort: { created_at: -1 } }
     ]).toArray();
 
     console.log(`✅ Found ${orders.length} orders for user ${userId}`);
+    console.log('📊 Sample order with lookups:', JSON.stringify(orders[0], null, 2));
+    
     return res.status(200).json({ success: true, orders });
     
   } catch (err) {
