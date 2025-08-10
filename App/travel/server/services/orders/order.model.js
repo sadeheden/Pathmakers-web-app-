@@ -1,5 +1,5 @@
 import { ObjectId } from 'mongodb';
-import { findOrdersByUserIdFromDb, insertOrderToDb } from './order.db.js';
+import { findOrdersByUserIdFromDb, insertOrderToDb} from './order.db.js';
 
 export default class Order {
   constructor(data = {}) {
