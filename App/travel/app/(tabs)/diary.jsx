@@ -57,7 +57,9 @@ export default function DiaryCalendarScreen() {
   const [tripStart, setTripStart] = useState(null);
   const [tripEnd, setTripEnd] = useState(null);
   const [tripLabel, setTripLabel] = useState(null);
+  const [trips, setTrips] = useState([]);
 // is a YYYY-MM-DD inside [start, end] (inclusive)?
+
 const isBetween = (date, start, end) => {
   if (!date || !start || !end) return false;
   return date >= start && date <= end;
@@ -79,61 +81,79 @@ const isBetween = (date, start, end) => {
   }, []);
 
   // Fetch latest order and set trip info (destination + dates)
-  useEffect(() => {
-    const loadTripFromOrders = async () => {
-      try {
-        // read token like profile.jsx (and clean any quotes)
-        const raw = await AsyncStorage.getItem('token');
-        const token = raw?.replace(/^"|"$/g, '') || null;
-        if (!token) return; // user not logged-in yet
+ useEffect(() => {
+  const loadTripFromOrders = async () => {
+    try {
+      const raw = await AsyncStorage.getItem('token');
+      const token = raw?.replace(/^"|"$/g, '') || null;
+      if (!token) return;
 
-        const resp = await fetch('https://pathmakers-web-app-app-travel.onrender.com/api/orders', {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-
-        if (!resp.ok) {
-          // swallow error to avoid breaking the screen
-          console.log('Orders fetch failed:', await resp.text());
-          return;
-        }
-
-        const data = await resp.json();
-        const orders = Array.isArray(data?.orders) ? data.orders : [];
-
-        if (!orders.length) return;
-
-        // take the most recent order
-        const latest = orders[0];
-
-        // destination label
-        const destName = getCityName(latest.destination_city_name, latest.destination_city_id);
-        setTripLabel(destName ? `Have fun in ${destName}` : 'Your Trip');
-
-        // choose dates:
-        // 1) if backend later provides trip_start/trip_end, use them
-        // 2) else fallback: created_at as start + 6 days window
-        const explicitStart = latest.trip_start || latest.start_date || null;
-        const explicitEnd = latest.trip_end || latest.end_date || null;
-
-        if (explicitStart && explicitEnd) {
-          setTripStart(String(explicitStart).slice(0, 10));
-          setTripEnd(String(explicitEnd).slice(0, 10));
-        } else if (latest.created_at) {
-          const created = new Date(latest.created_at);
-          const startIso = toISO(created);
-          const end = new Date(created);
-          end.setDate(end.getDate() + 6);
-          const endIso = toISO(end);
-          setTripStart(startIso);
-          setTripEnd(endIso);
-        }
-      } catch (e) {
-        console.log('Failed to load trip from orders:', e?.message);
+      const resp = await fetch('https://pathmakers-web-app-app-travel.onrender.com/api/orders', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!resp.ok) {
+        console.log('Orders fetch failed:', await resp.text());
+        return;
       }
-    };
 
-    loadTripFromOrders();
-  }, []);
+      const data = await resp.json();
+      const orders = Array.isArray(data?.orders) ? data.orders : [];
+      if (!orders.length) return;
+
+      // normalize every order -> { start, end, label }
+      const palette = ['#456992ff', '#8ac0fdff', '#9bd1bcff', '#f9d36aff', '#f5a7a7ff'];
+      let colorIdx = 0;
+
+      const toTrip = (o) => {
+        const destName = getCityName(o.destination_city_name, o.destination_city_id);
+        const label = destName ? `Trip to ${destName}` : 'Your Trip';
+
+        const explicitStart = o.trip_start || o.start_date || null;
+        const explicitEnd   = o.trip_end   || o.end_date   || null;
+
+        let startIso, endIso;
+        if (explicitStart && explicitEnd) {
+          startIso = String(explicitStart).slice(0, 10);
+          endIso   = String(explicitEnd).slice(0, 10);
+        } else if (o.created_at) {
+          const created = new Date(o.created_at);
+          const start = toISO(created);
+          const endD  = new Date(created);
+          endD.setDate(endD.getDate() + 6);
+          const end = toISO(endD);
+          startIso = start; endIso = end;
+        } else {
+          return null; // no dates—skip
+        }
+
+        const color = palette[colorIdx++ % palette.length];
+        return { start: startIso, end: endIso, label, color };
+      };
+
+      const allTrips = orders.map(toTrip).filter(Boolean);
+
+      // save all for calendar
+      setTrips(allTrips);
+
+      // keep your existing single “banner” label + period (use next upcoming)
+      const today = toISO(new Date());
+      const upcoming = allTrips
+        .filter(t => t.end >= today)
+        .sort((a,b) => a.start.localeCompare(b.start))[0] || allTrips[0];
+
+      if (upcoming) {
+        setTripLabel(upcoming.label);
+        setTripStart(upcoming.start);
+        setTripEnd(upcoming.end);
+      }
+    } catch (e) {
+      console.log('Failed to load trip from orders:', e?.message);
+    }
+  };
+
+  loadTripFromOrders();
+}, []);
+
 
   // Save to AsyncStorage when updating
   const saveToStorage = async (newData) => {
@@ -144,20 +164,16 @@ const isBetween = (date, start, end) => {
     }
   };
 
-  const onDayPress = (day) => {
+ const onDayPress = (day) => {
   const dateStr = day.dateString;
   setSelectedDate(dateStr);
 
   const existing = markedDates[dateStr]?.note || '';
 
-  // If no saved note and the clicked day is inside the trip range,
-  // prefill the popup with the destination (from your tripLabel).
   let initialText = existing;
-  if (!existing && tripStart && tripEnd && isBetween(dateStr, tripStart, tripEnd)) {
-    // try to extract the destination name from "Trip to XYZ"
-    const dest =
-      (tripLabel && tripLabel.replace(/^Trip to\s*/i, '').trim()) || 'your destination';
-    initialText = `Trip to ${dest}`;
+  if (!existing) {
+    const inTrip = trips.find(t => dateStr >= t.start && dateStr <= t.end);
+    if (inTrip) initialText = inTrip.label; // e.g., "Trip to Paris"
   }
 
   setNoteText(initialText);
@@ -165,31 +181,30 @@ const isBetween = (date, start, end) => {
 };
 
 
-  const saveNote = () => {
-    if (noteText.trim()) {
-      const updated = {
-        ...markedDates,
-        [selectedDate]: {
-          ...(markedDates[selectedDate] || {}),
-          marked: true,
-          selected: true,
-          note: noteText.trim(),
-          selectedColor: '#6366f1',
-          selectedTextColor: '#ffffff',
-        },
-      };
-      setMarkedDates(updated);
-      saveToStorage(updated);
-    } else {
-      // Remove the note if text is empty
-      const updated = { ...markedDates };
-      delete updated[selectedDate];
-      setMarkedDates(updated);
-      saveToStorage(updated);
-    }
-    setModalVisible(false);
-    setNoteText('');
-  };
+const saveNote = () => {
+  const trimmed = noteText.trim();
+  if (trimmed) {
+    const updated = {
+      ...markedDates,
+      [selectedDate]: {
+        ...(markedDates[selectedDate] || {}),
+        note: trimmed,
+        marked: true,
+        textColor: '#0c203bff', // ← date number color
+      },
+    };
+    setMarkedDates(updated);
+    saveToStorage(updated);
+  } else {
+    const updated = { ...markedDates };
+    delete updated[selectedDate];
+    setMarkedDates(updated);
+    saveToStorage(updated);
+  }
+  setModalVisible(false);
+  setNoteText('');
+};
+
 
   const deleteNote = () => {
     Alert.alert(
@@ -225,22 +240,24 @@ const isBetween = (date, start, end) => {
 
   // Build trip period marks
   const tripMarks = (() => {
-    if (!tripStart || !tripEnd) return {};
-    const days = buildDateRange(tripStart, tripEnd);
-    const out = {};
-    const color = '#8ac0fdff';
-    const textColor = '#1f2937';
+  if (!trips.length) return {};
+  const out = {};
+  trips.forEach((t) => {
+    const days = buildDateRange(t.start, t.end);
     days.forEach((d, i) => {
+      // last write wins if trips overlap (rare). That’s OK for now.
       out[d] = {
         ...(out[d] || {}),
-        color,
-        textColor,
+        color: t.color,
+        textColor: '#f3f3f37c',
         startingDay: i === 0,
         endingDay: i === days.length - 1,
       };
     });
-    return out;
-  })();
+  });
+  return out;
+})();
+
 
   // Merge trip band with notes (keep your saved note visuals)
   const mergedMarkedDates = (() => {
@@ -284,7 +301,7 @@ const isBetween = (date, start, end) => {
               backgroundColor: 'transparent',
               calendarBackground: 'transparent',
               textSectionTitleColor: '#64748b',
-              selectedDayBackgroundColor: '#6366f1',
+              selectedDayBackgroundColor: '#8384a1ff',
               selectedDayTextColor: '#ffffff',
               todayTextColor: '#6366f1',
               dayTextColor: '#1e293b',
@@ -365,7 +382,7 @@ const isBetween = (date, start, end) => {
                       colors={['#6366f1', '#4f46e5']}
                       style={styles.buttonGradient}
                     >
-                      <Save size={18} color="#ffffff" />
+                      <Save size={18} color="#181717ff" />
                       <Text style={styles.saveButtonText}>Save Note</Text>
                     </LinearGradient>
                   </TouchableOpacity>
@@ -464,18 +481,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 20,
   },
-  modalContent: {
-    backgroundColor: '#ffffff',
-    borderRadius: 25,
-    padding: 0,
-    maxHeight: '55%',
-    minHeight: '32%',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.3,
-    shadowRadius: 20,
-    elevation: 10,
-  },
+modalContent: {
+  backgroundColor: '#ffffff',   // ✅ solid white
+  borderRadius: 25,
+  padding: 0,
+  maxHeight: '55%',
+  minHeight: '32%',
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: 10 },
+  shadowOpacity: 0.3,
+  shadowRadius: 20,
+  elevation: 10,
+},
   
   // Modal Header
   modalHeader: {
@@ -504,11 +521,13 @@ const styles = StyleSheet.create({
   },
   
   // Input
-  inputContainer: {
-    flex: 1,
-    padding: 24,
-    paddingTop: 16,
-  },
+inputContainer: {
+  flex: 1,
+  padding: 24,
+  paddingTop: 16,
+  backgroundColor: '#ffffff', // keeps input area white
+},
+
   input: {
     fontSize: 16,
     color: '#1e293b',
