@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { Image, StyleSheet, Platform } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from 'react-native-vector-icons/Ionicons'; 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import HomeScreen from './home';
@@ -12,6 +12,7 @@ import DiaryScreen from './diary';
 import ProfileScreen from './profile';
 import RealChat from './RealChat';
 import WeatherScreen from './weather';
+import SupportScreen from './Support';
 
 const Tab = createBottomTabNavigator();
 const HomeStack = createNativeStackNavigator();
@@ -23,6 +24,7 @@ function HomeStackScreen() {
       <HomeStack.Screen name="HomeMain" component={HomeScreen} />
       <HomeStack.Screen name="RealChat" component={RealChat} />
          <HomeStack.Screen name="Weather" component={WeatherScreen} />
+          <HomeStack.Screen name="Support" component={SupportScreen} />
     </HomeStack.Navigator>
   );
 }
@@ -91,6 +93,7 @@ export default function TabsLayout() {
     </Tab.Navigator>
   );
 }
+
 
 const styles = StyleSheet.create({
   tabBar: {
