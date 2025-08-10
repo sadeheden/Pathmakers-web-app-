@@ -1,6 +1,8 @@
+// (tabs)/_layout.jsx
 import React, { useEffect, useState } from 'react';
 import { Image, StyleSheet, Platform } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -8,8 +10,22 @@ import HomeScreen from './home';
 import MapScreen from './map';
 import DiaryScreen from './diary';
 import ProfileScreen from './profile';
+import RealChat from './RealChat';
+import WeatherScreen from './weather';
 
 const Tab = createBottomTabNavigator();
+const HomeStack = createNativeStackNavigator();
+
+// 👇 Stack for the Home tab (hidden RealChat lives here)
+function HomeStackScreen() {
+  return (
+    <HomeStack.Navigator screenOptions={{ headerShown: false }}>
+      <HomeStack.Screen name="HomeMain" component={HomeScreen} />
+      <HomeStack.Screen name="RealChat" component={RealChat} />
+         <HomeStack.Screen name="Weather" component={WeatherScreen} />
+    </HomeStack.Navigator>
+  );
+}
 
 export default function TabsLayout() {
   const [profileImage, setProfileImage] = useState(null);
@@ -46,9 +62,7 @@ export default function TabsLayout() {
           if (route.name === 'Profile') {
             return (
               <Image
-                source={{
-                  uri: profileImage || 'https://i.pravatar.cc/150?img=12',
-                }}
+                source={{ uri: profileImage || 'https://i.pravatar.cc/150?img=12' }}
                 style={{
                   width: iconSize,
                   height: iconSize,
@@ -60,34 +74,19 @@ export default function TabsLayout() {
             );
           }
 
-          let iconName = '';
-          switch (route.name) {
-            case 'Home':
-              iconName = 'home';
-              break;
-            case 'Map':
-              iconName = 'map';
-              break;
-          
-            case 'Diary':
-              iconName = 'calendar';
-              break;
-            default:
-              iconName = 'ellipse';
-          }
+          let iconName = 'ellipse';
+          if (route.name === 'Home') iconName = 'home';
+          else if (route.name === 'Map') iconName = 'map';
+          else if (route.name === 'Diary') iconName = 'calendar';
 
           return <Ionicons name={iconName} size={iconSize} color={color} />;
         },
       })}
     >
-      <Tab.Screen name="Home" component={HomeScreen} />
+      {/* 👇 Use the stack instead of HomeScreen directly */}
+      <Tab.Screen name="Home" component={HomeStackScreen} />
       <Tab.Screen name="Map" component={MapScreen} />
-    <Tab.Screen
-  name="Diary"
-  component={DiaryScreen}
-  options={{ tabBarLabel: 'Planner' }}
-/>
-
+      <Tab.Screen name="Diary" component={DiaryScreen} options={{ tabBarLabel: 'Planner' }} />
       <Tab.Screen name="Profile" component={ProfileScreen} />
     </Tab.Navigator>
   );

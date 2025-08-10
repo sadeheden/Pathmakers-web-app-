@@ -13,10 +13,13 @@ import {
 import { SafeAreaView } from "react-native";
 import { HF_TOKEN } from "@env";
 import { HfInference } from "@huggingface/inference";
+import { useNavigation } from "@react-navigation/native";
+
  
 const hf = new HfInference(HF_TOKEN);
  
 export default function RealChatScreen() {
+    const navigation = useNavigation();
   const [text, setText] = useState("");
   const [messages, setMessages] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -71,7 +74,14 @@ export default function RealChatScreen() {
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
       >
-        <Text style={styles.header}>AI Triper - Chat</Text>
+        <View style={styles.header}>
+  <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+    <Text style={styles.backText}>←</Text>
+  </TouchableOpacity>
+  <Text style={styles.headerTitle}>AI Triper - Chat</Text>
+</View>
+
+
         <View style={styles.chatWrapper}>
           <ScrollView
             ref={scrollViewRef}
@@ -257,4 +267,25 @@ sendText: {
   color: "#fff",
   fontWeight: "bold",
 }, 
+header: {
+  flexDirection: "row",
+  alignItems: "center",
+  backgroundColor: "#6633cc",
+  paddingVertical: 15,
+  paddingHorizontal: 10,
+},
+backButton: {
+  marginRight: 10,
+  padding: 5,
+},
+backText: {
+  color: "#fff",
+  fontSize: 20,
+},
+headerTitle: {
+  color: "#fff",
+  fontSize: 20,
+  fontWeight: "bold",
+},
+
 });
