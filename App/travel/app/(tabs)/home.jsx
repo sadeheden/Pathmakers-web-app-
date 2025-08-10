@@ -489,21 +489,6 @@ const handleWeatherPress = () => {
           </TouchableOpacity>
         </View>
 
-        {/* Currency Icon/Button - moved below weather button for better design */}
-          <View style={{ alignItems: 'flex-end', marginBottom: 15, transform: [{ translateY: -30 }] }}>
-          <TouchableOpacity 
-            onPress={handleCurrencyPress} 
-            style={styles.currencyIcon} 
-            activeOpacity={0.8}
-          >
-            <LinearGradient 
-              colors={['#FFD700', '#FFA500']} 
-              style={styles.currencyIconGradient}
-            >
-               <FontAwesome name="dollar" size={24} color="#fff" />
-            </LinearGradient>
-          </TouchableOpacity>
-        </View>
 
         {/* Welcome Section */}
         <View style={styles.welcomeSection}>
@@ -664,7 +649,25 @@ const handleWeatherPress = () => {
         />
 
        
-      </ScrollView>
+          </ScrollView>
+
+      {/* Floating Calculator Button (bottom-left, above tab bar) */}
+      <TouchableOpacity
+        onPress={handleCurrencyPress}
+        activeOpacity={0.9}
+        style={styles.floatingCalcButton}
+        accessibilityRole="button"
+        accessibilityLabel="Open currency calculator"
+      >
+        <LinearGradient
+          colors={['#FFD700', '#FFA500']}
+          style={styles.floatingCalcGradient}
+        >
+          <FontAwesome name="dollar" size={25} color="#fff" />
+
+        </LinearGradient>
+      </TouchableOpacity>
+
     </View>
   );
 }
@@ -1144,4 +1147,31 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontWeight: '600',
   },
+    // Floating calculator button
+  floatingCalcButton: {
+    position: 'absolute',
+    right: 26,
+    // keep it above the tab bar; adjust as needed depending on device
+    bottom: 18, 
+    borderRadius: 28,
+    overflow: 'hidden',
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+  },
+  floatingCalcGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  floatingCalcText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+
 });
