@@ -57,8 +57,8 @@ function TabsLayout() {
           paddingBottom: Platform.OS === 'ios' ? 8 : 4,
         },
         tabBarStyle: styles.tabBar,
-        tabBarIcon: ({ color, focused }) => {
-          const iconSize = 28;
+        tabBarIcon: ({ color, focused, size }) => {
+          const iconSize = size ?? 28;
 
           if (route.name === 'Profile') {
             return (
@@ -76,17 +76,35 @@ function TabsLayout() {
           }
 
           let iconName = 'ellipse';
-          if (route.name === 'Home') iconName = 'home';
-          else if (route.name === 'Map') iconName = 'map';
-          else if (route.name === 'Diary') iconName = 'calendar';
+          if (route.name === 'Home') iconName = focused ? 'home' : 'home-outline';
+          else if (route.name === 'Diary') iconName = focused ? 'calendar' : 'calendar-outline';
+          // Map icon now set per-screen in its own options (below), so this branch won’t run for Map.
 
           return <Ionicons name={iconName} size={iconSize} color={color} />;
         },
       })}
     >
       <Tab.Screen name="Home" component={HomeStackScreen} />
-      <Tab.Screen name="Map" component={MapScreen} />
-      <Tab.Screen name="Diary" component={DiaryScreen} options={{ tabBarLabel: 'Planner' }} />
+      <Tab.Screen
+        name="Map"
+        component={MapScreen}
+        options={{
+          tabBarLabel: 'Fun',
+          // Force smiley here, overrides global tabBarIcon
+          tabBarIcon: ({ color, size, focused }) => (
+            <Ionicons
+              name={focused ? 'happy' : 'happy-outline'}
+              size={size ?? 28}
+              color={color}
+            />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="Diary"
+        component={DiaryScreen}
+        options={{ tabBarLabel: 'Planner' }}
+      />
       <Tab.Screen name="Profile" component={ProfileScreen} />
       {/* ❌ No Support here */}
     </Tab.Navigator>

@@ -1,352 +1,355 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, TextInput, StyleSheet, Dimensions, Alert, TouchableOpacity, Platform, Linking } from 'react-native';
-import MapView, { Marker, Polyline } from 'react-native-maps';
+import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
+import {
+  View, Text, StyleSheet, Dimensions, ActivityIndicator,
+  TouchableOpacity, Alert, FlatList, Platform
+} from 'react-native';
 import * as Location from 'expo-location';
 import { Ionicons } from '@expo/vector-icons';
 
-const GEOAPIFY_KEY = 'YOUR_GEOAPIFY_API_KEY_HERE'; // ← replace me
+const GEOAPIFY_KEY = 'df685720b88e4349a1df71ab33e36c3d';
+const DEFAULT_RADIUS_M = 5000;
+const PAGE_LIMIT = 30;
 
-const TAB_BAR_MARGIN = 40;       // space to clear your bottom tab
-const SEARCH_BOX_HEIGHT = 56;    // ~ height of the search box
-const GAP = 14;                  // gap between info box and search box
+/* ✅ Move helpers OUTSIDE so they’re stable */
+const toRad = (d) => (d * Math.PI) / 180;
+const distanceMeters = (lat1, lon1, lat2, lon2) => {
+  const R = 6371e3;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return Math.round(R * c);
+};
+const fmtDistance = (m) => (m >= 1000 ? `${(m / 1000).toFixed(1)} km` : `${m} m`);
+const stars = (n) => {
+  if (n == null || isNaN(n)) return 'N/A';
+  const five = n > 5 ? Math.min(5, Math.round((n / 10) * 5)) : Math.round(n);
+  return '★'.repeat(five) + '☆'.repeat(5 - five);
+};
+// deterministic pseudo-random per id
+const hashCode = (str) => {
+  let h = 0;
+  for (let i = 0; i < str.length; i++) {
+    h = (h << 5) - h + str.charCodeAt(i);
+    h |= 0;
+  }
+  return h >>> 0;
+};
+const rngFrom = (seed) => {
+  let s = seed >>> 0;
+  return () => {
+    s = (1664525 * s + 1013904223) >>> 0; // LCG
+    return s / 4294967296;
+  };
+};
 
-export default function MapScreen() {
-  const [location, setLocation] = useState(null);
-  const [destinationText, setDestinationText] = useState('');
-  const [destinationCoords, setDestinationCoords] = useState(null);
-  const [loadingDest, setLoadingDest] = useState(false);
+export default function AttractionsScreen() {
+  const [coords, setCoords] = useState(null);
+  const [loadingLoc, setLoadingLoc] = useState(true);
 
-  const [distanceKm, setDistanceKm] = useState(null);
-  const [routeMode, setRouteMode] = useState('drive'); // 'drive' | 'walk' | 'bicycle'
+  const [radiusM, setRadiusM] = useState(DEFAULT_RADIUS_M);
+  const [loadingList, setLoadingList] = useState(false);
+  const [items, setItems] = useState([]);
+  const [errorText, setErrorText] = useState('');
 
-  const [routeCoords, setRouteCoords] = useState([]);
-  const [routeInfo, setRouteInfo] = useState(null);
-  const mapRef = useRef(null);
-  const typingTimeoutRef = useRef(null);
+  const fetchAbortRef = useRef(null);
 
   useEffect(() => {
     (async () => {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Permission Denied', 'Allow location access to use the map.');
-        return;
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== 'granted') {
+          Alert.alert('Permission denied', 'Allow location access to find attractions nearby.');
+          setErrorText('Location permission denied.');
+          return;
+        }
+        const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+        setCoords({ lat: pos.coords.latitude, lon: pos.coords.longitude });
+      } catch (e) {
+        setErrorText('Failed to get current location.');
+      } finally {
+        setLoadingLoc(false);
       }
-      const currentLocation = await Location.getCurrentPositionAsync({});
-      setLocation(currentLocation.coords);
     })();
   }, []);
 
-  const calculateDistance = (lat1, lon1, lat2, lon2) => {
-    const R = 6371;
-    const dLat = ((lat2 - lat1) * Math.PI) / 180;
-    const dLon = ((lon2 - lon1) * Math.PI) / 180;
-    const a =
-      Math.sin(dLat / 2) ** 2 +
-      Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) *
-      Math.sin(dLon / 2) ** 2;
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return R * c;
-  };
+  const fetchAttractions = useCallback(async () => {
+    if (!coords) return;
+    setLoadingList(true);
+    setErrorText('');
 
-  // Fetch route from Geoapify and convert to RN coords
-  const fetchRoute = async (from, to, mode = 'drive') => {
+    if (fetchAbortRef.current) fetchAbortRef.current.abort();
+    const controller = new AbortController();
+    fetchAbortRef.current = controller;
+
     try {
-      const waypoints = `${from.latitude},${from.longitude}|${to.latitude},${to.longitude}`;
-      const url = `https://api.geoapify.com/v1/routing?waypoints=${encodeURIComponent(waypoints)}&mode=${mode}&apiKey=${GEOAPIFY_KEY}`;
+      const categories = [
+        'tourism.attraction',
+        'tourism.sights',
+        'entertainment.museum',
+        'entertainment.zoo',
+        'entertainment.theme_park',
+        'leisure.park'
+      ].join(',');
 
-      const res = await fetch(url);
+      const url = `https://api.geoapify.com/v2/places?categories=${encodeURIComponent(
+        categories
+      )}&filter=circle:${coords.lon},${coords.lat},${radiusM}&bias=proximity:${coords.lon},${coords.lat}&limit=${PAGE_LIMIT}&apiKey=${GEOAPIFY_KEY}`;
+
+      const res = await fetch(url, { signal: controller.signal });
+      if (!res.ok) throw new Error(`Geoapify error ${res.status}`);
       const json = await res.json();
 
-      const feature = json?.features?.[0];
-      if (!feature) throw new Error('No route found');
+      const list = await Promise.all(
+        (json.features || []).map(async (f) => {
+          const p = f.properties || {};
+          const [lon, lat] = (f.geometry && f.geometry.coordinates) || [];
+          const dist = distanceMeters(coords.lat, coords.lon, lat, lon);
+          const rating = p.rating ?? p.score ?? p.rank ?? null;
+          const book = await fetchBookability(p.place_id);
 
-      const coordsLngLat = feature.geometry.coordinates;
-      const flat = Array.isArray(coordsLngLat?.[0]?.[0]) ? coordsLngLat.flat() : coordsLngLat;
-      const polylineCoords = flat.map(([lon, lat]) => ({ latitude: lat, longitude: lon }));
+          return {
+            id: p.place_id || `${lat},${lon}`,
+            name: p.name || p.street || p.formatted || 'Unknown place',
+            address: p.address_line2 || p.address_line1 || p.formatted || '',
+            lat,
+            lon,
+            distance: dist,
+            rating,
+            openingHours: p.opening_hours || null,
+            website: p.website || null,
+            bookable: !!book.bookable,
+            price: book.price ?? null,
+          };
+        })
+      );
 
-      setRouteCoords(polylineCoords);
-
-      const distanceMeters = feature.properties?.distance;
-      const timeSeconds = feature.properties?.time;
-      setRouteInfo({ distanceMeters, timeSeconds, mode });
-
-      if (mapRef.current && polylineCoords.length > 1) {
-        mapRef.current.fitToCoordinates(polylineCoords, {
-          edgePadding: { top: 100, right: 60, bottom: 180, left: 60 },
-          animated: true,
-        });
-      }
+      setItems(list.sort((a, b) => a.distance - b.distance));
     } catch (e) {
-      console.log(e);
-      Alert.alert('Routing error', 'Failed to get directions.');
-      setRouteCoords([]);
-      setRouteInfo(null);
-    }
-  };
-
-  const handleSetDestination = async () => {
-    if (!destinationText.trim() || loadingDest) return;
-    setLoadingDest(true);
-    try {
-      const geo = await Location.geocodeAsync(destinationText);
-      if (geo.length > 0) {
-        const coords = { latitude: geo[0].latitude, longitude: geo[0].longitude };
-        setDestinationCoords(coords);
-
-        if (location) {
-          const dist = calculateDistance(location.latitude, location.longitude, coords.latitude, coords.longitude);
-          setDistanceKm(dist.toFixed(2));
-          await fetchRoute(location, coords, routeMode);
-        }
-      } else {
-        Alert.alert('Not Found', 'Could not find the destination.');
+      if (e.name !== 'AbortError') {
+        setErrorText('Failed to load attractions.');
+        setItems([]);
       }
-    } catch (err) {
-      Alert.alert('Error', 'Failed to get coordinates.');
+    } finally {
+      setLoadingList(false);
+      fetchAbortRef.current = null;
     }
-    setLoadingDest(false);
-  };
+  /* ✅ Dependencies no longer include distanceMeters (it’s stable now) */
+  }, [coords, radiusM]);
 
-  const onChangeDestinationText = (text) => {
-    setDestinationText(text);
-    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-    typingTimeoutRef.current = setTimeout(() => {
-      handleSetDestination();
-    }, 800);
-  };
+  useEffect(() => {
+    if (coords) fetchAttractions();
+  }, [coords, radiusM, fetchAttractions]);
 
-  const clearDestinationText = () => {
-    setDestinationText('');
-    setDestinationCoords(null);
-    setDistanceKm(null);
-    setRouteCoords([]);
-    setRouteInfo(null);
-  };
-
-  const getEstimatedTime = (speedKmh) => {
-    if (!distanceKm) return null;
-    const timeHours = distanceKm / speedKmh;
-    const minutes = Math.round(timeHours * 60);
-    return `${minutes} min`;
-  };
-
-  const formatMetersToKm = (m) => (m >= 1000 ? `${(m / 1000).toFixed(1)} km` : `${m} m`);
-  const formatSecondsToMin = (s) => `${Math.round(s / 60)} min`;
-
-  // ---- OPEN EXTERNAL NAVIGATION ----
-  const openExternalNavigation = async () => {
-    if (!destinationCoords) return;
-
-    const { latitude, longitude } = destinationCoords;
-    const travelmode =
-      routeMode === 'walk' ? 'walking' :
-      routeMode === 'bicycle' ? 'bicycling' : 'driving';
-
-    // Try Waze
-    const waze = `waze://?ll=${latitude},${longitude}&navigate=yes`;
-    if (await Linking.canOpenURL('waze://')) {
-      return Linking.openURL(waze);
+  const onPressTicket = async (item) => {
+    if (!item.bookable) {
+      Alert.alert('Not available', 'This attraction is not bookable with us (yet).');
+      return;
     }
-
-    // Try Google Maps app
-    const gmapsApp = Platform.select({
-      ios: `comgooglemaps://?daddr=${latitude},${longitude}&directionsmode=${travelmode}`,
-      android: `google.navigation:q=${latitude},${longitude}&mode=${travelmode === 'walking' ? 'w' : travelmode === 'bicycling' ? 'b' : 'd'}`,
-    });
-
-    const canOpenGmaps = await Linking.canOpenURL(
-      Platform.OS === 'ios' ? 'comgooglemaps://' : 'google.navigation:'
-    );
-    if (canOpenGmaps) return Linking.openURL(gmapsApp);
-
-    // Try Apple Maps (iOS)
-    if (Platform.OS === 'ios') {
-      const apple = `http://maps.apple.com/?daddr=${latitude},${longitude}&dirflg=${
-        travelmode === 'walking' ? 'w' : 'd'
-      }`;
-      return Linking.openURL(apple);
-    }
-
-    // Fallback: Google Maps web
-    const gmapsWeb = `https://www.google.com/maps/dir/?api=1&destination=${latitude},${longitude}&travelmode=${travelmode}`;
-    return Linking.openURL(gmapsWeb);
+    Alert.alert('Booking', `Opening booking for ${item.name}…`);
   };
 
-  const changeMode = async (mode) => {
-    setRouteMode(mode);
-    if (location && destinationCoords) {
-      await fetchRoute(location, destinationCoords, mode);
-    }
-  };
+  const Header = useMemo(
+    () => (
+      <View style={styles.header}>
+        <Ionicons name="location" size={18} />
+        <Text style={styles.headerTitle}> Nearby attractions</Text>
+      </View>
+    ),
+    []
+  );
 
-  return (
-    <View style={styles.container} pointerEvents="box-none">
-      {location ? (
-        <MapView
-          ref={mapRef}
-          style={styles.map}
-          initialRegion={{
-            latitude: location.latitude,
-            longitude: location.longitude,
-            latitudeDelta: 0.1,
-            longitudeDelta: 0.1,
-          }}
-          showsUserLocation
-        >
-          {destinationCoords && <Marker coordinate={destinationCoords} title="Destination" />}
+  const Controls = useMemo(
+    () => (
+      <View style={styles.controls}>
+        <Text style={styles.ctrlLabel}>Radius</Text>
 
-          {routeCoords.length > 1 ? (
-            <Polyline coordinates={routeCoords} strokeColor="#0000FF" strokeWidth={4} />
-          ) : (
-            destinationCoords && (
-              <Polyline
-                coordinates={[
-                  { latitude: location.latitude, longitude: location.longitude },
-                  destinationCoords,
-                ]}
-                strokeColor="#0000FF"
-                strokeWidth={4}
-              />
-            )
-          )}
-        </MapView>
-      ) : (
-        <View style={styles.loading}>
-          <Text>Loading location...</Text>
+        <View style={styles.row}>
+          {[{ label: '2km', val: 2000 }, { label: '5km', val: 5000 }, { label: '10km', val: 10000 }].map((opt, idx) => (
+            <TouchableOpacity
+              key={opt.val}
+              style={[styles.chip, radiusM === opt.val && styles.chipActive, idx > 0 && styles.ml8]}
+              onPress={() => setRadiusM(opt.val)}
+            >
+              <Text style={[styles.chipText, radiusM === opt.val && styles.chipTextActive]}>
+                {opt.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
         </View>
-      )}
 
-      {(destinationCoords && (distanceKm || routeInfo)) && (
-        <View
-          style={[
-            styles.infoBox,
-            { bottom: TAB_BAR_MARGIN + SEARCH_BOX_HEIGHT + GAP },
-          ]}
-          pointerEvents="box-none"
-        >
-          <Text style={styles.infoTitle}>📍 {destinationText}</Text>
-          {distanceKm && <Text>Straight distance: {distanceKm} km</Text>}
-          {routeInfo && (
-            <>
-              <Text>Route distance: {formatMetersToKm(routeInfo.distanceMeters)}</Text>
-              <Text>ETA ({routeInfo.mode}): {formatSecondsToMin(routeInfo.timeSeconds)}</Text>
-            </>
-          )}
-          {distanceKm && (
-            <>
-              <Text>Walk (5 km/h): {getEstimatedTime(5)}</Text>
-              <Text>Drive (50 km/h): {getEstimatedTime(50)}</Text>
-            </>
-          )}
-        </View>
-      )}
-
-      {/* Bottom bar: search + actions */}
-      <View style={[styles.inputContainer, { bottom: TAB_BAR_MARGIN }]}>
-        <TextInput
-          style={styles.input}
-          placeholder="Search destination (e.g., Eiffel Tower)"
-          value={destinationText}
-          onChangeText={onChangeDestinationText}
-          editable={!loadingDest}
-          returnKeyType="search"
-        />
-        {destinationText.length > 0 && (
-          <TouchableOpacity onPress={clearDestinationText} style={{ marginHorizontal: 8 }}>
-            <Ionicons name="close-circle" size={22} />
-          </TouchableOpacity>
-        )}
-        <TouchableOpacity onPress={handleSetDestination} disabled={loadingDest} style={{ marginRight: 6 }}>
-          <Ionicons name="search" size={24} color={loadingDest ? '#aaa' : '#1E90FF'} />
-        </TouchableOpacity>
-
-        {/* Mode toggle (optional) */}
-        <TouchableOpacity onPress={() => changeMode('walk')} style={[styles.modeBtn, routeMode === 'walk' && styles.modeBtnActive]}>
-          <Ionicons name="walk" size={18} />
-        </TouchableOpacity>
-        <TouchableOpacity onPress={() => changeMode('bicycle')} style={[styles.modeBtn, routeMode === 'bicycle' && styles.modeBtnActive]}>
-          <Ionicons name="bicycle" size={18} />
-        </TouchableOpacity>
-        <TouchableOpacity onPress={() => changeMode('drive')} style={[styles.modeBtn, routeMode === 'drive' && styles.modeBtnActive]}>
-          <Ionicons name="car" size={18} />
-        </TouchableOpacity>
-
-        {/* Start Navigation */}
-        <TouchableOpacity onPress={openExternalNavigation} disabled={!destinationCoords} style={styles.navBtn}>
-          <Ionicons name="navigate-outline" size={22} color={destinationCoords ? '#fff' : '#ccc'} />
-          <Text style={[styles.navBtnText, { color: destinationCoords ? '#fff' : '#ccc' }]}>Start</Text>
+        <TouchableOpacity style={styles.refreshBtn} onPress={fetchAttractions} disabled={loadingList}>
+          <Ionicons name="refresh" size={18} color="#fff" />
+          <Text style={styles.refreshText}>Refresh</Text>
         </TouchableOpacity>
       </View>
+    ),
+    [radiusM, loadingList, fetchAttractions]
+  );
+
+  const renderItem = ({ item }) => (
+    <View style={styles.card}>
+      <View style={styles.cardMain}>
+        <View style={{ flex: 1, paddingRight: 42 }}>
+          <Text style={styles.placeName} numberOfLines={1}>{item.name}</Text>
+          {!!item.address && <Text style={styles.placeAddress} numberOfLines={1}>{item.address}</Text>}
+
+          <View style={styles.metaRow}>
+            <View style={styles.metaPill}>
+              <Ionicons name="navigate-outline" size={14} />
+              <Text style={styles.metaText}>{fmtDistance(item.distance)}</Text>
+            </View>
+
+            <View style={[styles.metaPill, styles.ml8]}>
+              <Ionicons name="star" size={14} />
+              <Text style={styles.metaText}>{stars(item.rating)}</Text>
+            </View>
+
+            {item.openingHours ? (
+              <View style={[styles.metaPill, styles.ml8]}>
+                <Ionicons name="time-outline" size={14} />
+                <Text style={styles.metaText}>Hours available</Text>
+              </View>
+            ) : null}
+          </View>
+        </View>
+
+        <TouchableOpacity
+          style={[styles.ticketBtn, !item.bookable && styles.ticketBtnDisabled]}
+          onPress={() => onPressTicket(item)}
+          disabled={!item.bookable}
+          accessibilityLabel={item.bookable ? 'Book tickets' : 'Not bookable'}
+        >
+          <Ionicons name="ticket-outline" size={18} color="#fff" />
+        </TouchableOpacity>
+      </View>
+
+      {item.bookable ? (
+        <View style={styles.bookRow}>
+          <Ionicons name="pricetag-outline" size={14} />
+          <Text style={styles.bookText}>{item.price != null ? `From $${item.price}` : 'Available to book'}</Text>
+        </View>
+      ) : (
+        <View style={styles.unavailableRow}>
+          <Ionicons name="close-circle-outline" size={14} />
+          <Text style={styles.unavailableText}>Not available to book with us</Text>
+        </View>
+      )}
+    </View>
+  );
+
+  if (loadingLoc) {
+    return (
+      <View style={styles.center}>
+        <ActivityIndicator />
+        <Text style={{ marginTop: 8 }}>Getting your location…</Text>
+      </View>
+    );
+  }
+
+  if (!coords) {
+    return (
+      <View style={styles.center}>
+        <Text>{errorText || 'Location unavailable.'}</Text>
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.container}>
+      {Header}
+      {Controls}
+
+      {loadingList ? (
+        <View style={[styles.center, { flex: 1 }]}>
+          <ActivityIndicator />
+          <Text style={{ marginTop: 8 }}>Searching nearby attractions…</Text>
+        </View>
+      ) : items.length === 0 ? (
+        <View style={[styles.center, { flex: 1 }]}>
+          <Text>{errorText || 'No attractions found nearby.'}</Text>
+        </View>
+      ) : (
+        <FlatList
+          data={items}
+          keyExtractor={(it) => it.id}
+          renderItem={renderItem}
+          contentContainerStyle={{ padding: 12, paddingBottom: 32 }}
+        />
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  map: { width: Dimensions.get('window').width, height: Dimensions.get('window').height },
-  loading: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  container: { flex: 1, backgroundColor: '#fff' },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
 
-  inputContainer: {
-    position: 'absolute',
-    left: 12,
-    right: 12,
-    backgroundColor: 'white',
+  header: { paddingTop: 90, paddingHorizontal: 14, paddingBottom: 8, flexDirection: 'row', alignItems: 'center' },
+  headerTitle: { fontSize: 18, fontWeight: '700' },
+
+  controls: { paddingHorizontal: 12, paddingBottom: 8 },
+  row: { flexDirection: 'row', alignItems: 'center' },
+  ml8: { marginLeft: 8 },
+
+  ctrlLabel: { fontWeight: '600', marginRight: 6, marginBottom: 6 },
+  chip: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999, backgroundColor: '#f1f3f5' },
+  chipActive: { backgroundColor: '#dceeff' },
+  chipText: { fontSize: 13, fontWeight: '600', color: '#444' },
+  chipTextActive: { color: '#0a66c2' },
+  refreshBtn: {
+    marginLeft: 'auto',
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#0a66c2',
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 10,
+    marginTop: 8
+  },
+  refreshText: { color: '#fff', marginLeft: 6, fontWeight: '600' },
+
+  card: {
     borderRadius: 14,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
-    elevation: 10,
-    shadowColor: '#000',
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
-    zIndex: 20,
-    minHeight: SEARCH_BOX_HEIGHT,
-  },
-
-  input: { flex: 1, fontSize: 15 },
-
-  modeBtn: {
-    paddingHorizontal: 8,
-    paddingVertical: 6,
-    borderRadius: 10,
-    backgroundColor: '#f0f0f0',
-    marginHorizontal: 3,
-  },
-  modeBtnActive: {
-    backgroundColor: '#e0f0ff',
-  },
-
-  navBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#1E90FF',
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    borderRadius: 10,
-    marginLeft: 6,
-  },
-  navBtnText: {
-    marginLeft: 4,
-    fontSize: 14,
-    fontWeight: '600',
-  },
-
-  infoBox: {
-    position: 'absolute',
-    left: 12,
-    right: 12,
     backgroundColor: '#fff',
-    borderRadius: 14,
     padding: 12,
-    elevation: 6,
+    marginBottom: 10,
+    elevation: 5,
     shadowColor: '#000',
-    shadowOpacity: 0.12,
+    shadowOpacity: 0.08,
     shadowRadius: 6,
     shadowOffset: { width: 0, height: 3 },
-    zIndex: 10,
   },
+  cardMain: { flexDirection: 'row', alignItems: 'center' },
+  placeName: { fontSize: 16, fontWeight: '700' },
+  placeAddress: { fontSize: 13, color: '#666', marginTop: 2 },
+  metaRow: { flexDirection: 'row', marginTop: 8, flexWrap: 'wrap' },
+  metaPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f6f7f8',
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  metaText: { fontSize: 12, color: '#333' },
 
-  infoTitle: { fontWeight: 'bold', fontSize: 16, marginBottom: 4 },
+  ticketBtn: {
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    backgroundColor: '#2ea44f',
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 10,
+  },
+  ticketBtnDisabled: { backgroundColor: '#9aa0a6' },
+
+  bookRow: { marginTop: 10, flexDirection: 'row', alignItems: 'center' },
+  bookText: { fontSize: 13, color: '#1b5e20', fontWeight: '600', marginLeft: 6 },
+
+  unavailableRow: { marginTop: 10, flexDirection: 'row', alignItems: 'center' },
+  unavailableText: { fontSize: 13, color: '#9a0007', fontWeight: '600', marginLeft: 6 },
 });
