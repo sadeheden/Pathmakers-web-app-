@@ -663,16 +663,7 @@ const handleWeatherPress = () => {
           onPaymentSuccess={handlePaymentSuccess}
         />
 
-        {/* Bottom Support Button */}
-        <View style={styles.bottomButtonsContainer}>
-          <TouchableOpacity
-            style={styles.bottomButton}
-            activeOpacity={0.8}
-            onPress={() => navigation.navigate('Support')}
-          >
-            <Text style={styles.bottomButtonText}>🌐 Support</Text>
-          </TouchableOpacity>
-        </View>
+       
       </ScrollView>
     </View>
   );
@@ -700,31 +691,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 100,
   },
-  bottomButtonsContainer: {
-    alignItems: 'center',
-    paddingVertical: 15,
-    paddingHorizontal: 20,
-    backgroundColor: '#fff',
-    borderTopWidth: 1,
-    borderTopColor: '#ddd',
-    marginTop: 40,
-  },
-  bottomButton: {
-    backgroundColor: '#667eea',
-    paddingVertical: 12,
-    paddingHorizontal: 25,
-    borderRadius: 25,
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 3,
-  },
-  bottomButtonText: {
-    color: 'white',
-    fontWeight: '600',
-    fontSize: 16,
-  },
+
   appBackground: {
     flex: 1,
     backgroundColor: '#ffffff',
