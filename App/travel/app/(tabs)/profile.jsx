@@ -14,6 +14,7 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
+import { LogOut } from 'lucide-react-native';
 
 const { width } = Dimensions.get('window');
 
@@ -279,11 +280,18 @@ export default function Profile() {
 
   return (
     <View style={styles.container}>
+      
       <ScrollView 
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
+        <View style={styles.logoutIconContainer}>
+  <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
+    <LogOut size={24} color="#495057" />
+  </TouchableOpacity>
+</View>
+
         <View style={styles.profileSection}>
           <View style={styles.avatarContainer}>
             <Image
@@ -421,7 +429,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#495057',
   },
-  statLabel: {
+  statLabel: { 
     fontSize: 14,
     color: '#6c757d',
     marginTop: 4,
@@ -574,4 +582,21 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontWeight: '500',
   },
+  logoutIconContainer: {
+  position: 'absolute',
+  top: 50, // adjust for your SafeArea
+  left: 20,
+  zIndex: 10,
+},
+logoutButton: {
+  backgroundColor: '#f1f3f5',
+  padding: 8,
+  borderRadius: 50,
+  elevation: 3,
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: 2 },
+  shadowOpacity: 0.2,
+  shadowRadius: 3,
+},
+
 });
