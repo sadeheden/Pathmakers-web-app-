@@ -15,7 +15,7 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
-
+import { FontAwesome } from '@expo/vector-icons';
 const screenWidth = Dimensions.get('window').width;
 
 // Enhanced cities array with more details
@@ -187,7 +187,8 @@ export default function HomeScreen() {
   const [showIntroPopup, setShowIntroPopup] = useState(false);
   const [paymentCompleted, setPaymentCompleted] = useState(false);
   const [carouselIndex, setCarouselIndex] = useState(0);
-  
+  const [currentWeather, setCurrentWeather] = useState({ temp: 28 });
+
   // *** משתני State חדשים לנתוני ההזמנה ***
   const [departureCity, setDepartureCity] = useState('68022f445f7300b11f986829'); // ברירת מחדל - תל אביב
   const [selectedAttractions, setSelectedAttractions] = useState(['6807610adc218773e065223d']); // רשימת אטרקציות
@@ -297,6 +298,17 @@ const handleWeatherPress = () => {
     } catch (error) {
       console.error('Navigation error:', error);
       Alert.alert('Navigation Error', 'Could not navigate to RealChat screen.');
+    }
+  };
+
+  // הפונקציה החדשה לטיפול בלחיצה על אייקון המטבע
+  const handleCurrencyPress = () => {
+    try {
+      console.log('Currency converter pressed');
+      navigation.navigate('calculator');
+    } catch (error) {
+      console.error('Navigation error:', error);
+      Alert.alert('Navigation Error', 'Could not navigate to currency converter.');
     }
   };
 
@@ -430,13 +442,32 @@ const handleWeatherPress = () => {
           <View style={styles.logoContainer}>
             <Image source={require('../../assets/images/logo.png')} style={styles.logoSmall} />
           </View>
+          
+          {/* Weather Icon/Button */}
           <TouchableOpacity onPress={handleWeatherPress} style={styles.weatherPreview} activeOpacity={0.8}>
             <View style={styles.weatherContent}>
               <Text style={styles.weatherIcon}>☀️</Text>
-              <Text style={styles.weatherText}>27°C</Text>
+              <Text style={styles.weatherText}>{Math.round(currentWeather.temp)}°C</Text>
             </View>
           </TouchableOpacity>
         </View>
+
+        {/* Currency Icon/Button - moved below weather button for better design */}
+          <View style={{ alignItems: 'flex-end', marginBottom: 15, transform: [{ translateY: -30 }] }}>
+          <TouchableOpacity 
+            onPress={handleCurrencyPress} 
+            style={styles.currencyIcon} 
+            activeOpacity={0.8}
+          >
+            <LinearGradient 
+              colors={['#FFD700', '#FFA500']} 
+              style={styles.currencyIconGradient}
+            >
+               <FontAwesome name="dollar" size={24} color="#fff" />
+            </LinearGradient>
+          </TouchableOpacity>
+        </View>
+        
         {/* Welcome Section */}
         <View style={styles.welcomeSection}>
           <Text style={styles.title}>
@@ -595,16 +626,8 @@ const handleWeatherPress = () => {
           onPaymentSuccess={handlePaymentSuccess}
         />
 
-        {/* Bottom Buttons Container */}
+        {/* Bottom Support Button */}
         <View style={styles.bottomButtonsContainer}>
-          <TouchableOpacity
-            style={styles.bottomButton}
-            activeOpacity={0.8}
-            onPress={() => navigation.navigate('calculator')}
-          >
-            <Text style={styles.bottomButtonText}>💱 Currency Converter</Text>
-          </TouchableOpacity>
-
           <TouchableOpacity
             style={styles.bottomButton}
             activeOpacity={0.8}
@@ -641,8 +664,7 @@ const styles = StyleSheet.create({
     paddingBottom: 100,
   },
   bottomButtonsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
+    alignItems: 'center',
     paddingVertical: 15,
     paddingHorizontal: 20,
     backgroundColor: '#fff',
@@ -686,6 +708,29 @@ const styles = StyleSheet.create({
     width: 50,
     height: 50,
     resizeMode: 'contain',
+  },
+  // עיצוב אייקון המטבע החדש
+  currencyIcon: {
+    borderRadius: 25,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  currencyIconGradient: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  currencySymbol: {
+    fontSize: 22,
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
   },
   weatherPreview: {
     backgroundColor: 'rgba(255,255,255,0.25)',
