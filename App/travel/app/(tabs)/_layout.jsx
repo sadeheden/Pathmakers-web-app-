@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { Image, StyleSheet, Platform } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import Ionicons from 'react-native-vector-icons/Ionicons'; 
+import Ionicons from '@expo/vector-icons/Ionicons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import HomeScreen from './home';
@@ -16,20 +16,19 @@ import SupportScreen from './Support';
 
 const Tab = createBottomTabNavigator();
 const HomeStack = createNativeStackNavigator();
+const RootStack = createNativeStackNavigator(); // 👈 NEW
 
-// 👇 Stack for the Home tab (hidden RealChat lives here)
 function HomeStackScreen() {
   return (
     <HomeStack.Navigator screenOptions={{ headerShown: false }}>
       <HomeStack.Screen name="HomeMain" component={HomeScreen} />
       <HomeStack.Screen name="RealChat" component={RealChat} />
-         <HomeStack.Screen name="Weather" component={WeatherScreen} />
-          <HomeStack.Screen name="Support" component={SupportScreen} />
+      <HomeStack.Screen name="Weather" component={WeatherScreen} />
     </HomeStack.Navigator>
   );
 }
 
-export default function TabsLayout() {
+function TabsLayout() {
   const [profileImage, setProfileImage] = useState(null);
 
   useEffect(() => {
@@ -58,7 +57,7 @@ export default function TabsLayout() {
           paddingBottom: Platform.OS === 'ios' ? 8 : 4,
         },
         tabBarStyle: styles.tabBar,
-        tabBarIcon: ({ color, size, focused }) => {
+        tabBarIcon: ({ color, focused }) => {
           const iconSize = 28;
 
           if (route.name === 'Profile') {
@@ -85,15 +84,35 @@ export default function TabsLayout() {
         },
       })}
     >
-      {/* 👇 Use the stack instead of HomeScreen directly */}
       <Tab.Screen name="Home" component={HomeStackScreen} />
       <Tab.Screen name="Map" component={MapScreen} />
       <Tab.Screen name="Diary" component={DiaryScreen} options={{ tabBarLabel: 'Planner' }} />
       <Tab.Screen name="Profile" component={ProfileScreen} />
+      {/* ❌ No Support here */}
     </Tab.Navigator>
   );
 }
 
+export default function RootLayout() {
+  return (
+    <RootStack.Navigator>
+      <RootStack.Screen
+        name="Tabs"
+        component={TabsLayout}
+        options={{ headerShown: false }}
+      />
+      <RootStack.Screen
+        name="Support"
+        component={SupportScreen}
+        options={{
+          presentation: 'modal',     // nice slide-up on iOS
+          headerShown: true,
+          title: 'Support',
+        }}
+      />
+    </RootStack.Navigator>
+  );
+}
 
 const styles = StyleSheet.create({
   tabBar: {
