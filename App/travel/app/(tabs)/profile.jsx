@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -36,8 +36,187 @@ export default function Profile() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [expandedOrderId, setExpandedOrderId] = useState(null);
+  const [dynamicData, setDynamicData] = useState({
+    cities: {},
+    flights: {},
+    hotels: {}
+  });
   const router = useRouter();
   const navigation = useNavigation();
+
+  // Static mappings as fallback
+  const staticMappings = {
+    cities: {
+      '68022f445f7300b11f986829': 'Tel Aviv',
+      '68022f445f7300b11f986837': 'Phuket', 
+      '68022f445f7300b11f986838': 'Paris',
+      '68022f445f7300b11f986839': 'Dubai',
+      '68022f445f7300b11f98683a': 'London',
+      '68022f445f7300b11f98683b': 'Turkey',
+      '68022f445f7300b11f98683c': 'Amsterdam'
+    },
+    flights: {
+      '68075f88dc218773e0652238': 'PG123 - Phuket Airways',
+      '68075f88dc218773e0652239': 'AF456 - Air France',
+      '68075f88dc218773e065223a': 'EK654 - Emirates',
+      '68075f88dc218773e065223b': 'BA890 - British Airways',
+      '68075f88dc218773e065223c': 'TK101 - Turkish Airlines',
+      '68075f88dc218773e065223d': 'KL202 - KLM Royal Dutch'
+    },
+    hotels: {
+      '68022f445f7300b11f986837': 'Phuket Grand Resort & Spa',
+      '68022f445f7300b11f986838': 'Hotel Parisienne Palace', 
+      '68022f445f7300b11f986839': 'Dubai Luxury Suites & Marina',
+      '68022f445f7300b11f98683a': 'The London Palace Hotel',
+      '68022f445f7300b11f98683b': 'Istanbul Grand Sultanahmet',
+      '68022f445f7300b11f98683c': 'Amsterdam Central Boutique Hotel'
+    }
+  };
+
+  // Function to fetch dynamic data from MongoDB
+  const fetchDynamicData = async (type, ids) => {
+    try {
+      const token = (await AsyncStorage.getItem('token'))?.replace(/^"|"$/g, '') || null;
+      if (!token) return {};
+
+      console.log(`🔍 Fetching ${type} data for IDs:`, ids);
+
+      const response = await fetchWithTimeout(
+        'https://pathmakers-web-app-app-travel.onrender.com/api/dynamic-data',
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ type, ids }),
+          timeout: 10000,
+        }
+      );
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log(`✅ Received ${type} data:`, result.data);
+        return result.data || {};
+      } else {
+        console.log(`❌ Failed to fetch ${type} data:`, response.status);
+      }
+    } catch (error) {
+      console.error(`❌ Error fetching dynamic ${type}:`, error);
+    }
+    return {};
+  };
+
+  // Extract name from MongoDB document based on type
+  const extractNameFromDocument = (type, doc) => {
+    if (!doc) return null;
+    
+    switch (type) {
+      case 'cities':
+        return doc.name || doc.city || doc.cityName || doc.city_name || null;
+      case 'flights':
+        return doc.flight_number || doc.name || doc.flightNumber || doc.flight_name ||
+               (doc.airline ? `${doc.airline} ${doc.flight_number || doc.flightNumber || ''}`.trim() : null);
+      case 'hotels':
+        return doc.name || doc.hotel_name || doc.hotelName || null;
+      default:
+        return null;
+    }
+  };
+
+  // Bulk fetch missing data when orders load
+  const fetchMissingData = useCallback(async (orders) => {
+    console.log('🔍 Starting to analyze orders for missing data:', orders.length);
+    
+    const missingIds = {
+      cities: new Set(),
+      flights: new Set(),
+      hotels: new Set()
+    };
+
+    // Identify missing data with detailed logging
+    orders.forEach((order, index) => {
+      console.log(`📋 Analyzing order ${index + 1}:`, {
+        departure_city_name: order.departure_city_name,
+        departure_city_id: order.departure_city_id,
+        destination_city_name: order.destination_city_name,
+        destination_city_id: order.destination_city_id,
+        flight_name: order.flight_name,
+        flight_id: order.flight_id,
+        hotel_name: order.hotel_name,
+        hotel_id: order.hotel_id
+      });
+
+      // Check departure cities
+      const needsDepartureCity = (!order.departure_city_name || 
+                                 order.departure_city_name.match(/^[0-9a-f]{24}$/i)) && 
+                                order.departure_city_id && 
+                                !staticMappings.cities[order.departure_city_id];
+      if (needsDepartureCity) {
+        console.log(`🏙️ Need to fetch departure city: ${order.departure_city_id}`);
+        missingIds.cities.add(order.departure_city_id);
+      }
+
+      // Check destination cities
+      const needsDestinationCity = (!order.destination_city_name || 
+                                   order.destination_city_name.match(/^[0-9a-f]{24}$/i)) && 
+                                  order.destination_city_id && 
+                                  !staticMappings.cities[order.destination_city_id];
+      if (needsDestinationCity) {
+        console.log(`🏙️ Need to fetch destination city: ${order.destination_city_id}`);
+        missingIds.cities.add(order.destination_city_id);
+      }
+      
+      // Check flights
+      const needsFlight = (!order.flight_name || 
+                          order.flight_name.match(/^[0-9a-f]{24}$/i)) && 
+                         order.flight_id && 
+                         !staticMappings.flights[order.flight_id];
+      if (needsFlight) {
+        console.log(`✈️ Need to fetch flight: ${order.flight_id}`);
+        missingIds.flights.add(order.flight_id);
+      }
+      
+      // Check hotels
+      const needsHotel = (!order.hotel_name || 
+                         order.hotel_name.match(/^[0-9a-f]{24}$/i)) && 
+                        order.hotel_id && 
+                        !staticMappings.hotels[order.hotel_id];
+      if (needsHotel) {
+        console.log(`🏨 Need to fetch hotel: ${order.hotel_id}`);
+        missingIds.hotels.add(order.hotel_id);
+      }
+    });
+
+    console.log('📊 Summary of missing IDs:', {
+      cities: Array.from(missingIds.cities),
+      flights: Array.from(missingIds.flights),
+      hotels: Array.from(missingIds.hotels)
+    });
+
+    // Fetch missing data for each type
+    const fetchPromises = Object.entries(missingIds).map(async ([type, idSet]) => {
+      if (idSet.size > 0) {
+        const ids = Array.from(idSet);
+        console.log(`🔄 Fetching missing ${type} data for ${ids.length} IDs:`, ids);
+        const data = await fetchDynamicData(type, ids);
+        console.log(`✅ Received ${type} data:`, data);
+        return { type, data };
+      }
+      return { type, data: {} };
+    });
+
+    const results = await Promise.all(fetchPromises);
+    
+    // Update dynamic data state
+    const newDynamicData = { ...dynamicData };
+    results.forEach(({ type, data }) => {
+      newDynamicData[type] = { ...newDynamicData[type], ...data };
+    });
+    
+    console.log('🎯 Updated dynamic data:', newDynamicData);
+    setDynamicData(newDynamicData);
+  }, [dynamicData]);
 
   useEffect(() => {
     const loadData = async () => {
@@ -84,7 +263,14 @@ export default function Profile() {
           throw new Error(data.message || 'Failed to load orders');
         }
 
-        setOrders(data.orders || []);
+        const ordersData = data.orders || [];
+        setOrders(ordersData);
+        
+        // Fetch missing dynamic data
+        if (ordersData.length > 0) {
+          await fetchMissingData(ordersData);
+        }
+
       } catch (err) {
         console.error('🔥 Load data error:', err);
         Alert.alert('Error', err.message || 'Failed to load data');
@@ -117,56 +303,93 @@ export default function Profile() {
     return id || 'Unknown';
   };
 
+  // Enhanced name getter functions with dynamic lookup
   const getCityName = (cityName, cityId) => {
-    const cityMappings = {
-      '68022f445f7300b11f986829': 'Tel Aviv',
-      '68022f445f7300b11f986837': 'Phuket', 
-      '68022f445f7300b11f986838': 'Paris',
-      '68022f445f7300b11f986839': 'Dubai',
-      '68022f445f7300b11f98683a': 'London',
-      '68022f445f7300b11f98683b': 'Turkey',
-      '68022f445f7300b11f98683c': 'Amsterdam'
-    };
+    console.log(`🏙️ Getting city name for: name="${cityName}", id="${cityId}"`);
     
+    // First check if we have a valid non-ObjectId name
     if (cityName && !cityName.match(/^[0-9a-f]{24}$/i)) {
+      console.log(`✅ Using provided city name: ${cityName}`);
       return cityName;
     }
     
-    return cityMappings[cityId] || getSafeName(cityName, cityId);
+    // Check static mappings
+    if (staticMappings.cities[cityId]) {
+      console.log(`✅ Found in static mappings: ${staticMappings.cities[cityId]}`);
+      return staticMappings.cities[cityId];
+    }
+    
+    // Check dynamic data
+    if (dynamicData.cities[cityId]) {
+      const doc = dynamicData.cities[cityId];
+      console.log(`🔍 Found in dynamic data:`, doc);
+      const name = extractNameFromDocument('cities', doc);
+      if (name) {
+        console.log(`✅ Extracted city name: ${name}`);
+        return name;
+      }
+    }
+    
+    // Fallback
+    const fallback = getSafeName(cityName, cityId);
+    console.log(`⚠️ Using fallback for city: ${fallback}`);
+    return fallback;
   };
 
   const getFlightName = (flightName, flightId) => {
-    const flightMappings = {
-      '68075f88dc218773e0652238': 'PG123 - Phuket',
-      '68075f88dc218773e0652239': 'AF123 - Paris',
-      '68075f88dc218773e065223a': 'EK654 - Dubai',
-      '68075f88dc218773e065223b': 'BA890 - London',
-      '68075f88dc218773e065223c': 'TK101 - Turkey',
-      '68075f88dc218773e065223d': 'KL202 - Amsterdam'
-    };
+    console.log(`✈️ Getting flight name for: name="${flightName}", id="${flightId}"`);
     
     if (flightName && !flightName.match(/^[0-9a-f]{24}$/i)) {
+      console.log(`✅ Using provided flight name: ${flightName}`);
       return flightName;
     }
     
-    return flightMappings[flightId] || getSafeName(flightName, flightId);
+    if (staticMappings.flights[flightId]) {
+      console.log(`✅ Found in static mappings: ${staticMappings.flights[flightId]}`);
+      return staticMappings.flights[flightId];
+    }
+    
+    if (dynamicData.flights[flightId]) {
+      const doc = dynamicData.flights[flightId];
+      console.log(`🔍 Found in dynamic data:`, doc);
+      const name = extractNameFromDocument('flights', doc);
+      if (name) {
+        console.log(`✅ Extracted flight name: ${name}`);
+        return name;
+      }
+    }
+    
+    const fallback = getSafeName(flightName, flightId);
+    console.log(`⚠️ Using fallback for flight: ${fallback}`);
+    return fallback;
   };
 
   const getHotelName = (hotelName, hotelId) => {
-    const hotelMappings = {
-      '68022f445f7300b11f986837': 'Phuket Grand Hotel',
-      '68022f445f7300b11f986838': 'Hotel Parisienne', 
-      '68022f445f7300b11f986839': 'Dubai Luxury Suites',
-      '68022f445f7300b11f98683a': 'The London Palace',
-      '68022f445f7300b11f98683b': 'Istanbul Grand Hotel',
-      '68022f445f7300b11f98683c': 'Amsterdam Central Hotel'
-    };
+    console.log(`🏨 Getting hotel name for: name="${hotelName}", id="${hotelId}"`);
     
     if (hotelName && !hotelName.match(/^[0-9a-f]{24}$/i)) {
+      console.log(`✅ Using provided hotel name: ${hotelName}`);
       return hotelName;
     }
     
-    return hotelMappings[hotelId] || getSafeName(hotelName, hotelId);
+    if (staticMappings.hotels[hotelId]) {
+      console.log(`✅ Found in static mappings: ${staticMappings.hotels[hotelId]}`);
+      return staticMappings.hotels[hotelId];
+    }
+    
+    if (dynamicData.hotels[hotelId]) {
+      const doc = dynamicData.hotels[hotelId];
+      console.log(`🔍 Found in dynamic data:`, doc);
+      const name = extractNameFromDocument('hotels', doc);
+      if (name) {
+        console.log(`✅ Extracted hotel name: ${name}`);
+        return name;
+      }
+    }
+    
+    const fallback = getSafeName(hotelName, hotelId);
+    console.log(`⚠️ Using fallback for hotel: ${fallback}`);
+    return fallback;
   };
 
   const renderOrder = ({ item }) => {
@@ -281,75 +504,74 @@ export default function Profile() {
     );
   }
 
- return (
-  <View style={styles.container}>
-    <FlatList
-      nestedScrollEnabled
-      ListHeaderComponent={
-        <>
-           {/* Top-right Support Icon */}
-          <View style={styles.supportIconContainer}>
-            <TouchableOpacity
-             onPress={() => navigation.navigate('Support')} // or navigation.navigate('Support')
-              style={styles.supportButton}
-            >
-              <Ionicons name="help-circle-outline" size={24} color="#495057" />
-            </TouchableOpacity>
-          </View>
-
-          {/* Top-left Logout Icon */}
-          <View style={styles.logoutIconContainer}>
-            <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
-              <LogOut size={24} color="#495057" />
-            </TouchableOpacity>
-          </View>
-
-          {/* Profile section */}
-          <View style={styles.profileSection}>
-            <View style={styles.avatarContainer}>
-              <Image
-                source={{ uri: user?.profile_image || 'https://i.pravatar.cc/150?img=12' }}
-                style={styles.avatar}
-              />
-              <View style={styles.avatarRing} />
+  return (
+    <View style={styles.container}>
+      <FlatList
+        nestedScrollEnabled
+        ListHeaderComponent={
+          <>
+            {/* Top-right Support Icon */}
+            <View style={styles.supportIconContainer}>
+              <TouchableOpacity
+                onPress={() => navigation.navigate('Support')} // or navigation.navigate('Support')
+                style={styles.supportButton}
+              >
+                <Ionicons name="help-circle-outline" size={24} color="#495057" />
+              </TouchableOpacity>
             </View>
-            <Text style={styles.name}>{user?.name || user?.username || 'Traveler'}</Text>
-            <Text style={styles.email}>{user?.email || 'no-email@example.com'}</Text>
-          </View>
 
-          {/* Stats */}
-          {orders.length > 0 && renderStats()}
+            {/* Top-left Logout Icon */}
+            <View style={styles.logoutIconContainer}>
+              <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
+                <LogOut size={24} color="#495057" />
+              </TouchableOpacity>
+            </View>
 
-          {/* Title */}
-          <View style={styles.sectionTitleContainer}>
-            <Text style={styles.sectionTitle}>Your Adventures</Text>
-            <View style={styles.sectionTitleUnderline} />
-          </View>
-        </>
-      }
+            {/* Profile section */}
+            <View style={styles.profileSection}>
+              <View style={styles.avatarContainer}>
+                <Image
+                  source={{ uri: user?.profile_image || 'https://i.pravatar.cc/150?img=12' }}
+                  style={styles.avatar}
+                />
+                <View style={styles.avatarRing} />
+              </View>
+              <Text style={styles.name}>{user?.name || user?.username || 'Traveler'}</Text>
+              <Text style={styles.email}>{user?.email || 'no-email@example.com'}</Text>
+            </View>
 
-      data={orders}
-      keyExtractor={(item) => item._id.toString()}
-      renderItem={renderOrder}
+            {/* Stats */}
+            {orders.length > 0 && renderStats()}
 
-      ListEmptyComponent={
-        <LinearGradient colors={['#f8f9fa', '#e9ecef']} style={styles.noTripsContainer}>
-          <Text style={styles.noTripsEmoji}>✈️</Text>
-          <Text style={styles.noTripsTitle}>Ready for Adventure?</Text>
-          <Text style={styles.noTripsText}>Start exploring the world!</Text>
-        </LinearGradient>
-      }
+            {/* Title */}
+            <View style={styles.sectionTitleContainer}>
+              <Text style={styles.sectionTitle}>Your Adventures</Text>
+              <View style={styles.sectionTitleUnderline} />
+            </View>
+          </>
+        }
 
-      contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 30 }}
-      showsVerticalScrollIndicator={false}
-      initialNumToRender={10}
-      maxToRenderPerBatch={10}
-      windowSize={5}
-      removeClippedSubviews
-    />
-  </View>
-);
+        data={orders}
+        keyExtractor={(item) => item._id.toString()}
+        renderItem={renderOrder}
 
+        ListEmptyComponent={
+          <LinearGradient colors={['#f8f9fa', '#e9ecef']} style={styles.noTripsContainer}>
+            <Text style={styles.noTripsEmoji}>✈️</Text>
+            <Text style={styles.noTripsTitle}>Ready for Adventure?</Text>
+            <Text style={styles.noTripsText}>Start exploring the world!</Text>
+          </LinearGradient>
+        }
+
+        contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 30 }}
+        showsVerticalScrollIndicator={false}
+        initialNumToRender={10}
+        maxToRenderPerBatch={10}
+        windowSize={5}
+        removeClippedSubviews
+      />
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({
@@ -585,37 +807,35 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   logoutIconContainer: {
-  position: 'absolute',
-  top: 50, // adjust for your SafeArea
-  left: 20,
-  zIndex: 10,
-},
-logoutButton: {
-  backgroundColor: '#f1f3f5',
-  padding: 8,
-  borderRadius: 50,
-  elevation: 3,
-  shadowColor: '#000',
-  shadowOffset: { width: 0, height: 2 },
-  shadowOpacity: 0.2,
-  shadowRadius: 3,
-},
-supportIconContainer: {
-  position: 'absolute',
-  top: 50, // adjust for your SafeArea
-  right: 20,
-  zIndex: 10,
-},
-supportButton: {
-  backgroundColor: '#f1f3f5',
-  padding: 8,
-  borderRadius: 50,
-  elevation: 3,
-  shadowColor: '#000',
-  shadowOffset: { width: 0, height: 2 },
-  shadowOpacity: 0.2,
-  shadowRadius: 3,
-},
-
-
+    position: 'absolute',
+    top: 50, // adjust for your SafeArea
+    left: 20,
+    zIndex: 10,
+  },
+  logoutButton: {
+    backgroundColor: '#f1f3f5',
+    padding: 8,
+    borderRadius: 50,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+  },
+  supportIconContainer: {
+    position: 'absolute',
+    top: 50, // adjust for your SafeArea
+    right: 20,
+    zIndex: 10,
+  },
+  supportButton: {
+    backgroundColor: '#f1f3f5',
+    padding: 8,
+    borderRadius: 50,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+  },
 });

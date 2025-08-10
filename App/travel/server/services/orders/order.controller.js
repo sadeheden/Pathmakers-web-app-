@@ -1,143 +1,72 @@
+// Backend: Enhanced controller with dynamic lookup endpoint
 import Order from './order.model.js';
 import { ObjectId } from 'mongodb';
 import { connectDB } from '../auth/auth.db.js';
 
-function cleanId(id) {
+// Cache for dynamic lookups to avoid repeated DB calls
+const dynamicCache = {
+  cities: new Map(),
+  flights: new Map(),
+  hotels: new Map(),
+};
+
+// Helper function to get data by ID with caching
+async function getDataById(collection, id, cacheMap) {
+  if (!id) return null;
+  
+  // Check cache first
+  const cacheKey = id.toString();
+  if (cacheMap.has(cacheKey)) {
+    return cacheMap.get(cacheKey);
+  }
+  
   try {
-    if (!id) return null;
-    return new ObjectId(String(id));
+    const db = await connectDB();
+    const objectId = new ObjectId(id);
+    const document = await db.collection(collection).findOne({ _id: objectId });
+    
+    // Cache the result (even if null)
+    cacheMap.set(cacheKey, document);
+    return document;
   } catch (error) {
-    console.warn('⚠️ Invalid ObjectId:', id, error.message);
+    console.error(`❌ Error fetching ${collection} by ID ${id}:`, error);
+    cacheMap.set(cacheKey, null);
     return null;
   }
 }
 
-function toObjectId(id) {
+// New endpoint for dynamic lookups
+export async function getDynamicData(req, res) {
   try {
-    if (!id) return null;
-    return new ObjectId(String(id));
-  } catch (err) {
-    console.warn('⚠️ Invalid ObjectId:', id);
-    return null;
+    const { type, ids } = req.body; // type: 'cities', 'flights', 'hotels', ids: array of IDs
+    
+    if (!type || !Array.isArray(ids)) {
+      return res.status(400).json({ message: 'Invalid request. Need type and ids array.' });
+    }
+    
+    const validTypes = ['cities', 'flights', 'hotels'];
+    if (!validTypes.includes(type)) {
+      return res.status(400).json({ message: 'Invalid type. Must be cities, flights, or hotels.' });
+    }
+    
+    const results = {};
+    const cacheMap = dynamicCache[type];
+    
+    for (const id of ids) {
+      if (id) {
+        const data = await getDataById(type, id, cacheMap);
+        results[id] = data;
+      }
+    }
+    
+    res.json({ success: true, data: results });
+  } catch (error) {
+    console.error('❌ Dynamic lookup error:', error);
+    res.status(500).json({ message: 'Internal server error' });
   }
 }
 
-export async function createOrder(req, res) {
-  console.log('📬 Creating new order for user:', req.user?.id || req.user?.userId);
-  console.log('📬 Request body:', JSON.stringify(req.body, null, 2));
-
-  if (!req.user?.id && !req.user?.userId) {
-    return res.status(401).json({ message: 'Unauthorized' });
-  }
-
-  try {
-    const {
-      departureCityId,
-      destinationCityId,
-      flightId,
-      hotelId,
-      attractions,
-      transportation,
-      paymentMethod,
-      totalPrice,
-    } = req.body;
-
-    // Validation with detailed logging
-    const missing = [];
-    if (!departureCityId) missing.push('departureCityId');
-    if (!destinationCityId) missing.push('destinationCityId');
-    if (!flightId) missing.push('flightId');
-    if (!hotelId) missing.push('hotelId');
-    if (!paymentMethod) missing.push('paymentMethod');
-    if (totalPrice === undefined || totalPrice === null || totalPrice === '') {
-      missing.push('totalPrice');
-    }
-
-    if (missing.length) {
-      console.log('❌ Missing fields:', missing);
-      return res.status(400).json({ 
-        message: `Missing required fields: ${missing.join(', ')}`,
-        received: req.body
-      });
-    }
-
-    // Convert and validate ObjectIds
-    const userId = cleanId(req.user.id || req.user.userId);
-    const departureCityObjectId = cleanId(departureCityId);
-    const destinationCityObjectId = cleanId(destinationCityId);
-    const flightObjectId = cleanId(flightId);
-    const hotelObjectId = cleanId(hotelId);
-
-    if (!userId) {
-      return res.status(400).json({ message: 'Invalid user ID' });
-    }
-    if (!departureCityObjectId) {
-      return res.status(400).json({ message: 'Invalid departure city ID' });
-    }
-    if (!destinationCityObjectId) {
-      return res.status(400).json({ message: 'Invalid destination city ID' });
-    }
-    if (!flightObjectId) {
-      return res.status(400).json({ message: 'Invalid flight ID' });
-    }
-    if (!hotelObjectId) {
-      return res.status(400).json({ message: 'Invalid hotel ID' });
-    }
-
-    // Process attractions
-    const attractionIds = Array.isArray(attractions) 
-      ? attractions.map(cleanId).filter(Boolean) 
-      : [];
-
-    // Parse total price
-    const parsedTotalPrice = parseInt(totalPrice) || parseFloat(totalPrice) || 0;
-    if (parsedTotalPrice <= 0) {
-      return res.status(400).json({ message: 'Invalid total price' });
-    }
-
-    console.log('✅ Validation passed, creating order with:', {
-      user_id: userId,
-      departure_city_id: departureCityObjectId,
-      destination_city_id: destinationCityObjectId,
-      flight_id: flightObjectId,
-      hotel_id: hotelObjectId,
-      attractions: attractionIds,
-      transportation,
-      payment_method: paymentMethod,
-      total_price: parsedTotalPrice,
-    });
-
-    // Create order with pre-validated ObjectIds
-    const orderData = {
-      user_id: userId,
-      departure_city_id: departureCityObjectId,
-      destination_city_id: destinationCityObjectId,
-      flight_id: flightObjectId,
-      hotel_id: hotelObjectId,
-      attractions: attractionIds,
-      transportation,
-      payment_method: paymentMethod,
-      total_price: parsedTotalPrice,
-      created_at: new Date(),
-    };
-
-    const newOrder = new Order(orderData);
-    const savedOrder = await newOrder.save();
-    
-    console.log('✅ Order saved successfully:', savedOrder._id);
-    res.status(201).json(savedOrder);
-    
-  } catch (err) {
-    console.error('❌ Create order error:', err);
-    console.error('Stack trace:', err.stack);
-    res.status(500).json({ 
-      message: 'Internal Server Error',
-      error: process.env.NODE_ENV === 'development' ? err.message : undefined
-    });
-  }
-}
-// תיקון פונקציית getUserOrders ב order.controller.js
-
+// Enhanced getUserOrders with better fallback
 export async function getUserOrders(req, res) {
   if (!req.user?.id && !req.user?.userId) {
     return res.status(401).json({ message: 'Unauthorized' });
@@ -145,17 +74,14 @@ export async function getUserOrders(req, res) {
 
   try {
     const userId = req.user.id || req.user.userId;
-    const userObjectId = toObjectId(userId);
+    const userObjectId = new ObjectId(userId);
     
-    if (!userObjectId) {
-      return res.status(400).json({ message: 'Invalid user ID' });
-    }
-
     const db = await connectDB();
 
     const orders = await db.collection('orders').aggregate([
       { $match: { user_id: userObjectId } },
       
+      // Lookup departure city
       {
         $lookup: {
           from: 'cities',
@@ -166,6 +92,7 @@ export async function getUserOrders(req, res) {
       },
       { $unwind: { path: '$departureCity', preserveNullAndEmptyArrays: true } },
       
+      // Lookup destination city
       {
         $lookup: {
           from: 'cities',
@@ -176,6 +103,7 @@ export async function getUserOrders(req, res) {
       },
       { $unwind: { path: '$destinationCity', preserveNullAndEmptyArrays: true } },
       
+      // Lookup flight
       {
         $lookup: {
           from: 'flights',
@@ -186,6 +114,7 @@ export async function getUserOrders(req, res) {
       },
       { $unwind: { path: '$flight', preserveNullAndEmptyArrays: true } },
       
+      // Lookup hotel
       {
         $lookup: {
           from: 'hotels',
@@ -196,6 +125,7 @@ export async function getUserOrders(req, res) {
       },
       { $unwind: { path: '$hotel', preserveNullAndEmptyArrays: true } },
       
+      // Enhanced projection
       {
         $project: {
           _id: 1,
@@ -210,28 +140,81 @@ export async function getUserOrders(req, res) {
           total_price: 1,
           created_at: 1,
 
+          // Return both the looked up data AND the IDs for fallback
           departure_city_name: {
             $ifNull: [
               '$departureCity.name',
-              { $ifNull: ['$departureCity.city', { $toString: '$departure_city_id' }] }
+              {
+                $ifNull: [
+                  '$departureCity.city',
+                  {
+                    $ifNull: [
+                      '$departureCity.cityName',
+                      null // Will trigger dynamic lookup on frontend
+                    ]
+                  }
+                ]
+              }
             ]
           },
+
           destination_city_name: {
             $ifNull: [
               '$destinationCity.name',
-              { $ifNull: ['$destinationCity.city', { $toString: '$destination_city_id' }] }
+              {
+                $ifNull: [
+                  '$destinationCity.city',
+                  {
+                    $ifNull: [
+                      '$destinationCity.cityName',
+                      null // Will trigger dynamic lookup on frontend
+                    ]
+                  }
+                ]
+              }
             ]
           },
+
           flight_name: {
             $ifNull: [
               '$flight.flight_number',
-              { $ifNull: ['$flight.name', { $ifNull: ['$flight.airline', { $toString: '$flight_id' }] }] }
+              {
+                $ifNull: [
+                  '$flight.name',
+                  {
+                    $ifNull: [
+                      '$flight.flightNumber',
+                      {
+                        $ifNull: [
+                          { $concat: [
+                            { $ifNull: ['$flight.airline', ''] },
+                            ' ',
+                            { $ifNull: ['$flight.flight_number', ''] }
+                          ]},
+                          null // Will trigger dynamic lookup on frontend
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
             ]
           },
+
           hotel_name: {
             $ifNull: [
               '$hotel.name',
-              { $ifNull: ['$hotel.hotel_name', { $toString: '$hotel_id' }] }
+              {
+                $ifNull: [
+                  '$hotel.hotel_name',
+                  {
+                    $ifNull: [
+                      '$hotel.hotelName',
+                      null // Will trigger dynamic lookup on frontend
+                    ]
+                  }
+                ]
+              }
             ]
           }
         }
@@ -240,7 +223,6 @@ export async function getUserOrders(req, res) {
     ]).toArray();
 
     console.log(`✅ Found ${orders.length} orders for user ${userId}`);
-    console.log('📊 Sample order with lookups:', JSON.stringify(orders[0], null, 2));
     
     return res.status(200).json({ success: true, orders });
   } catch (err) {
