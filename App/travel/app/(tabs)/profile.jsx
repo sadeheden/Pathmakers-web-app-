@@ -13,7 +13,8 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
-import { LinearGradient } from 'expo-linear-gradient';
+import { LinearGradient } from 'expo-linear-gradient'
+import Ionicons from 'react-native-vector-icons/Ionicons'; ;
 import { LogOut } from 'lucide-react-native';
 
 const { width } = Dimensions.get('window');
@@ -278,76 +279,75 @@ export default function Profile() {
     );
   }
 
-  return (
-    <View style={styles.container}>
-      
-      <ScrollView 
-        style={styles.scrollView}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-      >
-        <View style={styles.logoutIconContainer}>
-  <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
-    <LogOut size={24} color="#495057" />
-  </TouchableOpacity>
-</View>
-
-        <View style={styles.profileSection}>
-          <View style={styles.avatarContainer}>
-            <Image
-              source={{ uri: user?.profile_image || 'https://i.pravatar.cc/150?img=12' }}
-              style={styles.avatar}
-            />
-            <View style={styles.avatarRing} />
+ return (
+  <View style={styles.container}>
+    <FlatList
+      nestedScrollEnabled
+      ListHeaderComponent={
+        <>
+           {/* Top-right Support Icon */}
+          <View style={styles.supportIconContainer}>
+            <TouchableOpacity
+              onPress={() => router.push('/Support')} // or navigation.navigate('Support')
+              style={styles.supportButton}
+            >
+              <Ionicons name="help-circle-outline" size={24} color="#495057" />
+            </TouchableOpacity>
           </View>
-          <Text style={styles.name}>{user?.name || user?.username || 'Traveler'}</Text>
-          <Text style={styles.email}>{user?.email || 'no-email@example.com'}</Text>
-        </View>
 
-        {orders.length > 0 && renderStats()}
+          {/* Top-left Logout Icon */}
+          <View style={styles.logoutIconContainer}>
+            <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
+              <LogOut size={24} color="#495057" />
+            </TouchableOpacity>
+          </View>
 
-        <View style={styles.sectionTitleContainer}>
-          <Text style={styles.sectionTitle}>Your Adventures</Text>
-          <View style={styles.sectionTitleUnderline} />
-        </View>
-        
-        {orders.length === 0 ? (
-          <LinearGradient
-            colors={['#f8f9fa', '#e9ecef']}
-            style={styles.noTripsContainer}
-          >
-            <Text style={styles.noTripsEmoji}>✈️</Text>
-            <Text style={styles.noTripsTitle}>Ready for Adventure?</Text>
-            <Text style={styles.noTripsText}>Start exploring the world!</Text>
-          </LinearGradient>
-        ) : (
-          <FlatList
-            data={orders}
-            keyExtractor={(item) => item._id.toString()}
-            renderItem={renderOrder}
-            style={styles.tripsList}
-            contentContainerStyle={{ paddingBottom: 20 }}
-            initialNumToRender={10}
-            maxToRenderPerBatch={10}
-            windowSize={5}
-            removeClippedSubviews={true}
-            showsVerticalScrollIndicator={false}
-          />
-        )}
-        
-        <TouchableOpacity style={styles.buttonContainer} onPress={handleLogout}>
-          <LinearGradient
-            colors={['#6c757d', '#495057']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.button}
-          >
-            <Text style={styles.buttonText}>Logout</Text>
-          </LinearGradient>
-        </TouchableOpacity>
-      </ScrollView>
-    </View>
-  );
+          {/* Profile section */}
+          <View style={styles.profileSection}>
+            <View style={styles.avatarContainer}>
+              <Image
+                source={{ uri: user?.profile_image || 'https://i.pravatar.cc/150?img=12' }}
+                style={styles.avatar}
+              />
+              <View style={styles.avatarRing} />
+            </View>
+            <Text style={styles.name}>{user?.name || user?.username || 'Traveler'}</Text>
+            <Text style={styles.email}>{user?.email || 'no-email@example.com'}</Text>
+          </View>
+
+          {/* Stats */}
+          {orders.length > 0 && renderStats()}
+
+          {/* Title */}
+          <View style={styles.sectionTitleContainer}>
+            <Text style={styles.sectionTitle}>Your Adventures</Text>
+            <View style={styles.sectionTitleUnderline} />
+          </View>
+        </>
+      }
+
+      data={orders}
+      keyExtractor={(item) => item._id.toString()}
+      renderItem={renderOrder}
+
+      ListEmptyComponent={
+        <LinearGradient colors={['#f8f9fa', '#e9ecef']} style={styles.noTripsContainer}>
+          <Text style={styles.noTripsEmoji}>✈️</Text>
+          <Text style={styles.noTripsTitle}>Ready for Adventure?</Text>
+          <Text style={styles.noTripsText}>Start exploring the world!</Text>
+        </LinearGradient>
+      }
+
+      contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 30 }}
+      showsVerticalScrollIndicator={false}
+      initialNumToRender={10}
+      maxToRenderPerBatch={10}
+      windowSize={5}
+      removeClippedSubviews
+    />
+  </View>
+);
+
 }
 
 const styles = StyleSheet.create({
@@ -598,5 +598,22 @@ logoutButton: {
   shadowOpacity: 0.2,
   shadowRadius: 3,
 },
+supportIconContainer: {
+  position: 'absolute',
+  top: 50, // adjust for your SafeArea
+  right: 20,
+  zIndex: 10,
+},
+supportButton: {
+  backgroundColor: '#f1f3f5',
+  padding: 8,
+  borderRadius: 50,
+  elevation: 3,
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: 2 },
+  shadowOpacity: 0.2,
+  shadowRadius: 3,
+},
+
 
 });

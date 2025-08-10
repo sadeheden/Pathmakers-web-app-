@@ -13,7 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 
 // לוגו שלך בתיקיית assets/images/
-const logo = require('./../assets/images/logo.png');
+
 
 const faqs = [
   {
