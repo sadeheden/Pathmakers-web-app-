@@ -188,6 +188,9 @@ export default function HomeScreen() {
   const [paymentCompleted, setPaymentCompleted] = useState(false);
   const [carouselIndex, setCarouselIndex] = useState(0);
   const [currentWeather, setCurrentWeather] = useState({ temp: 28 });
+const [reviews, setReviews] = useState(userReviews); // local, mutable list
+const [userVotes, setUserVotes] = useState({});      // { [reviewId]: 'like' | 'dislike' }
+const [bookingOpen, setBookingOpen] = useState(false);
 
   // *** משתני State חדשים לנתוני ההזמנה ***
   const [departureCity, setDepartureCity] = useState('68022f445f7300b11f986829'); // ברירת מחדל - תל אביב
@@ -339,29 +342,31 @@ const handleWeatherPress = () => {
     }
   };
 
-  const handleCityPress = (city) => {
-    console.log('🏙️ City selected:', city);
-    setSelectedDestination(city);
-    setPaymentCompleted(false);
-    setShowPaymentModal(false);
-    setShowIntroPopup(true);
-  };
+const handleCityPress = (city) => {
+  setSelectedDestination(city);
+  setBookingOpen(true);
+};
+
 
   const handleLike = (id) => {
-    const review = userReviews.find((r) => r.id === id);
-    if (review) {
-      review.likes++;
-      setSelectedReview({ ...review });
-    }
-  };
+  // if already voted, block further changes
+  if (userVotes[id]) return;
 
-  const handleDislike = (id) => {
-    const review = userReviews.find((r) => r.id === id);
-    if (review) {
-      review.dislikes++;
-      setSelectedReview({ ...review });
-    }
-  };
+  setReviews((prev) =>
+    prev.map((r) => (r.id === id ? { ...r, likes: r.likes + 1 } : r))
+  );
+  setUserVotes((prev) => ({ ...prev, [id]: 'like' }));
+};
+
+const handleDislike = (id) => {
+  if (userVotes[id]) return;
+
+  setReviews((prev) =>
+    prev.map((r) => (r.id === id ? { ...r, dislikes: r.dislikes + 1 } : r))
+  );
+  setUserVotes((prev) => ({ ...prev, [id]: 'dislike' }));
+};
+
 
   // *** הפונקציה המשופרת לטיפול בתשלום מוצלח ***
   const handlePaymentSuccess = async () => {
@@ -538,32 +543,57 @@ const handleWeatherPress = () => {
             <Text style={styles.sectionTitle}> Traveler Stories</Text>
             <Text style={styles.sectionSubtitle}>Real experiences from real travelers</Text>
           </View>
-          {userReviews.map((review) => (
-            <View key={review.id} style={styles.reviewCard}>
-              <View style={styles.reviewHeader}>
-                <Image source={{ uri: `https://i.pravatar.cc/150?u=${review.id}` }} style={styles.avatar} />
-                <View style={styles.reviewerInfo}>
-                  <Text style={styles.reviewerName}>{review.name}</Text>
-                  <Text style={styles.reviewDate}>2 days ago</Text>
-                </View>
-              </View>
-              <Text style={styles.tripText}>{review.tripText}</Text>
-              <View style={styles.reviewActions}>
-                <TouchableOpacity onPress={() => handleLike(review.id)} style={styles.actionButton} activeOpacity={0.7}>
-                  <Text style={styles.actionIcon}>👍</Text>
-                  <Text style={styles.actionCount}>{review.likes}</Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => handleDislike(review.id)} style={styles.actionButton} activeOpacity={0.7}>
-                  <Text style={styles.actionIcon}>👎</Text>
-                  <Text style={styles.actionCount}>{review.dislikes}</Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => setSelectedReview(review)} style={styles.replyButton} activeOpacity={0.7}>
-                  <Text style={styles.replyText}>💬 Reply</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          ))}
+        {reviews.map((review) => {
+  const voted = userVotes[review.id]; // undefined | 'like' | 'dislike'
+  const likeDisabled = !!voted;
+  const dislikeDisabled = !!voted;
+
+  return (
+    <View key={review.id} style={styles.reviewCard}>
+      <View style={styles.reviewHeader}>
+        <Image source={{ uri: `https://i.pravatar.cc/150?u=${review.id}` }} style={styles.avatar} />
+        <View style={styles.reviewerInfo}>
+          <Text style={styles.reviewerName}>{review.name}</Text>
+          <Text style={styles.reviewDate}>2 days ago</Text>
         </View>
+      </View>
+
+      <Text style={styles.tripText}>{review.tripText}</Text>
+
+      <View style={styles.reviewActions}>
+        <TouchableOpacity
+          onPress={() => handleLike(review.id)}
+          style={[
+            styles.actionButton,
+            voted === 'like' && { opacity: 1 },
+            voted && voted !== 'like' && { opacity: 0.4 },
+          ]}
+          activeOpacity={voted ? 1 : 0.7}
+          disabled={likeDisabled}
+        >
+          <Text style={styles.actionIcon}>👍</Text>
+          <Text style={styles.actionCount}>{review.likes}</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={() => handleDislike(review.id)}
+          style={[
+            styles.actionButton,
+            voted === 'dislike' && { opacity: 1 },
+            voted && voted !== 'dislike' && { opacity: 0.4 },
+          ]}
+          activeOpacity={voted ? 1 : 0.7}
+          disabled={dislikeDisabled}
+        >
+          <Text style={styles.actionIcon}>👎</Text>
+          <Text style={styles.actionCount}>{review.dislikes}</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+})}
+        </View>
+
 
         {/* Intro Popup Modal */}
         {selectedDestination && showIntroPopup && (
@@ -671,6 +701,342 @@ const handleWeatherPress = () => {
     </View>
   );
 }
+// ===== Bottom Sheet Booking Flow =====
+const BookingSheet = ({
+  visible,
+  city,
+  price,
+  onClose,
+  onConfirm, // async -> returns {ok:boolean, message?:string, orderId?:string}
+}) => {
+  const [step, setStep] = useState<'details' | 'payment' | 'success'>('details');
+  const [fullName, setFullName] = useState('');
+  const [cardNumber, setCardNumber] = useState('');
+  const [expiryDate, setExpiryDate] = useState('');
+  const [cvv, setCvv] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
+  const translateY = useRef(new Animated.Value(600)).current; // slide up
+
+  useEffect(() => {
+    if (visible) {
+      setStep('details');
+      setError('');
+      setFullName('');
+      setCardNumber('');
+      setExpiryDate('');
+      setCvv('');
+      Animated.timing(translateY, {
+        toValue: 0,
+        duration: 260,
+        useNativeDriver: true,
+      }).start();
+    } else {
+      Animated.timing(translateY, {
+        toValue: 600,
+        duration: 200,
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [visible]);
+
+  const formatCard = (text) => {
+    const cleaned = text.replace(/\s/g, '').replace(/\D/g, '');
+    const parts = cleaned.match(/.{1,4}/g) || [];
+    return parts.join(' ').slice(0, 19);
+  };
+
+  const validatePayment = () => {
+    if (!fullName.trim() || fullName.trim().length < 3) return 'Enter your full name (min 3 chars).';
+    if (cardNumber.replace(/\s/g, '').length !== 16) return 'Card number must be 16 digits.';
+    if (!/^(0[1-9]|1[0-2])\/\d{2}$/.test(expiryDate)) return 'Expiry must be MM/YY.';
+    if (cvv.length !== 3 || !/^\d{3}$/.test(cvv)) return 'CVV must be 3 digits.';
+    return '';
+  };
+
+  const handlePay = async () => {
+    const v = validatePayment();
+    if (v) { setError(v); return; }
+    setError('');
+    setSubmitting(true);
+    try {
+      const res = await onConfirm({
+        fullName,
+        cardNumber: cardNumber.replace(/\s/g, ''),
+        expiryDate,
+        cvv,
+      });
+      if (res?.ok) {
+        setStep('success');
+      } else {
+        setError(res?.message || 'Payment failed. Please try again.');
+      }
+    } catch (e) {
+      setError(e?.message || 'Something went wrong.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (!visible) return null;
+
+  return (
+    <View style={sheetStyles.backdrop}>
+      {/* tap outside to close */}
+      <TouchableOpacity style={sheetStyles.backdropTap} activeOpacity={1} onPress={onClose} />
+      <Animated.View style={[sheetStyles.sheet, { transform: [{ translateY }] }]}>
+        {/* Grabber */}
+        <View style={sheetStyles.grabber} />
+
+        {/* Header */}
+        <View style={sheetStyles.headerRow}>
+          <Text style={sheetStyles.sheetTitle}>
+            {step === 'details' && `Your trip to ${city?.name}`}
+            {step === 'payment' && 'Payment'}
+            {step === 'success' && 'All set!'}
+          </Text>
+          <TouchableOpacity onPress={onClose} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+            <Text style={sheetStyles.closeX}>✕</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Step: Details */}
+        {step === 'details' && (
+          <ScrollView
+            style={{ maxHeight: 420 }}
+            contentContainerStyle={{ paddingBottom: 16 }}
+            showsVerticalScrollIndicator={false}
+          >
+            {/* Banner */}
+            <View style={sheetStyles.banner}>
+              <Image source={city?.image} style={sheetStyles.bannerImg} />
+              <LinearGradient colors={['transparent', 'rgba(0,0,0,0.6)']} style={sheetStyles.bannerOverlay} />
+              <View style={sheetStyles.bannerTextWrap}>
+                <Text style={sheetStyles.bannerTitle}>{city?.name}</Text>
+                <Text style={sheetStyles.bannerSubtitle}>From ${price}</Text>
+              </View>
+            </View>
+
+            {/* Details grid */}
+            <View style={sheetStyles.grid}>
+              <View style={sheetStyles.gridItem}>
+                <Text style={sheetStyles.gridLabel}>Flight</Text>
+                <Text style={sheetStyles.gridValue}>✈️ {city?.flight}</Text>
+              </View>
+              <View style={sheetStyles.gridItem}>
+                <Text style={sheetStyles.gridLabel}>Dates</Text>
+                <Text style={sheetStyles.gridValue}>13/3 – 18/3</Text>
+              </View>
+              <View style={sheetStyles.gridItem}>
+                <Text style={sheetStyles.gridLabel}>Departure</Text>
+                <Text style={sheetStyles.gridValue}>06:00 AM</Text>
+              </View>
+              <View style={sheetStyles.gridItem}>
+                <Text style={sheetStyles.gridLabel}>Return</Text>
+                <Text style={sheetStyles.gridValue}>05:00 PM</Text>
+              </View>
+              <View style={sheetStyles.gridItemWide}>
+                <Text style={sheetStyles.gridLabel}>Hotel</Text>
+                <Text style={sheetStyles.gridValue}>{city?.hotel}</Text>
+              </View>
+              <View style={sheetStyles.gridItemWide}>
+                <Text style={sheetStyles.gridLabel}>About</Text>
+                <Text style={sheetStyles.gridValue}>{city?.description}</Text>
+              </View>
+            </View>
+
+            {/* CTA */}
+            <TouchableOpacity onPress={() => setStep('payment')} activeOpacity={0.85} style={{ borderRadius: 16, overflow: 'hidden', marginTop: 8 }}>
+              <LinearGradient colors={['#667eea', '#764ba2']} style={sheetStyles.primaryBtn}>
+                <Text style={sheetStyles.primaryBtnText}>Continue to Payment</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </ScrollView>
+        )}
+
+        {/* Step: Payment */}
+        {step === 'payment' && (
+          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+            <ScrollView style={{ maxHeight: 420 }} showsVerticalScrollIndicator={false}>
+              <Text style={sheetStyles.totalText}>Total: <Text style={{ fontWeight: '700' }}>${price}</Text></Text>
+
+              {!!error && <Text style={sheetStyles.errorBox}>{error}</Text>}
+
+              <View style={sheetStyles.inputWrap}>
+                <Text style={sheetStyles.inputLabel}>Full Name</Text>
+                <TextInput
+                  value={fullName}
+                  onChangeText={setFullName}
+                  placeholder="John Doe"
+                  style={sheetStyles.input}
+                  autoCapitalize="words"
+                />
+              </View>
+
+              <View style={sheetStyles.inputWrap}>
+                <Text style={sheetStyles.inputLabel}>Card Number</Text>
+                <TextInput
+                  value={cardNumber}
+                  onChangeText={(t) => setCardNumber(formatCard(t))}
+                  placeholder="1234 5678 9012 3456"
+                  keyboardType="number-pad"
+                  style={sheetStyles.input}
+                  maxLength={19}
+                />
+              </View>
+
+              <View style={sheetStyles.row}>
+                <View style={[sheetStyles.inputWrap, sheetStyles.col]}>
+                  <Text style={sheetStyles.inputLabel}>Expiry (MM/YY)</Text>
+                  <TextInput
+                    value={expiryDate}
+                    onChangeText={setExpiryDate}
+                    placeholder="08/27"
+                    style={sheetStyles.input}
+                    maxLength={5}
+                    keyboardType="number-pad"
+                  />
+                </View>
+                <View style={[sheetStyles.inputWrap, sheetStyles.col]}>
+                  <Text style={sheetStyles.inputLabel}>CVV</Text>
+                  <TextInput
+                    value={cvv}
+                    onChangeText={setCvv}
+                    placeholder="123"
+                    style={sheetStyles.input}
+                    keyboardType="number-pad"
+                    maxLength={3}
+                    secureTextEntry
+                  />
+                </View>
+              </View>
+
+              <TouchableOpacity onPress={handlePay} disabled={submitting} activeOpacity={0.85} style={{ borderRadius: 16, overflow: 'hidden', marginTop: 6 }}>
+                <LinearGradient colors={['#667eea', '#764ba2']} style={sheetStyles.primaryBtn}>
+                  {submitting
+                    ? <ActivityIndicator size="small" color="#fff" />
+                    : <Text style={sheetStyles.primaryBtnText}>Pay ${price}</Text>}
+                </LinearGradient>
+              </TouchableOpacity>
+
+              <TouchableOpacity onPress={() => setStep('details')} style={sheetStyles.secondaryBtn}>
+                <Text style={sheetStyles.secondaryBtnText}>Back</Text>
+              </TouchableOpacity>
+            </ScrollView>
+          </KeyboardAvoidingView>
+        )}
+
+        {/* Step: Success */}
+        {step === 'success' && (
+          <View style={{ alignItems: 'center', paddingBottom: 8 }}>
+            <Text style={{ fontSize: 56, marginBottom: 12 }}>🎉</Text>
+            <Text style={sheetStyles.successTitle}>Payment Successful</Text>
+            <Text style={sheetStyles.successSub}>Your trip to {city?.name} is confirmed.</Text>
+            <TouchableOpacity onPress={onClose} activeOpacity={0.85} style={{ borderRadius: 16, overflow: 'hidden', marginTop: 16, width: '100%' }}>
+              <LinearGradient colors={['#667eea', '#764ba2']} style={sheetStyles.primaryBtn}>
+                <Text style={sheetStyles.primaryBtnText}>Done</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
+        )}
+      </Animated.View>
+    </View>
+  );
+};
+
+const sheetStyles = StyleSheet.create({
+  backdrop: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0,0,0,0.45)',
+  },
+  backdropTap: {
+    flex: 1,
+  },
+  sheet: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 16,
+    paddingBottom: 24,
+    maxHeight: '86%',
+  },
+  grabber: {
+    alignSelf: 'center',
+    width: 46,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: '#e2e8f0',
+    marginBottom: 10,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 6,
+  },
+  sheetTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#2d3748',
+  },
+  closeX: { fontSize: 20, color: '#6b7280' },
+
+  banner: { borderRadius: 16, overflow: 'hidden', marginTop: 8, marginBottom: 14 },
+  bannerImg: { width: '100%', height: 150, resizeMode: 'cover' },
+  bannerOverlay: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 70 },
+  bannerTextWrap: { position: 'absolute', left: 12, bottom: 10 },
+  bannerTitle: { fontSize: 20, fontWeight: '800', color: '#fff' },
+  bannerSubtitle: { fontSize: 14, fontWeight: '600', color: '#fff', opacity: 0.95 },
+
+  grid: { gap: 10, marginTop: 8 },
+  gridItem: {
+    backgroundColor: '#f8fafc',
+    padding: 12,
+    borderRadius: 12,
+  },
+  gridItemWide: {
+    backgroundColor: '#f8fafc',
+    padding: 12,
+    borderRadius: 12,
+  },
+  gridLabel: { fontSize: 12, color: '#64748b', marginBottom: 2, fontWeight: '600' },
+  gridValue: { fontSize: 15, color: '#0f172a' },
+
+  primaryBtn: { paddingVertical: 14, alignItems: 'center', borderRadius: 16 },
+  primaryBtnText: { color: '#fff', fontSize: 16, fontWeight: '800' },
+  secondaryBtn: { paddingVertical: 12, alignItems: 'center' },
+  secondaryBtnText: { color: '#667eea', fontSize: 15, fontWeight: '700' },
+
+  inputWrap: { marginBottom: 14 },
+  inputLabel: { fontSize: 13, fontWeight: '700', color: '#334155', marginBottom: 6 },
+  input: {
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    backgroundColor: '#f8fafc',
+    fontSize: 15,
+    color: '#0f172a',
+  },
+  row: { flexDirection: 'row', gap: 12 },
+  col: { flex: 1 },
+  totalText: { fontSize: 16, marginBottom: 10, color: '#1f2937' },
+  errorBox: {
+    backgroundColor: '#fee2e2',
+    color: '#b91c1c',
+    borderWidth: 1,
+    borderColor: '#fecaca',
+    padding: 10,
+    borderRadius: 10,
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  successTitle: { fontSize: 22, fontWeight: '800', color: '#16a34a', marginBottom: 6 },
+  successSub: { fontSize: 15, color: '#334155', textAlign: 'center' },
+});
+
 
 const styles = StyleSheet.create({
   gradientBackground: {
@@ -930,18 +1296,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#4a5568',
-  },
-  replyButton: {
-    marginLeft: 'auto',
-    backgroundColor: '#667eea',
-    paddingHorizontal: 15,
-    paddingVertical: 8,
-    borderRadius: 15,
-  },
-  replyText: {
-    color: '#ffffff',
-    fontSize: 14,
-    fontWeight: '600',
   },
   modalContainer: {
     flex: 1,
