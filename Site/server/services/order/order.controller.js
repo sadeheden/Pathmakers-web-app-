@@ -1,12 +1,9 @@
-// Updated order.controller.js
-
 import Order from './order.model.js';
 import pdfkit from "pdfkit";
 import City from "../cities/cities.model.js";
 import Flight from "../flights/flights.model.js";
 import Hotel from "../hotel/hotel.model.js";
 import Attraction from "../attraction/att.model.js";
-
 
 // ===== Helper Functions =====
 
@@ -15,19 +12,30 @@ function isValidObjectId(id) {
   return /^[0-9a-fA-F]{24}$/.test(id);
 }
 
-// Clean compound IDs
+// Clean and extract the base ObjectId from a possibly compound ID (e.g., "abc123-2")
 function cleanId(id) {
   if (!id) return null;
+
+  if (typeof id === 'object' && id.toString) {
+    const idString = id.toString();
+    if (isValidObjectId(idString)) return idString;
+    return null;
+  }
+
   if (typeof id === 'string') {
     const cleaned = id.split(/[-_]/)[0];
-    return isValidObjectId(cleaned) ? cleaned : null;
+    if (isValidObjectId(cleaned)) return cleaned;
+    if (isValidObjectId(id)) return id;
+    return null;
   }
+
   return null;
 }
 
 // Extract index from compound ID (e.g., "flight_id-2" returns 2)
 function extractIndex(compoundId) {
   if (typeof compoundId !== 'string') return 0;
+
   const parts = compoundId.split(/[-_]/);
   if (parts.length > 1) {
     const index = parseInt(parts[1], 10);
@@ -36,69 +44,45 @@ function extractIndex(compoundId) {
   return 0;
 }
 
-function extractCityId(compoundId) {
-  if (typeof compoundId !== 'string') return null;
-  return compoundId.split(/[-_]/)[0];
-}
-
-// Helper function to safely get flight name
+// Helper to get flight name safely
 function getFlightName(flight, index) {
   if (!flight) return "Flight not found";
-  
-  console.log("🔍 Flight data:", flight);
-  console.log("🔍 Requested index:", index);
-  
-  // Check different possible structures
+
   if (flight.airlines && Array.isArray(flight.airlines)) {
     const selectedFlight = flight.airlines[index];
-    console.log("✈️ Selected flight from airlines:", selectedFlight);
     return selectedFlight?.name || selectedFlight?.airline || `Flight ${index + 1}`;
   }
-  
+
   if (flight.flights && Array.isArray(flight.flights)) {
     const selectedFlight = flight.flights[index];
-    console.log("✈️ Selected flight from flights:", selectedFlight);
     return selectedFlight?.name || selectedFlight?.airline || `Flight ${index + 1}`;
   }
-  
-  // If it's a direct flight object
+
   if (flight.name) return flight.name;
   if (flight.airline) return flight.airline;
-  
+
   return "Unknown Flight";
 }
 
-// Helper function to safely get hotel name
-function getHotelName(hotel, index) {
-  if (!hotel) return "Hotel not found";
-  
-  console.log("🔍 Hotel data:", hotel);
-  console.log("🔍 Requested index:", index);
-  
-  // Check different possible structures
-  if (hotel.hotels && Array.isArray(hotel.hotels)) {
-    const selectedHotel = hotel.hotels[index];
-    console.log("🏨 Selected hotel from hotels:", selectedHotel);
-    return selectedHotel?.name || selectedHotel?.hotelName || `Hotel ${index + 1}`;
+// Helper to get hotel name safely, considering hotel document has hotels array
+function getHotelName(hotelDoc, index) {
+  if (!hotelDoc) return "Hotel not found";
+
+  if (hotelDoc.hotels && Array.isArray(hotelDoc.hotels)) {
+    const selectedHotel = hotelDoc.hotels[index];
+    if (selectedHotel) return selectedHotel.name || `Hotel ${index + 1}`;
+    else return "Hotel index out of range";
   }
-  
-  if (hotel.accommodations && Array.isArray(hotel.accommodations)) {
-    const selectedHotel = hotel.accommodations[index];
-    console.log("🏨 Selected hotel from accommodations:", selectedHotel);
-    return selectedHotel?.name || selectedHotel?.hotelName || `Hotel ${index + 1}`;
-  }
-  
-  // If it's a direct hotel object
-  if (hotel.name) return hotel.name;
-  if (hotel.hotelName) return hotel.hotelName;
-  
-  return "Unknown Hotel";
+
+  if (hotelDoc.name) return hotelDoc.name;
+
+  return "Hotel not found";
 }
 
-// POST /api/order
+// POST /api/order - Create new order
 export async function createOrder(req, res) {
   if (!req.user?.id) return res.status(401).json({ message: "Unauthorized" });
-  
+
   try {
     const {
       departureCityId,
@@ -113,28 +97,24 @@ export async function createOrder(req, res) {
 
     // Validate required fields
     const missing = [];
-    if (!departureCityId)   missing.push('departureCityId');
+    if (!departureCityId) missing.push('departureCityId');
     if (!destinationCityId) missing.push('destinationCityId');
-    if (!flightId)          missing.push('flightId');
-    if (!hotelId)           missing.push('hotelId');
-    if (!paymentMethod)     missing.push('paymentMethod');
+    if (!flightId) missing.push('flightId');
+    if (!hotelId) missing.push('hotelId');
+    if (!paymentMethod) missing.push('paymentMethod');
     if (totalPrice === undefined || totalPrice === null) missing.push('totalPrice');
-    
+
     if (missing.length) {
-      console.error("❌ Missing required fields:", missing);
       return res.status(400).json({ message: `Missing required fields: ${missing.join(', ')}` });
     }
 
-    // Clean and validate IDs
+    // Clean IDs (extract base ObjectId)
     const depClean = cleanId(departureCityId);
     const dstClean = cleanId(destinationCityId);
     const fltClean = cleanId(flightId);
     const htlClean = cleanId(hotelId);
 
     if (!depClean || !dstClean || !fltClean || !htlClean) {
-      console.error("❌ Invalid ID format:", {
-        departureCityId, destinationCityId, flightId, hotelId
-      });
       return res.status(400).json({ message: "Invalid ID format" });
     }
 
@@ -143,13 +123,13 @@ export async function createOrder(req, res) {
       ? attractions.map(a => cleanId(a)).filter(Boolean)
       : [];
 
-    // Create new order instance - store the FULL compound IDs
+    // Create new order, store full compound IDs (with indexes if any)
     const newOrder = new Order({
       user_id: String(req.user.id),
       departure_city_id: depClean,
       destination_city_id: dstClean,
-      flight_id: flightId, // Store full compound ID (e.g., "flight_id-2")
-      hotel_id: hotelId,   // Store full compound ID (e.g., "hotel_id-1")
+      flight_id: flightId,
+      hotel_id: hotelId,
       attractions: cleanedAttractions,
       transportation,
       payment_method: paymentMethod,
@@ -157,12 +137,9 @@ export async function createOrder(req, res) {
       created_at: new Date(),
     });
 
-    console.log("💾 Saving new order:", newOrder);
-
     const savedOrder = await newOrder.save();
 
-    // Build response object
-    const responseOrder = {
+    return res.status(201).json({
       _id: savedOrder._id.toString(),
       user_id: savedOrder.user_id?.toString() || null,
       departure_city_id: savedOrder.departure_city_id?.toString() || null,
@@ -176,11 +153,7 @@ export async function createOrder(req, res) {
       payment_method: savedOrder.payment_method,
       total_price: savedOrder.total_price,
       created_at: savedOrder.created_at,
-    };
-
-    console.log("✅ Order saved successfully:", responseOrder._id);
-
-    return res.status(201).json(responseOrder);
+    });
 
   } catch (err) {
     console.error("❌ Error creating order:", err);
@@ -188,7 +161,7 @@ export async function createOrder(req, res) {
   }
 }
 
-// GET /api/order
+// GET /api/order - Get user orders with enriched data
 export async function getUserOrders(req, res) {
   if (!req.user?.id) return res.status(401).json({ message: "Unauthorized" });
 
@@ -212,11 +185,12 @@ export async function getUserOrders(req, res) {
         console.log("🔍 Flight ObjectId:", flightObjectId, "Index:", flightIndex);
         console.log("🔍 Hotel ObjectId:", hotelObjectId, "Index:", hotelIndex);
 
+        // Fetch related documents in parallel
         const [
           departureCity,
           destinationCity,
           flight,
-          hotel,
+          hotelDoc,
           attractions
         ] = await Promise.all([
           City.findById(order.departure_city_id).catch(err => {
@@ -240,9 +214,9 @@ export async function getUserOrders(req, res) {
             : []
         ]);
 
-        // Get flight and hotel names using helper functions
+        // Resolve names safely
         const flightName = getFlightName(flight, flightIndex);
-        const hotelName = getHotelName(hotel, hotelIndex);
+        const hotelName = getHotelName(hotelDoc, hotelIndex);
 
         console.log("✅ Flight name resolved:", flightName);
         console.log("✅ Hotel name resolved:", hotelName);
