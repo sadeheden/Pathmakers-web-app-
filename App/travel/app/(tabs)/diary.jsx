@@ -15,11 +15,53 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Edit3, Save, X, BookOpen, Calendar as CalendarIcon } from 'lucide-react-native';
 
+// --- Helpers ---
+const toISO = (d) =>
+  new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()))
+    .toISOString()
+    .slice(0, 10);
+
+const buildDateRange = (start, end) => {
+  if (!start || !end) return [];
+  const out = [];
+  let cur = new Date(start + 'T00:00:00Z');
+  const last = new Date(end + 'T00:00:00Z');
+  while (cur <= last) {
+    out.push(toISO(cur));
+    cur.setUTCDate(cur.getUTCDate() + 1);
+  }
+  return out;
+};
+
+// Fallback city name mapping (same idea as in profile.jsx)
+const cityMappings = {
+  '68022f445f7300b11f986829': 'Tel Aviv',
+  '68022f445f7300b11f986837': 'Phuket',
+  '68022f445f7300b11f986838': 'Paris',
+  '68022f445f7300b11f986839': 'Dubai',
+  '68022f445f7300b11f98683a': 'London',
+  '68022f445f7300b11f98683b': 'Turkey',
+  '68022f445f7300b11f98683c': 'Amsterdam',
+};
+const isObjectId = (s) => typeof s === 'string' && /^[0-9a-f]{24}$/i.test(s);
+const getCityName = (cityName, cityId) =>
+  cityName && !isObjectId(cityName) ? cityName : cityMappings[cityId] || cityName || 'Unknown';
+
 export default function DiaryCalendarScreen() {
   const [markedDates, setMarkedDates] = useState({});
   const [selectedDate, setSelectedDate] = useState(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [noteText, setNoteText] = useState('');
+
+  // ---- Trip state (auto-filled from orders API) ----
+  const [tripStart, setTripStart] = useState(null);
+  const [tripEnd, setTripEnd] = useState(null);
+  const [tripLabel, setTripLabel] = useState(null);
+// is a YYYY-MM-DD inside [start, end] (inclusive)?
+const isBetween = (date, start, end) => {
+  if (!date || !start || !end) return false;
+  return date >= start && date <= end;
+};
 
   // Load notes from AsyncStorage when screen loads
   useEffect(() => {
@@ -36,6 +78,63 @@ export default function DiaryCalendarScreen() {
     loadNotes();
   }, []);
 
+  // Fetch latest order and set trip info (destination + dates)
+  useEffect(() => {
+    const loadTripFromOrders = async () => {
+      try {
+        // read token like profile.jsx (and clean any quotes)
+        const raw = await AsyncStorage.getItem('token');
+        const token = raw?.replace(/^"|"$/g, '') || null;
+        if (!token) return; // user not logged-in yet
+
+        const resp = await fetch('https://pathmakers-web-app-app-travel.onrender.com/api/orders', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        if (!resp.ok) {
+          // swallow error to avoid breaking the screen
+          console.log('Orders fetch failed:', await resp.text());
+          return;
+        }
+
+        const data = await resp.json();
+        const orders = Array.isArray(data?.orders) ? data.orders : [];
+
+        if (!orders.length) return;
+
+        // take the most recent order
+        const latest = orders[0];
+
+        // destination label
+        const destName = getCityName(latest.destination_city_name, latest.destination_city_id);
+        setTripLabel(destName ? `Have fun in ${destName}` : 'Your Trip');
+
+        // choose dates:
+        // 1) if backend later provides trip_start/trip_end, use them
+        // 2) else fallback: created_at as start + 6 days window
+        const explicitStart = latest.trip_start || latest.start_date || null;
+        const explicitEnd = latest.trip_end || latest.end_date || null;
+
+        if (explicitStart && explicitEnd) {
+          setTripStart(String(explicitStart).slice(0, 10));
+          setTripEnd(String(explicitEnd).slice(0, 10));
+        } else if (latest.created_at) {
+          const created = new Date(latest.created_at);
+          const startIso = toISO(created);
+          const end = new Date(created);
+          end.setDate(end.getDate() + 6);
+          const endIso = toISO(end);
+          setTripStart(startIso);
+          setTripEnd(endIso);
+        }
+      } catch (e) {
+        console.log('Failed to load trip from orders:', e?.message);
+      }
+    };
+
+    loadTripFromOrders();
+  }, []);
+
   // Save to AsyncStorage when updating
   const saveToStorage = async (newData) => {
     try {
@@ -46,17 +145,32 @@ export default function DiaryCalendarScreen() {
   };
 
   const onDayPress = (day) => {
-    setSelectedDate(day.dateString);
-    const existing = markedDates[day.dateString]?.note || '';
-    setNoteText(existing);
-    setModalVisible(true);
-  };
+  const dateStr = day.dateString;
+  setSelectedDate(dateStr);
+
+  const existing = markedDates[dateStr]?.note || '';
+
+  // If no saved note and the clicked day is inside the trip range,
+  // prefill the popup with the destination (from your tripLabel).
+  let initialText = existing;
+  if (!existing && tripStart && tripEnd && isBetween(dateStr, tripStart, tripEnd)) {
+    // try to extract the destination name from "Trip to XYZ"
+    const dest =
+      (tripLabel && tripLabel.replace(/^Trip to\s*/i, '').trim()) || 'your destination';
+    initialText = `Trip to ${dest}`;
+  }
+
+  setNoteText(initialText);
+  setModalVisible(true);
+};
+
 
   const saveNote = () => {
     if (noteText.trim()) {
       const updated = {
         ...markedDates,
         [selectedDate]: {
+          ...(markedDates[selectedDate] || {}),
           marked: true,
           selected: true,
           note: noteText.trim(),
@@ -109,6 +223,38 @@ export default function DiaryCalendarScreen() {
     });
   };
 
+  // Build trip period marks
+  const tripMarks = (() => {
+    if (!tripStart || !tripEnd) return {};
+    const days = buildDateRange(tripStart, tripEnd);
+    const out = {};
+    const color = '#8ac0fdff';
+    const textColor = '#1f2937';
+    days.forEach((d, i) => {
+      out[d] = {
+        ...(out[d] || {}),
+        color,
+        textColor,
+        startingDay: i === 0,
+        endingDay: i === days.length - 1,
+      };
+    });
+    return out;
+  })();
+
+  // Merge trip band with notes (keep your saved note visuals)
+  const mergedMarkedDates = (() => {
+    const merged = { ...tripMarks };
+    Object.keys(markedDates).forEach((d) => {
+      merged[d] = {
+        ...(merged[d] || {}),
+        ...(markedDates[d] || {}),
+        marked: true,
+      };
+    });
+    return merged;
+  })();
+
   return (
     <LinearGradient colors={['#f8fafc', '#e2e8f0', '#cbd5e1']} style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
@@ -119,17 +265,20 @@ export default function DiaryCalendarScreen() {
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.headerContent}>
-            <BookOpen size={28} color="#6366f1" />
+           
             <Text style={styles.title}>My Diary</Text>
-            <CalendarIcon size={28} color="#6366f1" />
+           
           </View>
-          <Text style={styles.subtitle}>Capture your daily moments</Text>
+          <Text style={styles.subtitle}>
+            {tripLabel ? tripLabel : 'Capture your daily moments'}
+          </Text>
         </View>
 
         {/* Calendar Container */}
         <View style={styles.calendarContainer}>
           <Calendar
-            markedDates={markedDates}
+            markedDates={mergedMarkedDates}
+            markingType="period"
             onDayPress={onDayPress}
             theme={{
               backgroundColor: 'transparent',
@@ -163,7 +312,7 @@ export default function DiaryCalendarScreen() {
         {/* Notes Summary */}
         <View style={styles.summaryContainer}>
           <Text style={styles.summaryTitle}>
-            {Object.keys(markedDates).length} notes this month
+            {Object.keys(markedDates).filter((k) => !!markedDates[k]?.note).length} notes this month
           </Text>
         </View>
 
@@ -221,7 +370,7 @@ export default function DiaryCalendarScreen() {
                     </LinearGradient>
                   </TouchableOpacity>
 
-                  {markedDates[selectedDate]?.note && (
+                  {selectedDate && markedDates[selectedDate]?.note && (
                     <TouchableOpacity
                       onPress={deleteNote}
                       style={[styles.actionButton, styles.deleteButton]}
