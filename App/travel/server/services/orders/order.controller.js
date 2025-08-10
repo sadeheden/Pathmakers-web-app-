@@ -118,7 +118,7 @@ export async function getUserOrders(req, res) {
         }
       },
       { $unwind: { path: '$flight', preserveNullAndEmptyArrays: true } },
-      
+   
       // Lookup hotel
       {
         $lookup: {
