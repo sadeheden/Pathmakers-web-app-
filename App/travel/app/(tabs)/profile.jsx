@@ -82,7 +82,7 @@ export default function Profile() {
       console.log(`🔍 Fetching ${type} data for IDs:`, ids);
 
       const response = await fetchWithTimeout(
-        'https://pathmakers-web-app-app-travel.onrender.com/api/dynamic-data',
+        'https://pathmakers-web-app-app-travel.onrender.com/api/orders/dynamic-data',
         {
           method: 'POST',
           headers: {
@@ -123,6 +123,8 @@ export default function Profile() {
         return null;
     }
   };
+  const isHex24 = (s) => typeof s === 'string' && /^[0-9a-f]{24}$/i.test(s);
+
 
   // Bulk fetch missing data when orders load
   const fetchMissingData = useCallback(async (orders) => {
@@ -152,11 +154,13 @@ export default function Profile() {
                                  order.departure_city_name.match(/^[0-9a-f]{24}$/i)) && 
                                 order.departure_city_id && 
                                 !staticMappings.cities[order.departure_city_id];
-      if (needsDepartureCity) {
+    if (needsDepartureCity && isHex24(order.departure_city_id)) {
         console.log(`🏙️ Need to fetch departure city: ${order.departure_city_id}`);
         missingIds.cities.add(order.departure_city_id);
       }
-
+ else if (needsDepartureCity) {
+   console.log('⛔ Skipping bad departure_city_id:', order.departure_city_id);
+  }
       // Check destination cities
       const needsDestinationCity = (!order.destination_city_name || 
                                    order.destination_city_name.match(/^[0-9a-f]{24}$/i)) && 

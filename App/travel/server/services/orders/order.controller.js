@@ -22,7 +22,12 @@ async function getDataById(collection, id, cacheMap) {
   
   try {
     const db = await connectDB();
-    const objectId = new ObjectId(id);
+
+     if (!ObjectId.isValid(String(id))) {
+      cacheMap.set(cacheKey, null);
+      return null;
+    }
+    const objectId = new ObjectId(String(id));
     const document = await db.collection(collection).findOne({ _id: objectId });
     
     // Cache the result (even if null)

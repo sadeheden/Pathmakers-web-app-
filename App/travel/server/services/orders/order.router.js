@@ -9,7 +9,7 @@ router.get('/test', (req, res) => {
 });
 
 router.post('/', authenticateUser, createOrder);
-router.get('/', authenticateUser, getUserOrders); 
-router.post('/dynamic-data', authMiddleware, getDynamicData);
+router.get('/', authenticateUser, getUserOrders);
+router.post('/dynamic-data', authenticateUser, getDynamicData);
 
 export default router;
