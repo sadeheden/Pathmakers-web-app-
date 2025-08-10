@@ -14,8 +14,9 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient'
-import Ionicons from 'react-native-vector-icons/Ionicons'; ;
+import { Ionicons } from '@expo/vector-icons';
 import { LogOut } from 'lucide-react-native';
+import { useNavigation } from '@react-navigation/native';
 
 const { width } = Dimensions.get('window');
 
@@ -36,6 +37,7 @@ export default function Profile() {
   const [loading, setLoading] = useState(true);
   const [expandedOrderId, setExpandedOrderId] = useState(null);
   const router = useRouter();
+  const navigation = useNavigation();
 
   useEffect(() => {
     const loadData = async () => {
@@ -288,7 +290,7 @@ export default function Profile() {
            {/* Top-right Support Icon */}
           <View style={styles.supportIconContainer}>
             <TouchableOpacity
-              onPress={() => router.push('/Support')} // or navigation.navigate('Support')
+             onPress={() => navigation.navigate('Support')} // or navigation.navigate('Support')
               style={styles.supportButton}
             >
               <Ionicons name="help-circle-outline" size={24} color="#495057" />
