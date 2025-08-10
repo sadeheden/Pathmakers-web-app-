@@ -8,9 +8,14 @@ import {
   Alert,
   FlatList,
   ActivityIndicator,
+  ScrollView,
+  Dimensions,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
+
+const { width } = Dimensions.get('window');
 
 function fetchWithTimeout(resource, options = {}) {
   const { timeout = 10000 } = options;
@@ -97,21 +102,18 @@ export default function Profile() {
     setExpandedOrderId((prev) => (prev === orderId ? null : orderId));
   };
 
-  // פונקציה לקבלת שם בטוח - אם אין שם, תציג ID מקוצר
+  // Safe name functions
   const getSafeName = (name, id) => {
     if (name && name !== id && !name.match(/^[0-9a-f]{24}$/i)) {
       return name;
     }
-    // אם השם הוא ID, תציג גרסה מקוצרת וידידותית יותר
     if (typeof id === 'string' && id.length === 24) {
       return `ID: ${id.substring(0, 8)}...`;
     }
     return id || 'Unknown';
   };
 
-  // פונקציה לקבלת שם עיר
   const getCityName = (cityName, cityId) => {
-    // מיפוי ידני של IDs לשמות ערים אם הlookup לא עובד
     const cityMappings = {
       '68022f445f7300b11f986829': 'Tel Aviv',
       '68022f445f7300b11f986837': 'Phuket', 
@@ -129,7 +131,6 @@ export default function Profile() {
     return cityMappings[cityId] || getSafeName(cityName, cityId);
   };
 
-  // פונקציה לקבלת מספר טיסה
   const getFlightName = (flightName, flightId) => {
     const flightMappings = {
       '68075f88dc218773e0652238': 'PG123 - Phuket',
@@ -147,7 +148,6 @@ export default function Profile() {
     return flightMappings[flightId] || getSafeName(flightName, flightId);
   };
 
-  // פונקציה לקבלת שם מלון
   const getHotelName = (hotelName, hotelId) => {
     const hotelMappings = {
       '68022f445f7300b11f986837': 'Phuket Grand Hotel',
@@ -172,43 +172,68 @@ export default function Profile() {
       <TouchableOpacity
         style={styles.tripCard}
         onPress={() => toggleExpand(item._id)}
-        activeOpacity={0.8}
+        activeOpacity={0.9}
       >
-        <Text style={styles.tripTitle}>
-          🏖️ Trip to {getCityName(item.destination_city_name, item.destination_city_id)}
-        </Text>
-        
-        <Text style={styles.tripPrice}>💰 ${item.total_price}</Text>
-        <Text style={styles.tripDate}>📅 {new Date(item.created_at).toLocaleDateString()}</Text>
-        
-        {isExpanded && (
-          <View style={styles.expandedContent}>
-            <Text style={styles.detailText}>
-              🛫 From: {getCityName(item.departure_city_name, item.departure_city_id)}
+        <LinearGradient
+          colors={['#f8f9fa', '#e9ecef']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.tripGradient}
+        >
+          <View style={styles.tripHeader}>
+            <Text style={styles.tripTitle}>
+              🏖️ {getCityName(item.destination_city_name, item.destination_city_id)}
             </Text>
-            <Text style={styles.detailText}>
-              ✈️ Flight: {getFlightName(item.flight_name, item.flight_id)}
-            </Text>
-            <Text style={styles.detailText}>
-              🏨 Hotel: {getHotelName(item.hotel_name, item.hotel_id)}
-            </Text>
-            <Text style={styles.detailText}>
-              🚗 Transport: {item.transportation || 'Not specified'}
-            </Text>
-            <Text style={styles.detailText}>
-              💳 Payment: {item.payment_method || 'Not specified'}
-            </Text>
+            <Text style={styles.tripPrice}>${item.total_price}</Text>
           </View>
-        )}
-        
-        <Text style={styles.expandHint}>
-          {isExpanded ? '▲ Tap to collapse' : '▼ Tap for details'}
-        </Text>
+          
+          <Text style={styles.tripDate}>
+            📅 {new Date(item.created_at).toLocaleDateString()}
+          </Text>
+          
+          {isExpanded && (
+            <View style={styles.expandedContent}>
+              <View style={styles.detailRow}>
+                <Text style={styles.detailIcon}>🛫</Text>
+                <Text style={styles.detailText}>
+                  From: {getCityName(item.departure_city_name, item.departure_city_id)}
+                </Text>
+              </View>
+              <View style={styles.detailRow}>
+                <Text style={styles.detailIcon}>✈️</Text>
+                <Text style={styles.detailText}>
+                  Flight: {getFlightName(item.flight_name, item.flight_id)}
+                </Text>
+              </View>
+              <View style={styles.detailRow}>
+                <Text style={styles.detailIcon}>🏨</Text>
+                <Text style={styles.detailText}>
+                  Hotel: {getHotelName(item.hotel_name, item.hotel_id)}
+                </Text>
+              </View>
+              <View style={styles.detailRow}>
+                <Text style={styles.detailIcon}>🚗</Text>
+                <Text style={styles.detailText}>
+                  Transport: {item.transportation || 'Not specified'}
+                </Text>
+              </View>
+              <View style={styles.detailRow}>
+                <Text style={styles.detailIcon}>💳</Text>
+                <Text style={styles.detailText}>
+                  Payment: {item.payment_method || 'Not specified'}
+                </Text>
+              </View>
+            </View>
+          )}
+          
+          <Text style={styles.expandHint}>
+            {isExpanded ? '▲ Tap to collapse' : '▼ Tap for details'}
+          </Text>
+        </LinearGradient>
       </TouchableOpacity>
     );
   };
 
-  // רכיב סטטיסטיקות
   const renderStats = () => {
     const totalTrips = orders.length;
     const totalSpent = orders.reduce((sum, order) => sum + (order.total_price || 0), 0);
@@ -218,18 +243,27 @@ export default function Profile() {
 
     return (
       <View style={styles.statsContainer}>
-        <View style={styles.statItem}>
-          <Text style={styles.statNumber}>{totalTrips}</Text>
-          <Text style={styles.statLabel}>Trips</Text>
-        </View>
-        <View style={styles.statItem}>
-          <Text style={styles.statNumber}>{destinations}</Text>
-          <Text style={styles.statLabel}>      Destinations</Text>
-        </View>
-        <View style={styles.statItem}>
-          <Text style={styles.statNumber}>${totalSpent}</Text>
-          <Text style={styles.statLabel}>Total Spent</Text>
-        </View>
+        <LinearGradient
+          colors={['#ffffff', '#f8f9fa']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.statsGradient}
+        >
+          <View style={styles.statItem}>
+            <Text style={styles.statNumber}>{totalTrips}</Text>
+            <Text style={styles.statLabel}>Trips</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Text style={styles.statNumber}>{destinations}</Text>
+            <Text style={styles.statLabel}>Destinations</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Text style={styles.statNumber}>${totalSpent}</Text>
+            <Text style={styles.statLabel}>Total Spent</Text>
+          </View>
+        </LinearGradient>
       </View>
     );
   };
@@ -237,7 +271,7 @@ export default function Profile() {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#007AFF" />
+        <ActivityIndicator size="large" color="#6c757d" />
         <Text style={styles.loadingText}>Loading your profile...</Text>
       </View>
     );
@@ -245,43 +279,65 @@ export default function Profile() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.profileSection}>
-        <Image
-          source={{ uri: user?.profile_image || 'https://i.pravatar.cc/150?img=12' }}
-          style={styles.avatar}
-        />
-        <Text style={styles.name}>{user?.name || user?.username || 'Traveler'}</Text>
-        <Text style={styles.email}>{user?.email || 'no-email@example.com'}</Text>
-      </View>
-
-      {orders.length > 0 && renderStats()}
-
-      <Text style={styles.sectionTitle}>Your Trips</Text>
-      
-      {orders.length === 0 ? (
-        <View style={styles.noTripsContainer}>
-          <Text style={styles.noTripsEmoji}>✈️</Text>
-          <Text style={styles.noTripsText}>No trips yet!</Text>
-          <Text style={styles.noTripsText}>Start exploring the world</Text>
+      <ScrollView 
+        style={styles.scrollView}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+      >
+        <View style={styles.profileSection}>
+          <View style={styles.avatarContainer}>
+            <Image
+              source={{ uri: user?.profile_image || 'https://i.pravatar.cc/150?img=12' }}
+              style={styles.avatar}
+            />
+            <View style={styles.avatarRing} />
+          </View>
+          <Text style={styles.name}>{user?.name || user?.username || 'Traveler'}</Text>
+          <Text style={styles.email}>{user?.email || 'no-email@example.com'}</Text>
         </View>
-      ) : (
-        <FlatList
-          data={orders}
-          keyExtractor={(item) => item._id.toString()}
-          renderItem={renderOrder}
-          style={{ width: '100%' }}
-          contentContainerStyle={{ paddingBottom: 20 }}
-          initialNumToRender={10}
-          maxToRenderPerBatch={10}
-          windowSize={5}
-          removeClippedSubviews={true}
-          showsVerticalScrollIndicator={false}
-        />
-      )}
-      
-      <TouchableOpacity style={styles.button} onPress={handleLogout}>
-        <Text style={styles.buttonText}>Logout</Text>
-      </TouchableOpacity>
+
+        {orders.length > 0 && renderStats()}
+
+        <View style={styles.sectionTitleContainer}>
+          <Text style={styles.sectionTitle}>Your Adventures</Text>
+          <View style={styles.sectionTitleUnderline} />
+        </View>
+        
+        {orders.length === 0 ? (
+          <LinearGradient
+            colors={['#f8f9fa', '#e9ecef']}
+            style={styles.noTripsContainer}
+          >
+            <Text style={styles.noTripsEmoji}>✈️</Text>
+            <Text style={styles.noTripsTitle}>Ready for Adventure?</Text>
+            <Text style={styles.noTripsText}>Start exploring the world!</Text>
+          </LinearGradient>
+        ) : (
+          <FlatList
+            data={orders}
+            keyExtractor={(item) => item._id.toString()}
+            renderItem={renderOrder}
+            style={styles.tripsList}
+            contentContainerStyle={{ paddingBottom: 20 }}
+            initialNumToRender={10}
+            maxToRenderPerBatch={10}
+            windowSize={5}
+            removeClippedSubviews={true}
+            showsVerticalScrollIndicator={false}
+          />
+        )}
+        
+        <TouchableOpacity style={styles.buttonContainer} onPress={handleLogout}>
+          <LinearGradient
+            colors={['#6c757d', '#495057']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.button}
+          >
+            <Text style={styles.buttonText}>Logout</Text>
+          </LinearGradient>
+        </TouchableOpacity>
+      </ScrollView>
     </View>
   );
 }
@@ -289,179 +345,233 @@ export default function Profile() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#eef2f593',
-    alignItems: 'center',
-    paddingTop: 10,
+    backgroundColor: '#ffffff',
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
     paddingHorizontal: 20,
+    paddingBottom: 30,
   },
   profileSection: {
-    marginTop: 40, 
     alignItems: 'center',
-    marginBottom: 40,
+    marginTop: 130,
+    marginBottom: 30,
+  },
+  avatarContainer: {
+    position: 'relative',
+    marginBottom: 20,
   },
   avatar: {
-    width: 140,
-    height: 140,
-    borderRadius: 70,
-    marginBottom: 16,
-    borderWidth: 3,
-    borderColor: '#007AFF',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 8,
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    borderWidth: 4,
+    borderColor: '#e9ecef',
+  },
+  avatarRing: {
+    position: 'absolute',
+    width: 136,
+    height: 136,
+    borderRadius: 68,
+    borderWidth: 2,
+    borderColor: '#dee2e6',
+    top: -8,
+    left: -8,
   },
   name: {
-    fontSize: 26,
-    fontWeight: '700',
-    marginBottom: 8,
-    color: '#2865c1ff',
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#212529',
     textAlign: 'center',
+    marginBottom: 8,
   },
   email: {
     fontSize: 16,
-    color: '#666',
-    marginBottom: 30,
+    color: '#6c757d',
     textAlign: 'center',
   },
-sectionTitle: {
-  fontSize: 22,
-  fontWeight: '700',
-  marginBottom: 15,
-  marginTop: 10,  // להקטין/להגדיל את המרווח מעל הכותרת
-  alignSelf: 'flex-start',
-  color: '#2865c1ff',
-  borderBottomWidth: 2,
-  borderBottomColor: '#007AFF',
-  paddingBottom: 5,
-},
-
-  tripCard: {
-    backgroundColor: '#fff',
-    padding: 20,
-    borderRadius: 15,
-    marginBottom: 15,
-    width: '100%',
+  statsContainer: {
+    marginBottom: 30,
+    borderRadius: 20,
+    overflow: 'hidden',
+    elevation: 8,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.12,
-    shadowRadius: 6,
-    elevation: 5,
-    borderLeftWidth: 4,
-    borderLeftColor: '#007AFF',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+  },
+  statsGradient: {
+    flexDirection: 'row',
+    paddingVertical: 25,
+    paddingHorizontal: 20,
+  },
+  statItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  statDivider: {
+    width: 1,
+    backgroundColor: '#dee2e6',
+    marginHorizontal: 15,
+  },
+  statNumber: {
+    fontSize: 15,
+    fontWeight: 'bold',
+    color: '#495057',
+  },
+  statLabel: {
+    fontSize: 14,
+    color: '#6c757d',
+    marginTop: 4,
+    fontWeight: '500',
+  },
+  sectionTitleContainer: {
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  sectionTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#212529',
+  },
+  sectionTitleUnderline: {
+    width: 50,
+    height: 3,
+    backgroundColor: '#6c757d',
+    marginTop: 8,
+    borderRadius: 2,
+  },
+  tripsList: {
+    width: '100%',
+  },
+  tripCard: {
+    marginBottom: 15,
+    borderRadius: 20,
+    overflow: 'hidden',
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+  },
+  tripGradient: {
+    padding: 20,
+  },
+  tripHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
   },
   tripTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    marginBottom: 8,
-    color: '#2865c1ff',
+    color: '#212529',
+    flex: 1,
   },
   tripPrice: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#28a745',
-    marginBottom: 4,
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#495057',
+    backgroundColor: 'rgba(108, 117, 125, 0.1)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 15,
   },
   tripDate: {
     fontSize: 14,
-    color: '#666',
-    marginBottom: 8,
+    color: '#6c757d',
+    marginBottom: 10,
   },
   expandedContent: {
-    marginTop: 12,
-    paddingTop: 12,
+    marginTop: 15,
+    paddingTop: 15,
     borderTopWidth: 1,
-    borderTopColor: '#eee',
+    borderTopColor: '#dee2e6',
+  },
+  detailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  detailIcon: {
+    fontSize: 16,
+    marginRight: 10,
+    width: 20,
   },
   detailText: {
     fontSize: 14,
-    color: '#555',
-    marginBottom: 6,
+    color: '#495057',
+    flex: 1,
     lineHeight: 20,
   },
   expandHint: {
     fontSize: 12,
-    color: '#007AFF',
+    color: '#6c757d',
     textAlign: 'center',
-    marginTop: 8,
+    marginTop: 10,
     fontStyle: 'italic',
   },
-  button: {
-    backgroundColor: '#007AFF',
-    paddingVertical: 14,
-    paddingHorizontal: 50,
-    borderRadius: 25,  
-    marginTop: 30,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.2,
-    shadowRadius: 5,
-    elevation: 5,
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-  // סטיילים נוספים לשיפור החוויה
   noTripsContainer: {
-    backgroundColor: '#f8f9fa',
-    padding: 30,
-    borderRadius: 15,
+    padding: 40,
+    borderRadius: 20,
     alignItems: 'center',
     marginVertical: 20,
-    borderWidth: 2,
-    borderColor: '#dee2e6',
-    borderStyle: 'dashed',
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+  },
+  noTripsEmoji: {
+    fontSize: 64,
+    marginBottom: 20,
+  },
+  noTripsTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#495057',
+    marginBottom: 8,
   },
   noTripsText: {
     fontSize: 16,
     color: '#6c757d',
     textAlign: 'center',
-    marginBottom: 10,
   },
-  noTripsEmoji: {
-    fontSize: 48,
-    marginBottom: 15,
-  },
-  statsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    backgroundColor: '#fff',
-    padding: 20,
-    borderRadius: 15,
-    marginBottom: 10,
+  buttonContainer: {
+    marginTop: 30,
+    borderRadius: 25,
+    overflow: 'hidden',
+    elevation: 8,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
   },
-  statItem: {
+  button: {
+    paddingVertical: 16,
+    paddingHorizontal: 50,
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  statNumber: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#007AFF',
-  },
-  statLabel: {
-    fontSize: 12,
-    color: '#666',
-    marginTop: 4,
+  buttonText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '700',
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#eef2f593',
+    backgroundColor: '#ffffff',
   },
   loadingText: {
-    marginTop: 16,
-    fontSize: 16,
-    color: '#666',
+    marginTop: 20,
+    fontSize: 18,
+    color: '#6c757d',
     textAlign: 'center',
+    fontWeight: '500',
   },
 });
