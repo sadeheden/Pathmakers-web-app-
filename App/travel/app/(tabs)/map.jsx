@@ -1,65 +1,102 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, TextInput, StyleSheet, Dimensions, Alert, TouchableOpacity } from 'react-native';
+import { View, Text, TextInput, StyleSheet, Dimensions, Alert, TouchableOpacity, Platform, Linking } from 'react-native';
 import MapView, { Marker, Polyline } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { Ionicons } from '@expo/vector-icons';
+
+const GEOAPIFY_KEY = 'YOUR_GEOAPIFY_API_KEY_HERE'; // ← replace me
+
+const TAB_BAR_MARGIN = 40;       // space to clear your bottom tab
+const SEARCH_BOX_HEIGHT = 56;    // ~ height of the search box
+const GAP = 14;                  // gap between info box and search box
 
 export default function MapScreen() {
   const [location, setLocation] = useState(null);
   const [destinationText, setDestinationText] = useState('');
   const [destinationCoords, setDestinationCoords] = useState(null);
   const [loadingDest, setLoadingDest] = useState(false);
-  const [distanceKm, setDistanceKm] = useState(null); // ✅ חדש
+
+  const [distanceKm, setDistanceKm] = useState(null);
+  const [routeMode, setRouteMode] = useState('drive'); // 'drive' | 'walk' | 'bicycle'
+
+  const [routeCoords, setRouteCoords] = useState([]);
+  const [routeInfo, setRouteInfo] = useState(null);
+  const mapRef = useRef(null);
   const typingTimeoutRef = useRef(null);
 
   useEffect(() => {
     (async () => {
-      let { status } = await Location.requestForegroundPermissionsAsync();
+      const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
         Alert.alert('Permission Denied', 'Allow location access to use the map.');
         return;
       }
-      let currentLocation = await Location.getCurrentPositionAsync({});
+      const currentLocation = await Location.getCurrentPositionAsync({});
       setLocation(currentLocation.coords);
     })();
   }, []);
 
   const calculateDistance = (lat1, lon1, lat2, lon2) => {
-    const R = 6371; // רדיוס כדור הארץ בק"מ
+    const R = 6371;
     const dLat = ((lat2 - lat1) * Math.PI) / 180;
     const dLon = ((lon2 - lon1) * Math.PI) / 180;
     const a =
       Math.sin(dLat / 2) ** 2 +
-      Math.cos((lat1 * Math.PI) / 180) *
-        Math.cos((lat2 * Math.PI) / 180) *
-        Math.sin(dLon / 2) ** 2;
+      Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLon / 2) ** 2;
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return R * c; // מרחק בק"מ
+    return R * c;
+  };
+
+  // Fetch route from Geoapify and convert to RN coords
+  const fetchRoute = async (from, to, mode = 'drive') => {
+    try {
+      const waypoints = `${from.latitude},${from.longitude}|${to.latitude},${to.longitude}`;
+      const url = `https://api.geoapify.com/v1/routing?waypoints=${encodeURIComponent(waypoints)}&mode=${mode}&apiKey=${GEOAPIFY_KEY}`;
+
+      const res = await fetch(url);
+      const json = await res.json();
+
+      const feature = json?.features?.[0];
+      if (!feature) throw new Error('No route found');
+
+      const coordsLngLat = feature.geometry.coordinates;
+      const flat = Array.isArray(coordsLngLat?.[0]?.[0]) ? coordsLngLat.flat() : coordsLngLat;
+      const polylineCoords = flat.map(([lon, lat]) => ({ latitude: lat, longitude: lon }));
+
+      setRouteCoords(polylineCoords);
+
+      const distanceMeters = feature.properties?.distance;
+      const timeSeconds = feature.properties?.time;
+      setRouteInfo({ distanceMeters, timeSeconds, mode });
+
+      if (mapRef.current && polylineCoords.length > 1) {
+        mapRef.current.fitToCoordinates(polylineCoords, {
+          edgePadding: { top: 100, right: 60, bottom: 180, left: 60 },
+          animated: true,
+        });
+      }
+    } catch (e) {
+      console.log(e);
+      Alert.alert('Routing error', 'Failed to get directions.');
+      setRouteCoords([]);
+      setRouteInfo(null);
+    }
   };
 
   const handleSetDestination = async () => {
-    if (!destinationText.trim()) return;
-    if (loadingDest) return;
-
+    if (!destinationText.trim() || loadingDest) return;
     setLoadingDest(true);
     try {
-      let geo = await Location.geocodeAsync(destinationText);
+      const geo = await Location.geocodeAsync(destinationText);
       if (geo.length > 0) {
-        const coords = {
-          latitude: geo[0].latitude,
-          longitude: geo[0].longitude,
-        };
+        const coords = { latitude: geo[0].latitude, longitude: geo[0].longitude };
         setDestinationCoords(coords);
 
-        // ✅ חישוב מרחק
         if (location) {
-          const dist = calculateDistance(
-            location.latitude,
-            location.longitude,
-            coords.latitude,
-            coords.longitude
-          );
+          const dist = calculateDistance(location.latitude, location.longitude, coords.latitude, coords.longitude);
           setDistanceKm(dist.toFixed(2));
+          await fetchRoute(location, coords, routeMode);
         }
       } else {
         Alert.alert('Not Found', 'Could not find the destination.');
@@ -75,27 +112,78 @@ export default function MapScreen() {
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
     typingTimeoutRef.current = setTimeout(() => {
       handleSetDestination();
-    }, 1000);
+    }, 800);
   };
 
   const clearDestinationText = () => {
     setDestinationText('');
     setDestinationCoords(null);
-    setDistanceKm(null); // ✅ ניקוי גם של המרחק
+    setDistanceKm(null);
+    setRouteCoords([]);
+    setRouteInfo(null);
   };
 
-  // ✅ זמן משוער לפי מהירות
   const getEstimatedTime = (speedKmh) => {
     if (!distanceKm) return null;
     const timeHours = distanceKm / speedKmh;
     const minutes = Math.round(timeHours * 60);
-    return `${minutes} דקות`;
+    return `${minutes} min`;
+  };
+
+  const formatMetersToKm = (m) => (m >= 1000 ? `${(m / 1000).toFixed(1)} km` : `${m} m`);
+  const formatSecondsToMin = (s) => `${Math.round(s / 60)} min`;
+
+  // ---- OPEN EXTERNAL NAVIGATION ----
+  const openExternalNavigation = async () => {
+    if (!destinationCoords) return;
+
+    const { latitude, longitude } = destinationCoords;
+    const travelmode =
+      routeMode === 'walk' ? 'walking' :
+      routeMode === 'bicycle' ? 'bicycling' : 'driving';
+
+    // Try Waze
+    const waze = `waze://?ll=${latitude},${longitude}&navigate=yes`;
+    if (await Linking.canOpenURL('waze://')) {
+      return Linking.openURL(waze);
+    }
+
+    // Try Google Maps app
+    const gmapsApp = Platform.select({
+      ios: `comgooglemaps://?daddr=${latitude},${longitude}&directionsmode=${travelmode}`,
+      android: `google.navigation:q=${latitude},${longitude}&mode=${travelmode === 'walking' ? 'w' : travelmode === 'bicycling' ? 'b' : 'd'}`,
+    });
+
+    const canOpenGmaps = await Linking.canOpenURL(
+      Platform.OS === 'ios' ? 'comgooglemaps://' : 'google.navigation:'
+    );
+    if (canOpenGmaps) return Linking.openURL(gmapsApp);
+
+    // Try Apple Maps (iOS)
+    if (Platform.OS === 'ios') {
+      const apple = `http://maps.apple.com/?daddr=${latitude},${longitude}&dirflg=${
+        travelmode === 'walking' ? 'w' : 'd'
+      }`;
+      return Linking.openURL(apple);
+    }
+
+    // Fallback: Google Maps web
+    const gmapsWeb = `https://www.google.com/maps/dir/?api=1&destination=${latitude},${longitude}&travelmode=${travelmode}`;
+    return Linking.openURL(gmapsWeb);
+  };
+
+  const changeMode = async (mode) => {
+    setRouteMode(mode);
+    if (location && destinationCoords) {
+      await fetchRoute(location, destinationCoords, mode);
+    }
   };
 
   return (
-    <View style={styles.container}>
+    <View style={styles.container} pointerEvents="box-none">
       {location ? (
         <MapView
+          ref={mapRef}
           style={styles.map}
           initialRegion={{
             latitude: location.latitude,
@@ -103,11 +191,14 @@ export default function MapScreen() {
             latitudeDelta: 0.1,
             longitudeDelta: 0.1,
           }}
-          showsUserLocation={true}
+          showsUserLocation
         >
-          {destinationCoords && (
-            <>
-              <Marker coordinate={destinationCoords} title="Destination" />
+          {destinationCoords && <Marker coordinate={destinationCoords} title="Destination" />}
+
+          {routeCoords.length > 1 ? (
+            <Polyline coordinates={routeCoords} strokeColor="#0000FF" strokeWidth={4} />
+          ) : (
+            destinationCoords && (
               <Polyline
                 coordinates={[
                   { latitude: location.latitude, longitude: location.longitude },
@@ -116,7 +207,7 @@ export default function MapScreen() {
                 strokeColor="#0000FF"
                 strokeWidth={4}
               />
-            </>
+            )
           )}
         </MapView>
       ) : (
@@ -125,33 +216,65 @@ export default function MapScreen() {
         </View>
       )}
 
-      {/* ✅ תיבת מידע על היעד */}
-      {destinationCoords && distanceKm && (
-        <View style={styles.infoBox}>
+      {(destinationCoords && (distanceKm || routeInfo)) && (
+        <View
+          style={[
+            styles.infoBox,
+            { bottom: TAB_BAR_MARGIN + SEARCH_BOX_HEIGHT + GAP },
+          ]}
+          pointerEvents="box-none"
+        >
           <Text style={styles.infoTitle}>📍 {destinationText}</Text>
-          <Text>מרחק: {distanceKm} ק"מ</Text>
-          <Text>⏱️ זמן בהליכה (5 קמ"ש): {getEstimatedTime(5)}</Text>
-          <Text>🚗 זמן בנסיעה (50 קמ"ש): {getEstimatedTime(50)}</Text>
+          {distanceKm && <Text>Straight distance: {distanceKm} km</Text>}
+          {routeInfo && (
+            <>
+              <Text>Route distance: {formatMetersToKm(routeInfo.distanceMeters)}</Text>
+              <Text>ETA ({routeInfo.mode}): {formatSecondsToMin(routeInfo.timeSeconds)}</Text>
+            </>
+          )}
+          {distanceKm && (
+            <>
+              <Text>Walk (5 km/h): {getEstimatedTime(5)}</Text>
+              <Text>Drive (50 km/h): {getEstimatedTime(50)}</Text>
+            </>
+          )}
         </View>
       )}
 
-      {/* תיבת קלט */}
-      <View style={styles.inputContainer}>
+      {/* Bottom bar: search + actions */}
+      <View style={[styles.inputContainer, { bottom: TAB_BAR_MARGIN }]}>
         <TextInput
           style={styles.input}
-          placeholder="Enter destination"
+          placeholder="Search destination (e.g., Eiffel Tower)"
           value={destinationText}
           onChangeText={onChangeDestinationText}
           editable={!loadingDest}
-          returnKeyType="done"
+          returnKeyType="search"
         />
         {destinationText.length > 0 && (
           <TouchableOpacity onPress={clearDestinationText} style={{ marginHorizontal: 8 }}>
-            <Ionicons name="close-circle" size={24} color="#aaa" />
+            <Ionicons name="close-circle" size={22} />
           </TouchableOpacity>
         )}
-        <TouchableOpacity onPress={handleSetDestination} disabled={loadingDest}>
-          <Ionicons name="navigate-outline" size={28} color={loadingDest ? '#aaa' : '#1E90FF'} />
+        <TouchableOpacity onPress={handleSetDestination} disabled={loadingDest} style={{ marginRight: 6 }}>
+          <Ionicons name="search" size={24} color={loadingDest ? '#aaa' : '#1E90FF'} />
+        </TouchableOpacity>
+
+        {/* Mode toggle (optional) */}
+        <TouchableOpacity onPress={() => changeMode('walk')} style={[styles.modeBtn, routeMode === 'walk' && styles.modeBtnActive]}>
+          <Ionicons name="walk" size={18} />
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => changeMode('bicycle')} style={[styles.modeBtn, routeMode === 'bicycle' && styles.modeBtnActive]}>
+          <Ionicons name="bicycle" size={18} />
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => changeMode('drive')} style={[styles.modeBtn, routeMode === 'drive' && styles.modeBtnActive]}>
+          <Ionicons name="car" size={18} />
+        </TouchableOpacity>
+
+        {/* Start Navigation */}
+        <TouchableOpacity onPress={openExternalNavigation} disabled={!destinationCoords} style={styles.navBtn}>
+          <Ionicons name="navigate-outline" size={22} color={destinationCoords ? '#fff' : '#ccc'} />
+          <Text style={[styles.navBtnText, { color: destinationCoords ? '#fff' : '#ccc' }]}>Start</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -160,51 +283,70 @@ export default function MapScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  map: {
-    width: Dimensions.get('window').width,
-    height: Dimensions.get('window').height,
-  },
-  loading: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
+  map: { width: Dimensions.get('window').width, height: Dimensions.get('window').height },
+  loading: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+
   inputContainer: {
     position: 'absolute',
-    top: 40,
-    left: 20,
-    right: 20,
+    left: 12,
+    right: 12,
     backgroundColor: 'white',
-    borderRadius: 12,
-    paddingHorizontal: 12,
+    borderRadius: 14,
+    paddingHorizontal: 10,
     paddingVertical: 8,
     flexDirection: 'row',
     alignItems: 'center',
-    elevation: 6,
+    elevation: 10,
     shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    zIndex: 20,
+    minHeight: SEARCH_BOX_HEIGHT,
   },
-  input: {
-    flex: 1,
-    fontSize: 16,
+
+  input: { flex: 1, fontSize: 15 },
+
+  modeBtn: {
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    borderRadius: 10,
+    backgroundColor: '#f0f0f0',
+    marginHorizontal: 3,
   },
+  modeBtnActive: {
+    backgroundColor: '#e0f0ff',
+  },
+
+  navBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#1E90FF',
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 10,
+    marginLeft: 6,
+  },
+  navBtnText: {
+    marginLeft: 4,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+
   infoBox: {
     position: 'absolute',
-    bottom: 30,
-    left: 20,
-    right: 20,
+    left: 12,
+    right: 12,
     backgroundColor: '#fff',
-    borderRadius: 12,
+    borderRadius: 14,
     padding: 12,
-    elevation: 5,
+    elevation: 6,
     shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 3 },
+    zIndex: 10,
   },
-  infoTitle: {
-    fontWeight: 'bold',
-    fontSize: 16,
-    marginBottom: 4,
-  },
+
+  infoTitle: { fontWeight: 'bold', fontSize: 16, marginBottom: 4 },
 });
