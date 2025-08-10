@@ -1,21 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  MapPin, 
-  Thermometer, 
-  Wind, 
-  Droplets, 
-  Eye, 
-  Sunrise, 
-  Sunset, 
-  RefreshCw,
-  CloudRain,
-  Sun,
-  Cloud,
-  CloudSnow,
-  Zap,
-  Navigation,
-  Calendar
-} from 'lucide-react';
+import {
+  MapPin, Thermometer, Wind, Droplets, Eye, Sunrise, Sunset, RefreshCw,
+  CloudRain, Sun, Cloud, CloudSnow, Zap, Navigation, Calendar
+} from 'lucide-react-native'; // ✅ RN
+
 
 // Weather icons mapping
 const weatherIcons = {

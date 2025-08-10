@@ -275,7 +275,7 @@ export default function HomeScreen() {
 const handleWeatherPress = () => {
   try {
     console.log('Weather button pressed');
-    navigation.navigate('(tabs)', { screen: 'weather' });
+ navigation.navigate('Weather');
   } catch (error) {
     console.error('Navigation error:', error);
     Alert.alert('Navigation Error', 'Could not navigate to weather screen.');

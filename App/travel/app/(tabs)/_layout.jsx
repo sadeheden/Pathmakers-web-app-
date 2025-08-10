@@ -11,6 +11,7 @@ import MapScreen from './map';
 import DiaryScreen from './diary';
 import ProfileScreen from './profile';
 import RealChat from './RealChat';
+import WeatherScreen from './weather';
 
 const Tab = createBottomTabNavigator();
 const HomeStack = createNativeStackNavigator();
@@ -21,6 +22,7 @@ function HomeStackScreen() {
     <HomeStack.Navigator screenOptions={{ headerShown: false }}>
       <HomeStack.Screen name="HomeMain" component={HomeScreen} />
       <HomeStack.Screen name="RealChat" component={RealChat} />
+         <HomeStack.Screen name="Weather" component={WeatherScreen} />
     </HomeStack.Navigator>
   );
 }
