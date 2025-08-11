@@ -358,9 +358,9 @@ const handleWeatherPress = () => {
   };
 
 const handleCityPress = (city) => {
-  setSelectedDestination(city);
-  setBookingOpen(true);
+  navigation.navigate('Pay', { city });
 };
+
 
 
   const handleLike = (id) => {

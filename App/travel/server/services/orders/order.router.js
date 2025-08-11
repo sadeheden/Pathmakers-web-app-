@@ -1,21 +1,12 @@
-// services/orders/order.router.js
-import express from 'express';
-import authenticateUser from '../middlewares/authenticateUser.js';
-import {
-  getOrdersForProfile,
-  getDynamicData
-} from './order.controller.js';
+// routes/orders.routes.js
+import { Router } from 'express';
+import { requireAuth } from '../middleware/auth.js';
+import { createOrder, getOrdersForProfile, getDynamicData } from '../controllers/orders.controller.js';
 
-const router = express.Router();
+const router = Router();
 
-// נתיב לבדיקה פשוטה
-router.get('/test', (req, res) => res.json({ message: 'Orders route is working!' }));
-
-// נתיבי הזמנות - Get orders for profile
-router.get('/', authenticateUser, getOrdersForProfile);
-
-// נתיב לקבלת מידע דינמי (למשל: ערים, טיסות, מלונות לפי מזהים)
-router.post('/dynamic-data', authenticateUser, getDynamicData);
-
+router.post('/', requireAuth, createOrder);          // POST /api/orders
+router.get('/profile', requireAuth, getOrdersForProfile);
+router.post('/dynamic', requireAuth, getDynamicData);
 
 export default router;
