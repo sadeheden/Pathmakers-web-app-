@@ -16,13 +16,21 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 
-// ✅ local logo
 const logo = require('../../assets/images/logo.png');
 
 const faqs = [
-  { question: 'How do I create a new trip?', answer: 'Go to the home screen, tap "Add New Trip", and follow the guided steps.' },
-  { question: 'How do I share my trip with family?', answer: 'Inside the trip page, tap "Share" and choose the contacts you want to invite.' },
-  { question: 'How do I edit my daily schedule?', answer: 'In the daily schedule view, tap and drag activities to the desired time slot.' },
+{
+  question: 'How do I create a new trip?',
+  answer: 'There are two options: (1) On the website, you can create a custom trip by following the guided planning steps. (2) In the app, go to the home screen to explore pre-built trips, then select one to view full details and start your journey.'
+},
+{
+  question: 'What is the travel journal for?',
+  answer: 'The travel journal lets you document your trip day-by-day. You can add notes, upload photos, and track your memories, creating a personal diary you can revisit anytime.'
+},
+{
+  question: 'How does the AI travel assistant work?',
+  answer: 'Our AI travel assistant can help you build your itinerary, suggest activities based on your preferences, and adjust plans in real time based on weather or location changes.'
+},
 ];
 
 const MAX_LEN = 800;
@@ -33,7 +41,6 @@ const SupportScreen = () => {
   const [inputHeight, setInputHeight] = useState(120);
   const [expandedIdx, setExpandedIdx] = useState(-1);
 
-  // 👇 keyboard management
   const scrollRef = useRef(null);
   const inputRef = useRef(null);
   const [kbHeight, setKbHeight] = useState(0);
@@ -80,9 +87,15 @@ const SupportScreen = () => {
   const goHome = () => {
     navigation.navigate('(tabs)', { screen: 'home' });
   };
-
-  const quickChips = ['Login problem', 'Payment issue', 'Trip not saving', 'App is slow'];
-
+  const quickChips = [
+    'Login problem',
+    'Payment issue',
+    'Trip not saving',
+    'App is slow',
+    'AI suggestions not working',
+    'Journal not updating',
+    'Error during booking'
+  ];
   return (
     <KeyboardAvoidingView
       style={{ flex: 1, backgroundColor: '#f9f9f9' }}

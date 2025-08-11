@@ -161,7 +161,7 @@ const PaymentModal = ({ visible, onClose, selectedCity, onPaymentSuccess }) => {
                 </View>
               </View>
               <TouchableOpacity style={styles.payButton} onPress={handlePayment} activeOpacity={0.8}>
-                <LinearGradient colors={['#667eea', '#764ba2']} style={styles.payButtonGradient}>
+                <LinearGradient colors={['#007AFF', '#007AFF']} style={styles.payButtonGradient}>
                   <Text style={styles.payButtonText}>Pay ${selectedCity?.price}</Text>
                 </LinearGradient>
               </TouchableOpacity>
@@ -660,7 +660,7 @@ const handleDislike = (id) => {
         </Text>
 
         <TouchableOpacity style={styles.bookButton} onPress={() => setShowPaymentModal(true)} activeOpacity={0.8}>
-          <LinearGradient colors={['#667eea', '#764ba2']} style={styles.bookButtonGradient}>
+          <LinearGradient colors={['#007AFF', '#007AFF']} style={styles.bookButtonGradient}>
             <Text style={styles.bookButtonText}>Book Now</Text>
           </LinearGradient>
         </TouchableOpacity>
@@ -668,7 +668,6 @@ const handleDislike = (id) => {
     </View>
   </Modal>
 )}
-
 
         {/* Payment Modal */}
         <PaymentModal
@@ -912,7 +911,7 @@ const BookingSheet = ({
               </View>
 
               <TouchableOpacity onPress={handlePay} disabled={submitting} activeOpacity={0.85} style={{ borderRadius: 16, overflow: 'hidden', marginTop: 6 }}>
-                <LinearGradient colors={['#667eea', '#764ba2']} style={sheetStyles.primaryBtn}>
+                <LinearGradient colors={['##007AFF', '#764ba2']} style={sheetStyles.primaryBtn}>
                   {submitting
                     ? <ActivityIndicator size="small" color="#fff" />
                     : <Text style={sheetStyles.primaryBtnText}>Pay ${price}</Text>}
@@ -1006,7 +1005,7 @@ const sheetStyles = StyleSheet.create({
   primaryBtn: { paddingVertical: 14, alignItems: 'center', borderRadius: 16 },
   primaryBtnText: { color: '#fff', fontSize: 16, fontWeight: '800' },
   secondaryBtn: { paddingVertical: 12, alignItems: 'center' },
-  secondaryBtnText: { color: '#667eea', fontSize: 15, fontWeight: '700' },
+  secondaryBtnText: { color: '#007AFF', fontSize: 15, fontWeight: '700' },
 
   inputWrap: { marginBottom: 14 },
   inputLabel: { fontSize: 13, fontWeight: '700', color: '#334155', marginBottom: 6 },
@@ -1408,7 +1407,7 @@ const styles = StyleSheet.create({
   },
   paymentSubtitle: {
     fontSize: 18,
-    color: '#667eea',
+    color: '#5b76edff',
     marginBottom: 20,
     textAlign: 'center',
     fontWeight: '600',
