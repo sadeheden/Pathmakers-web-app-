@@ -1,34 +1,25 @@
 import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import {
   View, Text, StyleSheet, Dimensions, ActivityIndicator,
-  TouchableOpacity, Alert, FlatList, Platform
+  TouchableOpacity, Alert, FlatList, TextInput
 } from 'react-native';
 import * as Location from 'expo-location';
 import { Ionicons } from '@expo/vector-icons';
+import { post } from '../../utils/api';
+ // 👈 Using your API service
 
-const GEOAPIFY_KEY = 'df685720b88e4349a1df71ab33e36c3d';
-const DEFAULT_RADIUS_M = 5000;
 const PAGE_LIMIT = 30;
 
-/* ✅ Move helpers OUTSIDE so they’re stable */
-const toRad = (d) => (d * Math.PI) / 180;
-const distanceMeters = (lat1, lon1, lat2, lon2) => {
-  const R = 6371e3;
-  const dLat = toRad(lat2 - lat1);
-  const dLon = toRad(lon2 - lon1);
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return Math.round(R * c);
-};
+/* ===================== Helpers (stable) ===================== */
 const fmtDistance = (m) => (m >= 1000 ? `${(m / 1000).toFixed(1)} km` : `${m} m`);
+
 const stars = (n) => {
   if (n == null || isNaN(n)) return 'N/A';
   const five = n > 5 ? Math.min(5, Math.round((n / 10) * 5)) : Math.round(n);
   return '★'.repeat(five) + '☆'.repeat(5 - five);
 };
-// deterministic pseudo-random per id
+
+// deterministic pseudo-random per id (fallback for missing availability)
 const hashCode = (str) => {
   let h = 0;
   for (let i = 0; i < str.length; i++) {
@@ -44,176 +35,287 @@ const rngFrom = (seed) => {
     return s / 4294967296;
   };
 };
+const makeAvailability = (id) => {
+  // 2–3 time slots, deterministic per attraction id
+  const rng = rngFrom(hashCode(String(id)));
+  const base = [
+    '09:00–10:30',
+    '11:00–12:30', 
+    '13:00–14:30',
+    '15:00–16:30',
+    '17:00–18:30'
+  ];
+  const count = 2 + Math.floor(rng() * 2); // 2 or 3
+  const pool = [...base].sort(() => rng() - 0.5);
+  return pool.slice(0, count);
+};
 
+/* ===================== Component ===================== */
 export default function AttractionsScreen() {
-  const [coords, setCoords] = useState(null);
+  const [searchCity, setSearchCity] = useState('');
+  const [currentCity, setCurrentCity] = useState('');
   const [loadingLoc, setLoadingLoc] = useState(true);
 
-  const [radiusM, setRadiusM] = useState(DEFAULT_RADIUS_M);
   const [loadingList, setLoadingList] = useState(false);
   const [items, setItems] = useState([]);
   const [errorText, setErrorText] = useState('');
 
   const fetchAbortRef = useRef(null);
 
+  // Get user's current city on component mount
   useEffect(() => {
     (async () => {
       try {
+        console.log('📍 Requesting location permission...');
         const { status } = await Location.requestForegroundPermissionsAsync();
         if (status !== 'granted') {
-          Alert.alert('Permission denied', 'Allow location access to find attractions nearby.');
-          setErrorText('Location permission denied.');
+          console.log('⚠️ Location permission denied, will search by city name only');
+          setCurrentCity('');
+          setLoadingLoc(false);
           return;
         }
+        
+        console.log('📍 Getting current position...');
         const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-        setCoords({ lat: pos.coords.latitude, lon: pos.coords.longitude });
+        
+        // Reverse geocode to get city name
+        try {
+          console.log(' Reverse geocoding...');
+          const [g] = await Location.reverseGeocodeAsync({
+            latitude: pos.coords.latitude,
+            longitude: pos.coords.longitude
+          });
+          const cityName = g?.city || g?.subregion || '';
+          console.log(' Current city detected:', cityName);
+          setCurrentCity(cityName);
+          setSearchCity(cityName); // Pre-fill search with current city
+        } catch (geoError) {
+          console.warn('⚠️ Reverse geocoding failed:', geoError);
+          setCurrentCity('');
+        }
       } catch (e) {
-        setErrorText('Failed to get current location.');
+        console.error('❌ Location error:', e);
+        setCurrentCity('');
       } finally {
         setLoadingLoc(false);
       }
     })();
   }, []);
 
-  const fetchAttractions = useCallback(async () => {
-    if (!coords) return;
+  const fetchAttractionsByCity = useCallback(async (cityName) => {
+    if (!cityName?.trim()) {
+      setErrorText('Please enter a city name to search');
+      return;
+    }
+
+    console.log('🔍 Starting city-based attractions search for:', cityName);
     setLoadingList(true);
     setErrorText('');
 
-    if (fetchAbortRef.current) fetchAbortRef.current.abort();
-    const controller = new AbortController();
-    fetchAbortRef.current = controller;
-
     try {
-      const categories = [
-        'tourism.attraction',
-        'tourism.sights',
-        'entertainment.museum',
-        'entertainment.zoo',
-        'entertainment.theme_park',
-        'leisure.park'
-      ].join(',');
+      const searchData = {
+        city: cityName.trim(),
+        limit: PAGE_LIMIT
+      };
 
-      const url = `https://api.geoapify.com/v2/places?categories=${encodeURIComponent(
-        categories
-      )}&filter=circle:${coords.lon},${coords.lat},${radiusM}&bias=proximity:${coords.lon},${coords.lat}&limit=${PAGE_LIMIT}&apiKey=${GEOAPIFY_KEY}`;
+      console.log('📤 Search request data:', searchData);
 
-      const res = await fetch(url, { signal: controller.signal });
-      if (!res.ok) throw new Error(`Geoapify error ${res.status}`);
-      const json = await res.json();
+      // 👈 Using your API service with proper authentication
+      const response = await post('orders/search-by-city', searchData);
+      
+      console.log('📥 API Response:', response);
 
-      const list = await Promise.all(
-        (json.features || []).map(async (f) => {
-          const p = f.properties || {};
-          const [lon, lat] = (f.geometry && f.geometry.coordinates) || [];
-          const dist = distanceMeters(coords.lat, coords.lon, lat, lon);
-          const rating = p.rating ?? p.score ?? p.rank ?? null;
-          const book = await fetchBookability(p.place_id);
-
-          return {
-            id: p.place_id || `${lat},${lon}`,
-            name: p.name || p.street || p.formatted || 'Unknown place',
-            address: p.address_line2 || p.address_line1 || p.formatted || '',
-            lat,
-            lon,
-            distance: dist,
-            rating,
-            openingHours: p.opening_hours || null,
-            website: p.website || null,
-            bookable: !!book.bookable,
-            price: book.price ?? null,
-          };
-        })
-      );
-
-      setItems(list.sort((a, b) => a.distance - b.distance));
-    } catch (e) {
-      if (e.name !== 'AbortError') {
-        setErrorText('Failed to load attractions.');
-        setItems([]);
+      if (!response.success) {
+        throw new Error(response.message || 'Search failed');
       }
+
+      const list = (response.items || []).map((d) => {
+        const [lon, lat] = d?.location?.coordinates || [null, null];
+        
+        return {
+          id: String(d._id || d.id || `${lat},${lon}`),
+          name: d.name || 'Unknown place',
+          address: d.address?.line1 || d.address?.city || d.city || '',
+          city: d.city || '',
+          lat,
+          lon,
+          distance: d.distance || null, // No distance calculation needed
+          rating: d.rating ?? null,
+          openingHours: d.openingHours ?? null,
+          website: d.website ?? null,
+          bookable: !!d.bookable,
+          price: d.price ?? null,
+          availability: Array.isArray(d.availability) && d.availability.length > 0
+            ? d.availability
+            : makeAvailability(d._id || d.id || `${lat},${lon}`), // fallback
+          description: d.description || null,
+          category: d.category || 'attraction'
+        };
+      });
+
+      console.log(`✅ Processed ${list.length} attractions from MongoDB for city: ${cityName}`);
+      setItems(list);
+
+    } catch (e) {
+      console.error('❌ Failed to fetch attractions:', e);
+      setErrorText(e.message || 'Failed to load attractions from your database.');
+      setItems([]);
     } finally {
       setLoadingList(false);
-      fetchAbortRef.current = null;
     }
-  /* ✅ Dependencies no longer include distanceMeters (it’s stable now) */
-  }, [coords, radiusM]);
-
-  useEffect(() => {
-    if (coords) fetchAttractions();
-  }, [coords, radiusM, fetchAttractions]);
+  }, []);
 
   const onPressTicket = async (item) => {
     if (!item.bookable) {
       Alert.alert('Not available', 'This attraction is not bookable with us (yet).');
       return;
     }
-    Alert.alert('Booking', `Opening booking for ${item.name}…`);
+    
+    try {
+      console.log('🎫 Booking attraction:', item.name);
+      
+      const bookingData = { 
+        slot: item.availability?.[0] ?? null 
+      };
+
+      // 👈 Using your API service
+      const response = await post(`orders/${item.id}/book`, bookingData);
+      
+      if (!response.success) {
+        throw new Error(response.message || 'Booking failed');
+      }
+      
+      Alert.alert('Booked! 🎉', `Your booking for ${item.name} is confirmed.`);
+      
+    } catch (e) {
+      console.error('❌ Booking error:', e);
+      Alert.alert('Booking failed', e.message || 'Unable to complete booking.');
+    }
+  };
+
+  const handleSearch = () => {
+    if (searchCity.trim()) {
+      fetchAttractionsByCity(searchCity);
+    }
   };
 
   const Header = useMemo(
     () => (
       <View style={styles.header}>
-        <Ionicons name="location" size={18} />
-        <Text style={styles.headerTitle}> Nearby attractions</Text>
+        <Text style={styles.headerTitle}> Search Attractions by City</Text>
+        {currentCity && (
+          <Text style={styles.headerSubtitle}>
+            Current location: {currentCity}
+          </Text>
+        )}
       </View>
     ),
-    []
+    [currentCity]
   );
 
-  const Controls = useMemo(
+  const SearchControls = useMemo(
     () => (
       <View style={styles.controls}>
-        <Text style={styles.ctrlLabel}>Radius</Text>
+        <Text style={styles.ctrlLabel}>Search City</Text>
 
+        <View style={styles.searchRow}>
+          <TextInput
+            style={styles.searchInput}
+            value={searchCity}
+            onChangeText={setSearchCity}
+            placeholder="Enter city name (e.g., Amsterdam, Paris, New York)"
+            placeholderTextColor="#999"
+            returnKeyType="search"
+            onSubmitEditing={handleSearch}
+          />
+          
+          <TouchableOpacity 
+            style={[styles.searchBtn, loadingList && styles.searchBtnDisabled]} 
+            onPress={handleSearch} 
+            disabled={loadingList || !searchCity.trim()}
+          >
+            <Ionicons name={loadingList ? "hourglass-outline" : "search"} size={18} color="#fff" />
+            <Text style={styles.searchText}>
+              {loadingList ? 'Searching...' : 'Search'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Quick city buttons */}
         <View style={styles.row}>
-          {[{ label: '2km', val: 2000 }, { label: '5km', val: 5000 }, { label: '10km', val: 10000 }].map((opt, idx) => (
+          <Text style={styles.quickLabel}>Quick search:</Text>
+          {['Amsterdam', 'Paris', 'London', 'New York'].map((city) => (
             <TouchableOpacity
-              key={opt.val}
-              style={[styles.chip, radiusM === opt.val && styles.chipActive, idx > 0 && styles.ml8]}
-              onPress={() => setRadiusM(opt.val)}
+              key={city}
+              style={[styles.quickChip, styles.ml8]}
+              onPress={() => {
+                setSearchCity(city);
+                fetchAttractionsByCity(city);
+              }}
             >
-              <Text style={[styles.chipText, radiusM === opt.val && styles.chipTextActive]}>
-                {opt.label}
-              </Text>
+              <Text style={styles.quickChipText}>{city}</Text>
             </TouchableOpacity>
           ))}
         </View>
-
-        <TouchableOpacity style={styles.refreshBtn} onPress={fetchAttractions} disabled={loadingList}>
-          <Ionicons name="refresh" size={18} color="#fff" />
-          <Text style={styles.refreshText}>Refresh</Text>
-        </TouchableOpacity>
+        
+        {items.length > 0 && (
+          <Text style={styles.resultsCount}>
+            Found {items.length} attractions in {searchCity}
+          </Text>
+        )}
       </View>
     ),
-    [radiusM, loadingList, fetchAttractions]
+    [searchCity, loadingList, handleSearch, fetchAttractionsByCity, items.length]
   );
 
   const renderItem = ({ item }) => (
     <View style={styles.card}>
       <View style={styles.cardMain}>
-        <View style={{ flex: 1, paddingRight: 42 }}>
+        <View style={{ flex: 1, paddingRight: 50 }}>
           <Text style={styles.placeName} numberOfLines={1}>{item.name}</Text>
           {!!item.address && <Text style={styles.placeAddress} numberOfLines={1}>{item.address}</Text>}
+          {!!item.city && <Text style={styles.placeCity} numberOfLines={1}>{item.city}</Text>}
+          
+          {!!item.description && (
+            <Text style={styles.placeDescription} numberOfLines={2}>
+              {item.description}
+            </Text>
+          )}
 
           <View style={styles.metaRow}>
-            <View style={styles.metaPill}>
-              <Ionicons name="navigate-outline" size={14} />
-              <Text style={styles.metaText}>{fmtDistance(item.distance)}</Text>
-            </View>
+            {item.rating && (
+              <View style={styles.metaPill}>
+                <Ionicons name="star" size={14} />
+                <Text style={styles.metaText}>{stars(item.rating)}</Text>
+              </View>
+            )}
 
-            <View style={[styles.metaPill, styles.ml8]}>
-              <Ionicons name="star" size={14} />
-              <Text style={styles.metaText}>{stars(item.rating)}</Text>
-            </View>
+            {item.category && (
+              <View style={[styles.metaPill, styles.ml8]}>
+                <Ionicons name="pricetag-outline" size={14} />
+                <Text style={styles.metaText}>{item.category}</Text>
+              </View>
+            )}
 
-            {item.openingHours ? (
+            {item.openingHours && (
               <View style={[styles.metaPill, styles.ml8]}>
                 <Ionicons name="time-outline" size={14} />
-                <Text style={styles.metaText}>Hours available</Text>
+                <Text style={styles.metaText}>Open</Text>
               </View>
-            ) : null}
+            )}
           </View>
+
+          {/* Availability chips */}
+          {Array.isArray(item.availability) && item.availability.length > 0 ? (
+            <View style={[styles.metaRow, { marginTop: 6 }]}>
+              {item.availability.slice(0, 3).map((slot, idx) => (
+                <View key={slot + idx} style={[styles.timePill, idx > 0 && styles.ml8]}>
+                  <Ionicons name="time-outline" size={12} />
+                  <Text style={styles.timeText}>{slot}</Text>
+                </View>
+              ))}
+            </View>
+          ) : null}
         </View>
 
         <TouchableOpacity
@@ -228,13 +330,15 @@ export default function AttractionsScreen() {
 
       {item.bookable ? (
         <View style={styles.bookRow}>
-          <Ionicons name="pricetag-outline" size={14} />
-          <Text style={styles.bookText}>{item.price != null ? `From $${item.price}` : 'Available to book'}</Text>
+          <Ionicons name="checkmark-circle-outline" size={14} />
+          <Text style={styles.bookText}>
+            {item.price != null ? `From $${item.price}` : 'Available to book'}
+          </Text>
         </View>
       ) : (
         <View style={styles.unavailableRow}>
           <Ionicons name="close-circle-outline" size={14} />
-          <Text style={styles.unavailableText}>Not available to book with us</Text>
+          <Text style={styles.unavailableText}>Not available to book</Text>
         </View>
       )}
     </View>
@@ -243,16 +347,8 @@ export default function AttractionsScreen() {
   if (loadingLoc) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator />
-        <Text style={{ marginTop: 8 }}>Getting your location…</Text>
-      </View>
-    );
-  }
-
-  if (!coords) {
-    return (
-      <View style={styles.center}>
-        <Text>{errorText || 'Location unavailable.'}</Text>
+        <ActivityIndicator size="large" />
+        <Text style={{ marginTop: 8 }}>Detecting your location…</Text>
       </View>
     );
   }
@@ -260,16 +356,31 @@ export default function AttractionsScreen() {
   return (
     <View style={styles.container}>
       {Header}
-      {Controls}
+      {SearchControls}
 
       {loadingList ? (
         <View style={[styles.center, { flex: 1 }]}>
-          <ActivityIndicator />
-          <Text style={{ marginTop: 8 }}>Searching nearby attractions…</Text>
+          <ActivityIndicator size="large" />
+          <Text style={{ marginTop: 8 }}>Searching MongoDB for {searchCity}…</Text>
         </View>
-      ) : items.length === 0 ? (
+      ) : items.length === 0 && !errorText ? (
         <View style={[styles.center, { flex: 1 }]}>
-          <Text>{errorText || 'No attractions found nearby.'}</Text>
+          <Ionicons name="search-outline" size={48} color="#ccc" />
+          <Text style={styles.errorTitle}>Search for Attractions</Text>
+          <Text style={styles.errorText}>
+            Enter a city name above to find attractions
+          </Text>
+        </View>
+      ) : items.length === 0 && errorText ? (
+        <View style={[styles.center, { flex: 1 }]}>
+          <Ionicons name="database-outline" size={48} color="#ccc" />
+          <Text style={styles.errorTitle}>No Attractions Found</Text>
+          <Text style={styles.errorText}>
+            {errorText}
+          </Text>
+          <Text style={styles.errorHint}>
+            Try searching for a different city or add attractions to your database.
+          </Text>
         </View>
       ) : (
         <FlatList
@@ -283,33 +394,71 @@ export default function AttractionsScreen() {
   );
 }
 
+/* ===================== Styles ===================== */
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
 
-  header: { paddingTop: 90, paddingHorizontal: 14, paddingBottom: 8, flexDirection: 'row', alignItems: 'center' },
-  headerTitle: { fontSize: 18, fontWeight: '700' },
+  header: { 
+    paddingTop: 90, 
+    paddingHorizontal: 14, 
+    paddingBottom: 8, 
+    flexDirection: 'column', 
+    alignItems: 'flex-start' 
+  },
+  headerTitle: { fontSize: 18, fontWeight: '700', flexDirection: 'row', alignItems: 'center' },
+  headerSubtitle: { fontSize: 12, color: '#666', marginTop: 4 },
 
   controls: { paddingHorizontal: 12, paddingBottom: 8 },
-  row: { flexDirection: 'row', alignItems: 'center' },
+  row: { flexDirection: 'row', alignItems: 'center', marginTop: 8 },
   ml8: { marginLeft: 8 },
 
-  ctrlLabel: { fontWeight: '600', marginRight: 6, marginBottom: 6 },
-  chip: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999, backgroundColor: '#f1f3f5' },
-  chipActive: { backgroundColor: '#dceeff' },
-  chipText: { fontSize: 13, fontWeight: '600', color: '#444' },
-  chipTextActive: { color: '#0a66c2' },
-  refreshBtn: {
-    marginLeft: 'auto',
+  ctrlLabel: { fontWeight: '600', marginBottom: 6 },
+  
+  searchRow: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    marginBottom: 8 
+  },
+  searchInput: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 14,
+    backgroundColor: '#f9f9f9'
+  },
+  searchBtn: {
+    marginLeft: 8,
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#0a66c2',
-    paddingHorizontal: 10,
-    paddingVertical: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
     borderRadius: 10,
-    marginTop: 8
   },
-  refreshText: { color: '#fff', marginLeft: 6, fontWeight: '600' },
+  searchBtnDisabled: { backgroundColor: '#9aa0a6' },
+  searchText: { color: '#fff', marginLeft: 6, fontWeight: '600' },
+
+  quickLabel: { fontSize: 12, color: '#666', marginRight: 4 },
+  quickChip: { 
+    paddingHorizontal: 8, 
+    paddingVertical: 4, 
+    borderRadius: 999, 
+    backgroundColor: '#e3f2fd',
+    borderWidth: 1,
+    borderColor: '#90caf9'
+  },
+  quickChipText: { fontSize: 11, fontWeight: '600', color: '#0a66c2' },
+
+  resultsCount: { 
+    fontSize: 12, 
+    color: '#2ea44f', 
+    marginTop: 8, 
+    fontWeight: '600' 
+  },
 
   card: {
     borderRadius: 14,
@@ -322,19 +471,38 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     shadowOffset: { width: 0, height: 3 },
   },
-  cardMain: { flexDirection: 'row', alignItems: 'center' },
+  cardMain: { flexDirection: 'row', alignItems: 'flex-start' },
   placeName: { fontSize: 16, fontWeight: '700' },
   placeAddress: { fontSize: 13, color: '#666', marginTop: 2 },
+  placeCity: { fontSize: 12, color: '#888', marginTop: 1, fontStyle: 'italic' },
+  placeDescription: { 
+    fontSize: 12, 
+    color: '#555', 
+    marginTop: 4, 
+    lineHeight: 16 
+  },
   metaRow: { flexDirection: 'row', marginTop: 8, flexWrap: 'wrap' },
   metaPill: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#f6f7f8',
     borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    marginBottom: 4,
   },
-  metaText: { fontSize: 12, color: '#333' },
+  metaText: { fontSize: 11, color: '#333', marginLeft: 4 },
+  
+  timePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#e3f2fd',
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    marginBottom: 4,
+  },
+  timeText: { fontSize: 10, color: '#0a66c2', marginLeft: 4, fontWeight: '600' },
 
   ticketBtn: {
     position: 'absolute',
@@ -352,4 +520,8 @@ const styles = StyleSheet.create({
 
   unavailableRow: { marginTop: 10, flexDirection: 'row', alignItems: 'center' },
   unavailableText: { fontSize: 13, color: '#9a0007', fontWeight: '600', marginLeft: 6 },
+  
+  errorTitle: { fontSize: 18, fontWeight: '600', marginBottom: 8 },
+  errorText: { fontSize: 14, color: '#666', textAlign: 'center', marginBottom: 4 },
+  errorHint: { fontSize: 12, color: '#999', textAlign: 'center', fontStyle: 'italic' },
 });
