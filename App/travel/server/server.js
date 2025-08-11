@@ -6,6 +6,8 @@ import { fileURLToPath } from 'url';
 
 import authRoutes from './services/auth/auth.router.js';
 import orderRoutes from './services/orders/order.router.js';
+import attRoutes from './services/attractions/att.router.js';
+
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -22,6 +24,7 @@ app.use(express.json());
 
 app.use('/api/auth', authRoutes);
 app.use('/api/orders', orderRoutes);
+app.use('/api/attractions', attRoutes);
 
 app.listen(port, () => {
   console.log(`🚀 Server listening on port ${port}`);
