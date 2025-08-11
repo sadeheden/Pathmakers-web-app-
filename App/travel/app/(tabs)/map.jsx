@@ -55,7 +55,6 @@ const makeAvailability = (id) => {
   return pool.slice(0, count);
 };
 
-
 /* ===================== Component ===================== */
 export default function AttractionsScreen() {
   const [searchCity, setSearchCity] = useState('');
@@ -94,7 +93,7 @@ export default function AttractionsScreen() {
           const cityName = g?.city || g?.subregion || '';
           console.log('🏙️ Current city detected:', cityName);
           setCurrentCity(cityName);
-          setSearchCity(cityName); // Pre-fill search with current city
+          // לא מעדכן את searchCity - השדה יישאר ריק כברירת מחדל
         } catch (geoError) {
           console.warn('⚠️ Reverse geocoding failed:', geoError);
           setCurrentCity('');
@@ -127,7 +126,7 @@ export default function AttractionsScreen() {
       console.log('📤 Search request data:', searchData);
 
       // 👈 Using your API service with proper authentication
-      const response = await post('orders/search-by-city', searchData);
+      const response = await post('attractions/search-by-city', searchData);
 
       console.log('📥 API Response:', JSON.stringify(response, null, 2));
 
@@ -135,48 +134,45 @@ export default function AttractionsScreen() {
         throw new Error(response.message || 'Search failed');
       }
 
-      // >>> Here is the main fix: Better processing with debug logs
-    const list = (response.items || []).flatMap(cityDoc => {
-  if (cityDoc.attractions && Array.isArray(cityDoc.attractions)) {
-    // עיר עם מערך אטרקציות
-    return cityDoc.attractions.map((attr, idx) => ({
-      id: `${cityDoc._id}_${idx}`,
-      name: attr.name || 'Unknown place',
-      city: cityDoc.city || '',
-      address: attr.address || '',
-      openingHours: attr.openingHours || null,
-      price: attr.price && typeof attr.price === 'object'
-        ? parseInt(attr.price.$numberInt || attr.price.$numberDouble || attr.price, 10)
-        : (typeof attr.price === 'number' ? attr.price : null),
-      category: 'attraction',
-      rating: attr.rating ?? null,
-      bookable: attr.bookable ?? true,
-      availability: Array.isArray(attr.availability) && attr.availability.length > 0
-        ? attr.availability
-        : makeAvailability(`${cityDoc._id}_${idx}`),
-      description: attr.description || null
-    }));
-  } else {
-    // אטרקציה בודדת (או עיר בלי מערך אטרקציות)
-    return [{
-      id: cityDoc._id || cityDoc.id || `attraction_${Math.random()}`,
-      name: cityDoc.name || 'Unknown place',
-      city: cityDoc.city || '',
-      address: cityDoc.address || '',
-      openingHours: cityDoc.openingHours || null,
-      price: cityDoc.price && typeof cityDoc.price === 'object'
-        ? parseInt(cityDoc.price.$numberInt || cityDoc.price.$numberDouble || cityDoc.price, 10)
-        : (typeof cityDoc.price === 'number' ? cityDoc.price : null),
-      category: cityDoc.category || 'attraction',
-      rating: cityDoc.rating ?? null,
-      bookable: cityDoc.bookable ?? true,
-      availability: Array.isArray(cityDoc.availability) && cityDoc.availability.length > 0
-        ? cityDoc.availability
-        : makeAvailability(cityDoc._id || cityDoc.id),
-      description: cityDoc.description || null
-    }];
-  }
-});
+      const list = (response.items || []).flatMap(cityDoc => {
+        if (cityDoc.attractions && Array.isArray(cityDoc.attractions)) {
+          return cityDoc.attractions.map((attr, idx) => ({
+            id: `${cityDoc._id}_${idx}`,
+            name: attr.name || 'Unknown place',
+            city: cityDoc.city || '',
+            address: attr.address || '',
+            openingHours: attr.openingHours || null,
+            price: attr.price && typeof attr.price === 'object'
+              ? parseInt(attr.price.$numberInt || attr.price.$numberDouble || attr.price, 10)
+              : (typeof attr.price === 'number' ? attr.price : null),
+            category: 'attraction',
+            rating: attr.rating ?? null,
+            bookable: attr.bookable ?? true,
+            availability: Array.isArray(attr.availability) && attr.availability.length > 0
+              ? attr.availability
+              : makeAvailability(`${cityDoc._id}_${idx}`),
+            description: attr.description || null
+          }));
+        } else {
+          return [{
+            id: cityDoc._id || cityDoc.id || `attraction_${Math.random()}`,
+            name: cityDoc.name || 'Unknown place',
+            city: cityDoc.city || '',
+            address: cityDoc.address || '',
+            openingHours: cityDoc.openingHours || null,
+            price: cityDoc.price && typeof cityDoc.price === 'object'
+              ? parseInt(cityDoc.price.$numberInt || cityDoc.price.$numberDouble || cityDoc.price, 10)
+              : (typeof cityDoc.price === 'number' ? cityDoc.price : null),
+            category: cityDoc.category || 'attraction',
+            rating: cityDoc.rating ?? null,
+            bookable: cityDoc.bookable ?? true,
+            availability: Array.isArray(cityDoc.availability) && cityDoc.availability.length > 0
+              ? cityDoc.availability
+              : makeAvailability(cityDoc._id || cityDoc.id),
+            description: cityDoc.description || null
+          }];
+        }
+      });
 
       console.log(`✅ Processed ${list.length} attractions from MongoDB for city: ${cityName}`);
       console.log('🏛️ Final attractions list:', list);
@@ -204,7 +200,7 @@ export default function AttractionsScreen() {
       };
 
       // 👈 Using your API service
-      const response = await post(`orders/${item.id}/book`, bookingData);
+      const response = await post(`attractions/${item.id}/book`, bookingData);
 
       if (!response.success) {
         throw new Error(response.message || 'Booking failed');
@@ -227,7 +223,9 @@ export default function AttractionsScreen() {
     () => (
       <View style={styles.header}>
         <Text style={styles.headerTitle}>🔍 Search Attractions by City</Text>
-        {currentCity && <Text style={styles.headerSubtitle}>Current location: {currentCity}</Text>}
+        {currentCity ? (
+          <Text style={styles.headerSubtitle}>Current location: {currentCity}</Text>
+        ) : null}
       </View>
     ),
     [currentCity]
@@ -545,3 +543,4 @@ const styles = StyleSheet.create({
   errorText: { fontSize: 14, color: '#666', textAlign: 'center', marginBottom: 4 },
   errorHint: { fontSize: 12, color: '#999', textAlign: 'center', fontStyle: 'italic' },
 });
+
