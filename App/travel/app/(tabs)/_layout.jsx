@@ -5,7 +5,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-
+import PayScreen from './pay';
 import HomeScreen from './home';
 import MapScreen from './map';
 import DiaryScreen from './diary';
@@ -123,14 +123,24 @@ export default function RootLayout() {
         name="Support"
         component={SupportScreen}
         options={{
-          presentation: 'modal',     // nice slide-up on iOS
+          presentation: 'modal',
           headerShown: true,
           title: 'Support',
+        }}
+      />
+      <RootStack.Screen
+        name="Pay"
+        component={PayScreen}
+        options={{
+          presentation: 'modal', // 👈 same modal style as Support
+          headerShown: true,
+          title: 'Complete Your Booking',
         }}
       />
     </RootStack.Navigator>
   );
 }
+
 
 const styles = StyleSheet.create({
   tabBar: {
