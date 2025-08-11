@@ -172,6 +172,7 @@ export async function getUserOrders(req, res) {
 }
 
 // -------------------- NEW: search attractions by city --------------------
+// Fixed searchAttractionsByCity function - searches in cities collection instead of attractions
 export async function searchAttractionsByCity(req, res) {
   try {
     const { city, limit = 30 } = req.body || {};
@@ -196,18 +197,20 @@ export async function searchAttractionsByCity(req, res) {
     console.log(`🏙️ Searching attractions in city: "${searchCity}"`);
 
     const db = await connectDB();
+    
+    // CHANGE: Search in 'cities' collection instead of 'attractions'
     const col = db.collection('attractions');
 
-    // Check if attractions collection exists and has data
-    const attractionsCount = await col.countDocuments();
-    console.log(`📊 Total attractions in database: ${attractionsCount}`);
+    // Check if cities collection exists and has data
+    const citiesCount = await col.countDocuments();
+    console.log(`📊 Total cities in database: ${citiesCount}`);
 
-    if (attractionsCount === 0) {
-      console.log('⚠️ No attractions in database, returning empty result');
+    if (citiesCount === 0) {
+      console.log('⚠️ No cities in database, returning empty result');
       return res.json({ 
         success: true, 
         items: [],
-        message: 'No attractions in database yet. Please add some attractions first.',
+        message: 'No cities in database yet. Please add some cities with attractions first.',
         searchParams: { city: searchCity, resultsCount: 0 }
       });
     }
@@ -215,11 +218,17 @@ export async function searchAttractionsByCity(req, res) {
     // Build city search query - case insensitive, flexible matching
     const cityRegex = new RegExp(searchCity, 'i');
     const cityQuery = {
-      $or: [
-        { city: cityRegex },
-        { 'address.city': cityRegex },
-        { 'location.city': cityRegex },
-        { name: cityRegex }, // Sometimes attraction names include city
+      $and: [
+        {
+          $or: [
+            { city: cityRegex },
+            { name: cityRegex },
+            { cityName: cityRegex }
+          ]
+        },
+        {
+          attractions: { $exists: true, $type: 'array', $ne: [] }
+        }
       ]
     };
 
@@ -229,35 +238,54 @@ export async function searchAttractionsByCity(req, res) {
     const pipeline = [
       { $match: cityQuery },
       {
-        $addFields: {
-          // Ensure availability exists
-          availability: {
-            $cond: {
-              if: { $and: [{ $isArray: '$availability' }, { $gt: [{ $size: '$availability' }, 0] }] },
-              then: '$availability',
-              else: ['09:00-11:00', '13:00-15:00', '16:00-18:00'] // default availability
+        $project: {
+          _id: 1,
+          city: 1,
+          name: 1,
+          cityName: 1,
+          attractions: 1,
+          // Add default availability if not present in attractions
+          attractionsWithDefaults: {
+            $map: {
+              input: '$attractions',
+              as: 'attraction',
+              in: {
+                $mergeObjects: [
+                  '$$attraction',
+                  {
+                    availability: {
+                      $cond: {
+                        if: { 
+                          $and: [
+                            { $isArray: '$$attraction.availability' }, 
+                            { $gt: [{ $size: '$$attraction.availability' }, 0] }
+                          ]
+                        },
+                        then: '$$attraction.availability',
+                        else: ['09:00-11:00', '13:00-15:00', '16:00-18:00']
+                      }
+                    },
+                    bookable: {
+                      $ifNull: ['$$attraction.bookable', true]
+                    },
+                    category: {
+                      $ifNull: ['$$attraction.category', 'attraction']
+                    }
+                  }
+                ]
+              }
             }
           }
         }
       },
       {
         $project: {
-          name: 1,
-          address: 1,
-          city: 1,
-          countryCode: 1,
-          website: { $ifNull: ['$website', null] },
-          rating: { $ifNull: ['$rating', null] },
-          openingHours: { $ifNull: ['$openingHours', null] },
-          bookable: { $ifNull: ['$bookable', false] },
-          price: { $ifNull: ['$price', null] },
-          location: 1,
-          availability: 1,
-          description: { $ifNull: ['$description', null] },
-          category: { $ifNull: ['$category', 'attraction'] }
+          _id: 1,
+          city: { $ifNull: ['$city', { $ifNull: ['$name', '$cityName'] }] },
+          attractions: '$attractionsWithDefaults'
         }
       },
-      { $sort: { name: 1 } }, // Sort alphabetically by name
+      { $sort: { city: 1 } }, // Sort alphabetically by city name
       { $limit: Number(limit) }
     ];
 
@@ -271,20 +299,27 @@ export async function searchAttractionsByCity(req, res) {
       throw aggregationError;
     }
 
-    console.log(`✅ Found ${docs.length} attractions in city: "${searchCity}"`);
+    console.log(`✅ Found ${docs.length} cities matching: "${searchCity}"`);
 
-    // Format the results
+    // Format the results - return the city documents with attractions
     const items = docs.map(doc => ({
-      ...doc,
-      id: doc._id.toString() // Ensure string ID for React keys
+      _id: doc._id.toString(),
+      id: doc._id.toString(), // Ensure string ID for React keys
+      city: doc.city,
+      attractions: doc.attractions || []
     }));
+
+    // Count total attractions across all cities
+    const totalAttractions = items.reduce((sum, item) => sum + (item.attractions?.length || 0), 0);
+    console.log(`📊 Total attractions found across ${items.length} cities: ${totalAttractions}`);
 
     res.json({ 
       success: true, 
       items,
       searchParams: {
         city: searchCity,
-        resultsCount: items.length
+        resultsCount: items.length,
+        totalAttractions
       }
     });
 
@@ -297,7 +332,6 @@ export async function searchAttractionsByCity(req, res) {
     });
   }
 }
-
 // -------------------- PRESERVED: original location-based search --------------------
 export async function searchAttractions(req, res) {
   try {
