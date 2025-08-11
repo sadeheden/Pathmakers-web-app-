@@ -129,8 +129,9 @@ export default function PayScreen() {
     setSubmitting(true);
 
     try {
-      const token = await AsyncStorage.getItem('token');
-      if (!token) throw new Error('No authentication token found');
+    const raw = await AsyncStorage.getItem('token');
+const token = raw?.replace(/^"|"$/g, '') || null;
+if (!token) throw new Error('No authentication token found');
 
       const orderData = {
         departureCityId: getDepartureCityId(city),
@@ -156,10 +157,11 @@ export default function PayScreen() {
         body: JSON.stringify(orderData),
       });
 
-      if (!response.ok) {
-        const err = await response.json().catch(() => null);
-        throw new Error(err?.message || `Server error: ${response.status}`);
-      }
+if (!response.ok) {
+  const errBody = await response.json().catch(() => null);
+  console.log('❌ Create order error body:', errBody);
+  throw new Error(errBody?.message || `Server error: ${response.status}`);
+}
 
       const saved = await response.json();
 
@@ -304,7 +306,7 @@ export default function PayScreen() {
           activeOpacity={0.9}
           style={{ borderRadius: 14, overflow: 'hidden' }}
         >
-          <LinearGradient colors={['#007AFF', '#764ba2']} style={pstyles.payBtn}>
+          <LinearGradient colors={['#007AFF', '#007AFF']} style={pstyles.payBtn}>
             {submitting
               ? <ActivityIndicator size="small" color="#fff" />
               : <Text style={pstyles.payText}>Pay ${price}</Text>}
@@ -337,7 +339,7 @@ const pstyles = StyleSheet.create({
   cardTitle: { fontSize: 16, fontWeight: '800', color: '#0f172a', marginBottom: 8 },
   row: { fontSize: 14, color: '#111827', marginBottom: 4 },
   label: { color: '#6b7280', fontWeight: '700' },
-  desc: { marginTop: 8, fontSize: 14, color: '#334155' },
+  desc: { marginTop: 0, fontSize: 14, color: '#334155' },
 
   total: { fontSize: 16, marginTop: 14, color: '#111827' },
   error: {
@@ -367,19 +369,17 @@ const pstyles = StyleSheet.create({
   row2: { flexDirection: 'row', gap: 12 },
   col: { flex: 1 },
 
-  footer: {
-    position: 'absolute',
-    left: 0, right: 0, bottom: 0,
-    padding: 12,
-    backgroundColor: '#fff',
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: '#e5e7eb',
-    shadowColor: '#000',
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: -2 },
-    elevation: 10,
-  },
-  payBtn: { paddingVertical: 14, alignItems: 'center' },
-  payText: { color: '#fff', fontSize: 16, fontWeight: '800' },
+footer: {
+  position: 'absolute',
+  left: 0,
+  right: 0,
+  bottom: 0,
+  padding: 12,
+  backgroundColor: 'rgba(255,255,255,0.96)',
+  borderTopWidth: 1,
+  borderTopColor: '#e5e7eb',
+},
+payBtn: { paddingVertical: 14, alignItems: 'center' },
+payText: { color: '#fff', fontSize: 16, fontWeight: '800' },
+
 });
