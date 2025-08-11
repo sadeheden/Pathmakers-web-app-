@@ -129,24 +129,33 @@ export default function PayScreen() {
     setSubmitting(true);
 
     try {
-    const raw = await AsyncStorage.getItem('token');
-const token = raw?.replace(/^"|"$/g, '') || null;
-if (!token) throw new Error('No authentication token found');
+      // Clean token extraction
+      const raw = await AsyncStorage.getItem('token');
+      const token = raw?.replace(/^"|"$/g, '') || null;
+      
+      console.log('🔑 Token retrieved:', token ? 'Present' : 'Missing');
+      
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
 
+      // Prepare order data with proper structure
       const orderData = {
         departureCityId: getDepartureCityId(city),
-        departureCityName: city?.name || city?.slug || '',
+        departureCityName: 'Tel Aviv', // Static departure city name
         destinationCityId: getDestinationCityId(city),
         destinationCityName: city?.name || city?.slug || '',
         flightId: getFlightId(city),
-        flightName: city?.name ? `${city.name} Flight` : '',
-        hotelId: '',
-        hotelName: city?.hotel || '',
-        attractions: ['6807610adc218773e065223d'],
+        flightName: city?.flight || `${city?.name} Flight` || '',
+        hotelId: getDestinationCityId(city), // Using same ID as destination for hotel
+        hotelName: city?.hotel || `${city?.name} Hotel` || '',
+        attractions: ['6807610adc218773e065223d'], // Default attraction
         transportation: 'Public Transport',
         paymentMethod: 'PayPal',
         totalPrice: price,
       };
+
+      console.log('📦 Sending order data:', JSON.stringify(orderData, null, 2));
 
       const response = await fetch('https://pathmakers-web-app-app-travel.onrender.com/api/orders', {
         method: 'POST',
@@ -157,27 +166,45 @@ if (!token) throw new Error('No authentication token found');
         body: JSON.stringify(orderData),
       });
 
-if (!response.ok) {
-  const errBody = await response.json().catch(() => null);
-  console.log('❌ Create order error body:', errBody);
-  throw new Error(errBody?.message || `Server error: ${response.status}`);
-}
+      console.log('📡 Response status:', response.status);
 
-      const saved = await response.json();
+      if (!response.ok) {
+        const errBody = await response.json().catch(() => null);
+        console.log('❌ Server error response:', errBody);
+        throw new Error(errBody?.message || `Server error: ${response.status}`);
+      }
 
+      const savedOrder = await response.json();
+      console.log('✅ Order saved successfully:', savedOrder);
+
+      // Show success alert
       Alert.alert(
-        '🎉 Success!',
-        `Your trip to ${city?.name} has been booked.\n\nOrder ID: ${saved?._id}`,
+        '🎉 Booking Confirmed!',
+        `Your trip to ${city?.name} has been successfully booked!\n\nOrder ID: ${savedOrder?._id}\nTotal: $${price}`,
         [
-          { text: 'View My Orders', onPress: () => navigation.navigate('(tabs)', { screen: 'profile' }) },
+          { 
+            text: 'View My Orders', 
+            onPress: () => {
+              // Navigate to profile tab to show orders
+              navigation.navigate('(tabs)', { screen: 'profile' });
+            }
+          },
           { text: 'OK', style: 'default' },
         ]
       );
 
+      // Go back to previous screen
       navigation.goBack();
+
     } catch (e) {
-      setError(e?.message || 'Something went wrong.');
-      Alert.alert('⚠️ Warning', `Trip payment failed to save to server.\nError: ${e?.message}`, [{ text: 'OK' }]);
+      console.error('❌ Order submission error:', e);
+      setError(e?.message || 'Something went wrong while booking your trip.');
+      
+      Alert.alert(
+        '⚠️ Booking Error', 
+        `Failed to book your trip.\n\nError: ${e?.message || 'Unknown error'}\n\nPlease try again or contact support.`,
+        [{ text: 'OK' }]
+      );
     } finally {
       setSubmitting(false);
     }
@@ -369,17 +396,16 @@ const pstyles = StyleSheet.create({
   row2: { flexDirection: 'row', gap: 12 },
   col: { flex: 1 },
 
-footer: {
-  position: 'absolute',
-  left: 0,
-  right: 0,
-  bottom: 0,
-  padding: 12,
-  backgroundColor: 'rgba(255,255,255,0.96)',
-  borderTopWidth: 1,
-  borderTopColor: '#e5e7eb',
-},
-payBtn: { paddingVertical: 14, alignItems: 'center' },
-payText: { color: '#fff', fontSize: 16, fontWeight: '800' },
-
+  footer: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    padding: 12,
+    backgroundColor: 'rgba(255,255,255,0.96)',
+    borderTopWidth: 1,
+    borderTopColor: '#e5e7eb',
+  },
+  payBtn: { paddingVertical: 14, alignItems: 'center' },
+  payText: { color: '#fff', fontSize: 16, fontWeight: '800' },
 });
