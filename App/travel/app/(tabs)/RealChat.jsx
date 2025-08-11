@@ -31,7 +31,9 @@ export default function RealChatScreen() {
  
       const systemPrompt = {
         role: "system",
-        content: "Act as a travel agent. Answer questions with full explanations and step-by-step thinking.",
+        content:  "You are a travel assistant. Be brief (2 sentences max). You CANNOT make bookings or take payments. \
+ If the user asks to book/reserve/pay, clearly state you cannot book and tell them to use the booking page or website to complete the purchase. \
+ Never imply you completed a booking or reservation.",
       };
  
       const chatPayload = [systemPrompt, ...messages, userMessage];
