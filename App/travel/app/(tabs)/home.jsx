@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Alert,
   ActivityIndicator,
+   TextInput, 
   ScrollView,
   FlatList,
   Dimensions,
@@ -112,56 +113,70 @@ const PaymentModal = ({ visible, onClose, selectedCity, onPaymentSuccess }) => {
                 {selectedCity?.name} - ${selectedCity?.price}
               </Text>
               {error ? <Text style={styles.errorText}>{error}</Text> : null}
-              <View style={styles.inputContainer}>
-                <Text style={styles.inputLabel}>Full Name</Text>
-                <Text
-                  style={styles.textInput}
-                  onPress={() => {
-                    Alert.prompt('Full Name', 'Enter your full name', setFullName);
-                  }}
-                >
-                  {fullName || 'Tap to enter full name'}
-                </Text>
-              </View>
-              <View style={styles.inputContainer}>
-                <Text style={styles.inputLabel}>Card Number</Text>
-                <Text
-                  style={styles.textInput}
-                  onPress={() => {
-                    Alert.prompt('Card Number', 'Enter 16-digit card number', (text) => {
-                      setCardNumber(formatCardNumber(text));
-                    });
-                  }}
-                >
-                  {cardNumber || '**** **** **** ****'}
-                </Text>
-              </View>
-              <View style={styles.rowContainer}>
-                <View style={[styles.inputContainer, { flex: 1, marginRight: 10 }]}>
-                  <Text style={styles.inputLabel}>Expiry</Text>
-                  <Text
-                    style={styles.textInput}
-                    onPress={() => {
-                      Alert.prompt('Expiry Date', 'Enter MM/YY', setExpiryDate);
-                    }}
-                  >
-                    {expiryDate || 'MM/YY'}
-                  </Text>
-                </View>
-                <View style={[styles.inputContainer, { flex: 1, marginLeft: 10 }]}>
-                  <Text style={styles.inputLabel}>CVV</Text>
-                  <Text
-                    style={styles.textInput}
-                    onPress={() => {
-                      Alert.prompt('CVV', 'Enter 3-digit CVV', setCvv);
-                    }}
-                  >
-                    {cvv || '***'}
-                  </Text>
-                </View>
-              </View>
+            // REPLACE this block:
+<View style={styles.inputContainer}>
+  <Text style={styles.inputLabel}>Full Name</Text>
+  <TextInput
+    value={fullName}
+    onChangeText={setFullName}
+    placeholder="John Doe"
+    style={styles.textInput}
+    autoCapitalize="words"
+    returnKeyType="done"
+  />
+</View>
+
+<View style={styles.inputContainer}>
+  <Text style={styles.inputLabel}>Card Number</Text>
+  <TextInput
+    value={cardNumber}
+    onChangeText={(t) => setCardNumber(formatCardNumber(t))}
+    placeholder="1234 5678 9012 3456"
+    style={styles.textInput}
+    keyboardType="number-pad"
+    maxLength={19}
+    returnKeyType="done"
+  />
+</View>
+
+<View style={styles.rowContainer}>
+  <View style={[styles.inputContainer, { flex: 1, marginRight: 10 }]}>
+    <Text style={styles.inputLabel}>Expiry</Text>
+    <TextInput
+      value={expiryDate}
+      onChangeText={(t) => {
+        // Allow MM/YY or MM/YYYY
+        const digits = t.replace(/[^\d]/g, '');
+        const mm = digits.slice(0, 2);
+        const year = digits.length > 4 ? digits.slice(2, 6) : digits.slice(2, 4);
+        setExpiryDate(year ? `${mm}/${year}` : mm);
+      }}
+      placeholder="MM/YY or MM/YYYY"
+      style={styles.textInput}
+      keyboardType="number-pad"
+      maxLength={7}
+      returnKeyType="done"
+    />
+  </View>
+
+  <View style={[styles.inputContainer, { flex: 1, marginLeft: 10 }]}>
+    <Text style={styles.inputLabel}>CVV</Text>
+    <TextInput
+      value={cvv}
+      onChangeText={setCvv}
+      placeholder="123"
+      style={styles.textInput}
+      keyboardType="number-pad"
+      maxLength={3}
+      secureTextEntry
+      returnKeyType="done"
+    />
+  </View>
+</View>
+
+
               <TouchableOpacity style={styles.payButton} onPress={handlePayment} activeOpacity={0.8}>
-                <LinearGradient colors={['#007AFF', '#007AFF']} style={styles.payButtonGradient}>
+               <LinearGradient colors={['#007AFF', '#764ba2']} style={styles.payButtonGradient}>
                   <Text style={styles.payButtonText}>Pay ${selectedCity?.price}</Text>
                 </LinearGradient>
               </TouchableOpacity>
@@ -377,8 +392,9 @@ const handleDislike = (id) => {
     console.log('📍 Selected destination:', selectedDestination);
 
     // בנה את נתוני ההזמנה עם מזהים נכונים
- const selectedHotel = hotelsList.find(h => h._id === getHotelId(selectedDestination));
-
+ const selectedHotel = Array.isArray(global?.hotelsList)
+  ? global.hotelsList.find(h => h._id === getHotelId(selectedDestination))
+  : null; // or pass hotelsList in via props/context and use that
     const orderData = {
       departureCityId: getDepartureCityId(selectedDestination),
       departureCityName: selectedDestination?.name || selectedDestination?.slug || '',
@@ -708,7 +724,7 @@ const BookingSheet = ({
   onClose,
   onConfirm, // async -> returns {ok:boolean, message?:string, orderId?:string}
 }) => {
-  const [step, setStep] = useState<'details' | 'payment' | 'success'>('details');
+ const [step, setStep] = useState('details');
   const [fullName, setFullName] = useState('');
   const [cardNumber, setCardNumber] = useState('');
   const [expiryDate, setExpiryDate] = useState('');
@@ -748,7 +764,7 @@ const BookingSheet = ({
   const validatePayment = () => {
     if (!fullName.trim() || fullName.trim().length < 3) return 'Enter your full name (min 3 chars).';
     if (cardNumber.replace(/\s/g, '').length !== 16) return 'Card number must be 16 digits.';
-    if (!/^(0[1-9]|1[0-2])\/\d{2}$/.test(expiryDate)) return 'Expiry must be MM/YY.';
+   if (!/^(0[1-9]|1[0-2])\/(\d{2}|\d{4})$/.test(expiryDate)) return 'Expiry must be MM/YY or MM/YYYY.';
     if (cvv.length !== 3 || !/^\d{3}$/.test(cvv)) return 'CVV must be 3 digits.';
     return '';
   };
