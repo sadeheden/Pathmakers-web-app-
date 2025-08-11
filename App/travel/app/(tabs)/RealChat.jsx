@@ -106,7 +106,7 @@ export default function RealChatScreen() {
                 </View>
               ))}
             {isLoading && (
-              <ActivityIndicator size="large" color="#6633cc" style={{ marginTop: 10 }} />
+              <ActivityIndicator size="large" color="#007AFF" style={{ marginTop: 10 }} />
             )}
           </ScrollView>
  
@@ -135,23 +135,41 @@ export default function RealChatScreen() {
     </SafeAreaView>
   );
 }
- 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: "#007AFF",
+  },
   container: {
     flex: 1,
     backgroundColor: "#fff",
   },
   header: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#007AFF",
+    paddingVertical: 15,
+    paddingHorizontal: 10,
+  },
+  backButton: {
+    marginRight: 10,
+    padding: 5,
+  },
+  backText: {
+    color: "#fff",
+    fontSize: 20,
+  },
+  headerTitle: {
+    color: "#fff",
     fontSize: 20,
     fontWeight: "bold",
-    textAlign: "center",
-    paddingVertical: 15,
-    backgroundColor: "#6633cc",
-    color: "#fff",
+  },
+  chatWrapper: {
+    flex: 1,
   },
   chatBox: {
     flex: 1,
-    padding: 10,
+    paddingHorizontal: 10,
   },
   messageContainer: {
     padding: 10,
@@ -171,15 +189,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   inputContainer: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
     flexDirection: "row",
     padding: 10,
     borderTopWidth: 1,
     borderColor: "#ccc",
     backgroundColor: "#fff",
+    alignItems: "center",
   },
   input: {
     flex: 1,
@@ -191,101 +206,14 @@ const styles = StyleSheet.create({
     marginRight: 10,
   },
   sendButton: {
-    backgroundColor: "#6633cc",
+    backgroundColor: "#007AFF",
     borderRadius: 20,
     paddingHorizontal: 15,
+    paddingVertical: 8,
     justifyContent: "center",
   },
   sendText: {
     color: "#fff",
     fontWeight: "bold",
   },
-  safeArea: {
-  flex: 1,
-  backgroundColor: "#6633cc",
-},
-container: {
-  flex: 1,
-  backgroundColor: "#fff",
-},
-header: {
-  fontSize: 20,
-  fontWeight: "bold",
-  textAlign: "center",
-  paddingVertical: 15,
-  backgroundColor: "#6633cc",
-  color: "#fff",
-},
-chatWrapper: {
-  flex: 1,
-},
-chatBox: {
-  flex: 1,
-  paddingHorizontal: 10,
-},
-messageContainer: {
-  padding: 10,
-  marginVertical: 5,
-  borderRadius: 10,
-  maxWidth: "80%",
-},
-userMessage: {
-  alignSelf: "flex-end",
-  backgroundColor: "#daf0ff",
-},
-botMessage: {
-  alignSelf: "flex-start",
-  backgroundColor: "#f1f1f1",
-},
-messageText: {
-  fontSize: 16,
-},
-inputContainer: {
-  flexDirection: "row",
-  padding: 10,
-  borderTopWidth: 1,
-  borderColor: "#ccc",
-  backgroundColor: "#fff",
-  alignItems: "center",
-},
-input: {
-  flex: 1,
-  height: 40,
-  borderWidth: 1,
-  borderColor: "#ccc",
-  borderRadius: 20,
-  paddingHorizontal: 15,
-  marginRight: 10,
-},
-sendButton: {
-  backgroundColor: "#6633cc",
-  borderRadius: 20,
-  paddingHorizontal: 15,
-  paddingVertical: 8,
-},
-sendText: {
-  color: "#fff",
-  fontWeight: "bold",
-}, 
-header: {
-  flexDirection: "row",
-  alignItems: "center",
-  backgroundColor: "#6633cc",
-  paddingVertical: 15,
-  paddingHorizontal: 10,
-},
-backButton: {
-  marginRight: 10,
-  padding: 5,
-},
-backText: {
-  color: "#fff",
-  fontSize: 20,
-},
-headerTitle: {
-  color: "#fff",
-  fontSize: 20,
-  fontWeight: "bold",
-},
-
 });
