@@ -1,44 +1,28 @@
 import { ObjectId } from 'mongodb';
-import { connectDB } from '../auth/auth.db.js';
+import { findAttractionsByCity } from './att.db.js';
 
-const toObjectId = (v) => (ObjectId.isValid(String(v)) ? new ObjectId(String(v)) : null);
-
-/**
- * חיפוש אטרקציות לפי עיר - POST /search-by-city
- * מקבל JSON עם שם העיר וגבול תוצאות (limit)
- */
 export async function searchAttractionsByCity(req, res) {
   try {
-    const { city, limit = 30 } = req.body;
-    if (!city || typeof city !== 'string') {
+    const cityName = req.body.city?.trim();
+    const limit = parseInt(req.body.limit, 10) || 30;
+
+    if (!cityName) {
       return res.status(400).json({ success: false, message: 'City name is required' });
     }
 
-    const db = await connectDB();
+    const attractions = await findAttractionsByCity(cityName, limit);
 
-    // מחפשים בעיר (collection cities) את המסמכים עם אטרקציות
-    const cityDoc = await db.collection('city').findOne({ city: city.trim() });
-    if (!cityDoc) {
+    if (!attractions) {
       return res.status(404).json({ success: false, message: 'City not found' });
     }
 
-    // מניחים שיש שדה attractions במבנה אובייקטים
-    const attractions = cityDoc.attractions || [];
-
-    // מגבילים תוצאות
-    const limitedAttractions = attractions.slice(0, limit);
-
-    // מחזירים את מסמך העיר עם האטרקציות המסוננות
-    res.json({ success: true, items: [{ ...cityDoc, attractions: limitedAttractions }] });
+    return res.json({ success: true, items: attractions });
   } catch (error) {
     console.error('searchAttractionsByCity error:', error);
     res.status(500).json({ success: false, message: 'Internal server error' });
   }
 }
 
-/**
- * הזמנת אטרקציה - POST /:id/book
- */
 export async function bookAttraction(req, res) {
   try {
     const attractionId = req.params.id;
@@ -52,8 +36,20 @@ export async function bookAttraction(req, res) {
       return res.status(401).json({ success: false, message: 'Unauthorized' });
     }
 
-    // כאן תוכל להוסיף לוגיקה להזמנה, למשל לשמור ב-collection הזמנות
-    // זה רק דוגמה בסיסית שמחזירה הצלחה
+    // לדוגמה שמירת הזמנה ב-collection בשם "attractionOrders"
+    const db = await connectDB();
+
+    const bookingDoc = {
+      user_id: new ObjectId(userId),
+      attraction_id: new ObjectId(attractionId),
+      booked_at: new Date(),
+    };
+
+    const result = await db.collection('attractionOrders').insertOne(bookingDoc);
+
+    if (!result.insertedId) {
+      throw new Error('Booking failed');
+    }
 
     return res.json({ success: true, message: 'Attraction booked successfully' });
   } catch (error) {
@@ -61,7 +57,3 @@ export async function bookAttraction(req, res) {
     res.status(500).json({ success: false, message: 'Internal server error' });
   }
 }
-
-/**
- * אפשר להוסיף פונקציות נוספות לניהול אטרקציות
- */

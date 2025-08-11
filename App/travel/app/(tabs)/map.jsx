@@ -241,7 +241,7 @@ export default function AttractionsScreen() {
             style={styles.searchInput}
             value={searchCity}
             onChangeText={setSearchCity}
-            placeholder="Enter city name (e.g., Amsterdam, Paris, New York)"
+            placeholder="Enter city name (e.g., Amsterdam, paris, New York)"
             placeholderTextColor="#999"
             returnKeyType="search"
             onSubmitEditing={handleSearch}
