@@ -10,19 +10,16 @@ export async function searchAttractionsByCity(req, res) {
       return res.status(400).json({ success: false, message: 'City name is required' });
     }
 
-    const attractions = await findAttractionsByCity(cityName, limit);
-
-    if (!attractions) {
-      return res.status(404).json({ success: false, message: 'City not found' });
+   const attractions = await findAttractionsByCity(cityName, limit);
+    if (!attractions || attractions.length === 0) {
+      return res.status(404).json({ success: false, message: 'City not found or no attractions' });
     }
-
     return res.json({ success: true, items: attractions });
   } catch (error) {
     console.error('searchAttractionsByCity error:', error);
     res.status(500).json({ success: false, message: 'Internal server error' });
   }
 }
-
 export async function bookAttraction(req, res) {
   try {
     const attractionId = req.params.id;

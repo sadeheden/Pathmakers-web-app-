@@ -134,46 +134,21 @@ export default function AttractionsScreen() {
         throw new Error(response.message || 'Search failed');
       }
 
-      const list = (response.items || []).flatMap(cityDoc => {
-        if (cityDoc.attractions && Array.isArray(cityDoc.attractions)) {
-          return cityDoc.attractions.map((attr, idx) => ({
-            id: `${cityDoc._id}_${idx}`,
-            name: attr.name || 'Unknown place',
-            city: cityDoc.city || '',
-            address: attr.address || '',
-            openingHours: attr.openingHours || null,
-            price: attr.price && typeof attr.price === 'object'
-              ? parseInt(attr.price.$numberInt || attr.price.$numberDouble || attr.price, 10)
-              : (typeof attr.price === 'number' ? attr.price : null),
-            category: 'attraction',
-            rating: attr.rating ?? null,
-            bookable: attr.bookable ?? true,
-            availability: Array.isArray(attr.availability) && attr.availability.length > 0
-              ? attr.availability
-              : makeAvailability(`${cityDoc._id}_${idx}`),
-            description: attr.description || null
-          }));
-        } else {
-          return [{
-            id: cityDoc._id || cityDoc.id || `attraction_${Math.random()}`,
-            name: cityDoc.name || 'Unknown place',
-            city: cityDoc.city || '',
-            address: cityDoc.address || '',
-            openingHours: cityDoc.openingHours || null,
-            price: cityDoc.price && typeof cityDoc.price === 'object'
-              ? parseInt(cityDoc.price.$numberInt || cityDoc.price.$numberDouble || cityDoc.price, 10)
-              : (typeof cityDoc.price === 'number' ? cityDoc.price : null),
-            category: cityDoc.category || 'attraction',
-            rating: cityDoc.rating ?? null,
-            bookable: cityDoc.bookable ?? true,
-            availability: Array.isArray(cityDoc.availability) && cityDoc.availability.length > 0
-              ? cityDoc.availability
-              : makeAvailability(cityDoc._id || cityDoc.id),
-            description: cityDoc.description || null
-          }];
-        }
-      });
-
+   const list = (response.items || []).map((attr, idx) => ({
+    id: attr._id || `attraction_${idx}`,
+    name: attr.name || 'Unknown place',
+    city: attr.city || cityName,
+    address: attr.address || '',
+    openingHours: attr.openingHours || null,
+    price: typeof attr.price === 'number' ? attr.price : null,
+    category: attr.category || 'attraction',
+    rating: attr.rating ?? null,
+    bookable: attr.bookable ?? true,
+    availability: Array.isArray(attr.availability) && attr.availability.length > 0
+      ? attr.availability
+      : makeAvailability(attr._id || idx),
+    description: attr.description || null,
+  }));
       console.log(`✅ Processed ${list.length} attractions from MongoDB for city: ${cityName}`);
       console.log('🏛️ Final attractions list:', list);
       setItems(list);
@@ -260,7 +235,7 @@ export default function AttractionsScreen() {
         {/* Quick city buttons */}
         <View style={styles.row}>
           <Text style={styles.quickLabel}>Quick search:</Text>
-          {['Amsterdam', 'Paris', 'London', 'New York'].map((city) => (
+          {['Amsterdam', 'paris', 'London', 'New York'].map((city) => (
             <TouchableOpacity
               key={city}
               style={[styles.quickChip, styles.ml8]}
