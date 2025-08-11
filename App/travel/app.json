@@ -15,11 +15,14 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff",
-         "softwareKeyboardLayoutMode": "pan",
-      "adaptiveIcon": { "foregroundImage": "./assets/adaptive-icon.png" },
-      "windowSoftInputMode": "adjustResize"
+        "softwareKeyboardLayoutMode": "pan",
+        "adaptiveIcon": {
+          "foregroundImage": "./assets/adaptive-icon.png"
+        },
+        "windowSoftInputMode": "adjustResize"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "package": "com.anonymous.travel"
     },
     "web": {
       "bundler": "metro",
