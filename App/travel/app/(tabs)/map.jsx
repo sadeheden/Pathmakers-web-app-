@@ -55,6 +55,7 @@ const makeAvailability = (id) => {
   return pool.slice(0, count);
 };
 
+
 /* ===================== Component ===================== */
 export default function AttractionsScreen() {
   const [searchCity, setSearchCity] = useState('');
