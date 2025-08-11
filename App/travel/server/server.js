@@ -3,13 +3,15 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
-
+import fs from 'fs';
 import authRoutes from './services/auth/auth.router.js';
 import orderRoutes from './services/orders/order.router.js';
 import attRoutes from './services/attractions/att.router.js';
 
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const envPath = path.resolve(__dirname, '.env.local');
+console.log('File exists:', fs.existsSync(envPath));
 
 // טען dotenv פעם אחת עם הנתיב המדויק של הקובץ שלך
 dotenv.config({ path: path.resolve(__dirname, '.env.local') });
