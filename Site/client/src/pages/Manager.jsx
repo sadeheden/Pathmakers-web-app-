@@ -628,13 +628,13 @@ function ManageDataUpdateBox() {
 
   const [formData, setFormData] = useState({
     // cities
-    cityName: "", country: "",
+    cityName: "",
     // hotels
-    hotelName: "", hotelPrice: "", hotelStars: "",
+    hotelName: "", hotelPrice: "",
     // flights
     flightName: "", flightPrice: "", flightDuration: "",
     // attractions
-    attractionName: "", attractionPrice: "", attractionDescription: "",
+    attractionName: "", attractionPrice: "",
   });
 
   const pick = (key) => {
@@ -643,102 +643,101 @@ function ManageDataUpdateBox() {
     setStep("form");
   };
 
-  const handleChange = (e) => setFormData((p) => ({ ...p, [e.target.name]: e.target.value }));
+const handleChange = (e) => {
+  const { name, value } = e.target;
+  console.log("handleChange:", name, value, typeof value);
+  setFormData((prev) => ({ ...prev, [name]: value }));
+};
 
   const handleBack = () => {
     // reset form for clarity
     setFormData({
-      cityName: "", country: "",
-      hotelName: "", hotelPrice: "", hotelStars: "",
+      cityName: "",
+      hotelName: "", hotelPrice: "",
       flightName: "", flightPrice: "", flightDuration: "",
-      attractionName: "", attractionPrice: "", attractionDescription: "",
+      attractionName: "", attractionPrice: "",
     });
     setCollection(null);
     setStep("choose");
   };
 
-  const handleSave = async () => {
-    try {
-      setSaving(true);
-      let url = "";
-      let payload = {};
+const handleSave = async () => {
+  try {
+    setSaving(true);
+    let url = "";
+    let payload = {};
 
-      switch (collection) {
-  case "cities":
-  if (!formData.cityName) throw new Error("City name is required");
-  url = "http://localhost:4000/api/cities";
-  payload = { city: formData.cityName.trim() }; // string only
-  break;
+    switch (collection) {
+     case "cities":
+        if (!formData.cityName) throw new Error("City name is required");
+        url = "http://localhost:4000/api/cities";
+        const cityName = formData.cityName.trim();
+        console.log("Sending payload for city:", { city: cityName });
+        payload = { city: cityName };
+        break;
 
 
-         case "hotels":
-    if (!formData.city || !formData.hotelName || !formData.hotelPrice)
-      throw new Error("City, name and price are required");
-    url = "http://localhost:4000/api/manager/collections/hotels/upsertItem";
-    payload = {
-      city: formData.city,
-      hotel: {
-        name: formData.hotelName.trim(),
-        price: parseFloat(formData.hotelPrice),
-      },
-    };
-    break;
 
+      case "hotels":
+        if (!formData.city || !formData.hotelName || !formData.hotelPrice)
+          throw new Error("City, name and price are required");
+        url = "http://localhost:4000/api/hotels";
+        payload = {
+          city: formData.city.trim(),
+          name: formData.hotelName.trim(),
+          price: parseFloat(formData.hotelPrice),
+        };
+        break;
 
       case "flights":
-    if (!formData.city || !formData.flightName || !formData.flightPrice || !formData.flightDuration)
-      throw new Error("City, name, price and duration are required");
-    url = "http://localhost:4000/api/manager/collections/flights/upsertItem";
-    payload = {
-      city: formData.city,
-      airline: {
-        name: formData.flightName.trim(),
-        price: parseFloat(formData.flightPrice),
-        duration: formData.flightDuration.trim(),
-      },
-    };
-    break;
+        if (!formData.city || !formData.flightName || !formData.flightPrice || !formData.flightDuration)
+          throw new Error("City, name, price and duration are required");
+        url = "http://localhost:4000/api/flights";
+        payload = {
+          city: formData.city.trim(),
+          airline: formData.flightName.trim(),
+          price: parseFloat(formData.flightPrice),
+          duration: formData.flightDuration.trim(),
+        };
+        break;
 
       case "attractions":
-    if (!formData.city || !formData.attractionName || !formData.openingHours || !formData.attractionPrice)
-      throw new Error("City, name, opening hours, and price are required");
-    url = "http://localhost:4000/api/manager/collections/attractions/upsertItem";
-    payload = {
-      city: formData.city,
-      attraction: {
-        name: formData.attractionName.trim(),
-        openingHours: formData.openingHours.trim(),
-        price: parseFloat(formData.attractionPrice),
-        // description is optional; Mongo doc in your screenshot doesn't store it,
-        // but we can ignore or include it separately if you add it later.
-      },
-    };
-    break;
+        if (!formData.city || !formData.attractionName || !formData.openingHours || !formData.attractionPrice)
+          throw new Error("City, name, opening hours, and price are required");
+        url = "http://localhost:4000/api/attractions";
+        payload = {
+          city: formData.city.trim(),
+          name: formData.attractionName.trim(),
+          openingHours: formData.openingHours.trim(),
+          price: parseFloat(formData.attractionPrice),
+        };
+        break;
 
-        default:
-          throw new Error("Pick a collection to update");
-      }
-
-      const res = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.message || "Failed to save");
-
-      // success: show green chip then return to step 1
-      setSaved(true);
-      setSaving(false);
-      setTimeout(() => {
-        setSaved(false);
-        handleBack(); // back to choose step
-      }, 1400);
-    } catch (err) {
-      setSaving(false);
-      alert(err.message);
+      default:
+        throw new Error("Pick a collection to update");
     }
-  };
+console.log("Sending payload:", payload);
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(data?.message || "Failed to save");
+
+    setSaved(true);
+    setSaving(false);
+    setTimeout(() => {
+      setSaved(false);
+      handleBack();
+    }, 1400);
+  } catch (err) {
+    setSaving(false);
+    alert(err.message);
+  }
+};
+
 
   // Step 1 — choose collection
   if (step === "choose") {
@@ -838,9 +837,7 @@ function ManageDataUpdateBox() {
         {collection === "cities" && (
           <>
             <input name="cityName" placeholder="City name" style={styles.input}
-              value={formData.cityName} onChange={handleChange} />
-            <input name="country" placeholder="Country" style={styles.input}
-              value={formData.country} onChange={handleChange} />
+              value={formData.cityName} onChange={handleChange} />        
           </>
         )}
 {collection === "hotels" && (
@@ -851,10 +848,7 @@ function ManageDataUpdateBox() {
       value={formData.hotelName} onChange={handleChange} />
     <input name="hotelPrice" type="number" placeholder="Price" style={styles.input}
       value={formData.hotelPrice} onChange={handleChange} />
-    <input name="hotelStars" type="number" placeholder="(optional) Stars (1-5)" style={styles.input}
-      value={formData.hotelStars} onChange={handleChange} />
-  </>
-)}
+  </>)}
 
         {collection === "flights" && (
   <>
@@ -878,9 +872,7 @@ function ManageDataUpdateBox() {
     <input name="attractionPrice" type="number" placeholder="Price" style={styles.input}
       value={formData.attractionPrice} onChange={handleChange} />
     <input name="openingHours" placeholder='Opening hours (e.g. "09:00-17:00")' style={styles.input}
-      value={formData.openingHours || ""} onChange={handleChange} />
-    <textarea name="attractionDescription" placeholder="(optional) Description" style={styles.textarea}
-      value={formData.attractionDescription} onChange={handleChange} />
+      value={formData.openingHours || ""} onChange={handleChange} />   
   </>
 )}
       </div>
