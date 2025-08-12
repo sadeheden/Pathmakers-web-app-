@@ -16,7 +16,6 @@ const sidebarItems = [
   "Trips",
   "Manage Data",
   "Update City",
-  "Settings",
 ];
 const styles = {
   box: {
