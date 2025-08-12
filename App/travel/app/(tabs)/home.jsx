@@ -21,12 +21,12 @@ const screenWidth = Dimensions.get('window').width;
 
 // Enhanced cities array with more details
 const cities = [
-  { id: '1', name: 'Phuket', slug: 'phuket', flight: 'PG123', image: require('../../assets/images/phuket.jpg'), description: 'Explore beaches, temples, and nightlife.', hotel: 'Phuket Grand Hotel', price: 1400 },
-  { id: '2', name: 'Paris', slug: 'paris', flight: 'AF123', image: require('../../assets/images/paris.png'), description: 'Romantic streets, Eiffel Tower, fine dining.', hotel: 'Hotel Parisienne', price: 1800 },
-  { id: '3', name: 'Dubai', slug: 'dubai', flight: 'EK654', image: require('../../assets/images/dubai.png'), description: 'Luxury shopping, Burj Khalifa, desert adventures.', hotel: 'Dubai Luxury Suites', price: 2100 },
-  { id: '4', name: 'London', slug: 'london', flight: 'BA890', image: require('../../assets/images/london.png'), description: 'Historic sites, Big Ben, cozy pubs.', hotel: 'The London Palace', price: 1900 },
-  { id: '5', name: 'Turkey', slug: 'turkey', flight: 'TK101', image: require('../../assets/images/turkey.png'), description: 'Markets, rich culture, hot air balloons.', hotel: 'Istanbul Grand Hotel', price: 1600 },
-  { id: '6', name: 'Amsterdam', slug: 'amsterdam', flight: 'KL202', image: require('../../assets/images/amsterdam.png'), description: 'Canals, bikes, vibrant neighborhoods.', hotel: 'Amsterdam Central Hotel', price: 1700 },
+  { id: '1', name: 'Phuket', slug: 'phuket', flight: 'Thai Airways', image: require('../../assets/images/phuket.jpg'), description: 'Explore beaches, temples, and nightlife.', hotel: 'Banyan Tree Phuket', price: 1400 },
+  { id: '2', name: 'Paris', slug: 'paris', flight: 'Air France', image: require('../../assets/images/paris.png'), description: 'Romantic streets, Eiffel Tower, fine dining.', hotel: 'Shangri-La Hotel Paris', price: 1800 },
+  { id: '3', name: 'Dubai', slug: 'dubai', flight: 'Air France', image: require('../../assets/images/dubai.png'), description: 'Luxury shopping, Burj Khalifa, desert adventures.', hotel: 'Jumeirah Beach Hotel', price: 2100 },
+  { id: '4', name: 'London', slug: 'london', flight: 'Lufthansa', image: require('../../assets/images/london.png'), description: 'Historic sites, Big Ben, cozy pubs.', hotel: 'The Langham, London', price: 1900 },
+  { id: '5', name: 'Turkey', slug: 'turkey', flight: 'Turkish Airlines', image: require('../../assets/images/turkey.png'), description: 'Markets, rich culture, hot air balloons.', hotel: 'Antalya Beach Resort', price: 1600 },
+  { id: '6', name: 'Amsterdam', slug: 'amsterdam', flight: 'Delta Airlines', image: require('../../assets/images/amsterdam.png'), description: 'Canals, bikes, vibrant neighborhoods.', hotel: 'Hotel Okura Amsterdam', price: 1700 },
 ];
 
 const CARDS_PER_PAGE = 6;
