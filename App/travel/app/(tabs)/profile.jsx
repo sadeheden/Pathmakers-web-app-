@@ -64,7 +64,7 @@ export default function Profile() {
       '68075f88dc218773e065223d': 'KL202 - KLM Royal Dutch'
     },
     hotels: {
-      '68022f445f7300b11f986837': 'Phuket Grand Resort & Spa',
+      '68022f445f7300b11f986837': 'Grand Resort & Spa',
       '68022f445f7300b11f986838': 'Hotel Parisienne Palace', 
       '68022f445f7300b11f986839': 'Dubai Luxury Suites & Marina',
       '68022f445f7300b11f98683a': 'The London Palace Hotel',

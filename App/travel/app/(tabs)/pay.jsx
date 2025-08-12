@@ -9,54 +9,36 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation, useRoute } from '@react-navigation/native';
 
 // ====== ID mapping helpers (copied from Home to keep logic identical) ======
-const getDepartureCityId = (destinationCity) => {
-  const cityMappings = {
-    'phuket': '68022f445f7300b11f986829',
-    'paris': '68022f445f7300b11f986829',
-    'dubai': '68022f445f7300b11f986829',
-    'london': '68022f445f7300b11f986829',
-    'turkey': '68022f445f7300b11f986829',
-    'amsterdam': '68022f445f7300b11f986829',
-    'rome': '68022f445f7300b11f986829',
-    'barcelona': '68022f445f7300b11f986829',
-    'berlin': '68022f445f7300b11f986829',
-    'tokyo': '68022f445f7300b11f986829',
-    'new york': '68022f445f7300b11f986829',
-    'los angeles': '68022f445f7300b11f986829',
-    'san francisco': '68022f445f7300b11f986829',
-    'madrid': '68022f445f7300b11f986829',
-    'seoul': '68022f445f7300b11f986829'
-  };
-  const citySlug = destinationCity?.slug || destinationCity?.name?.toLowerCase();
-  return cityMappings[citySlug] || '68022f445f7300b11f986829';
-};
+const getDepartureCityId = () => '689af474f511eb0daf25e306';
 
 const getDestinationCityId = (destinationCity) => {
-  const cityMappings = {
-    'phuket': '68022f445f7300b11f986837',
-    'paris': '68075dd4f110a359e23cd001',
-    'london': '68075dd4f110a359e23cd002',
-    'amsterdam': '68075dd4f110a359e23cd003',
-    'rome': '68075dd4f110a359e23cd004',
-    'barcelona': '68075dd4f110a359e23cd005',
-    'berlin': '68075dd4f110a359e23cd006',
-    'tokyo': '68075dd4f110a359e23cd007',
-    'dubai': '686cd9cd523d724c4a6db66f',
-    'new york': '686cdae6523d724c4a6db672',
-    'los angeles': '686cdb31523d724c4a6db675',
-    'san francisco': '686cdbe3523d724c4a6db676',
-    'madrid': '686cdc13523d724c4a6db677',
-    'seoul': '686cdc4a523d724c4a6db67a',
-    'turkey': '6891f49ef511eb0daf23b8f8'
-  };
+ const cityMappings = {
+  'phuket': '689af444f511eb0daf25e305',
+  'paris': '68022f445f7300b11f986828',
+  'london': '68022f445f7300b11f986829',
+  'new york': '68022f445f7300b11f986830',
+  'tokyo': '68022f445f7300b11f986831',
+  'rome': '68022f445f7300b11f986832',
+  'los angeles': '68022f445f7300b11f986833',
+  'berlin': '68022f445f7300b11f986834',
+  'barcelona': '68022f445f7300b11f986835',
+  'dubai': '68022f445f7300b11f986836',
+  'amsterdam': '68022f445f7300b11f986837',
+  'san francisco': '68022f445f7300b11f986838',
+  'madrid': '68022f445f7300b11f986839',
+  'seoul': '68022f445f7300b11f986840',
+  'holland': '6878d2426bcf8c4c6887f6ac',
+  'turkey': '6807610adc218773e0652245',
+  'tel aviv': '689af474f511eb0daf25e306'
+};
   const citySlug = destinationCity?.slug || destinationCity?.name?.toLowerCase();
-  return cityMappings[citySlug] || '68022f445f7300b11f986837';
+  return cityMappings[citySlug];
 };
 
 const getFlightId = (destinationCity) => {
   const flightMappings = {
-    'phuket': '68075f88dc218773e0652238',
-    'paris': '68075f88dc218773e0652231',
+    'phuket': '6891f45cf511eb0daf23b8f6',
+    'Paris': '689af68cf511eb0daf25e307',
     'london': '68075f88dc218773e0652230',
     'amsterdam': '68075f88dc218773e0652238',
     'rome': '68075f88dc218773e0652233',
@@ -72,7 +54,29 @@ const getFlightId = (destinationCity) => {
     'turkey': '6891f45cf511eb0daf23b8f5'
   };
   const citySlug = destinationCity?.slug || destinationCity?.name?.toLowerCase();
-  return flightMappings[citySlug] || '68075f88dc218773e0652238';
+  return flightMappings[citySlug];
+};
+
+const getHotelId = (destinationCity) => {
+  const hotelMappings = {
+    'paris': '68075dd4f110a359e23cd001',
+    'london': '68075dd4f110a359e23cd002',
+    'amsterdam': '68075dd4f110a359e23cd003',
+    'rome': '68075dd4f110a359e23cd004',
+    'barcelona': '68075dd4f110a359e23cd005',
+    'berlin': '68075dd4f110a359e23cd006',
+    'tokyo': '68075dd4f110a359e23cd007',
+    'dubai': '686cd9cd523d724c4a6db66f',
+    'new york': '686cdae6523d724c4a6db672',
+    'los angeles': '686cdb31523d724c4a6db675',
+    'san francisco': '686cdbe3523d724c4a6db676',
+    'madrid': '686cdc13523d724c4a6db677',
+    'seoul': '686cdc4a523d724c4a6db67a',
+    'turkey': '6891f49ef511eb0daf23b8f8',
+    'phuket': '686cdae6523d724c4a6db673',
+  };
+  const citySlug = destinationCity?.slug || destinationCity?.name?.toLowerCase();
+  return hotelMappings[citySlug];
 };
 
 // ====== Pay Screen ======
@@ -181,19 +185,19 @@ export default function PayScreen() {
 
       // Prepare order data with proper structure
       const orderData = {
-        departureCityId: getDepartureCityId(city),
-        departureCityName: 'Tel Aviv', // Static departure city name
-        destinationCityId: getDestinationCityId(city),
-        destinationCityName: city?.name || city?.slug || '',
-        flightId: getFlightId(city),
-        flightName: city?.flight || `${city?.name} Flight` || '',
-        hotelId: getDestinationCityId(city), // Using same ID as destination for hotel
-        hotelName: city?.hotel || `${city?.name} Hotel` || '',
-        attractions: ['6807610adc218773e065223d'], // Default attraction
-        transportation: 'Public Transport',
-        paymentMethod: 'PayPal',
-        totalPrice: price,
-      };
+      departureCityId: getDepartureCityId(city),
+      departureCityName: 'Tel Aviv', // Static departure city name
+      destinationCityId: getDestinationCityId(city),
+      destinationCityName: city?.name || city?.slug || '',
+      flightId: getFlightId(city),
+      flightName: city?.flight || `${city?.name} Flight` || '',
+      hotelId: getHotelId(city), 
+      hotelName: city?.hotel || `${city?.name} Hotel` || '',
+      transportation: 'Public Transport',
+      paymentMethod: 'PayPal',
+      totalPrice: price,
+    };
+
 
       console.log('📦 Sending order data:', JSON.stringify(orderData, null, 2));
 
