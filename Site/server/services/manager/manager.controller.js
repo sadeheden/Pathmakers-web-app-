@@ -209,63 +209,68 @@ export const addExistingAttractionToAttractionsDoc = async (req, res) => {
 
 // הפונקציה הקיימת שלך לדשבורד עם סיכום הזמנות והכנסות לפי חודש
 export const getManagerDashboardData = async (req, res) => {
-    console.log("🔥 getManagerDashboardData called");
+  console.log("🔥 getManagerDashboardData called");
   try {
     const db = await connectDB();
     const ordersCollection = db.collection("orders");
 
-    // כאן ניתן לשנות את טווח התאריכים לפי הצורך
-    const startOfMonth = new Date("2025-08-01T00:00:00Z");
+    const startOfMonth = new Date("2025-07-01T00:00:00Z");
     const startOfNextMonth = new Date("2025-09-01T00:00:00Z");
 
-    // הכנסות לפי תאריך
-    const revenueByDate = await ordersCollection.aggregate([
+    const revenueByMonthRaw = await ordersCollection.aggregate([
       { $match: { created_at: { $gte: startOfMonth, $lt: startOfNextMonth } } },
-      { $group: { _id: { $dateToString: { format: "%Y-%m-%d", date: "$created_at" } }, revenue: { $sum: "$total_price" } } },
+      { $group: { _id: { $dateToString: { format: "%Y-%m", date: "$created_at" } }, revenue: { $sum: "$total_price" } } },
       { $sort: { _id: 1 } },
-      { $project: { date: "$_id", revenue: 1, _id: 0 } }
+      { $project: { month: "$_id", revenue: 1, _id: 0 } }
     ]).toArray();
 
-    const totalOrders = await ordersCollection.countDocuments({ created_at: { $gte: startOfMonth, $lt: startOfNextMonth } });
-    const totalRevenue = revenueByDate.reduce((sum, item) => sum + item.revenue, 0);
+    const monthLabels = ["חודש 1", "חודש 2", "חודש 3", "חודש 4"];
+    const revenueByMonth = revenueByMonthRaw.map((item, index) => ({
+      ...item,
+      monthLabel: monthLabels[index] || null
+    }));
 
-const topDestinations = await ordersCollection.aggregate([
-  {
-    $group: {
-      _id: "$destination_city_id",
-      trips: { $sum: 1 }
-    }
-  },
-  { $sort: { trips: -1 } },
-  { $limit: 5 },
-  {
-    $lookup: {
-      from: "city", // שם הקולקציה של הערים
-      localField: "_id",      // מזהה היעד בקבוצת ההזמנות (ObjectId)
-      foreignField: "_id",    // מזהה העיר בקולקציית city (ObjectId)
-      as: "cityInfo"
-    }
-  },
-  { $unwind: "$cityInfo" },
-  { $project: { name: "$cityInfo.city", trips: 1, _id: 0 } }
-]).toArray();
+    const totalOrders = await ordersCollection.countDocuments({ created_at: { $gte: startOfMonth, $lt: startOfNextMonth } });
+    const totalRevenue = revenueByMonth.reduce((sum, item) => sum + item.revenue, 0);
+
+    const topDestinations = await ordersCollection.aggregate([
+      {
+        $group: {
+          _id: "$destination_city_id",
+          trips: { $sum: 1 }
+        }
+      },
+      { $sort: { trips: -1 } },
+      { $limit: 5 },
+      {
+        $lookup: {
+          from: "city",
+          localField: "_id",
+          foreignField: "_id",
+          as: "cityInfo"
+        }
+      },
+      { $unwind: "$cityInfo" },
+      { $project: { name: "$cityInfo.city", trips: 1, _id: 0 } }
+    ]).toArray();
 
     console.log("totalOrders:", totalOrders);
-console.log("totalRevenue:", totalRevenue);
-console.log("topDestinations:", topDestinations);
-console.log("revenueByDate:", revenueByDate);
+    console.log("totalRevenue:", totalRevenue);
+    console.log("topDestinations:", topDestinations);
+    console.log("revenueByMonth:", revenueByMonth);
 
     res.json({
       totalOrders,
       totalRevenue,
       topDestinations,
-      revenueByDate,
+      revenueByMonth,
     });
   } catch (err) {
     console.error("❌ Dashboard error:", err);
     res.status(500).json({ message: "Dashboard failed", error: err.message });
   }
 };
+
 // Add new hotels into a city's hotels array (no duplicates by name)
 export const addNewHotelsToCity = async (req, res) => {
   try {

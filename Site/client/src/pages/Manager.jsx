@@ -16,7 +16,6 @@ const sidebarItems = [
   "Trips",
   "Manage Data",
   "Update City",
-  "Settings",
 ];
 const styles = {
   box: {
@@ -140,13 +139,12 @@ const Manager = () => {
   const [flights, setFlights] = useState([{ from: "", to: "", price: "" }]);
   // עיר אחת - שם העיר
   const [cityName, setCityName] = useState("");
-  const [dashboardData, setDashboardData] = useState({
-    totalOrders: 0,
-    totalRevenue: 0,
-    topDestinations: [],
-    ordersByDate: [],
-    revenueByDate: [],
-  });
+const [dashboardData, setDashboardData] = useState({
+  totalOrders: 0,
+  totalRevenue: 0,
+  topDestinations: [],
+  revenueByDate: [],
+});
 
 useEffect(() => {
   if (activeItem === "Dashboard") {
@@ -160,6 +158,7 @@ useEffect(() => {
           topDestinations: data.topDestinations || [],
           ordersByDate: data.ordersByDate || [],
           revenueByDate: data.revenueByDate || [],
+          revenueByMonth: data.revenueByMonth || [],
         });
       })
       .catch((err) => console.error("Error loading dashboard data:", err));
@@ -926,43 +925,48 @@ if (activeItem === "Manage Data") {
               <p className="stat-change-positive">+5%</p>
             </div>
           </section>
-          <section className="graph-section">
-            <div className="graph-card">
-              <p className="graph-title">Trips by destination</p>
-              {dashboardData.topDestinations.length > 0 ? (
-                <ResponsiveContainer width="100%" height={200}>
-                  <BarChart data={dashboardData.topDestinations}>
-                    <XAxis dataKey="name" />
-                    <YAxis />
-                    <Tooltip />
-                    <Bar dataKey="trips" fill="#47569e" />
-                  </BarChart>
-                </ResponsiveContainer>
-              ) : (
-                <p>No trip destinations data available.</p>
-              )}
-            </div>
-            <div className="graph-card">
-              <p className="graph-title">Revenue over time</p>
-              {dashboardData.revenueByDate.length > 0 ? (
-                <ResponsiveContainer width="100%" height={200}>
-                  <LineChart data={dashboardData.revenueByDate}>
-                    <XAxis dataKey="date" tickFormatter={(str) => str.slice(5)} />
-                    <YAxis />
-                    <Tooltip formatter={(value) => `$${value.toFixed(2)}`} />
-                    <Line
-                      type="monotone"
-                      dataKey="revenue"
-                      stroke="#47569e"
-                      strokeWidth={2}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              ) : (
-                <p>No revenue data available.</p>
-              )}
-            </div>
-          </section>
+       <section className="graph-section">
+  <div className="graph-card">
+    <p className="graph-title">Trips by destination</p>
+    {dashboardData.topDestinations?.length > 0 ? (
+      <ResponsiveContainer width="100%" height={200}>
+        <BarChart data={dashboardData.topDestinations}>
+          <XAxis dataKey="name" />
+          <YAxis />
+          <Tooltip />
+          <Bar dataKey="trips" fill="#47569e" />
+        </BarChart>
+      </ResponsiveContainer>
+    ) : (
+      <p>No trip destinations data available.</p>
+    )}
+  </div>
+
+  <div className="graph-card">
+  <p className="graph-title">Revenue over time</p>
+  {dashboardData.revenueByMonth?.length > 0 ? (
+    <ResponsiveContainer width="100%" height={200}>
+      <LineChart data={dashboardData.revenueByMonth.map(item => ({
+        date: item.monthLabel || item.month, // שימוש ב-monthLabel או month
+        revenue: item.revenue
+      }))}>
+        <XAxis dataKey="date" />
+        <YAxis />
+        <Tooltip formatter={(value) => `$${value.toFixed(2)}`} />
+        <Line
+          type="monotone"
+          dataKey="revenue"
+          stroke="#47569e"
+          strokeWidth={2}
+        />
+      </LineChart>
+    </ResponsiveContainer>
+  ) : (
+    <p>No revenue data available.</p>
+  )}
+</div>
+</section>
+
         </>
       );
     }

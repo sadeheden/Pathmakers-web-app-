@@ -1,14 +1,14 @@
 import express from 'express';
 import {
   getManagerDashboardData,
+  addExistingAttractionToAttractionsDoc,
   addExistingAttractionToCity,
   addNewAttractionsToCity,
-  addExistingAttractionToAttractionsDoc,
   addNewHotelsToCity,
-  addNewFlightsToCity,
+  addNewFlightsToCity,  // <== הוסף פה
   upsertAttractionItemByCity,
   upsertHotelItemByCity,
-  upsertFlightItemByCity,
+  upsertFlightItemByCity
 } from './manager.controller.js';
 
 const router = express.Router();
