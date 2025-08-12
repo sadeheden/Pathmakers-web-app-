@@ -32,7 +32,7 @@ const getDestinationCityId = (destinationCity) => {
   'tel aviv': '689af474f511eb0daf25e306'
 };
   const citySlug = destinationCity?.slug || destinationCity?.name?.toLowerCase();
-  return cityMappings[citySlug] || '689af444f511eb0daf25e305';
+  return cityMappings[citySlug];
 };
 
 const getFlightId = (destinationCity) => {
@@ -54,7 +54,29 @@ const getFlightId = (destinationCity) => {
     'turkey': '6891f45cf511eb0daf23b8f5'
   };
   const citySlug = destinationCity?.slug || destinationCity?.name?.toLowerCase();
-  return flightMappings[citySlug] || '6891f45cf511eb0daf23b8f6';
+  return flightMappings[citySlug];
+};
+
+const getHotelId = (destinationCity) => {
+  const hotelMappings = {
+    'paris': '68075dd4f110a359e23cd001',
+    'london': '68075dd4f110a359e23cd002',
+    'amsterdam': '68075dd4f110a359e23cd003',
+    'rome': '68075dd4f110a359e23cd004',
+    'barcelona': '68075dd4f110a359e23cd005',
+    'berlin': '68075dd4f110a359e23cd006',
+    'tokyo': '68075dd4f110a359e23cd007',
+    'dubai': '686cd9cd523d724c4a6db66f',
+    'new york': '686cdae6523d724c4a6db672',
+    'los angeles': '686cdb31523d724c4a6db675',
+    'san francisco': '686cdbe3523d724c4a6db676',
+    'madrid': '686cdc13523d724c4a6db677',
+    'seoul': '686cdc4a523d724c4a6db67a',
+    'turkey': '6891f49ef511eb0daf23b8f8',
+    'phuket': '686cdae6523d724c4a6db673',
+  };
+  const citySlug = destinationCity?.slug || destinationCity?.name?.toLowerCase();
+  return hotelMappings[citySlug];
 };
 
 // ====== Pay Screen ======
@@ -123,19 +145,19 @@ export default function PayScreen() {
 
       // Prepare order data with proper structure
       const orderData = {
-        departureCityId: getDepartureCityId(city),
-        departureCityName: 'Tel Aviv', // Static departure city name
-        destinationCityId: getDestinationCityId(city),
-        destinationCityName: city?.name || city?.slug || '',
-        flightId: getFlightId(city),
-        flightName: city?.flight || `${city?.name} Flight` || '',
-        hotelId: getDestinationCityId(city), // Using same ID as destination for hotel
-        hotelName: city?.hotel || `${city?.name} Hotel` || '',
-        attractions: ['6807610adc218773e065223d'], // Default attraction
-        transportation: 'Public Transport',
-        paymentMethod: 'PayPal',
-        totalPrice: price,
-      };
+      departureCityId: getDepartureCityId(city),
+      departureCityName: 'Tel Aviv', // Static departure city name
+      destinationCityId: getDestinationCityId(city),
+      destinationCityName: city?.name || city?.slug || '',
+      flightId: getFlightId(city),
+      flightName: city?.flight || `${city?.name} Flight` || '',
+      hotelId: getHotelId(city), 
+      hotelName: city?.hotel || `${city?.name} Hotel` || '',
+      transportation: 'Public Transport',
+      paymentMethod: 'PayPal',
+      totalPrice: price,
+    };
+
 
       console.log('📦 Sending order data:', JSON.stringify(orderData, null, 2));
 
@@ -174,10 +196,8 @@ export default function PayScreen() {
           { text: 'OK', style: 'default' },
         ]
       );
-
       // Go back to previous screen
       navigation.goBack();
-
     } catch (e) {
       console.error('❌ Order submission error:', e);
       setError(e?.message || 'Something went wrong while booking your trip.');
