@@ -12,7 +12,6 @@ const router = express.Router();
 router.get('/test', (req, res) => res.json({ message: 'Orders route is working!' }));
 
 router.post('/', authenticateUser, createOrder);   // ✅ add this line
-router.post('/api/orders', authenticateUser, createOrder);
 router.get('/', authenticateUser, getOrdersForProfile);
 router.post('/dynamic-data', authenticateUser, getDynamicData);
 
