@@ -191,7 +191,6 @@ export default function Profile() {
         missingIds.hotels.add(order.hotel_id);
       }
     });
-
     console.log('📊 Summary of missing IDs:', {
       cities: Array.from(missingIds.cities),
       flights: Array.from(missingIds.flights),
@@ -209,7 +208,6 @@ export default function Profile() {
       }
       return { type, data: {} };
     });
-
     const results = await Promise.all(fetchPromises);
     
     // Update dynamic data state
@@ -268,8 +266,11 @@ export default function Profile() {
         }
 
         const ordersData = data.orders || [];
-        setOrders(ordersData);
-        
+        const sortedOrders = [...ordersData].sort(
+        (a, b) => new Date(b.created_at) - new Date(a.created_at)
+        );
+        setOrders(sortedOrders);
+                
         // Fetch missing dynamic data
         if (ordersData.length > 0) {
           await fetchMissingData(ordersData);

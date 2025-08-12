@@ -113,7 +113,6 @@ const PaymentModal = ({ visible, onClose, selectedCity, onPaymentSuccess }) => {
                 {selectedCity?.name} - ${selectedCity?.price}
               </Text>
               {error ? <Text style={styles.errorText}>{error}</Text> : null}
-            // REPLACE this block:
 <View style={styles.inputContainer}>
   <Text style={styles.inputLabel}>Full Name</Text>
   <TextInput
@@ -173,8 +172,6 @@ const PaymentModal = ({ visible, onClose, selectedCity, onPaymentSuccess }) => {
     />
   </View>
 </View>
-
-
               <TouchableOpacity style={styles.payButton} onPress={handlePayment} activeOpacity={0.8}>
                <LinearGradient colors={['#007AFF', '#764ba2']} style={styles.payButtonGradient}>
                   <Text style={styles.payButtonText}>Pay ${selectedCity?.price}</Text>
