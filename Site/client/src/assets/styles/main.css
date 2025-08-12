@@ -32,7 +32,7 @@ body {
   WRAPPER
 ==============================================================================*/
 .trips-page {
-  max-width: 1350px;
+  max-width: 1200px;
   margin: 0 auto;
   padding: 0 1rem 4rem;
 }
@@ -41,43 +41,29 @@ body {
   HEADER / INTRO (matches screenshot)
 ==============================================================================*/
 .trip-intro {
-  background: linear-gradient(135deg, #d8e9f8, #234a7771);
-  /* or try: background: linear-gradient(to right, #e0f7fa, #fce4ec); */
-  padding: 6rem 2rem 4rem;
+  background: #fff;
+  padding: 10rem 2rem 4rem;
   text-align: center;
-  margin-top: 1rem;
   margin-bottom: 5rem;
-  color: var(--clr-text);
-  border-radius: var(--radius-lg);
-    animation: fadeInUp 0.7s ease forwards;
 }
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(30px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
 
 .trip-title {
-  font-size: clamp(2.2rem, 5vw, 3.5rem);
-  font-weight: 800;
-  color: #1f2937;
-  letter-spacing: -0.03em;
+  font-family: 'Noto Sans', sans-serif;
+  font-size: clamp(2rem, 2vw, 2rem);
+  font-weight: 900;
+  color: #000;
+  line-height: 1.6;
+  margin-bottom: 1rem;
 }
 
 .trip-subtitle {
+  font-family: 'Plus Jakarta Sans', sans-serif;
   font-size: 1.125rem;
   color: #4a5568;
   max-width: 700px;
   margin: 0 auto 2.5rem;
-  line-height: 1.8;
+  line-height: 1.6;
 }
-
 
 /* Icons row */
 .trip-icons {
@@ -452,24 +438,6 @@ body {
 }
 .modal-content h2 {
   color: #1f2937;  /* or just #000 for pure black */
-}
-.floating-support-btn {
-  position: fixed;
-  bottom: 30px;
-  right: 30px;
-  background-color: #004e75;
-  color: white;
-  border: none;
-  border-radius: 50px;
-  padding: 0.8rem 1.2rem;
-  font-size: 1rem;
-  cursor: pointer;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-  z-index: 1000;
-}
-
-.floating-support-btn:hover {
-  background-color: #003b5c;
 }
 
 
