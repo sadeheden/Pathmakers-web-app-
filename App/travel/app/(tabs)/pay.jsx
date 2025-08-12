@@ -1,8 +1,8 @@
 // (tabs)/pay.jsx
 import React, { useMemo, useState, useLayoutEffect } from 'react';
 import {
-  View, Text, Image, StyleSheet, ScrollView, TouchableOpacity,
-  TextInput, KeyboardAvoidingView, Platform, Alert, ActivityIndicator
+  View, Text, Image, StyleSheet, ScrollView, TouchableOpacity, Pressable,
+  TextInput, KeyboardAvoidingView, Platform, Alert, ActivityIndicator, Modal
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -99,6 +99,8 @@ export default function PayScreen() {
   const [cvv, setCvv] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [successPopupVisible, setSuccessPopupVisible] = useState(false);
+  const [lastOrder, setLastOrder] = useState(null);
 
   const formatCard = (text) => {
     const cleaned = text.replace(/\s/g, '').replace(/\D/g, '');
@@ -126,6 +128,44 @@ export default function PayScreen() {
     return '';
   };
 
+  const SuccessPopup = ({ visible, onClose, onViewOrders, cityName, orderId, price }) => (
+    <Modal
+      visible={!!visible}
+      transparent
+      animationType="fade"
+      onRequestClose={onClose}
+      onDismiss={onClose}
+      statusBarTranslucent
+    >
+      <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+        {/* Backdrop tap closes */}
+        <Pressable style={StyleSheet.absoluteFill} onPress={() => onClose && onClose()} />
+        <View style={{ backgroundColor: '#fff', borderRadius: 16, padding: 20, width: '90%', alignItems: 'center', elevation: 6 }}>
+          <Text style={{ fontSize: 20, fontWeight: '800', marginBottom: 8 }}>🎉 Booking Confirmed!</Text>
+          <Text style={{ textAlign: 'center', fontSize: 16, marginBottom: 10 }}>
+            Your trip to {cityName} is booked!
+          </Text>
+          <Text style={{ fontSize: 14, color: '#6b7280', marginBottom: 4 }}>Order ID: {orderId || '—'}</Text>
+          <Text style={{ fontSize: 14, color: '#6b7280', marginBottom: 16 }}>Total: ${price}</Text>
+
+          <TouchableOpacity
+            style={{ backgroundColor: '#007AFF', borderRadius: 10, paddingVertical: 10, paddingHorizontal: 20, marginBottom: 10, width: '100%' }}
+            onPress={onViewOrders}
+          >
+            <Text style={{ color: '#fff', fontWeight: '700', textAlign: 'center' }}>View My Orders</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={{ backgroundColor: '#e5e7eb', borderRadius: 10, paddingVertical: 10, paddingHorizontal: 20, width: '100%' }}
+            onPress={() => onClose && onClose()}
+          >
+            <Text style={{ color: '#374151', fontWeight: '700', textAlign: 'center' }}>Close</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
+  );
+
   const submitOrder = async () => {
     const v = validate();
     if (v) { setError(v); return; }
@@ -136,9 +176,9 @@ export default function PayScreen() {
       // Clean token extraction
       const raw = await AsyncStorage.getItem('token');
       const token = raw?.replace(/^"|"$/g, '') || null;
-      
+
       console.log('🔑 Token retrieved:', token ? 'Present' : 'Missing');
-      
+
       if (!token) {
         throw new Error('No authentication token found. Please login again.');
       }
@@ -172,38 +212,40 @@ export default function PayScreen() {
 
       console.log('📡 Response status:', response.status);
 
-      if (!response.ok) {
-        const errBody = await response.json().catch(() => null);
-        console.log('❌ Server error response:', errBody);
-        throw new Error(errBody?.message || `Server error: ${response.status}`);
+      // Try to parse JSON (even for some error responses)
+      let payload = null;
+      try {
+        payload = await response.json();
+      } catch (_e) {
+        const t = await response.text().catch(() => '');
+        console.log('ℹ️ Non-JSON response body:', t);
       }
 
-      const savedOrder = await response.json();
-      console.log('✅ Order saved successfully:', savedOrder);
+      if (!response.ok) {
+        console.log('❌ Server error response:', payload);
+        throw new Error(payload?.message || `Server error: ${response.status}`);
+      }
 
-      // Show success alert
-      Alert.alert(
-        '🎉 Booking Confirmed!',
-        `Your trip to ${city?.name} has been successfully booked!\n\nOrder ID: ${savedOrder?._id}\nTotal: $${price}`,
-        [
-          { 
-            text: 'View My Orders', 
-            onPress: () => {
-              // Navigate to profile tab to show orders
-              navigation.navigate('(tabs)', { screen: 'profile' });
-            }
-          },
-          { text: 'OK', style: 'default' },
-        ]
-      );
-      // Go back to previous screen
-      navigation.goBack();
+      // Extract a usable order ID regardless of server shape
+      const orderId =
+        payload?._id ||
+        payload?.order?._id ||
+        payload?.insertedId ||
+        payload?.id ||
+        null;
+
+      console.log('✅ Order saved successfully:', payload);
+
+      // Save & show success popup (stay on this screen)
+      setLastOrder({ ...payload, _id: orderId });
+      setSuccessPopupVisible(true);
+      setError('');
     } catch (e) {
       console.error('❌ Order submission error:', e);
       setError(e?.message || 'Something went wrong while booking your trip.');
-      
+
       Alert.alert(
-        '⚠️ Booking Error', 
+        '⚠️ Booking Error',
         `Failed to book your trip.\n\nError: ${e?.message || 'Unknown error'}\n\nPlease try again or contact support.`,
         [{ text: 'OK' }]
       );
@@ -212,137 +254,150 @@ export default function PayScreen() {
     }
   };
 
-  if (!city) {
-    return (
-      <View style={pstyles.center}>
-        <Text style={pstyles.msg}>No destination selected.</Text>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={pstyles.backBtn}>
-          <Text style={pstyles.backBtnText}>Go Back</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
-
   return (
-    <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: '#fff' }}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
-    >
-      <ScrollView
-        contentContainerStyle={[pstyles.container, { paddingBottom: 110 }]}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
+    <>
+<SuccessPopup
+  visible={successPopupVisible}
+  cityName={city?.name}
+  orderId={lastOrder?._id}
+  price={price}
+  onClose={() => {
+    setSuccessPopupVisible(false);
+    navigation.reset({
+      index: 0,
+      routes: [{ name: 'Tabs', state: { routes: [{ name: 'Home' }], index: 0 } }]
+    });
+  }}
+  onViewOrders={() => {
+    setSuccessPopupVisible(false);
+    navigation.reset({
+      index: 0,
+      routes: [{ name: 'Tabs', state: { routes: [{ name: 'Profile' }], index: 0 } }]
+    });
+  }}
+/>
+
+
+      <KeyboardAvoidingView
+        style={{ flex: 1, backgroundColor: '#fff' }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
       >
-        {/* Header (custom) */}
-        <View style={pstyles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-            <Text style={pstyles.backX}>✕</Text>
-          </TouchableOpacity>
-          <Text style={pstyles.title}>Complete Your Booking</Text>
-          <View style={{ width: 24 }} />
-        </View>
-
-        {/* Banner */}
-        <View style={pstyles.banner}>
-          <Image source={city.image} style={pstyles.bannerImg} />
-          <LinearGradient colors={['transparent', 'rgba(0,0,0,0.6)']} style={pstyles.bannerOverlay} />
-          <View style={pstyles.bannerText}>
-            <Text style={pstyles.bannerTitle}>{city.name}</Text>
-            <Text style={pstyles.bannerSub}>From ${price}</Text>
-          </View>
-        </View>
-
-        {/* Trip details */}
-        <View style={pstyles.card}>
-          <Text style={pstyles.cardTitle}>Trip Details</Text>
-          <Text style={pstyles.row}><Text style={pstyles.label}>Flight:</Text> ✈️ {city.flight}</Text>
-          <Text style={pstyles.row}><Text style={pstyles.label}>Dates:</Text> 13/3 – 18/3</Text>
-          <Text style={pstyles.row}><Text style={pstyles.label}>Departure:</Text> 06:00 AM</Text>
-          <Text style={pstyles.row}><Text style={pstyles.label}>Return:</Text> 05:00 PM</Text>
-          <Text style={pstyles.row}><Text style={pstyles.label}>Hotel:</Text> {city.hotel}</Text>
-          <Text style={pstyles.desc}>{city.description}</Text>
-        </View>
-
-        {/* Total */}
-        <Text style={pstyles.total}>Total: <Text style={{ fontWeight: '800' }}>${price}</Text></Text>
-
-        {/* Errors */}
-        {!!error && <Text style={pstyles.error}>{error}</Text>}
-
-        {/* Payment form */}
-        <View style={pstyles.form}>
-          <View style={pstyles.field}>
-            <Text style={pstyles.inputLabel}>Full Name</Text>
-            <TextInput
-              value={fullName}
-              onChangeText={setFullName}
-              placeholder="John Doe"
-              autoCapitalize="words"
-              style={pstyles.input}
-              returnKeyType="done"
-            />
-          </View>
-
-          <View style={pstyles.field}>
-            <Text style={pstyles.inputLabel}>Card Number</Text>
-            <TextInput
-              value={cardNumber}
-              onChangeText={(t) => setCardNumber(formatCard(t))}
-              placeholder="1234 5678 9012 3456"
-              keyboardType="number-pad"
-              style={pstyles.input}
-              maxLength={19}
-              returnKeyType="done"
-            />
-          </View>
-
-          <View style={pstyles.row2}>
-            <View style={[pstyles.field, pstyles.col]}>
-              <Text style={pstyles.inputLabel}>Expiry (MM/YY)</Text>
-              <TextInput
-                value={expiryDate}
-                onChangeText={(t) => setExpiryDate(formatExpiry(t))}
-                placeholder="08/27"
-                style={pstyles.input}
-                keyboardType="number-pad"
-                maxLength={5}
-                returnKeyType="done"
-              />
-            </View>
-            <View style={[pstyles.field, pstyles.col]}>
-              <Text style={pstyles.inputLabel}>CVV</Text>
-              <TextInput
-                value={cvv}
-                onChangeText={setCvv}
-                placeholder="123"
-                style={pstyles.input}
-                keyboardType="number-pad"
-                maxLength={3}
-                secureTextEntry
-                returnKeyType="done"
-              />
-            </View>
-          </View>
-        </View>
-      </ScrollView>
-
-      {/* Sticky footer */}
-      <View style={pstyles.footer}>
-        <TouchableOpacity
-          disabled={submitting}
-          onPress={submitOrder}
-          activeOpacity={0.9}
-          style={{ borderRadius: 14, overflow: 'hidden' }}
+        <ScrollView
+          contentContainerStyle={[pstyles.container, { paddingBottom: 110 }]}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
         >
-          <LinearGradient colors={['#007AFF', '#007AFF']} style={pstyles.payBtn}>
-            {submitting
-              ? <ActivityIndicator size="small" color="#fff" />
-              : <Text style={pstyles.payText}>Pay ${price}</Text>}
-          </LinearGradient>
-        </TouchableOpacity>
-      </View>
-    </KeyboardAvoidingView>
+          {/* Header (custom) */}
+          <View style={pstyles.header}>
+            <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+              <Text style={pstyles.backX}>✕</Text>
+            </TouchableOpacity>
+            <Text style={pstyles.title}>Complete Your Booking</Text>
+            <View style={{ width: 24 }} />
+          </View>
+
+          {/* Banner */}
+          <View style={pstyles.banner}>
+            {!!city?.image && <Image source={city.image} style={pstyles.bannerImg} />}
+            <LinearGradient colors={['transparent', 'rgba(0,0,0,0.6)']} style={pstyles.bannerOverlay} />
+            <View style={pstyles.bannerText}>
+              <Text style={pstyles.bannerTitle}>{city?.name || 'Your Trip'}</Text>
+              <Text style={pstyles.bannerSub}>From ${price}</Text>
+            </View>
+          </View>
+
+          {/* Trip details */}
+          <View style={pstyles.card}>
+            <Text style={pstyles.cardTitle}>Trip Details</Text>
+            <Text style={pstyles.row}><Text style={pstyles.label}>Flight:</Text> ✈️ {city?.flight || '—'}</Text>
+            <Text style={pstyles.row}><Text style={pstyles.label}>Dates:</Text> 13/3 – 18/3</Text>
+            <Text style={pstyles.row}><Text style={pstyles.label}>Departure:</Text> 06:00 AM</Text>
+            <Text style={pstyles.row}><Text style={pstyles.label}>Return:</Text> 05:00 PM</Text>
+            <Text style={pstyles.row}><Text style={pstyles.label}>Hotel:</Text> {city?.hotel || '—'}</Text>
+            <Text style={pstyles.desc}>{city?.description || ''}</Text>
+          </View>
+
+          {/* Total */}
+          <Text style={pstyles.total}>Total: <Text style={{ fontWeight: '800' }}>${price}</Text></Text>
+
+          {/* Errors */}
+          {!!error && <Text style={pstyles.error}>{error}</Text>}
+
+          {/* Payment form */}
+          <View style={pstyles.form}>
+            <View style={pstyles.field}>
+              <Text style={pstyles.inputLabel}>Full Name</Text>
+              <TextInput
+                value={fullName}
+                onChangeText={setFullName}
+                placeholder="John Doe"
+                autoCapitalize="words"
+                style={pstyles.input}
+                returnKeyType="done"
+              />
+            </View>
+
+            <View style={pstyles.field}>
+              <Text style={pstyles.inputLabel}>Card Number</Text>
+              <TextInput
+                value={cardNumber}
+                onChangeText={(t) => setCardNumber(formatCard(t))}
+                placeholder="1234 5678 9012 3456"
+                keyboardType="number-pad"
+                style={pstyles.input}
+                maxLength={19}
+                returnKeyType="done"
+              />
+            </View>
+
+            <View style={pstyles.row2}>
+              <View style={[pstyles.field, pstyles.col]}>
+                <Text style={pstyles.inputLabel}>Expiry (MM/YY)</Text>
+                <TextInput
+                  value={expiryDate}
+                  onChangeText={(t) => setExpiryDate(formatExpiry(t))}
+                  placeholder="08/27"
+                  style={pstyles.input}
+                  keyboardType="number-pad"
+                  maxLength={5}
+                  returnKeyType="done"
+                />
+              </View>
+              <View style={[pstyles.field, pstyles.col]}>
+                <Text style={pstyles.inputLabel}>CVV</Text>
+                <TextInput
+                  value={cvv}
+                  onChangeText={setCvv}
+                  placeholder="123"
+                  style={pstyles.input}
+                  keyboardType="number-pad"
+                  maxLength={3}
+                  secureTextEntry
+                  returnKeyType="done"
+                />
+              </View>
+            </View>
+          </View>
+        </ScrollView>
+
+        {/* Sticky footer */}
+        <View style={pstyles.footer}>
+          <TouchableOpacity
+            disabled={submitting}
+            onPress={submitOrder}
+            activeOpacity={0.9}
+            style={{ borderRadius: 14, overflow: 'hidden' }}
+          >
+            <LinearGradient colors={['#007AFF', '#007AFF']} style={pstyles.payBtn}>
+              {submitting
+                ? <ActivityIndicator size="small" color="#fff" />
+                : <Text style={pstyles.payText}>Pay ${price}</Text>}
+            </LinearGradient>
+          </TouchableOpacity>
+        </View>
+      </KeyboardAvoidingView>
+    </>
   );
 }
 

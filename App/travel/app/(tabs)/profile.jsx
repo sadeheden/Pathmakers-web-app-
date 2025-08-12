@@ -510,72 +510,69 @@ export default function Profile() {
   }
 
   return (
-    <View style={styles.container}>
-      <FlatList
-        nestedScrollEnabled
-        ListHeaderComponent={
-          <>
-            {/* Top-right Support Icon */}
-            <View style={styles.supportIconContainer}>
-              <TouchableOpacity
-                onPress={() => navigation.navigate('Support')} // or navigation.navigate('Support')
-                style={styles.supportButton}
-              >
-                <Ionicons name="help-circle-outline" size={24} color="#495057" />
-              </TouchableOpacity>
-            </View>
-
-            {/* Top-left Logout Icon */}
-            <View style={styles.logoutIconContainer}>
-              <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
-                <LogOut size={24} color="#495057" />
-              </TouchableOpacity>
-            </View>
-
-            {/* Profile section */}
-            <View style={styles.profileSection}>
-              <View style={styles.avatarContainer}>
-                <Image
-                  source={{ uri: user?.profile_image || 'https://i.pravatar.cc/150?img=12' }}
-                  style={styles.avatar}
-                />
-                <View style={styles.avatarRing} />
-              </View>
-              <Text style={styles.name}>{user?.name || user?.username || 'Traveler'}</Text>
-              <Text style={styles.email}>{user?.email || 'no-email@example.com'}</Text>
-            </View>
-
-            {/* Stats */}
-            {orders.length > 0 && renderStats()}
-
-            {/* Title */}
-            <View style={styles.sectionTitleContainer}>
-              <Text style={styles.sectionTitle}>Your Adventures</Text>
-              <View style={styles.sectionTitleUnderline} />
-            </View>
-          </>
-        }
-
-        data={orders}
-        keyExtractor={(item) => item._id.toString()}
-        renderItem={renderOrder}
-
-        ListEmptyComponent={
-          <LinearGradient colors={['#f8f9fa', '#e9ecef']} style={styles.noTripsContainer}>
-            <Text style={styles.noTripsEmoji}>✈️</Text>
-            <Text style={styles.noTripsTitle}>Ready for Adventure?</Text>
-            <Text style={styles.noTripsText}>Start exploring the world!</Text>
-          </LinearGradient>
-        }
-
-        contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 30 }}
-        showsVerticalScrollIndicator={false}
-        initialNumToRender={10}
-        maxToRenderPerBatch={10}
-        windowSize={5}
-        removeClippedSubviews
-      />
+ <View style={styles.container}>
+    {/* Fixed buttons */}
+    <View style={styles.logoutIconContainer}>
+      <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
+        <LogOut size={24} color="#495057" />
+      </TouchableOpacity>
     </View>
+
+    <View style={styles.supportIconContainer}>
+      <TouchableOpacity
+        onPress={() => navigation.navigate('Support')}
+        style={styles.supportButton}
+      >
+        <Ionicons name="help-circle-outline" size={24} color="#495057" />
+      </TouchableOpacity>
+    </View>
+
+    {/* Scrollable content */}
+    <FlatList
+      nestedScrollEnabled
+      ListHeaderComponent={
+        <>
+          {/* Profile section */}
+          <View style={styles.profileSection}>
+            <View style={styles.avatarContainer}>
+              <Image
+                source={{ uri: user?.profile_image || 'https://i.pravatar.cc/150?img=12' }}
+                style={styles.avatar}
+              />
+              <View style={styles.avatarRing} />
+            </View>
+            <Text style={styles.name}>{user?.name || user?.username || 'Traveler'}</Text>
+            <Text style={styles.email}>{user?.email || 'no-email@example.com'}</Text>
+          </View>
+
+          {/* Stats */}
+          {orders.length > 0 && renderStats()}
+
+          {/* Title */}
+          <View style={styles.sectionTitleContainer}>
+            <Text style={styles.sectionTitle}>Your Adventures</Text>
+            <View style={styles.sectionTitleUnderline} />
+          </View>
+        </>
+      }
+      data={orders}
+      keyExtractor={(item) => item._id.toString()}
+      renderItem={renderOrder}
+      ListEmptyComponent={
+        <LinearGradient colors={['#f8f9fa', '#e9ecef']} style={styles.noTripsContainer}>
+          <Text style={styles.noTripsEmoji}>✈️</Text>
+          <Text style={styles.noTripsTitle}>Ready for Adventure?</Text>
+          <Text style={styles.noTripsText}>Start exploring the world!</Text>
+        </LinearGradient>
+      }
+      contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 30 }}
+      showsVerticalScrollIndicator={false}
+      initialNumToRender={10}
+      maxToRenderPerBatch={10}
+      windowSize={5}
+      removeClippedSubviews
+    />
+  </View>
   );
 }
 
@@ -812,35 +809,37 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   logoutIconContainer: {
-    position: 'absolute',
-    top: 50, // adjust for your SafeArea
-    left: 20,
-    zIndex: 10,
-  },
-  logoutButton: {
-    backgroundColor: '#f1f3f5',
-    padding: 8,
-    borderRadius: 50,
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 3,
-  },
-  supportIconContainer: {
-    position: 'absolute',
-    top: 50, // adjust for your SafeArea
-    right: 20,
-    zIndex: 10,
-  },
-  supportButton: {
-    backgroundColor: '#f1f3f5',
-    padding: 8,
-    borderRadius: 50,
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 3,
-  },
+  position: 'absolute',
+  top: 50, // adjust for safe area
+  left: 20,
+  zIndex: 100,
+},
+logoutButton: {
+  backgroundColor: '#f1f3f5',
+  padding: 8,
+  borderRadius: 50,
+  elevation: 3,
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: 2 },
+  shadowOpacity: 0.2,
+  shadowRadius: 3,
+},
+
+supportIconContainer: {
+  position: 'absolute',
+  top: 50,
+  right: 20,
+  zIndex: 100,
+},
+supportButton: {
+  backgroundColor: '#f1f3f5',
+  padding: 8,
+  borderRadius: 50,
+  elevation: 3,
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: 2 },
+  shadowOpacity: 0.2,
+  shadowRadius: 3,
+},
+
 });
