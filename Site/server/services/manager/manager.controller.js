@@ -266,3 +266,207 @@ console.log("revenueByDate:", revenueByDate);
     res.status(500).json({ message: "Dashboard failed", error: err.message });
   }
 };
+// Add new hotels into a city's hotels array (no duplicates by name)
+export const addNewHotelsToCity = async (req, res) => {
+  try {
+    const db = await connectDB();
+    const { cityId } = req.params;
+    const { hotels } = req.body;
+
+    if (!cityId) return res.status(400).json({ message: "Missing cityId" });
+    if (!Array.isArray(hotels) || hotels.length === 0)
+      return res.status(400).json({ message: "hotels must be a non-empty array" });
+
+    const cityObjectId = new ObjectId(cityId);
+    const city = await db.collection("cities").findOne({ _id: cityObjectId });
+    if (!city) return res.status(404).json({ message: "City not found" });
+
+    const valid = [];
+    const errors = [];
+    for (let i = 0; i < hotels.length; i++) {
+      const h = hotels[i];
+      if (!h.name || h.price === undefined) {
+        errors.push(`Hotel ${i + 1}: Missing name or price`);
+        continue;
+      }
+      if (city.hotels?.some(ex => ex.name === h.name)) {
+        errors.push(`Hotel ${i + 1}: "${h.name}" already exists in the city`);
+        continue;
+      }
+      valid.push({
+        name: String(h.name).trim(),
+        price: parseFloat(h.price),
+        stars: Number.isFinite(h.stars) ? h.stars : 3,
+      });
+    }
+
+    if (errors.length) return res.status(400).json({ message: "Validation errors", errors });
+    if (!valid.length) return res.status(400).json({ message: "No valid hotels to add" });
+
+    const result = await db.collection("cities").updateOne(
+      { _id: cityObjectId },
+      { $push: { hotels: { $each: valid } } }
+    );
+    if (!result.modifiedCount) return res.status(500).json({ message: "Failed to add hotels" });
+
+    const updatedCity = await db.collection("cities").findOne({ _id: cityObjectId });
+    res.status(201).json({
+      message: `✅ ${valid.length} hotels added to city successfully`,
+      addedHotels: valid,
+      city: updatedCity,
+    });
+  } catch (err) {
+    console.error("Error adding new hotels to city:", err);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+// Add new flights into a city's flights array (no duplicates by name)
+export const addNewFlightsToCity = async (req, res) => {
+  try {
+    const db = await connectDB();
+    const { cityId } = req.params;
+    const { flights } = req.body;
+
+    if (!cityId) return res.status(400).json({ message: "Missing cityId" });
+    if (!Array.isArray(flights) || flights.length === 0)
+      return res.status(400).json({ message: "flights must be a non-empty array" });
+
+    const cityObjectId = new ObjectId(cityId);
+    const city = await db.collection("cities").findOne({ _id: cityObjectId });
+    if (!city) return res.status(404).json({ message: "City not found" });
+
+    const valid = [];
+    const errors = [];
+    for (let i = 0; i < flights.length; i++) {
+      const f = flights[i];
+      if (!f.name || f.price === undefined || !f.duration) {
+        errors.push(`Flight ${i + 1}: Missing name, price, or duration`);
+        continue;
+      }
+      if (city.flights?.some(ex => ex.name === f.name)) {
+        errors.push(`Flight ${i + 1}: "${f.name}" already exists in the city`);
+        continue;
+      }
+      valid.push({
+        name: String(f.name).trim(),
+        price: parseFloat(f.price),
+        duration: String(f.duration).trim(),
+      });
+    }
+
+    if (errors.length) return res.status(400).json({ message: "Validation errors", errors });
+    if (!valid.length) return res.status(400).json({ message: "No valid flights to add" });
+
+    const result = await db.collection("cities").updateOne(
+      { _id: cityObjectId },
+      { $push: { flights: { $each: valid } } }
+    );
+    if (!result.modifiedCount) return res.status(500).json({ message: "Failed to add flights" });
+
+    const updatedCity = await db.collection("cities").findOne({ _id: cityObjectId });
+    res.status(201).json({
+      message: `✅ ${valid.length} flights added to city successfully`,
+      addedFlights: valid,
+      city: updatedCity,
+    });
+  } catch (err) {
+    console.error("Error adding new flights to city:", err);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+// ⬇️ paste anywhere among the exports
+export const upsertAttractionItemByCity = async (req, res) => {
+  try {
+    const db = await connectDB();
+    const { city, attraction } = req.body;
+
+    if (!city || !attraction?.name || !attraction?.openingHours || attraction?.price === undefined) {
+      return res.status(400).json({ message: "city, name, openingHours, price are required" });
+    }
+
+    // prevent duplicate by name for same city
+    const dup = await db.collection("attractions").findOne({
+      city,
+      "attractions.name": attraction.name
+    });
+    if (dup) return res.status(400).json({ message: "Attraction already exists for this city" });
+
+    const result = await db.collection("attractions").findOneAndUpdate(
+      { city: String(city).trim() },
+      { $push: { attractions: {
+        name: String(attraction.name).trim(),
+        openingHours: String(attraction.openingHours).trim(),
+        price: Number(attraction.price),
+      }}},
+      { upsert: true, returnDocument: "after" }
+    );
+
+    // result.value will look like your sample (city string + attractions array)
+    res.status(201).json({ message: "✅ Attraction added", doc: result.value });
+  } catch (e) {
+    console.error(e); res.status(500).json({ message: "Internal error" });
+  }
+};
+
+export const upsertHotelItemByCity = async (req, res) => {
+  try {
+    const db = await connectDB();
+    const { city, hotel } = req.body;
+
+    if (!city || !hotel?.name || hotel?.price === undefined) {
+      return res.status(400).json({ message: "city, name, price are required" });
+    }
+
+    const dup = await db.collection("hotels").findOne({
+      city,
+      "hotels.name": hotel.name
+    });
+    if (dup) return res.status(400).json({ message: "Hotel already exists for this city" });
+
+    const result = await db.collection("hotels").findOneAndUpdate(
+      { city: String(city).trim() },
+      { $push: { hotels: {
+        name: String(hotel.name).trim(),
+        price: Number(hotel.price),
+      }}},
+      { upsert: true, returnDocument: "after" }
+    );
+
+    res.status(201).json({ message: "✅ Hotel added", doc: result.value });
+  } catch (e) {
+    console.error(e); res.status(500).json({ message: "Internal error" });
+  }
+};
+
+export const upsertFlightItemByCity = async (req, res) => {
+  try {
+    const db = await connectDB();
+    const { city, airline } = req.body; // array name is "airlines" in the doc
+
+    if (!city || !airline?.name || airline?.price === undefined || !airline?.duration) {
+      return res.status(400).json({ message: "city, name, price, duration are required" });
+    }
+
+    const dup = await db.collection("flights").findOne({
+      city,
+      "airlines.name": airline.name
+    });
+    if (dup) return res.status(400).json({ message: "Airline already exists for this city" });
+
+    const result = await db.collection("flights").findOneAndUpdate(
+      { city: String(city).trim() },
+      { $push: { airlines: {
+        name: String(airline.name).trim(),
+        price: Number(airline.price),
+        duration: String(airline.duration).trim(),
+      }}},
+      { upsert: true, returnDocument: "after" }
+    );
+
+    res.status(201).json({ message: "✅ Flight added", doc: result.value });
+  } catch (e) {
+    console.error(e); res.status(500).json({ message: "Internal error" });
+  }
+};

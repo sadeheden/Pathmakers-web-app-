@@ -18,6 +18,118 @@ const sidebarItems = [
   "Update City",
   "Settings",
 ];
+const styles = {
+  box: {
+    border: "1px solid #e5e7eb",
+    borderRadius: "14px",
+    padding: "28px",
+    maxWidth: "1000px",   // ⬅ bigger
+    width: "100%",        // ⬅ fill available space
+    backgroundColor: "#fff",
+    boxShadow: "0 6px 22px rgba(0,0,0,0.08)",
+    marginTop: "16px",
+  },
+  header: { marginBottom: "20px", display: "flex", gap: "16px", alignItems: "center" },
+  label: { fontWeight: 700, minWidth: 160, fontSize: 16 },
+  select: { padding: "14px", borderRadius: "12px", border: "1px solid #d1d5db", width: "100%", fontSize: 16 },
+
+  // Bigger grid + more columns
+  form: {
+    marginBottom: "20px",
+    display: "grid",
+    gap: "14px",
+    gridTemplateColumns: "1fr 1fr 1fr", // ⬅ three columns
+  },
+
+  input: {
+    padding: "14px",      // ⬅ bigger inputs
+    borderRadius: "12px",
+    border: "1px solid #d1d5db",
+    width: "100%",
+    fontSize: 16,
+  },
+  textarea: {
+    padding: "14px",
+    borderRadius: "12px",
+    border: "1px solid #d1d5db",
+    minHeight: 120,       // ⬅ taller text area
+    gridColumn: "1 / -1", // full width in the grid
+    fontSize: 16,
+  },
+
+  saveBtn: {
+    backgroundColor: "#3b82f6",
+    color: "#fff",
+    padding: "14px 22px", // ⬅ bigger button
+    border: "none",
+    borderRadius: "12px",
+    cursor: "pointer",
+    width: "220px",       // ⬅ wider
+    fontWeight: 800,
+    fontSize: 16,
+  },
+
+  // Step 1 grid (bigger cards, 2→3 columns)
+gridWrap: {
+  display: "grid",
+  gridTemplateColumns: "1fr 1fr", // ⬅ two columns
+  gap: "16px",
+  maxWidth: 800,                  // ⬅ fits nicely in two-column layout
+  marginTop: 16,
+},
+
+  card: {
+    display: "flex",
+    gap: 16,
+    alignItems: "center",
+    padding: "18px 20px", // ⬅ bigger card
+    borderRadius: 14,
+    border: "1px solid #e5e7eb",
+    background: "#fff",
+    boxShadow: "0 3px 12px rgba(0,0,0,0.06)",
+    cursor: "pointer",
+    transition: "transform .06s ease, box-shadow .12s ease",
+  },
+  cardHover: { transform: "translateY(-2px)", boxShadow: "0 10px 22px rgba(0,0,0,0.10)" },
+  cardIcon: {
+    width: 56,            // ⬅ bigger icon
+    height: 56,
+    borderRadius: 999,
+    display: "grid",
+    placeItems: "center",
+    fontWeight: 800,
+    fontSize: 18,
+    color: "#fff",
+  },
+  cardBody: { display: "flex", flexDirection: "column" },
+  cardTitle: { fontWeight: 800, lineHeight: 1.2, fontSize: 16 },
+  cardDesc: { fontSize: 13, color: "#6b7280", marginTop: 4 },
+
+  // Step 2 header + success
+  stepHeader: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 },
+  backBtn: {
+    border: "1px solid #d1d5db",
+    background: "#fff",
+    padding: "10px 14px",
+    borderRadius: 12,
+    cursor: "pointer",
+    fontWeight: 700,
+    fontSize: 14,
+  },
+  successChip: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 8,
+    background: "#ecfdf5",
+    color: "#065f46",
+    border: "1px solid #a7f3d0",
+    padding: "8px 12px",
+    borderRadius: 999,
+    fontWeight: 800,
+    fontSize: 14,
+  },
+};
+
 
 const Manager = () => {
   const [activeItem, setActiveItem] = useState("Dashboard");
@@ -263,83 +375,74 @@ useEffect(() => {
       }
     };
 
-    const handleSaveHotels = async () => {
-      if (!cityData) {
-        alert("Please load a city first");
-        return;
-      }
-      try {
-        // בניית מערך המלונות החדשים
-        const newHotelsData = [];
-        for (const hotel of newHotels) {
-          if (!hotel.name || hotel.price === "") {
-            alert("Please fill all hotel fields");
-            return;
-          }
-          newHotelsData.push({
-            name: hotel.name,
-            price: parseFloat(hotel.price),
-            stars: 3,
-          });
-        }
-        
-        // הוספת המלונות החדשים למערך הקיים
-        await fetch(`http://localhost:4000/api/cities/${cityData._id}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            ...cityData,
-            hotels: [...(cityData.hotels || []), ...newHotelsData]
-          }),
-        });
-        
-        alert("Hotels added successfully!");
-        setNewHotels([{ name: "", price: "" }]); // איפוס השדות
-        fetchCityData(); // טוען מחדש את נתוני העיר
-      } catch (error) {
-        console.error("Error updating hotels:", error);
-        alert("Error updating hotels");
-      }
-    };
+  // Hotels -> POST to /api/manager/city/:id/addNewHotels
+const handleSaveHotels = async () => {
+  if (!cityData) return alert("Please load a city first");
 
-    const handleSaveFlights = async () => {
-      if (!cityData) {
-        alert("Please load a city first");
-        return;
-      }
-      try {
-        // בניית מערך הטיסות החדשות
-        const newFlightsData = [];
-        for (const flight of newFlights) {
-          if (!flight.name || flight.price === "" || !flight.duration) {
-            alert("Please fill all flight fields (name, price, duration)");
-            return;
-          }
-          newFlightsData.push({
-            name: flight.name,
-            price: parseFloat(flight.price),
-            duration: flight.duration,
-          });
-        }
-        
-        // הוספת הטיסות החדשות למערך הקיים
-        await fetch(`http://localhost:4000/api/cities/${cityData._id}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            ...cityData,
-            flights: [...(cityData.flights || []), ...newFlightsData]
-          }),
-        });
-        
-        alert("Flights added successfully!");
-        setNewFlights([{ name: "", price: "", duration: "" }]); // איפוס השדות
-        fetchCityData(); // טוען מחדש את נתוני העיר
-      } catch (error) {
-        console.error("Error updating flights:", error);
-        alert("Error updating flights");
-      }
-    };
+  const payload = [];
+  for (const hotel of newHotels) {
+    if (!hotel.name || hotel.price === "") {
+      alert("Please fill all hotel fields");
+      return;
+    }
+    payload.push({
+      name: hotel.name.trim(),
+      price: parseFloat(hotel.price),
+      stars: 3,
+    });
+  }
+  try {
+    const res = await fetch(`http://localhost:4000/api/manager/city/${cityData._id}/addNewHotels`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ hotels: payload }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || "Failed to add hotels");
+    alert(data.message || `✅ ${payload.length} hotels added`);
+    setNewHotels([{ name: "", price: "" }]);
+    // refresh local view
+    if (data.city) setCityData(data.city); else fetchCityData();
+  } catch (err) {
+    console.error(err);
+    alert(err.message);
+  }
+};
+
+// Flights -> POST to /api/manager/city/:id/addNewFlights
+const handleSaveFlights = async () => {
+  if (!cityData) return alert("Please load a city first");
+
+  const payload = [];
+  for (const flight of newFlights) {
+    if (!flight.name || flight.price === "" || !flight.duration) {
+      alert("Please fill all flight fields (name, price, duration)");
+      return;
+    }
+    payload.push({
+      name: flight.name.trim(),
+      price: parseFloat(flight.price),
+      duration: flight.duration.trim(),
+    });
+  }
+  try {
+    const res = await fetch(`http://localhost:4000/api/manager/city/${cityData._id}/addNewFlights`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ flights: payload }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || "Failed to add flights");
+    alert(data.message || `✅ ${payload.length} flights added`);
+    setNewFlights([{ name: "", price: "", duration: "" }]);
+    // refresh local view
+    if (data.city) setCityData(data.city); else fetchCityData();
+  } catch (err) {
+    console.error(err);
+    alert(err.message);
+  }
+};
+
 
     return (
       <div className="update-city-container">
@@ -518,155 +621,290 @@ useEffect(() => {
       </div>
     );
   };
+function ManageDataUpdateBox() {
+  const [step, setStep] = useState("choose"); // "choose" | "form"
+  const [collection, setCollection] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  const [formData, setFormData] = useState({
+    // cities
+    cityName: "", country: "",
+    // hotels
+    hotelName: "", hotelPrice: "", hotelStars: "",
+    // flights
+    flightName: "", flightPrice: "", flightDuration: "",
+    // attractions
+    attractionName: "", attractionPrice: "", attractionDescription: "",
+  });
+
+  const pick = (key) => {
+    setCollection(key);
+    setSaved(false);
+    setStep("form");
+  };
+
+  const handleChange = (e) => setFormData((p) => ({ ...p, [e.target.name]: e.target.value }));
+
+  const handleBack = () => {
+    // reset form for clarity
+    setFormData({
+      cityName: "", country: "",
+      hotelName: "", hotelPrice: "", hotelStars: "",
+      flightName: "", flightPrice: "", flightDuration: "",
+      attractionName: "", attractionPrice: "", attractionDescription: "",
+    });
+    setCollection(null);
+    setStep("choose");
+  };
+
+  const handleSave = async () => {
+    try {
+      setSaving(true);
+      let url = "";
+      let payload = {};
+
+      switch (collection) {
+  case "cities":
+  if (!formData.cityName) throw new Error("City name is required");
+  url = "http://localhost:4000/api/cities";
+  payload = { city: formData.cityName.trim() }; // string only
+  break;
+
+
+         case "hotels":
+    if (!formData.city || !formData.hotelName || !formData.hotelPrice)
+      throw new Error("City, name and price are required");
+    url = "http://localhost:4000/api/manager/collections/hotels/upsertItem";
+    payload = {
+      city: formData.city,
+      hotel: {
+        name: formData.hotelName.trim(),
+        price: parseFloat(formData.hotelPrice),
+      },
+    };
+    break;
+
+
+      case "flights":
+    if (!formData.city || !formData.flightName || !formData.flightPrice || !formData.flightDuration)
+      throw new Error("City, name, price and duration are required");
+    url = "http://localhost:4000/api/manager/collections/flights/upsertItem";
+    payload = {
+      city: formData.city,
+      airline: {
+        name: formData.flightName.trim(),
+        price: parseFloat(formData.flightPrice),
+        duration: formData.flightDuration.trim(),
+      },
+    };
+    break;
+
+      case "attractions":
+    if (!formData.city || !formData.attractionName || !formData.openingHours || !formData.attractionPrice)
+      throw new Error("City, name, opening hours, and price are required");
+    url = "http://localhost:4000/api/manager/collections/attractions/upsertItem";
+    payload = {
+      city: formData.city,
+      attraction: {
+        name: formData.attractionName.trim(),
+        openingHours: formData.openingHours.trim(),
+        price: parseFloat(formData.attractionPrice),
+        // description is optional; Mongo doc in your screenshot doesn't store it,
+        // but we can ignore or include it separately if you add it later.
+      },
+    };
+    break;
+
+        default:
+          throw new Error("Pick a collection to update");
+      }
+
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.message || "Failed to save");
+
+      // success: show green chip then return to step 1
+      setSaved(true);
+      setSaving(false);
+      setTimeout(() => {
+        setSaved(false);
+        handleBack(); // back to choose step
+      }, 1400);
+    } catch (err) {
+      setSaving(false);
+      alert(err.message);
+    }
+  };
+
+  // Step 1 — choose collection
+  if (step === "choose") {
+    return (
+      <div style={styles.box}>
+        <div style={{ marginBottom: 8, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <h3 style={{ margin: 0 }}>What would you like to update?</h3>
+          {saved && <div style={styles.successChip}>✓ Saved</div>}
+        </div>
+
+        <div style={styles.gridWrap}>
+          {/* Cities */}
+          <div
+            style={styles.card}
+            onClick={() => pick("cities")}
+            onMouseEnter={(e) => Object.assign(e.currentTarget.style, styles.cardHover)}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = "";
+              e.currentTarget.style.boxShadow = styles.card.boxShadow;
+            }}
+          >
+            <div style={{ ...styles.cardIcon, background: "linear-gradient(135deg,#60a5fa,#2563eb)" }}>C</div>
+            <div style={styles.cardBody}>
+              <div style={styles.cardTitle}>Cities</div>
+              <div style={styles.cardDesc}>Add a new city with optional country</div>
+            </div>
+          </div>
+
+          {/* Hotels */}
+          <div
+            style={styles.card}
+            onClick={() => pick("hotels")}
+            onMouseEnter={(e) => Object.assign(e.currentTarget.style, styles.cardHover)}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = "";
+              e.currentTarget.style.boxShadow = styles.card.boxShadow;
+            }}
+          >
+            <div style={{ ...styles.cardIcon, background: "linear-gradient(135deg,#34d399,#059669)" }}>H</div>
+            <div style={styles.cardBody}>
+              <div style={styles.cardTitle}>Hotels</div>
+              <div style={styles.cardDesc}>Add a hotel (name, price, stars)</div>
+            </div>
+          </div>
+
+          {/* Flights */}
+          <div
+            style={styles.card}
+            onClick={() => pick("flights")}
+            onMouseEnter={(e) => Object.assign(e.currentTarget.style, styles.cardHover)}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = "";
+              e.currentTarget.style.boxShadow = styles.card.boxShadow;
+            }}
+          >
+            <div style={{ ...styles.cardIcon, background: "linear-gradient(135deg,#a78bfa,#7c3aed)" }}>F</div>
+            <div style={styles.cardBody}>
+              <div style={styles.cardTitle}>Flights</div>
+              <div style={styles.cardDesc}>Add a flight (name, price, duration)</div>
+            </div>
+          </div>
+
+          {/* Attractions */}
+          <div
+            style={styles.card}
+            onClick={() => pick("attractions")}
+            onMouseEnter={(e) => Object.assign(e.currentTarget.style, styles.cardHover)}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = "";
+              e.currentTarget.style.boxShadow = styles.card.boxShadow;
+            }}
+          >
+            <div style={{ ...styles.cardIcon, background: "linear-gradient(135deg,#f472b6,#db2777)" }}>A</div>
+            <div style={styles.cardBody}>
+              <div style={styles.cardTitle}>Attractions</div>
+              <div style={styles.cardDesc}>Add an attraction (name, price, desc)</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Step 2 — form for the chosen collection
+  return (
+    <div style={styles.box}>
+      <div style={styles.stepHeader}>
+        <button style={styles.backBtn} onClick={handleBack}>← Back</button>
+        {saved && <div style={styles.successChip}>✓ Saved</div>}
+      </div>
+
+      <div style={{ marginBottom: 8, fontWeight: 700 }}>
+        Update: {collection?.[0].toUpperCase() + collection?.slice(1)}
+      </div>
+
+      <div style={styles.form}>
+        {collection === "cities" && (
+          <>
+            <input name="cityName" placeholder="City name" style={styles.input}
+              value={formData.cityName} onChange={handleChange} />
+            <input name="country" placeholder="Country" style={styles.input}
+              value={formData.country} onChange={handleChange} />
+          </>
+        )}
+{collection === "hotels" && (
+  <>
+    <input name="city" placeholder="City" style={styles.input}
+      value={formData.city || ""} onChange={handleChange} />
+    <input name="hotelName" placeholder="Hotel name" style={styles.input}
+      value={formData.hotelName} onChange={handleChange} />
+    <input name="hotelPrice" type="number" placeholder="Price" style={styles.input}
+      value={formData.hotelPrice} onChange={handleChange} />
+    <input name="hotelStars" type="number" placeholder="(optional) Stars (1-5)" style={styles.input}
+      value={formData.hotelStars} onChange={handleChange} />
+  </>
+)}
+
+        {collection === "flights" && (
+  <>
+    <input name="city" placeholder="City" style={styles.input}
+      value={formData.city || ""} onChange={handleChange} />
+    <input name="flightName" placeholder="Airline / Flight" style={styles.input}
+      value={formData.flightName} onChange={handleChange} />
+    <input name="flightPrice" type="number" placeholder="Price" style={styles.input}
+      value={formData.flightPrice} onChange={handleChange} />
+    <input name="flightDuration" placeholder='Duration (e.g. "8h 00m")' style={styles.input}
+      value={formData.flightDuration} onChange={handleChange} />
+  </>
+)}
+
+     {collection === "attractions" && (
+  <>
+    <input name="city" placeholder="City" style={styles.input}
+      value={formData.city || ""} onChange={handleChange} />
+    <input name="attractionName" placeholder="Attraction name" style={styles.input}
+      value={formData.attractionName} onChange={handleChange} />
+    <input name="attractionPrice" type="number" placeholder="Price" style={styles.input}
+      value={formData.attractionPrice} onChange={handleChange} />
+    <input name="openingHours" placeholder='Opening hours (e.g. "09:00-17:00")' style={styles.input}
+      value={formData.openingHours || ""} onChange={handleChange} />
+    <textarea name="attractionDescription" placeholder="(optional) Description" style={styles.textarea}
+      value={formData.attractionDescription} onChange={handleChange} />
+  </>
+)}
+      </div>
+
+      <button onClick={handleSave} style={styles.saveBtn} disabled={saving}>
+        {saving ? "Saving..." : "Save"}
+      </button>
+    </div>
+  );
+}
+
 
   // רינדור התוכן בהתאם ללשונית פעילה
   const renderContent = () => {
-    if (activeItem === "Manage Data") {
-      return (
-        <>
-          <h1 className="main-title">Manage Travel Data</h1>
-          {successMessage && <div className="success-message">{successMessage}</div>}
-          <section className="admin-tools">
-            {/* עיר */}
-            <div className="tool-card">
-              <h2>City Name</h2>
-              <input
-                type="text"
-                placeholder="City Name"
-                value={cityName}
-                onChange={(e) => setCityName(e.target.value)}
-              />
-            </div>
-            {/* אטרקציות */}
-            <div className="tool-card">
-              <h2>Add Attractions</h2>
-              {attractions.map((a, i) => (
-                <div key={i} className="input-group">
-                  <input
-                    type="text"
-                    placeholder="Attraction Name"
-                    value={a.name}
-                    onChange={(e) => {
-                      const updated = [...attractions];
-                      updated[i].name = e.target.value;
-                      setAttractions(updated);
-                    }}
-                  />
-                  <input
-                    type="text"
-                    placeholder="City"
-                    value={a.city}
-                    onChange={(e) => {
-                      const updated = [...attractions];
-                      updated[i].city = e.target.value;
-                      setAttractions(updated);
-                    }}
-                  />
-                  <input
-                    type="text"
-                    placeholder="Description"
-                    value={a.description}
-                    onChange={(e) => {
-                      const updated = [...attractions];
-                      updated[i].description = e.target.value;
-                      setAttractions(updated);
-                    }}
-                  />
-                </div>
-              ))}
-              <button onClick={addNewAttraction}>+ Add Another Attraction</button>
-            </div>
-            {/* מלונות */}
-            <div className="tool-card">
-              <h2>Add Hotels</h2>
-              {hotels.map((h, i) => (
-                <div key={i} className="input-group">
-                  <input
-                    type="text"
-                    placeholder="Hotel Name"
-                    value={h.name}
-                    onChange={(e) => {
-                      const updated = [...hotels];
-                      updated[i].name = e.target.value;
-                      setHotels(updated);
-                    }}
-                  />
-                  <input
-                    type="text"
-                    placeholder="City"
-                    value={h.city}
-                    onChange={(e) => {
-                      const updated = [...hotels];
-                      updated[i].city = e.target.value;
-                      setHotels(updated);
-                    }}
-                  />
-                  <input
-                    type="number"
-                    placeholder="Price"
-                    value={h.price}
-                    onChange={(e) => {
-                      const updated = [...hotels];
-                      updated[i].price = e.target.value;
-                      setHotels(updated);
-                    }}
-                  />
-                </div>
-              ))}
-              <button onClick={addNewHotel}>+ Add Another Hotel</button>
-            </div>
-            {/* טיסות */}
-            <div className="tool-card">
-              <h2>Add Flights</h2>
-              {flights.map((f, i) => (
-                <div key={i} className="input-group">
-                  <input
-                    type="text"
-                    placeholder="From"
-                    value={f.from}
-                    onChange={(e) => {
-                      const updated = [...flights];
-                      updated[i].from = e.target.value;
-                      setFlights(updated);
-                    }}
-                  />
-                  <input
-                    type="text"
-                    placeholder="To"
-                    value={f.to}
-                    onChange={(e) => {
-                      const updated = [...flights];
-                      updated[i].to = e.target.value;
-                      setFlights(updated);
-                    }}
-                  />
-                  <input
-                    type="number"
-                    placeholder="Price"
-                    value={f.price}
-                    onChange={(e) => {
-                      const updated = [...flights];
-                      updated[i].price = e.target.value;
-                      setFlights(updated);
-                    }}
-                  />
-                </div>
-              ))}
-              <button onClick={addNewFlight}>+ Add Another Flight</button>
-            </div>
-            {/* כפתור שמירה לכל הנתונים */}
-            <div style={{ marginTop: 20 }}>
-              <button
-                onClick={handleAddAllData}
-                style={{ fontWeight: "bold", padding: "10px 20px" }}
-              >
-                Save All Data
-              </button>
-            </div>
-          </section>
-        </>
-      );
-    }
+if (activeItem === "Manage Data") {
+  return (
+    <>
+      <h1 className="main-title">Manage Travel Data</h1>
+      <ManageDataUpdateBox />
+    </>
+  );
+}
+
    if (activeItem === "Dashboard") {
       return (
         <>
