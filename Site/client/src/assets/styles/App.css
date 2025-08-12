@@ -18,39 +18,32 @@ html, body, #root {
 }
 .floating-support-btn {
   position: fixed;
-  bottom: 90px;
+  bottom: 50px;
   left: 20px;
   z-index: 999;
   background-color: #004e75;
   color: white;
   border: none;
   border-radius: 30px;
-  padding: 14px 15px;
-  font-size: 25px;
+  padding: 10px 12px; /* slightly smaller padding */
+  font-size: 18px; /* smaller icon/text */
   font-weight: bold;
   cursor: pointer;
   box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-  transition: width 0.3s ease, background-color 0.3s ease, padding 0.3s ease;
   overflow: hidden;
   white-space: nowrap;
-  width: 54px; /* collapsed size */
+  width: auto; /* static size */
 }
 
-/* Label is hidden initially */
 .floating-support-btn .btn-label {
-  opacity: 0;
-  margin-left: 10px;
-  transition: opacity 0.3s ease;
-  pointer-events: none;
+  opacity: 1; /* always visible */
+  margin-left: 8px;
 }
 
-/* Hover expands the button */
 .floating-support-btn:hover {
-  width: 180px;
-  background-color: #003b5c;
-  padding-left: 20px;
-  padding-right: 20px;
+  background-color: #003b5c; /* only color changes */
 }
+
 
 .floating-support-btn:hover .btn-label {
   opacity: 1;
