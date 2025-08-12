@@ -1,173 +1,197 @@
-/* Phone Landing Page Styles */
-.phone-landing-container {
+.phone-landing-container-app {
   display: flex;
-  align-items: center;
+  flex-direction: row; /* טקסט שמאל, תמונה ימין */
   justify-content: center;
-  flex-direction: row-reverse;
-  width: 100%;
-  background-color: #ebe9e97b;
-  padding: 15px;
-  min-height: calc(100vh - 160px); /* 👈 adjusts for header + footer height */
-  box-sizing: border-box;
+  align-items: center;
+  gap: 60px;
+  padding: 40px 60px;
+  min-height: calc(100vh - 160px);
+  background: linear-gradient(150deg, #f0f4f8, #d9e2ec);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen,
+    Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  color: rgba(30, 41, 59, 0.9);
 }
 
+.phone-mockup-app {
+  flex: 1;
+  max-width: 520px;
+  background: #EDEFF2;
+  border-radius: 28px;
+  padding: 40px;
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.08);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  transition: transform 0.4s ease;
+  cursor: default;
 
-/* Mockup (Left) */
-.phone-mockup {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+  position: relative; /* חשוב למיקום QR בפנים */
+}
+.phone-mockup-app:hover {
+  transform: scale(1.06);
 }
 
-/* Prevent horizontal scrolling */
-body {
-    overflow-x: hidden; /* Hides horizontal scroll */
-    margin: 0;
-    padding: 0;
-    width: 100%;
-}
-
-
-
-/* Adjust inner elements */
-.text-content {
-    flex: 1;
-    text-align: right;
-    direction: rtl;
-    padding-right: 20px;
-    margin-top: -80px;
-    box-sizing: border-box; /* Ensures padding does not add extra width */
-}
-
-/* Ensure images scale properly */
-.mockup-image {
+.mockup-image-app {
   max-width: 100%;
-  max-height: 400px;  /* ✅ Add this! Limits tall image */
-  height: auto;
-  object-fit: contain; /* Ensures clean scaling */
+  max-height: 520px;
+  border-radius: 24px;
+  object-fit: contain;
 }
 
-
-.subtitle {
-    font-size: 1.2rem; /* Smaller subtitle size */
-    color: #555;
-    margin-bottom: 10px; /* Reduced margin */
+/* ה-QR בתוך המסגרת */
+.qr-inside-mockup {
+  position: absolute;
+  bottom: 24px;
+  right: 24px;
+  background: white;
+  padding: 10px 14px;
+  border-radius: 20px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  user-select: none;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  width: fit-content;
+}
+.qr-inside-mockup:hover,
+.qr-inside-mockup:focus-visible {
+  transform: scale(1.1);
+  box-shadow: 0 14px 36px rgba(0,0,0,0.25);
+  outline: none;
+}
+.qr-label-inside {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #475569;
+  letter-spacing: 0.02em;
+  user-select: none;
+  text-align: center;
+  margin: 0;
+  white-space: nowrap;
 }
 
-.download-buttons {
-    display: flex;
-    flex-direction: column; /* Stack buttons vertically */
-    align-items: center; /* Center-align buttons */
-    justify-content: center; /* Center-align buttons */
-    gap: 15px; /* Space between buttons */
-    margin-bottom: 10px; /* Reduced margin-bottom */
+.text-content-app {
+  flex: 1;
+  max-width: 620px;
+  text-align: left;   /* שינוי ל-left */
+  direction: ltr;     /* מבטל rtl */
+  padding-left: 40px; /* padding שמאל */
 }
 
-.button-ios, .button-android {
-    display: flex;
-    align-items: center;
-    gap: 10px; /* Increased gap between icon and text */
-    padding: 8px 15px; /* Smaller padding */
-    border: none;
-    border-radius: 5px;
-    font-size: 0.9rem; /* Smaller font size */
-    cursor: pointer;
+.title-app {
+  font-size: 2.8rem; /* קטן יותר */
+  font-weight: 700;
+  margin-bottom: 24px;
+  color: #0f172a;
+  letter-spacing: 1.2px;
+  line-height: 1.2;
+  user-select: none;
 }
 
-.button-ios {
-    background-color: #e1e4e1;
-    color: #0c0b0b;
+.app-description-app {
+  font-size: 18px; /* קטן יותר */
+  line-height: 1.5;
+  color: rgba(51, 65, 85, 0.85);
+  margin-bottom: 30px;
+  max-width: 100%;
+  font-weight: 500;
 }
 
-.button-android {
-    background-color: #e1e4e1;
-    color: #070606;
+.features-list-app {
+  font-size: 14px; /* קטן יותר */
+  line-height: 1.4;
+  margin-left: 20px;
+  margin-bottom: 40px;
+  color: #475569;
+  font-weight: 600;
+  list-style-type: disc;
+  user-select: none;
 }
 
-.button-icon {
-    width: 18px; /* Smaller icon size */
-    height: 18px; /* Smaller icon size */
+.floating-support-btn-app {
+  position: fixed;
+  bottom: 90px;
+  left: 20px;
+  z-index: 999;
+  background-color: #004e75;
+  color: white;
+  border: none;
+  border-radius: 30px;
+  padding: 14px 15px;
+  font-size: 25px;
+  font-weight: bold;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  transition: width 0.3s ease, background-color 0.3s ease, padding 0.3s ease;
+  overflow: hidden;
+  white-space: nowrap;
+  width: 54px; /* collapsed size */
+}
+.floating-support-btn-app:hover {
+  opacity: 0;
+  margin-left: 10px;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
 }
 
-.cta-button {
-    padding: 12px 20px; /* Smaller padding */
-    background-color: #007bff;
-    color: #fff;
-    font-size: 0.9rem; /* Smaller font size */
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
+/* מדיה קוויריז */
+@media (max-width: 1024px) {
+  .phone-landing-container-app {
+    gap: 50px;
+    padding: 30px 40px;
+  }
+  .mockup-image-app {
+    max-height: 400px;
+  }
+  .title-app {
+    font-size: 2.2rem;
+  }
+  .app-description-app,
+  .features-list-app {
+    font-size: 1rem;
+  }
 }
 
-/* 📱 Responsive Design */
-@media only screen and (max-width: 768px) {
-    .phone-landing-container {
-        flex-direction: column; /* Stack elements vertically */
-        text-align: center; /* Center-align text */
-        padding: 15px; /* Reduced padding for smaller screens */
-    }
-
-    .text-content {
-        text-align: center;
-        padding-right: 0;
-        margin-top: -60px; /* Slightly move the text upwards more for mobile */
-    }
-
-    .download-buttons {
-        justify-content: center; /* Center-align the buttons */
-        gap: 10px; /* Reduced gap between buttons */
-    }
-
-    .mockup-image {
-        width: 80%; /* Make the image responsive */
-        max-height: 300px; /* Adjust max-height for smaller screens */
-    }
-
-    .title {
-        font-size: 1.6rem; /* Adjust title size for smaller screens */
-    }
-
-    .subtitle {
-        font-size: 1.1rem; /* Adjust subtitle size */
-    }
-
-    .button-ios, .button-android {
-        font-size: 0.8rem; /* Make button text smaller for mobile */
-        padding: 6px 12px; /* Adjust padding for buttons */
-    }
-
-    .cta-button {
-        font-size: 0.8rem; /* Make CTA button font smaller */
-        padding: 10px 18px; /* Adjust padding for CTA button */
-    }
+@media (max-width: 768px) {
+  .phone-landing-container-app {
+    flex-direction: column;
+    text-align: center;
+    direction: ltr;
+    padding: 30px 30px;
+    gap: 40px;
+  }
+  .text-content-app {
+    max-width: 100%;
+    padding-left: 0;
+    direction: ltr;
+    text-align: center;
+  }
+  .floating-support-btn-app {
+    bottom: 25px;
+    left: 25px;
+    padding: 12px 24px;
+    font-size: 1.2rem;
+  }
 }
 
-@media only screen and (max-width: 375px) {
-    .phone-landing-container {
-        padding: 10px; /* Further reduce padding for very small screens */
-    }
-
-    .mockup-image {
-        width: 90%; /* Adjust image size further */
-        max-height: 280px; /* Further reduce max-height */
-    }
-
-    .title {
-        font-size: 1.4rem; /* Smaller title font size */
-    }
-
-    .subtitle {
-        font-size: 1rem; /* Smaller subtitle font size */
-    }
-
-    .button-ios, .button-android {
-        font-size: 0.7rem; /* Smaller font size for buttons */
-        padding: 5px 10px; /* Adjust padding for buttons */
-    }
-
-    .cta-button {
-        font-size: 0.7rem; /* Smaller font for CTA button */
-        padding: 8px 15px; /* Adjust padding for CTA button */
-    }
+@media (max-width: 375px) {
+  .mockup-image-app {
+    max-height: 300px;
+  }
+  .title-app {
+    font-size: 2rem;
+  }
+  .app-description-app,
+  .features-list-app {
+    font-size: 0.9rem;
+  }
+  .floating-support-btn-app {
+    padding: 10px 20px;
+    font-size: 1rem;
+    bottom: 15px;
+    left: 15px;
+  }
 }
