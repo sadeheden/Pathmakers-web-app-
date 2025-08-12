@@ -107,59 +107,64 @@ export default function AttractionsScreen() {
     })();
   }, []);
 
-  const fetchAttractionsByCity = useCallback(async (cityName) => {
-    if (!cityName?.trim()) {
-      setErrorText('Please enter a city name to search');
-      return;
+ const fetchAttractionsByCity = useCallback(async (cityName) => {
+  if (!cityName?.trim()) {
+    setErrorText('Please enter a city name to search');
+    return;
+  }
+
+  console.log('🔍 Starting city-based attractions search for:', cityName);
+  console.log('🔍 City name length:', cityName.length);
+  console.log('🔍 City name chars:', cityName.split('').map(c => c.charCodeAt(0)));
+  
+  setLoadingList(true);
+  setErrorText('');
+
+  try {
+    const searchData = {
+      city: cityName.trim(),
+      limit: PAGE_LIMIT,
+    };
+
+    console.log('📤 Search request data:', JSON.stringify(searchData));
+
+    const response = await post('attractions/search-by-city', searchData);
+
+    console.log('📥 API Response status:', response?.success);
+    console.log('📥 API Response:', JSON.stringify(response, null, 2));
+
+    if (!response.success) {
+      console.error('❌ Search failed:', response.message);
+      throw new Error(response.message || 'Search failed');
     }
 
-    console.log('🔍 Starting city-based attractions search for:', cityName);
-    setLoadingList(true);
-    setErrorText('');
+    const list = (response.items || []).map((attr, idx) => ({
+      id: attr._id || `attraction_${idx}`,
+      name: attr.name || 'Unknown place',
+      city: attr.city || cityName,
+      address: attr.address || '',
+      openingHours: attr.openingHours || null,
+      price: typeof attr.price === 'number' ? attr.price : null,
+      category: attr.category || 'attraction',
+      rating: attr.rating ?? null,
+      bookable: attr.bookable ?? true,
+      availability: Array.isArray(attr.availability) && attr.availability.length > 0
+        ? attr.availability
+        : makeAvailability(attr._id || idx),
+      description: attr.description || null,
+    }));
 
-    try {
-      const searchData = {
-        city: cityName.trim(),
-        limit: PAGE_LIMIT,
-      };
-
-      console.log('📤 Search request data:', searchData);
-
-      // 👈 Using your API service with proper authentication
-      const response = await post('attractions/search-by-city', searchData);
-
-      console.log('📥 API Response:', JSON.stringify(response, null, 2));
-
-      if (!response.success) {
-        throw new Error(response.message || 'Search failed');
-      }
-
-   const list = (response.items || []).map((attr, idx) => ({
-    id: attr._id || `attraction_${idx}`,
-    name: attr.name || 'Unknown place',
-    city: attr.city || cityName,
-    address: attr.address || '',
-    openingHours: attr.openingHours || null,
-    price: typeof attr.price === 'number' ? attr.price : null,
-    category: attr.category || 'attraction',
-    rating: attr.rating ?? null,
-    bookable: attr.bookable ?? true,
-    availability: Array.isArray(attr.availability) && attr.availability.length > 0
-      ? attr.availability
-      : makeAvailability(attr._id || idx),
-    description: attr.description || null,
-  }));
-      console.log(`✅ Processed ${list.length} attractions from MongoDB for city: ${cityName}`);
-      console.log('🏛️ Final attractions list:', list);
-      setItems(list);
-    } catch (e) {
-      console.error('❌ Failed to fetch attractions:', e);
-      setErrorText(e.message || 'Failed to load attractions from your database.');
-      setItems([]);
-    } finally {
-      setLoadingList(false);
-    }
-  }, []);
+    console.log(`✅ Processed ${list.length} attractions from MongoDB for city: ${cityName}`);
+    setItems(list);
+    
+  } catch (e) {
+    console.error('❌ Failed to fetch attractions:', e);
+    setErrorText(e.message || 'Failed to load attractions from your database.');
+    setItems([]);
+  } finally {
+    setLoadingList(false);
+  }
+}, []);
 
   const onPressTicket = async (item) => {
     if (!item.bookable) {
