@@ -1,10 +1,14 @@
 import express from 'express';
 import {
   getManagerDashboardData,
-  addExistingAttractionToAttractionsDoc, // optional helper (adds an existing attraction into an attractions doc)
-  upsertAttractionItemByCity,            // ✅ writes { city, attractions:[...] }
-  upsertHotelItemByCity,                 // ✅ writes { city, hotels:[...] }
-  upsertFlightItemByCity                 // ✅ writes { city, airlines:[...] }
+  addExistingAttractionToAttractionsDoc,
+  addExistingAttractionToCity,
+  addNewAttractionsToCity,
+  addNewHotelsToCity,
+  addNewFlightsToCity,  // <== הוסף פה
+  upsertAttractionItemByCity,
+  upsertHotelItemByCity,
+  upsertFlightItemByCity
 } from './manager.controller.js';
 
 const router = express.Router();
