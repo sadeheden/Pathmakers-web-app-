@@ -256,17 +256,27 @@ export default function PayScreen() {
 
   return (
     <>
-      <SuccessPopup
-        visible={successPopupVisible}
-        cityName={city?.name}
-        orderId={lastOrder?._id}
-        price={price}
-        onClose={() => setSuccessPopupVisible(false)}
-        onViewOrders={() => {
-          setSuccessPopupVisible(false);
-          navigation.navigate('Tabs', { screen: 'Profile' });
-        }}
-      />
+<SuccessPopup
+  visible={successPopupVisible}
+  cityName={city?.name}
+  orderId={lastOrder?._id}
+  price={price}
+  onClose={() => {
+    setSuccessPopupVisible(false);
+    navigation.reset({
+      index: 0,
+      routes: [{ name: 'Tabs', state: { routes: [{ name: 'Home' }], index: 0 } }]
+    });
+  }}
+  onViewOrders={() => {
+    setSuccessPopupVisible(false);
+    navigation.reset({
+      index: 0,
+      routes: [{ name: 'Tabs', state: { routes: [{ name: 'Profile' }], index: 0 } }]
+    });
+  }}
+/>
+
 
       <KeyboardAvoidingView
         style={{ flex: 1, backgroundColor: '#fff' }}
