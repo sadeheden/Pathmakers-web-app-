@@ -1,26 +1,41 @@
 import express from "express";
-import * as controller from "./travel.controller.js"; // או לפי איך יצאת את הפונקציות
+import {
+  getCities,
+  getCityByName,
+  addCity,
+  deleteCity,
+  getHotels,
+  addHotel,
+  deleteHotel,
+  getFlights,
+  addFlight,
+  deleteFlight,
+  getAttractions,
+  addAttraction,
+  deleteAttraction
+} from "./travel.controller.js"; 
 
 const router = express.Router();
 
 // Cities
-router.get("/cities", controller.getCities);
-router.post("/cities", controller.addCity);
-router.delete("/cities/:id", controller.deleteCity);
+router.get("/cities", getCities);
+router.get("/cities/name/:name", getCityByName);
+router.post("/cities", addCity);
+router.delete("/cities/:id", deleteCity);
 
 // Hotels
-router.get("/hotels", controller.getHotels);
-router.post("/hotels", controller.addHotel);
-router.delete("/hotels/:id", controller.deleteHotel);
+router.get("/hotels", getHotels);
+router.post("/hotels", addHotel);
+router.delete("/hotels/:id", deleteHotel);
 
 // Flights
-router.get("/flights", controller.getFlights);
-router.post("/flights", controller.addFlight);
-router.delete("/flights/:id", controller.deleteFlight);
+router.get("/flights", getFlights);
+router.post("/flights", addFlight);
+router.delete("/flights/:id", deleteFlight);
 
 // Attractions
-router.get("/attractions", controller.getAttractions);
-router.post("/attractions", controller.addAttraction);
-router.delete("/attractions/:id", controller.deleteAttraction);
+router.get("/attractions", getAttractions);
+router.post("/attractions", addAttraction);
+router.delete("/attractions/:id", deleteAttraction);
 
 export default router;
