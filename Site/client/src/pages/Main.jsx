@@ -192,35 +192,51 @@ const Main = () => {
   };
 
   return (
-    <div className="trips-page">
-      <section
-        className="hero-merged"
-        style={{ backgroundImage: `url(${flag})` }} // ← your flag image import
-      >
-        <div className="hero-overlay"></div>
-        <div className="hero-content">
-            <h1>Plan your next adventure</h1>
-        <p>Discover personalized trip recommendations or build your own itinerary.</p>
-             <div className="hero-buttons">
+<div className="trips-page">
+  <section
+    className="hero-merged"
+    style={{ backgroundImage: `url(${flag})` }}
+  >
+    <div className="hero-overlay"></div>
+    <div className="hero-content">
+      <h1> Let’s Plan Your Next Adventure!</h1>
+      <p>
+        From dreamy escapes to thrilling getaways 
+         find your perfect trip with a little magic 
+      </p>
+      <div className="hero-buttons">
+        {/* Optional: Add buttons or icons here later */}
+      </div>
+    </div>
+  </section>
+
+
+ {/* ====== Chat Options Section ====== */}
+      <section className="chat-options">
+        <div className="chat-card">
+          <h3>AI Trip Builder</h3>
+          <p>Let our AI create the perfect trip for you in seconds.</p>
           <button
-            type="button"
             className="btn btn-primary"
             onClick={() => navigate("/realChat")}
           >
-            AI Trip Builder
-          </button>
-          <button
-            type="button"
-            className="btn btn-light"
-            onClick={() => navigate("/chat")} // or your manual builder route
-          >
-            Build Your Own
+            Start AI Chat
           </button>
         </div>
 
+        <div className="chat-card">
+          <h3>Build Your Own</h3>
+          <p>Plan every detail yourself with our manual trip builder.</p>
+          <button
+            className="btn btn-light"
+            onClick={() => navigate("/chat")}
+          >
+            Start Manual Chat
+          </button>
         </div>
       </section>
 
+ 
       <section className="popular-trips">
         <h2>Traveler-Favorite Destinations</h2>
 
