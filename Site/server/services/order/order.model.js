@@ -18,8 +18,7 @@ function toObjectIdOrString(id) {
 export default class Order {
   constructor(data = {}) {
     // For user_id, we need ObjectId for database operations
-    this.user_id = isValidObjectId(data.user_id) ? new ObjectId(data.user_id) : null;
-    
+    this.user_id = toObjectIdOrString(data.user_id); // accept ObjectId or string
     // City IDs should be ObjectIds
     this.departure_city_id = toObjectIdOrString(data.departure_city_id);
     this.destination_city_id = toObjectIdOrString(data.destination_city_id);

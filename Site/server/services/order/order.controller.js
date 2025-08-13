@@ -6,11 +6,214 @@ import Hotel from "../hotel/hotel.model.js";
 import Attraction from "../attraction/att.model.js";
 
 // ===== Helper Functions =====
-
-// Validate ObjectId format
-function isValidObjectId(id) {
-  return /^[0-9a-fA-F]{24}$/.test(id);
+// --- ADD NEAR THE TOP (helpers) ---
+function looksLikeObjectId(v) {
+  return typeof v === 'string' && /^[0-9a-fA-F]{24}$/.test(v);
 }
+
+// Flexible finders so you can pass slug/name/id
+async function findCityByAny(val) {
+  if (!val) return null;
+  if (looksLikeObjectId(val)) return City.findById(val);
+  // Try common fields (adjust to your schema)
+  return (
+    await City.findOne({ slug: val }) ||
+    await City.findOne({ city: val }) ||
+    await City.findOne({ name: val })
+  );
+}
+
+async function findFlightByAny(val, destinationId) {
+  if (!val) return null;
+  if (looksLikeObjectId(val)) return { doc: await Flight.findById(val), index: 0 };
+
+  // Try to match a code inside an airlines[] array (adjust to your schema)
+  const doc = await Flight.findOne({
+    $or: [
+      { destination_city_id: destinationId },
+      { 'airlines.code': val },
+      { 'flights.code': val },
+      { name: val }, { airline: val }
+    ]
+  });
+
+  // Try to locate the index of that code inside arrays for compound id
+  let index = 0;
+  if (doc?.airlines?.length) {
+    const i = doc.airlines.findIndex(a =>
+      a?.code === val || a?.name === val || a?.airline === val
+    );
+    if (i >= 0) index = i;
+  } else if (doc?.flights?.length) {
+    const i = doc.flights.findIndex(f =>
+      f?.code === val || f?.name === val || f?.airline === val
+    );
+    if (i >= 0) index = i;
+  }
+  return { doc, index };
+}
+
+async function findHotelByAny(val, destinationId) {
+  if (!val) return { doc: await Hotel.findOne({ destination_city_id: destinationId }), index: 0 };
+  if (looksLikeObjectId(val)) return { doc: await Hotel.findById(val), index: 0 };
+
+  const doc = await Hotel.findOne({
+    $or: [
+      { destination_city_id: destinationId },
+      { name: val },
+      { 'hotels.name': val }
+    ]
+  });
+
+  // pick index by name if present; else 0
+  let index = 0;
+  if (doc?.hotels?.length) {
+    const i = doc.hotels.findIndex(h => h?.name === val);
+    if (i >= 0) index = i;
+  }
+  return { doc, index };
+}
+
+// --- ADD THIS NEW CONTROLLER ---
+export async function resolveOrderRefs(req, res) {
+ 
+  try {
+    // 0) Sanity: models present?
+    if (!City || !Flight || !Hotel) {
+      console.error("❌ Models not loaded:", { City: !!City, Flight: !!Flight, Hotel: !!Hotel });
+      return res.status(500).json({ message: "Server models not initialized" });
+    }
+
+    // 1) Body + auth sanity
+    if (!req.body) {
+      console.error("❌ /resolve: req.body is undefined (missing express.json?)");
+      return res.status(400).json({ message: "Missing JSON body" });
+    }
+    const { departure, destination, flight, hotel } = req.body;
+    console.log("🔎 /resolve input:", { departure, destination, flight, hotel });
+    if (!req.user?.id) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const looksLikeOid = (v) => typeof v === "string" && /^[0-9a-fA-F]{24}$/.test(v);
+
+    // 2) Safe helpers (never throw)
+    const findCity = async (val) => {
+      try {
+        if (!val) return null;
+        if (looksLikeOid(val)) return await City.findById(val);
+        // Try common fields
+        return (
+          (await City.findOne({ slug: val })) ||
+          (await City.findOne({ city: val })) ||
+          (await City.findOne({ name: val }))
+        );
+      } catch (e) {
+        console.error("❌ City lookup failed:", e);
+        return null;
+      }
+    };
+
+    const findFlight = async (val, dstId) => {
+      try {
+        if (!val) return { doc: null, index: 0 };
+        if (looksLikeOid(val)) return { doc: await Flight.findById(val), index: 0 };
+
+        // Try many shapes (array subdocs OR root fields)
+        const doc = await Flight.findOne({
+          $or: [
+            { destination_city_id: dstId },
+            { "airlines.code": val }, { "airlines.name": val }, { "airlines.airline": val },
+            { "flights.code": val },  { "flights.name": val },  { "flights.airline": val },
+            { code: val }, { name: val }, { airline: val }
+          ],
+        });
+
+        let index = 0;
+        if (doc?.airlines?.length) {
+          const i = doc.airlines.findIndex(a => a?.code === val || a?.name === val || a?.airline === val);
+          if (i >= 0) index = i;
+        } else if (doc?.flights?.length) {
+          const i = doc.flights.findIndex(f => f?.code === val || f?.name === val || f?.airline === val);
+          if (i >= 0) index = i;
+        }
+        return { doc, index };
+      } catch (e) {
+        console.error("❌ Flight lookup failed:", e);
+        return { doc: null, index: 0 };
+      }
+    };
+
+    const findHotel = async (val, dstId) => {
+      try {
+        if (looksLikeOid(val)) return { doc: await Hotel.findById(val), index: 0 };
+
+        const doc = await Hotel.findOne({
+          $or: [
+            { destination_city_id: dstId },
+            { "hotels.name": val },
+            { name: val }
+          ],
+        });
+
+        let index = 0;
+        if (doc?.hotels?.length && val) {
+          const i = doc.hotels.findIndex(h => h?.name === val);
+          if (i >= 0) index = i;
+        }
+        return { doc, index };
+      } catch (e) {
+        console.error("❌ Hotel lookup failed:", e);
+        return { doc: null, index: 0 };
+      }
+    };
+
+    // 3) Resolve cities first
+    const [depCity, dstCity] = await Promise.all([findCity(departure), findCity(destination)]);
+    if (!depCity || !dstCity) {
+      console.warn("⚠️ Could not resolve city ids", { depCity: !!depCity, dstCity: !!dstCity });
+      return res.status(400).json({ message: "Could not resolve city ids" });
+    }
+
+    // 4) Flight and hotel, dependent on destination id
+    const [{ doc: flightDoc, index: flightIndex = 0 }, { doc: hotelDoc, index: hotelIndex = 0 }] =
+      await Promise.all([findFlight(flight, dstCity._id), findHotel(hotel, dstCity._id)]);
+
+    if (!flightDoc) {
+      console.warn("⚠️ Could not resolve flight", { flight, dest: dstCity._id?.toString() });
+      return res.status(400).json({ message: "Could not resolve flight" });
+    }
+    if (!hotelDoc) {
+      console.warn("⚠️ Could not resolve hotel", { hotel, dest: dstCity._id?.toString() });
+      return res.status(400).json({ message: "Could not resolve hotel" });
+    }
+
+    // 5) Build compound ids
+    const flightId = `${flightDoc._id.toString()}-${flightIndex}`;
+    const hotelId  = `${hotelDoc._id.toString()}-${hotelIndex}`;
+
+    console.log("✅ /resolve OK:", {
+      departureCityId: depCity._id.toString(),
+      destinationCityId: dstCity._id.toString(),
+      flightId,
+      hotelId,
+    });
+
+    return res.status(200).json({
+      success: true,
+      ids: {
+        departureCityId: depCity._id.toString(),
+        destinationCityId: dstCity._id.toString(),
+        flightId,
+        hotelId,
+      },
+    });
+  } catch (err) {
+    console.error("❌ resolveOrderRefs error:", err.stack || err);
+    return res.status(500).json({ message: "Internal Server Error" });
+  }
+}
+
 
 // Clean and extract the base ObjectId from a possibly compound ID (e.g., "abc123-2")
 function cleanId(id) {

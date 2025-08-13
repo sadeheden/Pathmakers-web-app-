@@ -341,38 +341,31 @@ const Main = () => {
           isOpen={showPaymentModal}
           onClose={() => setShowPaymentModal(false)}
           totalAmount={totalPrice}
-    onPaymentSuccess={async () => {
+  onPaymentSuccess={async () => {
   setPaymentCompleted(true);
   setShowPaymentModal(false);
 
-  // Try different possible token key names
   const token = localStorage.getItem("token") || 
                 localStorage.getItem("authToken") || 
                 localStorage.getItem("jwt") || 
                 localStorage.getItem("access_token") || 
                 localStorage.getItem("userToken");
-    
-  // Check if token exists
+
   if (!token) {
-    console.error("❌ No authentication token found");
-    console.log("🔍 Available localStorage keys:", Object.keys(localStorage));
     alert("Please log in to complete your purchase");
-    navigate('/login'); // Redirect to login
+    navigate('/login');
     return;
   }
 
-  // Check if token is expired (optional)
   const isTokenExpired = (token) => {
     try {
       const payload = JSON.parse(atob(token.split('.')[1]));
       return payload.exp * 1000 < Date.now();
-    } catch (error) {
+    } catch {
       return true;
     }
   };
-
   if (isTokenExpired(token)) {
-    console.error("❌ Token has expired");
     alert("Your session has expired. Please log in again.");
     localStorage.removeItem("token");
     navigate('/login');
@@ -380,13 +373,28 @@ const Main = () => {
   }
 
   try {
+    // 1) Resolve slugs/codes → real ids (and compound ids for flight/hotel)
+    const resolveResp = await axios.post(
+      "http://localhost:4000/api/order/resolve",
+      {
+        departure: "ben-gurion",            // what you currently have
+        destination: selectedCity.slug,     // e.g., "paris"
+        flight: selectedCity.flight,        // e.g., "AF123"
+        hotel: "default-hotel"              // or a real name/id; resolver is flexible
+      },
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+
+    const { departureCityId, destinationCityId, flightId, hotelId } = resolveResp.data.ids;
+
+    // 2) Create order with VALID ids
     const response = await axios.post(
       "http://localhost:4000/api/order",
       {
-        departureCityId: "ben-gurion",
-        destinationCityId: selectedCity.slug,
-        flightId: selectedCity.flight,
-        hotelId: "default-hotel",
+        departureCityId,
+        destinationCityId,
+        flightId,               // now "<ObjectId>-<index>" compound
+        hotelId,                // now "<ObjectId>-<index>" compound
         attractions: [],
         transportation: null,
         paymentMethod: "Credit Card",
@@ -400,19 +408,27 @@ const Main = () => {
         },
       }
     );
-        
-  } catch (error) {
-    console.error("❌ Error saving order:", error.response?.data || error.message);
-    
-    if (error.response?.status === 401) {
-      alert("Your session has expired. Please log in again.");
-      localStorage.removeItem("token");
-      navigate('/login');
-    } else {
-      alert("Failed to save order. Please try again.");
-    }
+
+    console.log("✅ Order created:", response.data);
+} catch (error) {
+  const detail = {
+    status: error.response?.status,
+    data: error.response?.data,
+    message: error.message
+  };
+  console.error("❌ Order flow error:\n" + JSON.stringify(detail, null, 2));
+
+  if (error.response?.status === 401) {
+    alert("Your session has expired. Please log in again.");
+    localStorage.removeItem("token");
+    navigate('/login');
+  } else {
+    alert("Failed to save order. Please try again.");
   }
+}
+
 }}
+
 
         />
       )}
