@@ -52,6 +52,7 @@ import authRouter from './services/auth/auth.router.js';
 import orderRouter from './services/order/order.router.js';
 import uploadRouter from './services/upload/upload.router.js';
 import managerRoutes from './services/manager/manager.routes.js';
+import travelRoutes from './services/travel/travel.routes.js';
 
 app.use('/api/cities', citiesRouter);
 app.use('/api/attractions', attractionRoutes);
@@ -61,6 +62,7 @@ app.use('/api/auth', authRouter);
 app.use('/api/order', orderRouter);
 app.use('/api/upload', uploadRouter);
 app.use('/api/manager', managerRoutes);
+app.use('/api', travelRoutes);
 
 
 // 🛑 טיפול ב-404

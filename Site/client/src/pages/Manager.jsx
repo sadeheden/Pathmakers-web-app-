@@ -17,13 +17,14 @@ const sidebarItems = [
   "Manage Data",
   "Update City",
 ];
+
 const styles = {
   box: {
     border: "1px solid #e5e7eb",
     borderRadius: "14px",
     padding: "28px",
-    maxWidth: "1000px",   // ⬅ bigger
-    width: "100%",        // ⬅ fill available space
+    maxWidth: "1000px",
+    width: "100%",
     backgroundColor: "#fff",
     boxShadow: "0 6px 22px rgba(0,0,0,0.08)",
     marginTop: "16px",
@@ -31,17 +32,14 @@ const styles = {
   header: { marginBottom: "20px", display: "flex", gap: "16px", alignItems: "center" },
   label: { fontWeight: 700, minWidth: 160, fontSize: 16 },
   select: { padding: "14px", borderRadius: "12px", border: "1px solid #d1d5db", width: "100%", fontSize: 16 },
-
-  // Bigger grid + more columns
   form: {
     marginBottom: "20px",
     display: "grid",
     gap: "14px",
-    gridTemplateColumns: "1fr 1fr 1fr", // ⬅ three columns
+    gridTemplateColumns: "1fr 1fr 1fr",
   },
-
   input: {
-    padding: "14px",      // ⬅ bigger inputs
+    padding: "14px",
     borderRadius: "12px",
     border: "1px solid #d1d5db",
     width: "100%",
@@ -51,37 +49,33 @@ const styles = {
     padding: "14px",
     borderRadius: "12px",
     border: "1px solid #d1d5db",
-    minHeight: 120,       // ⬅ taller text area
-    gridColumn: "1 / -1", // full width in the grid
+    minHeight: 120,
+    gridColumn: "1 / -1",
     fontSize: 16,
   },
-
   saveBtn: {
     backgroundColor: "#3b82f6",
     color: "#fff",
-    padding: "14px 22px", // ⬅ bigger button
+    padding: "14px 22px",
     border: "none",
     borderRadius: "12px",
     cursor: "pointer",
-    width: "220px",       // ⬅ wider
+    width: "220px",
     fontWeight: 800,
     fontSize: 16,
   },
-
-  // Step 1 grid (bigger cards, 2→3 columns)
-gridWrap: {
-  display: "grid",
-  gridTemplateColumns: "1fr 1fr", // ⬅ two columns
-  gap: "16px",
-  maxWidth: 800,                  // ⬅ fits nicely in two-column layout
-  marginTop: 16,
-},
-
+  gridWrap: {
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr",
+    gap: "16px",
+    maxWidth: 800,
+    marginTop: 16,
+  },
   card: {
     display: "flex",
     gap: 16,
     alignItems: "center",
-    padding: "18px 20px", // ⬅ bigger card
+    padding: "18px 20px",
     borderRadius: 14,
     border: "1px solid #e5e7eb",
     background: "#fff",
@@ -91,7 +85,7 @@ gridWrap: {
   },
   cardHover: { transform: "translateY(-2px)", boxShadow: "0 10px 22px rgba(0,0,0,0.10)" },
   cardIcon: {
-    width: 56,            // ⬅ bigger icon
+    width: 56,
     height: 56,
     borderRadius: 999,
     display: "grid",
@@ -103,8 +97,6 @@ gridWrap: {
   cardBody: { display: "flex", flexDirection: "column" },
   cardTitle: { fontWeight: 800, lineHeight: 1.2, fontSize: 16 },
   cardDesc: { fontSize: 13, color: "#6b7280", marginTop: 4 },
-
-  // Step 2 header + success
   stepHeader: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 },
   backBtn: {
     border: "1px solid #d1d5db",
@@ -129,138 +121,43 @@ gridWrap: {
   },
 };
 
-
 const Manager = () => {
   const [activeItem, setActiveItem] = useState("Dashboard");
   const [successMessage, setSuccessMessage] = useState("");
-  // רשימות דינמיות של אטרקציות, מלונות, טיסות
-  const [attractions, setAttractions] = useState([{ name: "", city: "", description: "" }]);
-  const [hotels, setHotels] = useState([{ name: "", city: "", price: "" }]);
-  const [flights, setFlights] = useState([{ from: "", to: "", price: "" }]);
-  // עיר אחת - שם העיר
-  const [cityName, setCityName] = useState("");
-const [dashboardData, setDashboardData] = useState({
-  totalOrders: 0,
-  totalRevenue: 0,
-  topDestinations: [],
-  revenueByDate: [],
-});
+  
+  const [dashboardData, setDashboardData] = useState({
+    totalOrders: 0,
+    totalRevenue: 0,
+    topDestinations: [],
+    revenueByDate: [],
+  });
 
-useEffect(() => {
-  if (activeItem === "Dashboard") {
-    fetch("http://localhost:4000/api/manager/dashboard")
-      .then((res) => res.json())
-      .then((data) => {
-        console.log("📊 Dashboard API data:", data);
-        setDashboardData({
-          totalOrders: data.totalOrders || 0,
-          totalRevenue: data.totalRevenue || 0,
-          topDestinations: data.topDestinations || [],
-          ordersByDate: data.ordersByDate || [],
-          revenueByDate: data.revenueByDate || [],
-          revenueByMonth: data.revenueByMonth || [],
-        });
-      })
-      .catch((err) => console.error("Error loading dashboard data:", err));
-  }
-}, [activeItem]);
-
-
-  // פונקציות להוספת שורה חדשה בטפסים
-  const addNewAttraction = () => {
-    setAttractions([...attractions, { name: "", city: "", description: "" }]);
-  };
-  const addNewHotel = () => {
-    setHotels([...hotels, { name: "", city: "", price: "" }]);
-  };
-  // כאן תיקנתי את השם מ-setNewFlights ל-setFlights ושדות בהתאם לטיסות שהגדרת קודם
-  const addNewFlight = () => {
-    setFlights([...flights, { from: "", to: "", price: "" }]);
-  };
-
-  // פונקציה לשמירת כל הנתונים ביחד
-  const handleAddAllData = async () => {
-    // בדיקות מילוי שדות
-    if (!cityName) {
-      alert("Please enter a city name");
-      return;
+  useEffect(() => {
+    if (activeItem === "Dashboard") {
+      fetch("http://localhost:4000/api/manager/dashboard")
+        .then((res) => res.json())
+        .then((data) => {
+          console.log("📊 Dashboard API data:", data);
+          setDashboardData({
+            totalOrders: data.totalOrders || 0,
+            totalRevenue: data.totalRevenue || 0,
+            topDestinations: data.topDestinations || [],
+            ordersByDate: data.ordersByDate || [],
+            revenueByDate: data.revenueByDate || [],
+            revenueByMonth: data.revenueByMonth || [],
+          });
+        })
+        .catch((err) => console.error("Error loading dashboard data:", err));
     }
-    if (attractions.some((a) => !a.name || !a.city || !a.description)) {
-      alert("Please fill all attraction fields");
-      return;
-    }
-    if (hotels.some((h) => !h.name || !h.city || !h.price)) {
-      alert("Please fill all hotel fields");
-      return;
-    }
-    if (flights.some((f) => !f.from || !f.to || !f.price)) {
-      alert("Please fill all flight fields");
-      return;
-    }
-    try {
-      // הוספת העיר
-      await fetch("http://localhost:4000/api/cities", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ city: cityName }),
-      });
+  }, [activeItem]);
 
-      // הוספת אטרקציות
-      for (const attraction of attractions) {
-        await fetch("http://localhost:4000/api/attractions", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(attraction),
-        });
-      }
-      // הוספת מלונות
-      for (const hotel of hotels) {
-        await fetch("http://localhost:4000/api/hotels", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ...hotel, price: parseFloat(hotel.price), stars: 3 }),
-        });
-      }
-      // הוספת טיסות
-      for (const flight of flights) {
-        await fetch("http://localhost:4000/api/flights", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            city: flight.from,
-            airline: `Flight to ${flight.to}`,
-            departureTime: new Date().toISOString(),
-            price: parseFloat(flight.price),
-          }),
-        });
-      }
-
-      setSuccessMessage("✅ All travel data added successfully!");
-      setTimeout(() => setSuccessMessage(""), 3000);
-
-      // איפוס שדות
-      setCityName("");
-      setAttractions([{ name: "", city: "", description: "" }]);
-      setHotels([{ name: "", city: "", price: "" }]);
-      setFlights([{ from: "", to: "", price: "" }]);
-    } catch (error) {
-      console.error("Error adding data:", error);
-      alert("Error adding data. Check console.");
-    }
-  };
-
-  // כאן: רכיב UpdateCity מעודכן עם אפשרות הוספת אטרקציות חדשות למערך הקיים
+  // UpdateCity component
   const UpdateCity = () => {
     const [searchCity, setSearchCity] = useState("");
     const [cityData, setCityData] = useState(null);
-
-    const [newAttractions, setNewAttractions] = useState([
-      { name: "", openingHours: "", price: "" },
-    ]);
+    const [newAttractions, setNewAttractions] = useState([{ name: "", openingHours: "", price: "" }]);
     const [newHotels, setNewHotels] = useState([{ name: "", price: "" }]);
-    const [newFlights, setNewFlights] = useState([
-      { name: "", price: "", duration: "" },
-    ]);
+    const [newFlights, setNewFlights] = useState([{ name: "", price: "", duration: "" }]);
 
     const fetchCityData = async () => {
       if (!searchCity) {
@@ -270,14 +167,12 @@ useEffect(() => {
 
       try {
         const response = await fetch(`http://localhost:4000/api/cities/name/${encodeURIComponent(searchCity)}`);
-
         let data;
 
         if (response.ok) {
           data = await response.json();
           console.log("✅ Loaded existing city data:", data);
         } else if (response.status === 404) {
-          // עיר לא נמצאה - ניצור חדשה
           const createResponse = await fetch("http://localhost:4000/api/cities", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -285,626 +180,454 @@ useEffect(() => {
           });
 
           if (!createResponse.ok) {
-            throw new Error("Failed to create new city");
+            const errorData = await createResponse.json();
+            throw new Error(errorData.error || "Failed to create new city");
           }
 
           data = await createResponse.json();
-          alert(`✅ City '${searchCity}' created`);
+          alert(`✅ City '${searchCity}' created successfully`);
           console.log("🆕 Created new city data:", data);
+          
+          data.attractions = [];
+          data.hotels = [];
+          data.flights = [];
         } else {
           throw new Error(`Failed to fetch city. Status: ${response.status}`);
         }
 
-        // עדכון ה-state עם הנתונים שהתקבלו
         setCityData(data);
-
-        // איפוס שדות הקלט של אטרקציות, מלונות וטיסות
         setNewAttractions([{ name: "", openingHours: "", price: "" }]);
         setNewHotels([{ name: "", price: "" }]);
         setNewFlights([{ name: "", price: "", duration: "" }]);
 
       } catch (err) {
         console.error("Fetch error:", err);
-        alert("Error fetching or creating city data");
+        alert(`Error: ${err.message}`);
         setCityData(null);
       }
     };
 
-    const addNewAttraction = () =>
-      setNewAttractions([...newAttractions, { name: "", openingHours: "", price: "" }]);
-    const addNewHotel = () => setNewHotels([...newHotels, { name: "", price: "" }]);
-    const addNewFlight = () =>
-      setNewFlights([...newFlights, { name: "", price: "", duration: "" }]);
-
-    // **פונקציה חדשה** לשמירת אטרקציות למערך attractions בתוך מסמך העיר
-    const handleSaveAttractions = async () => {
-      if (!cityData) {
-        alert("Please load a city first");
-        return;
-      }
-      
-      // ולידציה של השדות
-      const validAttractions = [];
-      for (const attraction of newAttractions) {
-        if (!attraction.name || !attraction.openingHours || attraction.price === "") {
-          alert("Please fill all attraction fields (name, opening hours, price)");
-          return;
-        }
-        validAttractions.push({
-          name: attraction.name.trim(),
-          openingHours: attraction.openingHours.trim(),
-          price: parseFloat(attraction.price),
-        });
-      }
-
-      if (validAttractions.length === 0) {
-        alert("No valid attractions to add");
-        return;
-      }
-
-      try {
-        // הוספת האטרקציות למערך attractions בתוך מסמך העיר באמצעות הקונטרולר החדש
-        const response = await fetch(`http://localhost:4000/api/manager/city/${cityData._id}/addNewAttractions`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ attractions: validAttractions }),
-        });
-
-        if (response.ok) {
-          const result = await response.json();
-          alert(result.message || `✅ ${validAttractions.length} attractions added to city attractions array!`);
-          
-          // עדכון הנתונים המקומיים
-          if (result.city) {
-            setCityData(result.city);
-          } else {
-            // טוען מחדש את נתוני העיר
-            fetchCityData();
-          }
-          
-          // איפוס השדות
-          setNewAttractions([{ name: "", openingHours: "", price: "" }]);
-        } else {
-          const error = await response.json();
-          alert(`Error: ${error.message || 'Failed to add attractions'}`);
-        }
-      } catch (error) {
-        console.error("Error adding attractions:", error);
-        alert("Error adding attractions. Check console.");
-      }
-    };
-
-  // Hotels -> POST to /api/manager/city/:id/addNewHotels
-const handleSaveHotels = async () => {
-  if (!cityData) return alert("Please load a city first");
-
-  const payload = [];
-  for (const hotel of newHotels) {
-    if (!hotel.name || hotel.price === "") {
-      alert("Please fill all hotel fields");
-      return;
-    }
-    payload.push({
-      name: hotel.name.trim(),
-      price: parseFloat(hotel.price),
-      stars: 3,
-    });
-  }
-  try {
-    const res = await fetch(`http://localhost:4000/api/manager/city/${cityData._id}/addNewHotels`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ hotels: payload }),
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.message || "Failed to add hotels");
-    alert(data.message || `✅ ${payload.length} hotels added`);
-    setNewHotels([{ name: "", price: "" }]);
-    // refresh local view
-    if (data.city) setCityData(data.city); else fetchCityData();
-  } catch (err) {
-    console.error(err);
-    alert(err.message);
-  }
-};
-
-// Flights -> POST to /api/manager/city/:id/addNewFlights
-const handleSaveFlights = async () => {
-  if (!cityData) return alert("Please load a city first");
-
-  const payload = [];
-  for (const flight of newFlights) {
-    if (!flight.name || flight.price === "" || !flight.duration) {
-      alert("Please fill all flight fields (name, price, duration)");
-      return;
-    }
-    payload.push({
-      name: flight.name.trim(),
-      price: parseFloat(flight.price),
-      duration: flight.duration.trim(),
-    });
-  }
-  try {
-    const res = await fetch(`http://localhost:4000/api/manager/city/${cityData._id}/addNewFlights`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ flights: payload }),
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.message || "Failed to add flights");
-    alert(data.message || `✅ ${payload.length} flights added`);
-    setNewFlights([{ name: "", price: "", duration: "" }]);
-    // refresh local view
-    if (data.city) setCityData(data.city); else fetchCityData();
-  } catch (err) {
-    console.error(err);
-    alert(err.message);
-  }
-};
-
-
     return (
       <div className="update-city-container">
         <h1>Update City Data</h1>
-        <div>
+        <div style={{ marginBottom: "20px", display: "flex", gap: "10px" }}>
           <input
             type="text"
             placeholder="Enter city name"
             value={searchCity}
             onChange={(e) => setSearchCity(e.target.value)}
+            style={{ padding: "10px", fontSize: "16px", borderRadius: "8px", border: "1px solid #ccc" }}
           />
-          <button onClick={fetchCityData}>Load City Data</button>
+          <button 
+            onClick={fetchCityData}
+            style={{ 
+              padding: "10px 20px", 
+              fontSize: "16px", 
+              backgroundColor: "#007bff", 
+              color: "white", 
+              border: "none", 
+              borderRadius: "8px", 
+              cursor: "pointer" 
+            }}
+          >
+            Load City Data
+          </button>
         </div>
+        
         {cityData && (
           <>
-            <h2>Current Data for {cityData.city} (ID: {cityData._id})</h2>
-            <div>
+            <h2 style={{ color: "#333", marginBottom: "20px" }}>
+              Current Data for {cityData.city} (ID: {cityData._id})
+            </h2>
+            
+            <div style={{ backgroundColor: "#f8f9fa", padding: "20px", borderRadius: "8px", marginBottom: "20px" }}>
               <h3>Hotels ({cityData.hotels?.length || 0})</h3>
-              <ul>
-                {cityData.hotels?.map((h, i) => (
-                  <li key={i}>
-                    {h.name} - ${h.price}
-                  </li>
-                ))}
-              </ul>
+              {cityData.hotels?.length > 0 ? (
+                <ul>
+                  {cityData.hotels.map((h, i) => (
+                    <li key={i}>{h.name} - ${h.price}</li>
+                  ))}
+                </ul>
+              ) : (
+                <p style={{ color: "#666" }}>No hotels added yet</p>
+              )}
 
               <h3>Attractions ({cityData.attractions?.length || 0})</h3>
-              <ul>
-                {cityData.attractions?.map((a, i) => (
-                  <li key={i}>
-                    {a.name} - {a.openingHours} - ${a.price}
-                  </li>
-                ))}
-              </ul>
+              {cityData.attractions?.length > 0 ? (
+                <ul>
+                  {cityData.attractions.map((a, i) => (
+                    <li key={i}>{a.name} - {a.openingHours} - ${a.price}</li>
+                  ))}
+                </ul>
+              ) : (
+                <p style={{ color: "#666" }}>No attractions added yet</p>
+              )}
 
               <h3>Flights ({cityData.flights?.length || 0})</h3>
-              <ul>
-                {cityData.flights?.map((f, i) => (
-                  <li key={i}>
-                    {f.name} - ${f.price} - {f.duration}
-                  </li>
-                ))}
-              </ul>
+              {cityData.flights?.length > 0 ? (
+                <ul>
+                  {cityData.flights.map((f, i) => (
+                    <li key={i}>{f.name} - ${f.price} - {f.duration}</li>
+                  ))}
+                </ul>
+              ) : (
+                <p style={{ color: "#666" }}>No flights added yet</p>
+              )}
             </div>
-
-            <h3>Add New Attractions</h3>
-            {newAttractions.map((a, i) => (
-              <div key={i} className="input-group">
-                <input
-                  type="text"
-                  placeholder="Attraction Name"
-                  value={a.name}
-                  onChange={(e) => {
-                    const updated = [...newAttractions];
-                    updated[i].name = e.target.value;
-                    setNewAttractions(updated);
-                  }}
-                />
-                <input
-                  type="text"
-                  placeholder="Opening Hours (e.g. 09:00-18:00)"
-                  value={a.openingHours}
-                  onChange={(e) => {
-                    const updated = [...newAttractions];
-                    updated[i].openingHours = e.target.value;
-                    setNewAttractions(updated);
-                  }}
-                />
-                <input
-                  type="number"
-                  placeholder="Price"
-                  value={a.price}
-                  onChange={(e) => {
-                    const updated = [...newAttractions];
-                    updated[i].price = e.target.value;
-                    setNewAttractions(updated);
-                  }}
-                />
-              </div>
-            ))}
-            <button onClick={addNewAttraction}>+ Add Another Attraction</button>
-            <button
-              style={{ 
-                marginTop: 10, 
-                marginLeft: 10,
-                padding: "8px 16px", 
-                fontWeight: "bold",
-                backgroundColor: "#4CAF50",
-                color: "white",
-                border: "none",
-                borderRadius: "4px",
-                cursor: "pointer"
-              }}
-              onClick={handleSaveAttractions}
-            >
-              Save Attractions to City Array
-            </button>
-
-            <h3>Add New Hotels</h3>
-            {newHotels.map((h, i) => (
-              <div key={i} className="input-group">
-                <input
-                  type="text"
-                  placeholder="Hotel Name"
-                  value={h.name}
-                  onChange={(e) => {
-                    const updated = [...newHotels];
-                    updated[i].name = e.target.value;
-                    setNewHotels(updated);
-                  }}
-                />
-                <input
-                  type="number"
-                  placeholder="Price"
-                  value={h.price}
-                  onChange={(e) => {
-                    const updated = [...newHotels];
-                    updated[i].price = e.target.value;
-                    setNewHotels(updated);
-                  }}
-                />
-              </div>
-            ))}
-            <button onClick={addNewHotel}>+ Add Another Hotel</button>
-            <button
-              style={{ marginTop: 10, padding: "6px 12px", fontWeight: "bold" }}
-              onClick={handleSaveHotels}
-            >
-              Save Hotels
-            </button>
-
-            <h3>Add New Flights</h3>
-            {newFlights.map((f, i) => (
-              <div key={i} className="input-group">
-                <input
-                  type="text"
-                  placeholder="Airline Name"
-                  value={f.name}
-                  onChange={(e) => {
-                    const updated = [...newFlights];
-                    updated[i].name = e.target.value;
-                    setNewFlights(updated);
-                  }}
-                />
-                <input
-                  type="number"
-                  placeholder="Price"
-                  value={f.price}
-                  onChange={(e) => {
-                    const updated = [...newFlights];
-                    updated[i].price = e.target.value;
-                    setNewFlights(updated);
-                  }}
-                />
-                <input
-                  type="text"
-                  placeholder="Duration (e.g. 8h 00m)"
-                  value={f.duration}
-                  onChange={(e) => {
-                    const updated = [...newFlights];
-                    updated[i].duration = e.target.value;
-                    setNewFlights(updated);
-                  }}
-                />
-              </div>
-            ))}
-            <button onClick={addNewFlight}>+ Add Another Flight</button>
-            <button
-              style={{ marginTop: 10, padding: "6px 12px", fontWeight: "bold" }}
-              onClick={handleSaveFlights}
-            >
-              Save Flights
-            </button>
           </>
         )}
       </div>
     );
   };
-function ManageDataUpdateBox() {
-  const [step, setStep] = useState("choose"); // "choose" | "form"
-  const [collection, setCollection] = useState(null);
-  const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
 
-  const [formData, setFormData] = useState({
-    // cities
-    cityName: "", country: "",
-    // hotels
-    hotelName: "", hotelPrice: "", hotelStars: "",
-    // flights
-    flightName: "", flightPrice: "", flightDuration: "",
-    // attractions
-    attractionName: "", attractionPrice: "", attractionDescription: "",
-  });
+  // ✅ ManageDataUpdateBox מתוקן - ללא יצירת מערכים!
+  function ManageDataUpdateBox() {
+    const [step, setStep] = useState("choose");
+    const [collection, setCollection] = useState(null);
+    const [saving, setSaving] = useState(false);
+    const [saved, setSaved] = useState(false);
 
-  const pick = (key) => {
-    setCollection(key);
-    setSaved(false);
-    setStep("form");
-  };
-
-  const handleChange = (e) => setFormData((p) => ({ ...p, [e.target.name]: e.target.value }));
-
-  const handleBack = () => {
-    // reset form for clarity
-    setFormData({
-      cityName: "", country: "",
-      hotelName: "", hotelPrice: "", hotelStars: "",
-      flightName: "", flightPrice: "", flightDuration: "",
-      attractionName: "", attractionPrice: "", attractionDescription: "",
+    const [formData, setFormData] = useState({
+      cityName: "",
+      city: "",
+      hotelName: "", 
+      hotelPrice: "",
+      flightName: "", 
+      flightPrice: "", 
+      flightDuration: "",
+      attractionName: "", 
+      attractionPrice: "",
+      openingHours: "",
     });
-    setCollection(null);
-    setStep("choose");
-  };
 
-  const handleSave = async () => {
-    try {
-      setSaving(true);
-      let url = "";
-      let payload = {};
-
-      switch (collection) {
-  case "cities":
-  if (!formData.cityName) throw new Error("City name is required");
-  url = "http://localhost:4000/api/cities";
-  payload = { city: formData.cityName.trim() }; // string only
-  break;
-
-
-         case "hotels":
-    if (!formData.city || !formData.hotelName || !formData.hotelPrice)
-      throw new Error("City, name and price are required");
-    url = "http://localhost:4000/api/manager/collections/hotels/upsertItem";
-    payload = {
-      city: formData.city,
-      hotel: {
-        name: formData.hotelName.trim(),
-        price: parseFloat(formData.hotelPrice),
-      },
+    const pick = (key) => {
+      setCollection(key);
+      setSaved(false);
+      setStep("form");
     };
-    break;
 
-
-      case "flights":
-    if (!formData.city || !formData.flightName || !formData.flightPrice || !formData.flightDuration)
-      throw new Error("City, name, price and duration are required");
-    url = "http://localhost:4000/api/manager/collections/flights/upsertItem";
-    payload = {
-      city: formData.city,
-      airline: {
-        name: formData.flightName.trim(),
-        price: parseFloat(formData.flightPrice),
-        duration: formData.flightDuration.trim(),
-      },
+    const handleChange = (e) => {
+      const { name, value } = e.target;
+      console.log("handleChange:", name, value, typeof value);
+      setFormData((prev) => ({ ...prev, [name]: value }));
     };
-    break;
 
-      case "attractions":
-    if (!formData.city || !formData.attractionName || !formData.openingHours || !formData.attractionPrice)
-      throw new Error("City, name, opening hours, and price are required");
-    url = "http://localhost:4000/api/manager/collections/attractions/upsertItem";
-    payload = {
-      city: formData.city,
-      attraction: {
-        name: formData.attractionName.trim(),
-        openingHours: formData.openingHours.trim(),
-        price: parseFloat(formData.attractionPrice),
-        // description is optional; Mongo doc in your screenshot doesn't store it,
-        // but we can ignore or include it separately if you add it later.
-      },
-    };
-    break;
-
-        default:
-          throw new Error("Pick a collection to update");
-      }
-
-      const res = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+    const handleBack = () => {
+      setFormData({
+        cityName: "",
+        city: "",
+        hotelName: "", 
+        hotelPrice: "",
+        flightName: "", 
+        flightPrice: "", 
+        flightDuration: "",
+        attractionName: "", 
+        attractionPrice: "",
+        openingHours: "",
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.message || "Failed to save");
+      setCollection(null);
+      setStep("choose");
+    };
 
-      // success: show green chip then return to step 1
-      setSaved(true);
-      setSaving(false);
-      setTimeout(() => {
-        setSaved(false);
-        handleBack(); // back to choose step
-      }, 1400);
-    } catch (err) {
-      setSaving(false);
-      alert(err.message);
+    const handleSave = async () => {
+      try {
+        setSaving(true);
+        let url = "";
+        let payload = {};
+
+        switch (collection) {
+          case "cities":
+            if (!formData.cityName) throw new Error("City name is required");
+            url = "http://localhost:4000/api/cities";
+            const cityName = formData.cityName.trim();
+            
+            // ✅ רק שם העיר - ללא מערכים!
+            payload = { city: cityName };
+            console.log("Sending payload for city:", payload);
+            break;
+
+          case "hotels":
+            if (!formData.city || !formData.hotelName || !formData.hotelPrice)
+              throw new Error("City, name and price are required");
+            url = "http://localhost:4000/api/hotels";
+            payload = {
+              city: formData.city.trim(),
+              name: formData.hotelName.trim(),
+              price: parseFloat(formData.hotelPrice),
+              stars: 3,
+            };
+            break;
+
+          case "flights":
+            if (!formData.city || !formData.flightName || !formData.flightPrice || !formData.flightDuration)
+              throw new Error("City, name, price and duration are required");
+            url = "http://localhost:4000/api/flights";
+            payload = {
+              city: formData.city.trim(),
+              airline: formData.flightName.trim(),
+              price: parseFloat(formData.flightPrice),
+              duration: formData.flightDuration.trim(),
+              departureTime: new Date().toISOString(),
+            };
+            break;
+
+          case "attractions":
+            if (!formData.city || !formData.attractionName || !formData.openingHours || !formData.attractionPrice)
+              throw new Error("City, name, opening hours, and price are required");
+            url = "http://localhost:4000/api/attractions";
+            payload = {
+              city: formData.city.trim(),
+              name: formData.attractionName.trim(),
+              openingHours: formData.openingHours.trim(),
+              price: parseFloat(formData.attractionPrice),
+            };
+            break;
+
+          default:
+            throw new Error("Pick a collection to update");
+        }
+
+        console.log("Sending payload:", payload);
+        
+        const res = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+
+        const data = await res.json();
+        console.log("Server response:", data);
+        
+        if (!res.ok) throw new Error(data?.message || data?.error || "Failed to save");
+
+        setSaved(true);
+        setSaving(false);
+        setTimeout(() => {
+          setSaved(false);
+          handleBack();
+        }, 1400);
+      } catch (err) {
+        setSaving(false);
+        alert(err.message);
+      }
+    };
+
+    // Step 1 — choose collection
+    if (step === "choose") {
+      return (
+        <div style={styles.box}>
+          <div style={{ marginBottom: 8, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <h3 style={{ margin: 0 }}>What would you like to update?</h3>
+            {saved && <div style={styles.successChip}>✓ Saved</div>}
+          </div>
+
+          <div style={styles.gridWrap}>
+            <div
+              style={styles.card}
+              onClick={() => pick("cities")}
+              onMouseEnter={(e) => Object.assign(e.currentTarget.style, styles.cardHover)}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = "";
+                e.currentTarget.style.boxShadow = styles.card.boxShadow;
+              }}
+            >
+              <div style={{ ...styles.cardIcon, background: "linear-gradient(135deg,#60a5fa,#2563eb)" }}>C</div>
+              <div style={styles.cardBody}>
+                <div style={styles.cardTitle}>Cities</div>
+                <div style={styles.cardDesc}>Add a new city (simple)</div>
+              </div>
+            </div>
+
+            <div
+              style={styles.card}
+              onClick={() => pick("hotels")}
+              onMouseEnter={(e) => Object.assign(e.currentTarget.style, styles.cardHover)}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = "";
+                e.currentTarget.style.boxShadow = styles.card.boxShadow;
+              }}
+            >
+              <div style={{ ...styles.cardIcon, background: "linear-gradient(135deg,#34d399,#059669)" }}>H</div>
+              <div style={styles.cardBody}>
+                <div style={styles.cardTitle}>Hotels</div>
+                <div style={styles.cardDesc}>Add a hotel (name, city, price)</div>
+              </div>
+            </div>
+
+            <div
+              style={styles.card}
+              onClick={() => pick("flights")}
+              onMouseEnter={(e) => Object.assign(e.currentTarget.style, styles.cardHover)}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = "";
+                e.currentTarget.style.boxShadow = styles.card.boxShadow;
+              }}
+            >
+              <div style={{ ...styles.cardIcon, background: "linear-gradient(135deg,#a78bfa,#7c3aed)" }}>F</div>
+              <div style={styles.cardBody}>
+                <div style={styles.cardTitle}>Flights</div>
+                <div style={styles.cardDesc}>Add a flight (name, city, price, duration)</div>
+              </div>
+            </div>
+
+            <div
+              style={styles.card}
+              onClick={() => pick("attractions")}
+              onMouseEnter={(e) => Object.assign(e.currentTarget.style, styles.cardHover)}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = "";
+                e.currentTarget.style.boxShadow = styles.card.boxShadow;
+              }}
+            >
+              <div style={{ ...styles.cardIcon, background: "linear-gradient(135deg,#f472b6,#db2777)" }}>A</div>
+              <div style={styles.cardBody}>
+                <div style={styles.cardTitle}>Attractions</div>
+                <div style={styles.cardDesc}>Add an attraction (name, city, hours, price)</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
     }
-  };
 
-  // Step 1 — choose collection
-  if (step === "choose") {
+    // Step 2 — form for the chosen collection
     return (
       <div style={styles.box}>
-        <div style={{ marginBottom: 8, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <h3 style={{ margin: 0 }}>What would you like to update?</h3>
+        <div style={styles.stepHeader}>
+          <button style={styles.backBtn} onClick={handleBack}>← Back</button>
           {saved && <div style={styles.successChip}>✓ Saved</div>}
         </div>
 
-        <div style={styles.gridWrap}>
-          {/* Cities */}
-          <div
-            style={styles.card}
-            onClick={() => pick("cities")}
-            onMouseEnter={(e) => Object.assign(e.currentTarget.style, styles.cardHover)}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = "";
-              e.currentTarget.style.boxShadow = styles.card.boxShadow;
-            }}
-          >
-            <div style={{ ...styles.cardIcon, background: "linear-gradient(135deg,#60a5fa,#2563eb)" }}>C</div>
-            <div style={styles.cardBody}>
-              <div style={styles.cardTitle}>Cities</div>
-              <div style={styles.cardDesc}>Add a new city with optional country</div>
-            </div>
-          </div>
-
-          {/* Hotels */}
-          <div
-            style={styles.card}
-            onClick={() => pick("hotels")}
-            onMouseEnter={(e) => Object.assign(e.currentTarget.style, styles.cardHover)}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = "";
-              e.currentTarget.style.boxShadow = styles.card.boxShadow;
-            }}
-          >
-            <div style={{ ...styles.cardIcon, background: "linear-gradient(135deg,#34d399,#059669)" }}>H</div>
-            <div style={styles.cardBody}>
-              <div style={styles.cardTitle}>Hotels</div>
-              <div style={styles.cardDesc}>Add a hotel (name, price, stars)</div>
-            </div>
-          </div>
-
-          {/* Flights */}
-          <div
-            style={styles.card}
-            onClick={() => pick("flights")}
-            onMouseEnter={(e) => Object.assign(e.currentTarget.style, styles.cardHover)}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = "";
-              e.currentTarget.style.boxShadow = styles.card.boxShadow;
-            }}
-          >
-            <div style={{ ...styles.cardIcon, background: "linear-gradient(135deg,#a78bfa,#7c3aed)" }}>F</div>
-            <div style={styles.cardBody}>
-              <div style={styles.cardTitle}>Flights</div>
-              <div style={styles.cardDesc}>Add a flight (name, price, duration)</div>
-            </div>
-          </div>
-
-          {/* Attractions */}
-          <div
-            style={styles.card}
-            onClick={() => pick("attractions")}
-            onMouseEnter={(e) => Object.assign(e.currentTarget.style, styles.cardHover)}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = "";
-              e.currentTarget.style.boxShadow = styles.card.boxShadow;
-            }}
-          >
-            <div style={{ ...styles.cardIcon, background: "linear-gradient(135deg,#f472b6,#db2777)" }}>A</div>
-            <div style={styles.cardBody}>
-              <div style={styles.cardTitle}>Attractions</div>
-              <div style={styles.cardDesc}>Add an attraction (name, price, desc)</div>
-            </div>
-          </div>
+        <div style={{ marginBottom: 8, fontWeight: 700 }}>
+          Update: {collection?.[0].toUpperCase() + collection?.slice(1)}
         </div>
+
+        <div style={styles.form}>
+          {collection === "cities" && (
+            <input 
+              name="cityName" 
+              placeholder="City name" 
+              style={styles.input}
+              value={formData.cityName} 
+              onChange={handleChange} 
+            />        
+          )}
+
+          {collection === "hotels" && (
+            <>
+              <input 
+                name="city" 
+                placeholder="City" 
+                style={styles.input}
+                value={formData.city || ""} 
+                onChange={handleChange} 
+              />
+              <input 
+                name="hotelName" 
+                placeholder="Hotel name" 
+                style={styles.input}
+                value={formData.hotelName} 
+                onChange={handleChange} 
+              />
+              <input 
+                name="hotelPrice" 
+                type="number" 
+                placeholder="Price" 
+                style={styles.input}
+                value={formData.hotelPrice} 
+                onChange={handleChange} 
+              />
+            </>
+          )}
+
+          {collection === "flights" && (
+            <>
+              <input 
+                name="city" 
+                placeholder="City" 
+                style={styles.input}
+                value={formData.city || ""} 
+                onChange={handleChange} 
+              />
+              <input 
+                name="flightName" 
+                placeholder="Airline / Flight" 
+                style={styles.input}
+                value={formData.flightName} 
+                onChange={handleChange} 
+              />
+              <input 
+                name="flightPrice" 
+                type="number" 
+                placeholder="Price" 
+                style={styles.input}
+                value={formData.flightPrice} 
+                onChange={handleChange} 
+              />
+              <input 
+                name="flightDuration" 
+                placeholder='Duration (e.g. "8h 00m")' 
+                style={styles.input}
+                value={formData.flightDuration} 
+                onChange={handleChange} 
+              />
+            </>
+          )}
+
+          {collection === "attractions" && (
+            <>
+              <input 
+                name="city" 
+                placeholder="City" 
+                style={styles.input}
+                value={formData.city || ""} 
+                onChange={handleChange} 
+              />
+              <input 
+                name="attractionName" 
+                placeholder="Attraction name" 
+                style={styles.input}
+                value={formData.attractionName} 
+                onChange={handleChange} 
+              />
+              <input 
+                name="attractionPrice" 
+                type="number" 
+                placeholder="Price" 
+                style={styles.input}
+                value={formData.attractionPrice} 
+                onChange={handleChange} 
+              />
+              <input 
+                name="openingHours" 
+                placeholder='Opening hours (e.g. "09:00-17:00")' 
+                style={styles.input}
+                value={formData.openingHours || ""} 
+                onChange={handleChange} 
+              />   
+            </>
+          )}
+        </div>
+
+        <button onClick={handleSave} style={styles.saveBtn} disabled={saving}>
+          {saving ? "Saving..." : "Save"}
+        </button>
       </div>
     );
   }
 
-  // Step 2 — form for the chosen collection
-  return (
-    <div style={styles.box}>
-      <div style={styles.stepHeader}>
-        <button style={styles.backBtn} onClick={handleBack}>← Back</button>
-        {saved && <div style={styles.successChip}>✓ Saved</div>}
-      </div>
-
-      <div style={{ marginBottom: 8, fontWeight: 700 }}>
-        Update: {collection?.[0].toUpperCase() + collection?.slice(1)}
-      </div>
-
-      <div style={styles.form}>
-        {collection === "cities" && (
-          <>
-            <input name="cityName" placeholder="City name" style={styles.input}
-              value={formData.cityName} onChange={handleChange} />
-            <input name="country" placeholder="Country" style={styles.input}
-              value={formData.country} onChange={handleChange} />
-          </>
-        )}
-{collection === "hotels" && (
-  <>
-    <input name="city" placeholder="City" style={styles.input}
-      value={formData.city || ""} onChange={handleChange} />
-    <input name="hotelName" placeholder="Hotel name" style={styles.input}
-      value={formData.hotelName} onChange={handleChange} />
-    <input name="hotelPrice" type="number" placeholder="Price" style={styles.input}
-      value={formData.hotelPrice} onChange={handleChange} />
-    <input name="hotelStars" type="number" placeholder="(optional) Stars (1-5)" style={styles.input}
-      value={formData.hotelStars} onChange={handleChange} />
-  </>
-)}
-
-        {collection === "flights" && (
-  <>
-    <input name="city" placeholder="City" style={styles.input}
-      value={formData.city || ""} onChange={handleChange} />
-    <input name="flightName" placeholder="Airline / Flight" style={styles.input}
-      value={formData.flightName} onChange={handleChange} />
-    <input name="flightPrice" type="number" placeholder="Price" style={styles.input}
-      value={formData.flightPrice} onChange={handleChange} />
-    <input name="flightDuration" placeholder='Duration (e.g. "8h 00m")' style={styles.input}
-      value={formData.flightDuration} onChange={handleChange} />
-  </>
-)}
-
-     {collection === "attractions" && (
-  <>
-    <input name="city" placeholder="City" style={styles.input}
-      value={formData.city || ""} onChange={handleChange} />
-    <input name="attractionName" placeholder="Attraction name" style={styles.input}
-      value={formData.attractionName} onChange={handleChange} />
-    <input name="attractionPrice" type="number" placeholder="Price" style={styles.input}
-      value={formData.attractionPrice} onChange={handleChange} />
-    <input name="openingHours" placeholder='Opening hours (e.g. "09:00-17:00")' style={styles.input}
-      value={formData.openingHours || ""} onChange={handleChange} />
-    <textarea name="attractionDescription" placeholder="(optional) Description" style={styles.textarea}
-      value={formData.attractionDescription} onChange={handleChange} />
-  </>
-)}
-      </div>
-
-      <button onClick={handleSave} style={styles.saveBtn} disabled={saving}>
-        {saving ? "Saving..." : "Save"}
-      </button>
-    </div>
-  );
-}
-
-
   // רינדור התוכן בהתאם ללשונית פעילה
   const renderContent = () => {
-if (activeItem === "Manage Data") {
-  return (
-    <>
-      <h1 className="main-title">Manage Travel Data</h1>
-      <ManageDataUpdateBox />
-    </>
-  );
-}
+    if (activeItem === "Manage Data") {
+      return (
+        <>
+          <h1 className="main-title">Manage Travel Data</h1>
+          <ManageDataUpdateBox />
+        </>
+      );
+    }
 
-   if (activeItem === "Dashboard") {
+    if (activeItem === "Dashboard") {
       return (
         <>
           <h1 className="main-title">Dashboard</h1>
@@ -925,48 +648,48 @@ if (activeItem === "Manage Data") {
               <p className="stat-change-positive">+5%</p>
             </div>
           </section>
-       <section className="graph-section">
-  <div className="graph-card">
-    <p className="graph-title">Trips by destination</p>
-    {dashboardData.topDestinations?.length > 0 ? (
-      <ResponsiveContainer width="100%" height={200}>
-        <BarChart data={dashboardData.topDestinations}>
-          <XAxis dataKey="name" />
-          <YAxis />
-          <Tooltip />
-          <Bar dataKey="trips" fill="#47569e" />
-        </BarChart>
-      </ResponsiveContainer>
-    ) : (
-      <p>No trip destinations data available.</p>
-    )}
-  </div>
+          
+          <section className="graph-section">
+            <div className="graph-card">
+              <p className="graph-title">Trips by destination</p>
+              {dashboardData.topDestinations?.length > 0 ? (
+                <ResponsiveContainer width="100%" height={200}>
+                  <BarChart data={dashboardData.topDestinations}>
+                    <XAxis dataKey="name" />
+                    <YAxis />
+                    <Tooltip />
+                    <Bar dataKey="trips" fill="#47569e" />
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <p>No trip destinations data available.</p>
+              )}
+            </div>
 
-  <div className="graph-card">
-  <p className="graph-title">Revenue over time</p>
-  {dashboardData.revenueByMonth?.length > 0 ? (
-    <ResponsiveContainer width="100%" height={200}>
-      <LineChart data={dashboardData.revenueByMonth.map(item => ({
-        date: item.monthLabel || item.month, // שימוש ב-monthLabel או month
-        revenue: item.revenue
-      }))}>
-        <XAxis dataKey="date" />
-        <YAxis />
-        <Tooltip formatter={(value) => `$${value.toFixed(2)}`} />
-        <Line
-          type="monotone"
-          dataKey="revenue"
-          stroke="#47569e"
-          strokeWidth={2}
-        />
-      </LineChart>
-    </ResponsiveContainer>
-  ) : (
-    <p>No revenue data available.</p>
-  )}
-</div>
-</section>
-
+            <div className="graph-card">
+              <p className="graph-title">Revenue over time</p>
+              {dashboardData.revenueByMonth?.length > 0 ? (
+                <ResponsiveContainer width="100%" height={200}>
+                  <LineChart data={dashboardData.revenueByMonth.map(item => ({
+                    date: item.monthLabel || item.month,
+                    revenue: item.revenue
+                  }))}>
+                    <XAxis dataKey="date" />
+                    <YAxis />
+                    <Tooltip formatter={(value) => `$${value.toFixed(2)}`} />
+                    <Line
+                      type="monotone"
+                      dataKey="revenue"
+                      stroke="#47569e"
+                      strokeWidth={2}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              ) : (
+                <p>No revenue data available.</p>
+              )}
+            </div>
+          </section>
         </>
       );
     }
@@ -974,19 +697,19 @@ if (activeItem === "Manage Data") {
     if (activeItem === "Update City") {
       return <UpdateCity />;
     }
+    
     if (activeItem === "Trips") {
       const tripsData = dashboardData.topDestinations || [];
       return (
         <>
           <h1 className="main-title">Popular Trips</h1>
           <section className="stats-section" style={{ marginBottom: 20 }}>
-          {dashboardData.topDestinations.map(({ name, trips }) => (
-          <div key={name} className="stat-card">
-            <p className="stat-title">{name}</p>
-            <p className="stat-value">{trips}</p>
-          </div>
-         ))}
-
+            {dashboardData.topDestinations.map(({ name, trips }) => (
+              <div key={name} className="stat-card">
+                <p className="stat-title">{name}</p>
+                <p className="stat-value">{trips}</p>
+              </div>
+            ))}
           </section>
           <section className="graph-section">
             <div className="graph-card" style={{ width: "60%", margin: "0 auto" }}>
