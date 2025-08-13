@@ -90,7 +90,7 @@ h1, .title, .title-app {
 }
 
 /* ===== Floating Support Button (used everywhere) ===== */
-/* ===== Floating Support Icon Button ===== */
+/* ===== Floating Support Icon Button (Blue) ===== */
 .floating-support-btn,
 .floating-support-btn-app {
   position: fixed;
@@ -101,9 +101,9 @@ h1, .title, .title-app {
   width: 48px;
   height: 48px;
   border-radius: 50%;
-  
-  /* Gradient background */
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+
+  /* Blue gradient background */
+  background: linear-gradient(135deg, #1e90ff 0%, #004e75 100%);
   color: #fff;
 
   display: flex;
@@ -115,7 +115,7 @@ h1, .title, .title-app {
   cursor: pointer;
 
   box-shadow: 
-    0 8px 20px rgba(102, 126, 234, 0.3),
+    0 8px 20px rgba(30, 144, 255, 0.3),
     0 4px 10px rgba(0, 0, 0, 0.1);
 
   transition: transform 0.2s ease, box-shadow 0.2s ease;
@@ -125,7 +125,7 @@ h1, .title, .title-app {
 .floating-support-btn-app:hover {
   transform: translateY(-2px);
   box-shadow: 
-    0 12px 28px rgba(102, 126, 234, 0.4),
+    0 12px 28px rgba(30, 144, 255, 0.4),
     0 6px 16px rgba(0, 0, 0, 0.15);
 }
 
