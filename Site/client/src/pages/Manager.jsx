@@ -15,8 +15,8 @@ const sidebarItems = [
   "Trips",
   "Manage Data",
   "Message support",
+  "Users", 
 ];
-
 
 const styles = {
   box: {
@@ -368,6 +368,120 @@ const styles = {
     fontSize: '18px',
     fontWeight: 'bold',
     marginBottom: '8px'
+  },
+  // סטיילים חדשים עבור Users
+  usersContainer: {
+    padding: '20px',
+    maxWidth: '1200px',
+    margin: '0 auto'
+  },
+  searchContainer: {
+    display: 'flex',
+    gap: '16px',
+    alignItems: 'center',
+    marginBottom: '30px',
+    padding: '20px',
+    backgroundColor: '#fff',
+    borderRadius: '12px',
+    border: '1px solid #e5e7eb',
+    boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
+  },
+  searchInput: {
+    flex: 1,
+    padding: '12px 16px',
+    borderRadius: '8px',
+    border: '1px solid #d1d5db',
+    fontSize: '14px'
+  },
+  searchButton: {
+    padding: '12px 24px',
+    backgroundColor: '#3b82f6',
+    color: '#fff',
+    border: 'none',
+    borderRadius: '8px',
+    cursor: 'pointer',
+    fontWeight: '600',
+    fontSize: '14px'
+  },
+  clearButton: {
+    padding: '12px 20px',
+    backgroundColor: '#6b7280',
+    color: '#fff',
+    border: 'none',
+    borderRadius: '8px',
+    cursor: 'pointer',
+    fontWeight: '600',
+    fontSize: '14px'
+  },
+  usersGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
+    gap: '20px'
+  },
+  userCard: {
+    backgroundColor: '#fff',
+    border: '1px solid #e5e7eb',
+    borderRadius: '12px',
+    padding: '24px',
+    boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+    transition: 'all 0.2s ease',
+    cursor: 'pointer'
+  },
+  userCardHover: {
+    transform: 'translateY(-2px)',
+    boxShadow: '0 8px 16px rgba(0,0,0,0.12)'
+  },
+  userAvatar: {
+    width: '64px',
+    height: '64px',
+    borderRadius: '50%',
+    objectFit: 'cover',
+    marginBottom: '16px',
+    border: '3px solid #e5e7eb'
+  },
+  userInfo: {
+    textAlign: 'center'
+  },
+  userName: {
+    fontSize: '18px',
+    fontWeight: 'bold',
+    color: '#1f2937',
+    margin: '0 0 8px 0'
+  },
+  userEmail: {
+    fontSize: '14px',
+    color: '#6b7280',
+    margin: '0 0 16px 0'
+  },
+  adminBadge: {
+    display: 'inline-block',
+    padding: '4px 8px',
+    backgroundColor: '#fef3c7',
+    color: '#92400e',
+    border: '1px solid #fcd34d',
+    borderRadius: '12px',
+    fontSize: '12px',
+    fontWeight: 'bold',
+    textTransform: 'uppercase',
+    marginBottom: '16px'
+  },
+  deleteUserButton: {
+    width: '100%',
+    padding: '8px 16px',
+    backgroundColor: '#ef4444',
+    color: '#fff',
+    border: 'none',
+    borderRadius: '6px',
+    cursor: 'pointer',
+    fontSize: '12px',
+    fontWeight: 'bold',
+    marginTop: '12px'
+  },
+  usersStats: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+    gap: '20px',
+    marginBottom: '30px'
   }
 };
 
@@ -387,6 +501,13 @@ const Manager = () => {
   const [messagesLoading, setMessagesLoading] = useState(false);
   const [filter, setFilter] = useState('all');
   const [selectedMessage, setSelectedMessage] = useState(null);
+
+  // States for Users Management
+  const [users, setUsers] = useState([]);
+  const [usersLoading, setUsersLoading] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filteredUsers, setFilteredUsers] = useState([]);
+  const [selectedUser, setSelectedUser] = useState(null);
 
   useEffect(() => {
     if (activeItem === "Dashboard") {
@@ -409,9 +530,73 @@ const Manager = () => {
     if (activeItem === "Message support") {
       fetchMessages();
     }
+
+    if (activeItem === "Users") {
+      fetchUsers();
+    }
   }, [activeItem]);
 
-  // Messages Management Functions
+  // Users Management Functions
+  const fetchUsers = async () => {
+    try {
+      setUsersLoading(true);
+      const response = await fetch('http://localhost:4000/api/auth/users');
+      if (response.ok) {
+        const data = await response.json();
+        setUsers(data);
+        setFilteredUsers(data);
+      } else {
+        console.error('Failed to fetch users');
+      }
+    } catch (error) {
+      console.error('Error fetching users:', error);
+    } finally {
+      setUsersLoading(false);
+    }
+  };
+
+  const searchUsers = () => {
+    if (!searchTerm.trim()) {
+      setFilteredUsers(users);
+      return;
+    }
+
+    const filtered = users.filter(user => 
+      user.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.email.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+    setFilteredUsers(filtered);
+  };
+
+  const clearSearch = () => {
+    setSearchTerm('');
+    setFilteredUsers(users);
+  };
+
+  const deleteUser = async (userId) => {
+    if (!window.confirm('Are you sure you want to delete this user?')) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`http://localhost:4000/api/auth/users/${userId}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        setUsers(prevUsers => prevUsers.filter(user => user._id !== userId));
+        setFilteredUsers(prevUsers => prevUsers.filter(user => user._id !== userId));
+        setSelectedUser(null);
+      } else {
+        alert('Failed to delete user');
+      }
+    } catch (error) {
+      console.error('Error deleting user:', error);
+      alert('Error deleting user');
+    }
+  };
+
+  // Messages Management Functions (existing code)
   const fetchMessages = async () => {
     try {
       setMessagesLoading(true);
@@ -465,6 +650,12 @@ const Manager = () => {
     pending: messages.filter(m => m.status === 'pending').length,
     resolved: messages.filter(m => m.status === 'resolved').length,
     closed: messages.filter(m => m.status === 'closed').length
+  };
+
+  const userStats = {
+    total: users.length,
+    admins: users.filter(u => u.username === "managerMay" || u.email === "managerMay").length,
+    regular: users.filter(u => u.username !== "managerMay" && u.email !== "managerMay").length
   };
 
   const formatDate = (dateString) => {
@@ -562,7 +753,7 @@ const Manager = () => {
     return buttons;
   };
 
-  // ManageDataUpdateBox Component
+  // ManageDataUpdateBox Component (existing code)
   function ManageDataUpdateBox() {
     const [step, setStep] = useState("choose");
     const [collection, setCollection] = useState(null);
@@ -1093,6 +1284,166 @@ const Manager = () => {
             </div>
           </section>
         </>
+      );
+    }
+
+    if (activeItem === "Users") {
+      if (usersLoading) {
+        return <div style={styles.loading}>Loading users...</div>;
+      }
+
+      return (
+        <div style={styles.usersContainer}>
+          {/* Header */}
+          <div style={styles.messagesHeader}>
+            <h1 style={styles.messagesTitle}>User Management</h1>
+          </div>
+
+          {/* Search */}
+          <div style={styles.searchContainer}>
+            <input
+              type="text"
+              placeholder="Search by username or email..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              style={styles.searchInput}
+              onKeyPress={(e) => {
+                if (e.key === 'Enter') {
+                  searchUsers();
+                }
+              }}
+            />
+            <button style={styles.searchButton} onClick={searchUsers}>
+              Search
+            </button>
+            <button style={styles.clearButton} onClick={clearSearch}>
+              Show All
+            </button>
+          </div>
+
+          {/* Statistics */}
+          <div style={styles.usersStats}>
+            <div style={styles.statCard}>
+              <div style={styles.statNumber}>{userStats.total}</div>
+              <div style={styles.statLabel}>Total Users</div>
+            </div>
+            <div style={styles.statCard}>
+              <div style={{ ...styles.statNumber, color: '#f59e0b' }}>{userStats.admins}</div>
+              <div style={styles.statLabel}>Admins</div>
+            </div>
+            <div style={styles.statCard}>
+              <div style={{ ...styles.statNumber, color: '#10b981' }}>{userStats.regular}</div>
+              <div style={styles.statLabel}>Regular Users</div>
+            </div>
+          </div>
+
+          {/* Users Grid */}
+          {filteredUsers.length === 0 ? (
+            <div style={styles.emptyState}>
+              <div style={styles.emptyIcon}>👥</div>
+              <div style={styles.emptyTitle}>No users found</div>
+              <div>No users match the current search criteria.</div>
+            </div>
+          ) : (
+            <div style={styles.usersGrid}>
+              {filteredUsers.map((user) => (
+                <div
+                  key={user._id}
+                  style={styles.userCard}
+                  onClick={() => setSelectedUser(user)}
+                  onMouseEnter={(e) => {
+                    Object.assign(e.currentTarget.style, styles.userCardHover);
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = '';
+                    e.currentTarget.style.boxShadow = styles.userCard.boxShadow;
+                  }}
+                >
+                  <div style={styles.userInfo}>
+                    <img
+                      src={user.profile_image || 'https://res.cloudinary.com/dnnmhrsja/image/upload/v1741780893/user_profiles/may.jpg'}
+                      alt={`${user.username}'s avatar`}
+                      style={styles.userAvatar}
+                      onError={(e) => {
+                        e.target.src = 'https://res.cloudinary.com/dnnmhrsja/image/upload/v1741780893/user_profiles/may.jpg';
+                      }}
+                    />
+                    <h3 style={styles.userName}>{user.username}</h3>
+                    <p style={styles.userEmail}>{user.email}</p>
+                    
+                    {(user.username === "managerMay" || user.email === "managerMay") && (
+                      <div style={styles.adminBadge}>Admin</div>
+                    )}
+
+                    {user.username !== "managerMay" && user.email !== "managerMay" && (
+                      <button
+                        style={styles.deleteUserButton}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          deleteUser(user._id);
+                        }}
+                      >
+                        Delete User
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* User Details Modal */}
+          {selectedUser && (
+            <div style={styles.modal} onClick={() => setSelectedUser(null)}>
+              <div style={styles.modalContent} onClick={(e) => e.stopPropagation()}>
+                <div style={styles.modalHeader}>
+                  <h2 style={styles.modalTitle}>User Details</h2>
+                  <button
+                    style={styles.closeModalButton}
+                    onClick={() => setSelectedUser(null)}
+                  >
+                    ×
+                  </button>
+                </div>
+                
+                <div style={{ textAlign: 'center' }}>
+                  <img
+                    src={selectedUser.profile_image || 'https://res.cloudinary.com/dnnmhrsja/image/upload/v1741780893/user_profiles/may.jpg'}
+                    alt={`${selectedUser.username}'s avatar`}
+                    style={{ ...styles.userAvatar, width: '100px', height: '100px', marginBottom: '20px' }}
+                    onError={(e) => {
+                      e.target.src = 'https://res.cloudinary.com/dnnmhrsja/image/upload/v1741780893/user_profiles/may.jpg';
+                    }}
+                  />
+                  
+                  <div style={{ textAlign: 'left' }}>
+                    <p><strong>Username:</strong> {selectedUser.username}</p>
+                    <p><strong>Email:</strong> {selectedUser.email}</p>
+                    <p><strong>User ID:</strong> {selectedUser._id}</p>
+                    <p><strong>Account Type:</strong> 
+                      {(selectedUser.username === "managerMay" || selectedUser.email === "managerMay") ? (
+                        <span style={{ color: '#f59e0b', fontWeight: 'bold' }}> Admin</span>
+                      ) : (
+                        <span style={{ color: '#10b981', fontWeight: 'bold' }}> Regular User</span>
+                      )}
+                    </p>
+                  </div>
+
+                  {selectedUser.username !== "managerMay" && selectedUser.email !== "managerMay" && (
+                    <div style={{ marginTop: '30px' }}>
+                      <button
+                        style={{ ...styles.deleteUserButton, width: 'auto', padding: '12px 24px' }}
+                        onClick={() => deleteUser(selectedUser._id)}
+                      >
+                        Delete User
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
       );
     }
 
