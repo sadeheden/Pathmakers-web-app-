@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import '../assets/styles/main.css';
+import flag from '../assets/images/flag.jpg'; // Importing the flag image
 
 // React icons
-import { FiCompass, FiHeart, FiMap, FiUsers } from 'react-icons/fi';
-
+import { FiCompass, FiFlag, FiHeart, FiMap, FiUsers, FiChevronLeft, FiChevronRight } from 'react-icons/fi';
 // Use your actual images:
 import parisImg from '../assets/images/paris.png';
 import tokyoImg from '../assets/images/tokyo.png';
@@ -19,14 +19,14 @@ import fantasyImg from '../assets/images/fantasy.jpg';
 import airportImg from '../assets/images/airport.jpg';
 
 const cities = [
-  { img: parisImg, name: 'Paris', slug: 'paris', flight: 'AF123' },
-  { img: tokyoImg, name: 'Tokyo', slug: 'tokyo', flight: 'JL456' },
-  { img: newYorkImg, name: 'New York', slug: 'new-york', flight: 'DL789' },
-  { img: barcelonaImg, name: 'Barcelona', slug: 'barcelona', flight: 'IB234' },
-  { img: romeImg, name: 'Rome', slug: 'rome', flight: 'AZ567' },
-  { img: londonImg, name: 'London', slug: 'london', flight: 'BA890' },
-  { img: bangkokImg, name: 'Bangkok', slug: 'bangkok', flight: 'TG321' },
-  { img: dubaiImg, name: 'Dubai', slug: 'dubai', flight: 'EK654' }
+  { img: parisImg, name: 'Paris', slug: 'paris', flight: 'AF123', summary: 'Art & Romance' },
+  { img: tokyoImg, name: 'Tokyo', slug: 'tokyo', flight: 'JL456', summary: 'Neon & Tradition' },
+  { img: newYorkImg, name: 'New York', slug: 'new-york', flight: 'DL789', summary: 'City That Never Sleeps' },
+  { img: barcelonaImg, name: 'Barcelona', slug: 'barcelona', flight: 'IB234', summary: 'Beaches & Gaudí' },
+  { img: romeImg, name: 'Rome', slug: 'rome', flight: 'AZ567', summary: 'History & Pasta' },
+  { img: londonImg, name: 'London', slug: 'london', flight: 'BA890', summary: 'Royalty & Culture' },
+  { img: bangkokImg, name: 'Bangkok', slug: 'bangkok', flight: 'TG321', summary: 'Temples & Street Food' },
+  { img: dubaiImg, name: 'Dubai', slug: 'dubai', flight: 'EK654', summary: 'Luxury & Desert' }
 ];
 
 const CARDS_PER_PAGE = 6;
@@ -173,94 +173,96 @@ const Main = () => {
   const [paymentCompleted, setPaymentCompleted] = useState(false);
   const [showIntroPopup, setShowIntroPopup] = useState(false);
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCarouselIdx(idx => (idx + CARDS_PER_PAGE) % cities.length);
-    }, AUTO_ROTATE_SECONDS * 1000);
-    return () => clearInterval(interval);
-  }, []);
 
-  const visibleCities = [
-    ...cities,
-    ...cities.slice(0, CARDS_PER_PAGE)
-  ].slice(carouselIdx, carouselIdx + CARDS_PER_PAGE);
+  const visibleCities = cities;
+  const rowRef = useRef(null);
+  const CARD_WIDTH = 240; // keep in sync with CSS
+  const GAP = 24;
 
   const tripDate = "2026-03-15";
   const returnDate = "2026-03-22";
   const totalPrice = selectedCity ? getPriceByCity(selectedCity.name) : 0;
 
+    const scrollByCards = (n) => {
+    if (!rowRef.current) return;
+    rowRef.current.scrollBy({
+      left: (CARD_WIDTH + GAP) * n,
+      behavior: 'smooth',
+    });
+  };
+
   return (
     <div className="trips-page">
-      <section className="trip-intro">
-        <h1 className="trip-title">Personalize your travel planning with Trips</h1>
-        <p className="trip-subtitle">
-          With Trips, you get two trip planners in one—use AI to build your trip or build it yourself.
-          Either way, there’s more than 8 million spots to discover, with over one billion traveler
-          reviews and opinions to guide you.
-        </p>
-        <div className="trip-icons">
-          <div className="icon-block">
-            <FiCompass className="icon" />
-            <p>Get personalized recs with AI</p>
-          </div>
-          <div className="icon-block">
-            <FiHeart className="icon" />
-            <p>Save hotels, restaurants, and more</p>
-          </div>
-          <div className="icon-block">
-            <FiMap className="icon" />
-            <p>See your saves on your custom map</p>
-          </div>
-          <div className="icon-block">
-            <FiUsers className="icon" />
-            <p>Share and collab with your travel buds</p>
-          </div>
+      <section
+        className="hero-merged"
+        style={{ backgroundImage: `url(${flag})` }} // ← your flag image import
+      >
+        <div className="hero-overlay"></div>
+        <div className="hero-content">
+            <h1>Plan your next adventure</h1>
+        <p>Discover personalized trip recommendations or build your own itinerary.</p>
+             <div className="hero-buttons">
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={() => navigate("/realChat")}
+          >
+            AI Trip Builder
+          </button>
+          <button
+            type="button"
+            className="btn btn-light"
+            onClick={() => navigate("/chat")} // or your manual builder route
+          >
+            Build Your Own
+          </button>
         </div>
-      </section>
-      
 
-      <section className="trip-options">
-        <div className="trip-card ai-card">
-          <img src={fantasyImg} alt="AI Trip Builder" />
-          <h3>Start a trip in minutes with AI</h3>
-          <p>
-            Answer four short questions and get personalized recs with AI, guided by traveler opinions.
-          </p>
-          <button onClick={() => navigate('/realChat')}>
-            Try AI trip builder
-          </button>
-        </div>
-        <div className="trip-card manual-card">
-          <img src={airportImg} alt="Manual Trip Builder" />
-          <h3>Build your trip from scratch</h3>
-          <p>
-            Browse top destinations, restaurants, and things to do and save your faves as you go.
-          </p>
-          <button onClick={() => navigate('/chat')}>
-            Do it yourself
-          </button>
         </div>
       </section>
 
       <section className="popular-trips">
         <h2>Traveler-Favorite Destinations</h2>
-        <div className="city-cards">
-          {visibleCities.map((city, i) => (
-            <div 
-              className="city-card" 
-              key={i} 
-              onClick={() => {
-                setSelectedCity(city);
-                setPaymentCompleted(false);
-                setShowPaymentModal(false);
-                setShowIntroPopup(true);
-              }} 
-              style={{ cursor: 'pointer' }}
-            >
-              <img src={city.img} alt={city.name} />
-              <p>{city.name}</p>
-            </div>
-          ))}
+
+        {/* Scrollable row with arrows */}
+        <div className="city-scroll-wrapper">
+          <button
+            className="scroll-btn left"
+            aria-label="Scroll left"
+            onClick={() => scrollByCards(-1)}
+          >
+            <FiChevronLeft />
+          </button>
+
+          <div className="city-row" ref={rowRef}>
+            {visibleCities.map((city, i) => (
+              <div
+                className="city-card"
+                key={i}
+                onClick={() => {
+                  setSelectedCity(city);
+                  setPaymentCompleted(false);
+                  setShowPaymentModal(false);
+                  setShowIntroPopup(true);
+                }}
+              >
+                <img src={city.img} alt={city.name} />
+             <div className="city-card-text">
+  <h3>{city.name}</h3>
+  <p className="muted">{city.summary}</p>
+</div>
+
+              </div>
+            ))}
+          </div>
+
+          <button
+            className="scroll-btn right"
+            aria-label="Scroll right"
+            onClick={() => scrollByCards(1)}
+          >
+            <FiChevronRight />
+          </button>
         </div>
       </section>
 {selectedCity && showIntroPopup && (

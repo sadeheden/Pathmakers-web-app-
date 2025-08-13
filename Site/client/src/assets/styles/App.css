@@ -4,7 +4,7 @@
   --brand-hover: #003b5c;
   --text: #0f172a;
   --muted: rgba(51, 65, 85, 0.9);
-  --radius-pill: 30px;
+  --radius-pill: 10px;
   --btn-font-size: 18px;
   --btn-pad-y: 10px;
   --btn-pad-x: 12px;
@@ -64,8 +64,8 @@ h1, .title, .title-app {
 .floating-support-btn,
 .floating-support-btn-app {                 /* make both classes identical */
   position: fixed;
-  bottom: 50px;
-  left: 20px;
+  bottom: 40px;
+  right: 20px;
   z-index: 999;
   background-color: var(--brand);
   color: #fff;
