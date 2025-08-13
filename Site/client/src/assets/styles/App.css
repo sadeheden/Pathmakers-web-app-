@@ -36,9 +36,19 @@ h1, .title, .title-app {
   margin-bottom: 20px;
 }
 
+/* Tablet down */
+@media (max-width: 1024px) {
+  h1, .title, .title-app {
+    font-size: 2.2rem;
+    margin-bottom: 16px;
+  }
+}
+
+/* Mobile down */
 @media (max-width: 768px) {
   h1, .title, .title-app {
     font-size: 2rem;
+    margin-bottom: 14px;
   }
 }
 
@@ -58,11 +68,30 @@ h1, .title, .title-app {
   box-shadow: var(--shadow-sm);
   transition: background-color .2s ease, transform .2s ease;
 }
-.btn:hover { background: var(--brand-hover); transform: translateY(-2px); }
+.btn:hover {
+  background: var(--brand-hover);
+  transform: translateY(-2px);
+}
+
+/* Tablet down */
+@media (max-width: 1024px) {
+  .btn {
+    font-size: 16px;
+    padding: 9px 11px;
+  }
+}
+
+/* Mobile down */
+@media (max-width: 768px) {
+  .btn {
+    font-size: 15px;
+    padding: 8px 10px;
+  }
+}
 
 /* ===== Floating Support Button (used everywhere) ===== */
 .floating-support-btn,
-.floating-support-btn-app {                 /* make both classes identical */
+.floating-support-btn-app {
   position: fixed;
   bottom: 20px;
   right: 20px;
@@ -87,9 +116,32 @@ h1, .title, .title-app {
   background-color: var(--brand-hover);
 }
 
-/* Optional label rule (kept simple/always visible) */
+/* Optional label rule */
 .floating-support-btn .btn-label,
 .floating-support-btn-app .btn-label {
   opacity: 1;
   margin: 0;
+}
+
+/* Tablet down */
+@media (max-width: 1024px) {
+  .floating-support-btn,
+  .floating-support-btn-app {
+    font-size: 16px;
+    padding: 9px 11px;
+    bottom: 18px;
+    right: 18px;
+  }
+}
+
+/* Mobile down */
+@media (max-width: 768px) {
+  .floating-support-btn,
+  .floating-support-btn-app {
+    font-size: 15px;
+    padding: 8px 10px;
+    bottom: 16px;
+    right: 16px;
+    border-radius: 8px;
+  }
 }

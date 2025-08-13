@@ -33,7 +33,7 @@ footer, .footer {
    =========================== */
 .hero-merged {
   position: relative;
-  height: 310px;
+  height: 475px;
   border-radius: var(--radius-xl);        /* rounder curl */
   background-size: cover;
   background-position: center;
@@ -235,11 +235,7 @@ footer, .footer {
 .city-row::-webkit-scrollbar { display: none; }
 
 /* Optional: if you still see a hairline, tuck the scroller */
-.city-scroll-wrapper {
-  padding-bottom: 6px;     /* gives the hidden scrollbar space */
-  margin-bottom: -6px;     /* pulls layout back up so no visible band */
-}
-
+.city-scroll-wrapper { position: relative; }
 /* Make the arrows sit inside the wrapper a bit */
 .scroll-btn.left  { left: 10px;  }
 .scroll-btn.right { right: 10px; }
@@ -648,16 +644,14 @@ footer, .footer {
 .city-scroll-wrapper {
   position: relative;
 }
-
 .city-row {
   display: flex;
-  gap: 24px;
+  gap: 24px;                 /* ← matches GAP in JS */
   overflow-x: auto;
-    scrollbar-width: none; 
- 
+  overflow-y: hidden;
   scroll-snap-type: x mandatory;
   -webkit-overflow-scrolling: touch;
-  
+  scrollbar-width: none;
 }
 
 /* Hide/soften scrollbar on WebKit */
@@ -676,12 +670,12 @@ footer, .footer {
 
 /* Card matches the screenshot: fixed width, image rounded, text under */
 .city-card {
-  flex: 0 0 320px;                 /* ← keep in sync with CARD_WIDTH in JS */
+  flex: 0 0 240px;           /* ← matches CARD_WIDTH in JS */
   border-radius: calc(var(--radius-pill) * 2);
   background: #fff;
   box-shadow: var(--shadow-sm);
   scroll-snap-align: start;
-  overflow: hidden;                 /* clip rounded corners */
+  overflow: hidden;
   cursor: pointer;
   transition: transform .18s ease, box-shadow .18s ease;
 }
@@ -696,7 +690,6 @@ footer, .footer {
   object-fit: cover;
   display: block;
 }
-
 /* Text block under the image */
 .city-card-text {
   padding: 14px 14px 18px 14px;
@@ -787,4 +780,58 @@ footer, .footer {
 
 .floating-support-btn:active {
   transform: translateY(0);
+}
+/* Add this near the bottom of main.css */
+
+/* Tablet optimizations for modals */
+@media (max-width: 900px) and (min-width: 561px) {
+  .modal-content {
+    width: 85vw;              /* narrower than 92vw for balance */
+    max-width: 480px;         /* avoid full stretch */
+    padding: 1.2rem;          /* reduce overall padding */
+  }
+  .modal-content h2 {
+    font-size: 1.4rem;        /* slightly smaller headings */
+  }
+  .modal-content p {
+    font-size: 0.95rem;
+  }
+}
+
+/* ===========================
+   Chat Options Boxes
+   =========================== */
+.chat-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 5.5rem;
+  margin: 2.5rem auto;
+  max-width: 1200px;
+  padding: 0 1rem;
+}
+
+.chat-card {
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  padding: 4.8rem 2.5rem;
+  text-align: center;
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.25s, box-shadow 0.25s;
+}
+
+.chat-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+}
+
+.chat-card h3 {
+  font-size: 1.9rem;
+  margin-bottom: 0.75rem;
+  color: var(--brand);
+}
+
+.chat-card p {
+  color: var(--muted);
+  margin-bottom: 1.2rem;
+  line-height: 1.4;
 }
