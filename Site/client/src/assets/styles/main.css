@@ -14,13 +14,18 @@ html, body {
   --radius-xl: calc(var(--radius-lg) * 2);      /* extra round (hero) */
   --bg-card: #fff;
   --bg-page: #f9fafb;
+  
 }
 
 /* Wrapper */
 .trips-page {
   max-width: 1300px;
   margin: 0 auto;
-  padding: 0 1rem 4rem;
+  padding: 0 1rem 0rem;
+  
+}
+footer, .footer {
+  margin-top: 0 !important;
 }
 
 /* ===========================
@@ -183,7 +188,7 @@ html, body {
 /* ===========================
    Popular Destinations
    =========================== */
-.popular-trips { margin: 0 0 4rem 3rem; }
+.popular-trips { margin: 0 0 0rem 3rem; }
 .popular-trips h2 {
   font-size: 1.5rem;
   margin-bottom: 2.2rem;
@@ -202,42 +207,56 @@ html, body {
 }
 
 /* >>> Rounder city cards (and matching image corners) <<< */
+/* ===== Fix: unify city card sizing to match JS (CARD_WIDTH = 240) ===== */
 .city-card {
-  flex: 0 0 auto;
-  width: 180px; /* smaller than 320px */
-  margin-right: 10px;
+  /* remove any earlier width rules by enforcing flex-basis here */
+  flex: 0 0 240px !important;   /* keep in sync with CARD_WIDTH */
+  margin-right: 0; 
+  margin-bottom: 5%;             /* gap handles spacing */
   border-radius: 12px;
   overflow: hidden;
-  background: white;
+  background: #fff;
   box-shadow: 0 4px 12px rgba(0,0,0,0.08);
   cursor: pointer;
-  transition: transform 0.2s ease;
+  transition: transform .18s ease, box-shadow .18s ease;
 }
 
+.city-row {
+  display: flex;
+  gap: 16px;               /* a bit less cramped */
+  overflow-x: auto;
+  overflow-y: hidden;      /* prevent 1px vertical scroll artifacts */
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;   /* Firefox hide */
+}
+
+/* Hide scrollbar (Chrome/Safari/Edge) */
+.city-row::-webkit-scrollbar { display: none; }
+
+/* Optional: if you still see a hairline, tuck the scroller */
+.city-scroll-wrapper {
+  padding-bottom: 6px;     /* gives the hidden scrollbar space */
+  margin-bottom: -6px;     /* pulls layout back up so no visible band */
+}
+
+/* Make the arrows sit inside the wrapper a bit */
+.scroll-btn.left  { left: 10px;  }
+.scroll-btn.right { right: 10px; }
+
+/* Keep the smaller card visuals */
 .city-card img {
   width: 100%;
-  height: 120px; /* reduced height */
+  height: 120px;
   object-fit: cover;
+  display: block;
 }
 
 .city-card-text {
-  padding: 10px 12px 14px 12px;
+  padding: 10px 12px 14px;
 }
-
-.city-card h3 {
-  font-size: 1rem;
-  margin-bottom: 4px;
-}
-
-.city-card p {
-  font-size: 0.85rem;
-}
-
-.city-card:hover {
-  box-shadow: 0 6px 20px rgba(0,0,0,0.10);
-  transform: translateY(-4px) scale(1.03);
-  background: #f6edff;
-}
+.city-card-text h3 { font-size: 16px; margin: 0 0 4px; }
+.city-card-text .muted { font-size: 13px; }
 
 /* ===========================
    Modal (single definition)
