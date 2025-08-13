@@ -438,12 +438,7 @@ const Main = () => {
             <p><strong>Return Date:</strong> {returnDate}</p>
             <p><strong>Total Price:</strong> ${totalPrice}</p>
             <p>Thank you for your purchase! Your trip is confirmed.</p>
-            <button onClick={() => {
-              setSelectedCity(null);
-              setPaymentCompleted(false);
-            }}>
-              Close
-            </button>
+           
           </div>
         </div>
       )}

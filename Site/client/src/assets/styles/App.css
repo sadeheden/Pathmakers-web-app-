@@ -64,7 +64,7 @@ h1, .title, .title-app {
 .floating-support-btn,
 .floating-support-btn-app {                 /* make both classes identical */
   position: fixed;
-  bottom: 40px;
+  bottom: 20px;
   right: 20px;
   z-index: 999;
   background-color: var(--brand);
