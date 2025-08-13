@@ -39,12 +39,13 @@ const VideoExplanation = () => {
                     </button>
                 </div>
             </div>
-            <button 
+<button 
   className="floating-support-btn"
   onClick={() => navigate('/support')}
 >
-  💬 Support
+  ❔
 </button>
+
         </div>
     );
 };

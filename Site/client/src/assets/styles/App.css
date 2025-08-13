@@ -90,58 +90,46 @@ h1, .title, .title-app {
 }
 
 /* ===== Floating Support Button (used everywhere) ===== */
+/* ===== Floating Support Icon Button (Blue) ===== */
 .floating-support-btn,
 .floating-support-btn-app {
   position: fixed;
-  bottom: 20px;
-  right: 20px;
+  bottom: 80px; /* distance from bottom */
+  right: 24px;
   z-index: 999;
-  background-color: var(--brand);
+
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+
+  /* Blue gradient background */
+  background: linear-gradient(135deg, #1e90ff 0%, #004e75 100%);
   color: #fff;
-  border: none;
-  border-radius: var(--radius-pill);
-  padding: var(--btn-pad-y) var(--btn-pad-x);
-  font-size: var(--btn-font-size);
-  font-weight: 600;
-  cursor: pointer;
-  box-shadow: var(--shadow-sm);
-  white-space: nowrap;
-  width: auto;
-  display: inline-flex;
+
+  display: flex;
   align-items: center;
-  gap: 8px;
+  justify-content: center;
+
+  font-size: 22px; /* icon size */
+  border: none;
+  cursor: pointer;
+
+  box-shadow: 
+    0 8px 20px rgba(30, 144, 255, 0.3),
+    0 4px 10px rgba(0, 0, 0, 0.1);
+
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
+
 .floating-support-btn:hover,
 .floating-support-btn-app:hover {
-  background-color: var(--brand-hover);
+  transform: translateY(-2px);
+  box-shadow: 
+    0 12px 28px rgba(30, 144, 255, 0.4),
+    0 6px 16px rgba(0, 0, 0, 0.15);
 }
 
-/* Optional label rule */
-.floating-support-btn .btn-label,
-.floating-support-btn-app .btn-label {
-  opacity: 1;
-  margin: 0;
-}
-
-/* Tablet down */
-@media (max-width: 1024px) {
-  .floating-support-btn,
-  .floating-support-btn-app {
-    font-size: 16px;
-    padding: 9px 11px;
-    bottom: 18px;
-    right: 18px;
-  }
-}
-
-/* Mobile down */
-@media (max-width: 768px) {
-  .floating-support-btn,
-  .floating-support-btn-app {
-    font-size: 15px;
-    padding: 8px 10px;
-    bottom: 16px;
-    right: 16px;
-    border-radius: 8px;
-  }
+.floating-support-btn:active,
+.floating-support-btn-app:active {
+  transform: scale(0.95);
 }

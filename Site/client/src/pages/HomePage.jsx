@@ -27,12 +27,13 @@ export default function HomePage() {
             </button>
           </div>
         </div>
-        <button 
+ <button 
   className="floating-support-btn"
   onClick={() => navigate('/support')}
 >
-  💬 Support
+  ❔
 </button>
+
       </div>
     </div>
   );
