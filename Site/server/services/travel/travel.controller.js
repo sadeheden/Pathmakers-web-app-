@@ -138,7 +138,38 @@ export const deleteHotel = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+export const addHotelsToCity = async (req, res) => {
+  try {
+    const db = await connectDB();
+    const { city, hotels } = req.body; // hotels זה מערך [{name, price}, ...]
 
+    if (!city || !hotels || hotels.length === 0) {
+      return res.status(400).json({ error: "City and hotels are required" });
+    }
+
+    // חיפוש אם העיר קיימת
+    const existingCity = await db.collection("hotels").findOne({ city });
+
+    if (existingCity) {
+      // אם העיר קיימת, דחוף את כל המלונות החדשים למערך הקיים
+      await db.collection("hotels").updateOne(
+        { city },
+        { $push: { hotels: { $each: hotels } } }
+      );
+      const updatedCity = await db.collection("hotels").findOne({ city });
+      return res.json(updatedCity);
+    }
+
+    // אם העיר לא קיימת, צור מסמך חדש
+    const newCity = { city, hotels };
+    const result = await db.collection("hotels").insertOne(newCity);
+    newCity._id = result.insertedId;
+    res.status(201).json(newCity);
+
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
 // Flights
 export const getFlights = async (req, res) => {
   try {
@@ -180,6 +211,41 @@ export const deleteFlight = async (req, res) => {
     }
     
     res.json({ message: "Flight deleted successfully" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+export const addFlightsToCity = async (req, res) => {
+  try {
+    const db = await connectDB();
+    const { city, flights } = req.body; // flights = [{ name, price, duration }, ...]
+
+    // בדיקה בסיסית
+    if (!city || !flights || flights.length === 0) {
+      return res.status(400).json({ error: "City and flights are required" });
+    }
+
+    // בודק אם העיר כבר קיימת ב-collection
+    const existingCity = await db.collection("flights").findOne({ city });
+
+    if (existingCity) {
+      // אם העיר קיימת, מוסיף את הטיסות החדשות למערך הקיים
+      await db.collection("flights").updateOne(
+        { city },
+        { $push: { flights: { $each: flights } } }
+      );
+
+      // מחזיר את המסמך המעודכן
+      const updatedCity = await db.collection("flights").findOne({ city });
+      return res.json(updatedCity);
+    }
+
+    // אם העיר לא קיימת, יוצר מסמך חדש
+    const newCity = { city, flights };
+    const result = await db.collection("flights").insertOne(newCity);
+    newCity._id = result.insertedId;
+    res.status(201).json(newCity);
+
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -226,6 +292,38 @@ export const deleteAttraction = async (req, res) => {
     }
     
     res.json({ message: "Attraction deleted successfully" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+export const addAttractionsToCity = async (req, res) => {
+  try {
+    const db = await connectDB();
+    const { city, attractions } = req.body; // attractions = [{name, openingHours, price}, ...]
+
+    if (!city || !attractions || attractions.length === 0) {
+      return res.status(400).json({ error: "City and attractions are required" });
+    }
+
+    const existingCity = await db.collection("attractions").findOne({ city });
+
+    if (existingCity) {
+      // הוסף למערך הקיים
+      await db.collection("hotels").updateOne(
+        { city },
+        { $push: { attractions: { $each: attractions } } }
+      );
+      const updatedCity = await db.collection("attractions").findOne({ city });
+      return res.json(updatedCity);
+    }
+
+    // אם העיר לא קיימת, צור מסמך חדש
+    const newCity = { city, attractions };
+    const result = await db.collection("attractions").insertOne(newCity);
+    newCity._id = result.insertedId;
+    res.status(201).json(newCity);
+
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

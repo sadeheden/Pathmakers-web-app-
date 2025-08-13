@@ -10,9 +10,12 @@ import {
   getFlights,
   addFlight,
   deleteFlight,
+  addFlightsToCity,
   getAttractions,
   addAttraction,
-  deleteAttraction
+  addHotelsToCity,
+  deleteAttraction,
+  addAttractionsToCity
 } from "./travel.controller.js"; 
 
 const router = express.Router();
@@ -27,15 +30,17 @@ router.delete("/cities/:id", deleteCity);
 router.get("/hotels", getHotels);
 router.post("/hotels", addHotel);
 router.delete("/hotels/:id", deleteHotel);
+router.post("/add-hotels", addHotelsToCity);
 
 // Flights
 router.get("/flights", getFlights);
 router.post("/flights", addFlight);
 router.delete("/flights/:id", deleteFlight);
-
+router.post("/add-flights", addFlightsToCity);
 // Attractions
 router.get("/attractions", getAttractions);
 router.post("/attractions", addAttraction);
 router.delete("/attractions/:id", deleteAttraction);
+router.post("/add-attractions", addAttractionsToCity);
 
 export default router;

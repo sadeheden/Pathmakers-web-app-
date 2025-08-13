@@ -48,7 +48,7 @@ import managerRoutes from './services/manager/manager.routes.js';
 import travelRoutes from './services/travel/travel.routes.js';
 
 // ❗ Keep ONLY ONE orders router import, and it should be the plural path that contains /resolve
-import ordersRouter from './services/orders/order.router.js';  // <-- use this one
+import ordersRouter from './services/order/order.router.js';  // <-- use this one
 
 app.use('/api/cities', citiesRouter);
 app.use('/api/attractions', attractionRoutes);
@@ -58,12 +58,11 @@ app.use('/api/auth', authRouter);
 app.use('/api/upload', uploadRouter);
 app.use('/api/manager', managerRoutes);
 app.use('/api/travel', travelRoutes);
-
-// Mount orders router ONCE
+app.use('/api/cities', travelRoutes);
 app.use('/api/order', ordersRouter);
 
-// ---------- 404 ----------
-app.use((req, res) => {
+// 🛑 טיפול ב-404
+app.use((req, res, next) => {
   res.status(404).json({ error: '🔍 Route not found', path: req.originalUrl });
 });
 

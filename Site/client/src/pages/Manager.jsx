@@ -64,6 +64,28 @@ const styles = {
     fontWeight: 800,
     fontSize: 16,
   },
+  addBtn: {
+    backgroundColor: "#10b981",
+    color: "#fff",
+    padding: "10px 16px",
+    border: "none",
+    borderRadius: "8px",
+    cursor: "pointer",
+    fontWeight: 600,
+    fontSize: 14,
+    marginTop: "10px",
+  },
+  removeBtn: {
+    backgroundColor: "#ef4444",
+    color: "#fff",
+    padding: "8px 12px",
+    border: "none",
+    borderRadius: "6px",
+    cursor: "pointer",
+    fontWeight: 600,
+    fontSize: 12,
+    marginLeft: "10px",
+  },
   gridWrap: {
     display: "grid",
     gridTemplateColumns: "1fr 1fr",
@@ -118,6 +140,24 @@ const styles = {
     borderRadius: 999,
     fontWeight: 800,
     fontSize: 14,
+  },
+  hotelItem: {
+    display: "flex",
+    alignItems: "center",
+    gap: "10px",
+    padding: "10px",
+    backgroundColor: "#f8f9fa",
+    borderRadius: "8px",
+    marginBottom: "10px",
+  },
+  attractionItem: {
+    display: "flex",
+    alignItems: "center",
+    gap: "10px",
+    padding: "10px",
+    backgroundColor: "#f8f9fa",
+    borderRadius: "8px",
+    marginBottom: "10px",
   },
 };
 
@@ -280,7 +320,7 @@ const Manager = () => {
     );
   };
 
-  // ✅ ManageDataUpdateBox מתוקן - ללא יצירת מערכים!
+  // ✅ ManageDataUpdateBox - תמיכה במערכי מלונות ואטרקציות
   function ManageDataUpdateBox() {
     const [step, setStep] = useState("choose");
     const [collection, setCollection] = useState(null);
@@ -290,14 +330,11 @@ const Manager = () => {
     const [formData, setFormData] = useState({
       cityName: "",
       city: "",
-      hotelName: "", 
-      hotelPrice: "",
+      hotels: [{ name: "", price: "" }], // מערך מלונות
+      attractions: [{ name: "", openingHours: "", price: "" }], // מערך אטרקציות
       flightName: "", 
       flightPrice: "", 
       flightDuration: "",
-      attractionName: "", 
-      attractionPrice: "",
-      openingHours: "",
     });
 
     const pick = (key) => {
@@ -308,22 +345,65 @@ const Manager = () => {
 
     const handleChange = (e) => {
       const { name, value } = e.target;
-      console.log("handleChange:", name, value, typeof value);
+      console.log("handleChange:", name, value);
       setFormData((prev) => ({ ...prev, [name]: value }));
+    };
+
+    // טיפול בשינוי מלון ספציפי
+    const handleHotelChange = (index, field, value) => {
+      const newHotels = [...formData.hotels];
+      newHotels[index][field] = value;
+      setFormData(prev => ({ ...prev, hotels: newHotels }));
+    };
+
+    // הוספת מלון חדש
+    const addHotel = () => {
+      setFormData(prev => ({
+        ...prev,
+        hotels: [...prev.hotels, { name: "", price: "" }]
+      }));
+    };
+
+    // הסרת מלון
+    const removeHotel = (index) => {
+      if (formData.hotels.length > 1) {
+        const newHotels = formData.hotels.filter((_, i) => i !== index);
+        setFormData(prev => ({ ...prev, hotels: newHotels }));
+      }
+    };
+
+    // טיפול בשינוי אטרקציה ספציפית
+    const handleAttractionChange = (index, field, value) => {
+      const newAttractions = [...formData.attractions];
+      newAttractions[index][field] = value;
+      setFormData(prev => ({ ...prev, attractions: newAttractions }));
+    };
+
+    // הוספת אטרקציה חדשה
+    const addAttraction = () => {
+      setFormData(prev => ({
+        ...prev,
+        attractions: [...prev.attractions, { name: "", openingHours: "", price: "" }]
+      }));
+    };
+
+    // הסרת אטרקציה
+    const removeAttraction = (index) => {
+      if (formData.attractions.length > 1) {
+        const newAttractions = formData.attractions.filter((_, i) => i !== index);
+        setFormData(prev => ({ ...prev, attractions: newAttractions }));
+      }
     };
 
     const handleBack = () => {
       setFormData({
         cityName: "",
         city: "",
-        hotelName: "", 
-        hotelPrice: "",
+        hotels: [{ name: "", price: "" }],
+        attractions: [{ name: "", openingHours: "", price: "" }],
         flightName: "", 
         flightPrice: "", 
         flightDuration: "",
-        attractionName: "", 
-        attractionPrice: "",
-        openingHours: "",
       });
       setCollection(null);
       setStep("choose");
@@ -339,55 +419,82 @@ const Manager = () => {
           case "cities":
             if (!formData.cityName) throw new Error("City name is required");
             url = "http://localhost:4000/api/cities";
-            const cityName = formData.cityName.trim();
-            
-            payload = { city: cityName };
-            console.log("Sending payload for city:", payload);
+            payload = { city: formData.cityName.trim() };
             break;
 
           case "hotels":
-            if (!formData.city || !formData.hotelName || !formData.hotelPrice)
-              throw new Error("City, name and price are required");
-            url = "http://localhost:4000/api/hotels";
+            if (!formData.city) throw new Error("City is required");
+            
+            // בדיקה שיש לפחות מלון אחד עם נתונים
+            const validHotels = formData.hotels.filter(h => h.name.trim() && h.price);
+            if (validHotels.length === 0) {
+              throw new Error("At least one hotel with name and price is required");
+            }
+
+            url = "http://localhost:4000/api/cities/add-hotels";
             payload = {
               city: formData.city.trim(),
-              name: formData.hotelName.trim(),
-              price: parseFloat(formData.hotelPrice),
-              stars: 3,
+              hotels: validHotels.map(h => ({
+                name: h.name.trim(),
+                price: parseFloat(h.price)
+              }))
             };
             break;
 
-          case "flights":
-            if (!formData.city || !formData.flightName || !formData.flightPrice || !formData.flightDuration)
-              throw new Error("City, name, price and duration are required");
-            url = "http://localhost:4000/api/flights";
-            payload = {
-              city: formData.city.trim(),
-              airline: formData.flightName.trim(),
-              price: parseFloat(formData.flightPrice),
-              duration: formData.flightDuration.trim(),
-              departureTime: new Date().toISOString(),
-            };
-            break;
+         case "attractions":
+          if (!formData.city) throw new Error("City is required");
 
-          case "attractions":
-            if (!formData.city || !formData.attractionName || !formData.openingHours || !formData.attractionPrice)
-              throw new Error("City, name, opening hours, and price are required");
-            url = "http://localhost:4000/api/attractions";
-            payload = {
-              city: formData.city.trim(),
-              name: formData.attractionName.trim(),
-              openingHours: formData.openingHours.trim(),
-              price: parseFloat(formData.attractionPrice),
-            };
-            break;
+          // בדיקה שיש לפחות אטרקציה אחת עם כל הפרטים
+          const validAttractions = formData.attractions.filter(
+            a => a.name?.trim() && a.openingHours?.trim() && a.price != null
+          );
+
+          if (validAttractions.length === 0) {
+            throw new Error("At least one attraction with all details is required");
+          }
+
+          url = "http://localhost:4000/api/cities/add-attractions";
+          payload = {
+            city: formData.city.trim(),
+            attractions: validAttractions.map(a => ({
+              name: a.name.trim(),
+              openingHours: a.openingHours.trim(),
+              price: parseFloat(a.price)
+            }))
+          };
+          break;
+case "flights":
+  if (!formData.city) throw new Error("City is required");
+
+  // ודא שהמערך קיים
+  const flightsArray = formData.flights || [];
+
+  // בדיקה שיש לפחות טיסה אחת עם כל הפרטים
+  const validFlights = flightsArray.filter(
+    f => f.name?.trim() && f.price != null && f.duration?.trim()
+  );
+
+  if (validFlights.length === 0) {
+    throw new Error("At least one flight with all details is required");
+  }
+
+  url = "http://localhost:4000/api/cities/add-flights";
+  payload = {
+    city: formData.city.trim(),
+    flights: validFlights.map(f => ({
+      name: f.name.trim(),
+      price: parseFloat(f.price),
+      duration: f.duration.trim()
+    }))
+  };
+  break;
+
 
           default:
             throw new Error("Pick a collection to update");
         }
 
         console.log("Sending payload:", payload);
-        console.log("✅ Payload type check:", typeof payload.city, payload.city);
         
         const res = await fetch(url, {
           method: "POST",
@@ -434,7 +541,7 @@ const Manager = () => {
               <div style={{ ...styles.cardIcon, background: "linear-gradient(135deg,#60a5fa,#2563eb)" }}>C</div>
               <div style={styles.cardBody}>
                 <div style={styles.cardTitle}>Cities</div>
-                <div style={styles.cardDesc}>Add a new city (simple)</div>
+                <div style={styles.cardDesc}>Add a new city</div>
               </div>
             </div>
 
@@ -450,7 +557,23 @@ const Manager = () => {
               <div style={{ ...styles.cardIcon, background: "linear-gradient(135deg,#34d399,#059669)" }}>H</div>
               <div style={styles.cardBody}>
                 <div style={styles.cardTitle}>Hotels</div>
-                <div style={styles.cardDesc}>Add a hotel (name, city, price)</div>
+                <div style={styles.cardDesc}>Add multiple hotels to a city</div>
+              </div>
+            </div>
+
+            <div
+              style={styles.card}
+              onClick={() => pick("attractions")}
+              onMouseEnter={(e) => Object.assign(e.currentTarget.style, styles.cardHover)}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = "";
+                e.currentTarget.style.boxShadow = styles.card.boxShadow;
+              }}
+            >
+              <div style={{ ...styles.cardIcon, background: "linear-gradient(135deg,#f472b6,#db2777)" }}>A</div>
+              <div style={styles.cardBody}>
+                <div style={styles.cardTitle}>Attractions</div>
+                <div style={styles.cardDesc}>Add multiple attractions to a city</div>
               </div>
             </div>
 
@@ -469,22 +592,6 @@ const Manager = () => {
                 <div style={styles.cardDesc}>Add a flight (name, city, price, duration)</div>
               </div>
             </div>
-
-            <div
-              style={styles.card}
-              onClick={() => pick("attractions")}
-              onMouseEnter={(e) => Object.assign(e.currentTarget.style, styles.cardHover)}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = "";
-                e.currentTarget.style.boxShadow = styles.card.boxShadow;
-              }}
-            >
-              <div style={{ ...styles.cardIcon, background: "linear-gradient(135deg,#f472b6,#db2777)" }}>A</div>
-              <div style={styles.cardBody}>
-                <div style={styles.cardTitle}>Attractions</div>
-                <div style={styles.cardDesc}>Add an attraction (name, city, hours, price)</div>
-              </div>
-            </div>
           </div>
         </div>
       );
@@ -498,12 +605,12 @@ const Manager = () => {
           {saved && <div style={styles.successChip}>✓ Saved</div>}
         </div>
 
-        <div style={{ marginBottom: 8, fontWeight: 700 }}>
+        <div style={{ marginBottom: 16, fontWeight: 700, fontSize: 18 }}>
           Update: {collection?.[0].toUpperCase() + collection?.slice(1)}
         </div>
 
-        <div style={styles.form}>
-          {collection === "cities" && (
+        {collection === "cities" && (
+          <div style={styles.form}>
             <input 
               name="cityName" 
               placeholder="City name" 
@@ -511,103 +618,173 @@ const Manager = () => {
               value={formData.cityName} 
               onChange={handleChange} 
             />        
-          )}
+          </div>
+        )}
 
-          {collection === "hotels" && (
-            <>
+        {collection === "hotels" && (
+          <div>
+            <div style={styles.form}>
               <input 
                 name="city" 
-                placeholder="City" 
-                style={styles.input}
-                value={formData.city || ""} 
+                placeholder="City name" 
+                style={{ ...styles.input, gridColumn: "1 / -1" }}
+                value={formData.city} 
                 onChange={handleChange} 
               />
-              <input 
-                name="hotelName" 
-                placeholder="Hotel name" 
-                style={styles.input}
-                value={formData.hotelName} 
-                onChange={handleChange} 
-              />
-              <input 
-                name="hotelPrice" 
-                type="number" 
-                placeholder="Price" 
-                style={styles.input}
-                value={formData.hotelPrice} 
-                onChange={handleChange} 
-              />
-            </>
-          )}
+            </div>
+            
+            <div style={{ marginBottom: 20 }}>
+              <h4 style={{ marginBottom: 12, fontSize: 16, fontWeight: 600 }}>Hotels:</h4>
+              {formData.hotels.map((hotel, index) => (
+                <div key={index} style={styles.hotelItem}>
+                  <input
+                    placeholder="Hotel name"
+                    value={hotel.name}
+                    onChange={(e) => handleHotelChange(index, 'name', e.target.value)}
+                    style={{ ...styles.input, flex: 1, margin: 0 }}
+                  />
+                  <input
+                    placeholder="Price"
+                    type="number"
+                    value={hotel.price}
+                    onChange={(e) => handleHotelChange(index, 'price', e.target.value)}
+                    style={{ ...styles.input, flex: 1, margin: 0 }}
+                  />
+                  {formData.hotels.length > 1 && (
+                    <button
+                      onClick={() => removeHotel(index)}
+                      style={styles.removeBtn}
+                    >
+                      Remove
+                    </button>
+                  )}
+                </div>
+              ))}
+              <button onClick={addHotel} style={styles.addBtn}>
+                + Add Another Hotel
+              </button>
+            </div>
+          </div>
+        )}
 
-          {collection === "flights" && (
-            <>
+        {collection === "attractions" && (
+          <div>
+            <div style={styles.form}>
               <input 
                 name="city" 
-                placeholder="City" 
-                style={styles.input}
-                value={formData.city || ""} 
+                placeholder="City name" 
+                style={{ ...styles.input, gridColumn: "1 / -1" }}
+                value={formData.city} 
                 onChange={handleChange} 
               />
-              <input 
-                name="flightName" 
-                placeholder="Airline / Flight" 
-                style={styles.input}
-                value={formData.flightName} 
-                onChange={handleChange} 
-              />
-              <input 
-                name="flightPrice" 
-                type="number" 
-                placeholder="Price" 
-                style={styles.input}
-                value={formData.flightPrice} 
-                onChange={handleChange} 
-              />
-              <input 
-                name="flightDuration" 
-                placeholder='Duration (e.g. "8h 00m")' 
-                style={styles.input}
-                value={formData.flightDuration} 
-                onChange={handleChange} 
-              />
-            </>
-          )}
+            </div>
+            
+            <div style={{ marginBottom: 20 }}>
+              <h4 style={{ marginBottom: 12, fontSize: 16, fontWeight: 600 }}>Attractions:</h4>
+              {formData.attractions.map((attraction, index) => (
+                <div key={index} style={styles.attractionItem}>
+                  <input
+                    placeholder="Attraction name"
+                    value={attraction.name}
+                    onChange={(e) => handleAttractionChange(index, 'name', e.target.value)}
+                    style={{ ...styles.input, flex: 1, margin: 0 }}
+                  />
+                  <input
+                    placeholder="Opening hours (e.g. 09:00-17:00)"
+                    value={attraction.openingHours}
+                    onChange={(e) => handleAttractionChange(index, 'openingHours', e.target.value)}
+                    style={{ ...styles.input, flex: 1, margin: 0 }}
+                  />
+                  <input
+                    placeholder="Price"
+                    type="number"
+                    value={attraction.price}
+                    onChange={(e) => handleAttractionChange(index, 'price', e.target.value)}
+                    style={{ ...styles.input, flex: 1, margin: 0 }}
+                  />
+                  {formData.attractions.length > 1 && (
+                    <button
+                      onClick={() => removeAttraction(index)}
+                      style={styles.removeBtn}
+                    >
+                      Remove
+                    </button>
+                  )}
+                </div>
+              ))}
+              <button onClick={addAttraction} style={styles.addBtn}>
+                + Add Another Attraction
+              </button>
+            </div>
+          </div>
+        )}
 
-          {collection === "attractions" && (
-            <>
-              <input 
-                name="city" 
-                placeholder="City" 
-                style={styles.input}
-                value={formData.city || ""} 
-                onChange={handleChange} 
-              />
-              <input 
-                name="attractionName" 
-                placeholder="Attraction name" 
-                style={styles.input}
-                value={formData.attractionName} 
-                onChange={handleChange} 
-              />
-              <input 
-                name="attractionPrice" 
-                type="number" 
-                placeholder="Price" 
-                style={styles.input}
-                value={formData.attractionPrice} 
-                onChange={handleChange} 
-              />
-              <input 
-                name="openingHours" 
-                placeholder='Opening hours (e.g. "09:00-17:00")' 
-                style={styles.input}
-                value={formData.openingHours || ""} 
-                onChange={handleChange} 
-              />   
-            </>
-          )}
-        </div>
+   {collection === "flights" && (
+  <div style={styles.form}>
+    {/* City */}
+    <input 
+      name="city" 
+      placeholder="City" 
+      style={styles.input}
+      value={formData.city} 
+      onChange={handleChange} 
+    />
+
+    {/* טיסות */}
+    {formData.flights?.map((flight, index) => (
+      <div key={index} style={{ marginBottom: 10 }}>
+        <input
+          type="text"
+          placeholder="Airline / Flight"
+          style={styles.input}
+          value={flight.name}
+          onChange={e => {
+            const updatedFlights = [...formData.flights];
+            updatedFlights[index].name = e.target.value;
+            setFormData(prev => ({ ...prev, flights: updatedFlights }));
+          }}
+        />
+        <input
+          type="number"
+          placeholder="Price"
+          style={styles.input}
+          value={flight.price}
+          onChange={e => {
+            const updatedFlights = [...formData.flights];
+            updatedFlights[index].price = e.target.value;
+            setFormData(prev => ({ ...prev, flights: updatedFlights }));
+          }}
+        />
+        <input
+          type="text"
+          placeholder="Duration (e.g. 8h 00m)"
+          style={styles.input}
+          value={flight.duration}
+          onChange={e => {
+            const updatedFlights = [...formData.flights];
+            updatedFlights[index].duration = e.target.value;
+            setFormData(prev => ({ ...prev, flights: updatedFlights }));
+          }}
+        />
+      </div>
+    ))}
+
+    {/* כפתור הוספת טיסה חדשה */}
+    <button
+      type="button"
+      onClick={() => {
+        setFormData(prev => ({
+          ...prev,
+          flights: [...(prev.flights || []), { name: "", price: "", duration: "" }]
+        }));
+      }}
+      style={{ marginTop: 10 }}
+    >
+      Add Another Flight
+    </button>
+  </div>
+)}
+
 
         <button onClick={handleSave} style={styles.saveBtn} disabled={saving}>
           {saving ? "Saving..." : "Save"}
@@ -616,7 +793,7 @@ const Manager = () => {
     );
   }
 
-  // רינדור התוכן בהתאם ללשונית פעילה
+  // רינדור התוכן בהתאם للشונית פעילה
   const renderContent = () => {
     if (activeItem === "Manage Data") {
       return (
@@ -676,7 +853,7 @@ const Manager = () => {
                   }))}>
                     <XAxis dataKey="date" />
                     <YAxis />
-                    <Tooltip formatter={(value) => `$${value.toFixed(2)}`} />
+                    <Tooltip formatter={(value) => `${value.toFixed(2)}`} />
                     <Line
                       type="monotone"
                       dataKey="revenue"
