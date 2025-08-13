@@ -48,7 +48,7 @@ import managerRoutes from './services/manager/manager.routes.js';
 import travelRoutes from './services/travel/travel.routes.js';
 
 // ❗ Keep ONLY ONE orders router import, and it should be the plural path that contains /resolve
-import ordersRouter from './services/orders/order.router.js';  // <-- use this one
+import ordersRouter from './services/order/order.router.js';  // <-- use this one
 
 app.use('/api/cities', citiesRouter);
 app.use('/api/attractions', attractionRoutes);
