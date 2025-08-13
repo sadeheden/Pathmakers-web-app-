@@ -17,25 +17,29 @@ function toObjectIdOrString(id) {
 }
 
 export default class Order {
-  constructor(data = {}) {
-    // For user_id, we need ObjectId for database operations
-    this.user_id = toObjectIdOrString(data.user_id); // accept ObjectId or string
-    // City IDs should be ObjectIds
-    this.departure_city_id = toObjectIdOrString(data.departure_city_id);
-    this.destination_city_id = toObjectIdOrString(data.destination_city_id);
-    
-    // IMPORTANT: Store flight_id and hotel_id as strings to preserve compound format
-    // (e.g., "flight_id-2" instead of converting to ObjectId)
-    this.flight_id = data.flight_id; // Keep as string to preserve index
-    this.hotel_id = data.hotel_id;   // Keep as string to preserve index
-    
-    this.attractions = data.attractions || [];
-    this.transportation = data.transportation || null;
-    this.payment_method = data.payment_method || null;
-    this.total_price = data.total_price || 0;
-    this.created_at = data.created_at || new Date();
+ constructor(data = {}) {
+    // ...existing fields...
+    this.flight_name = data.flight_name || null;        // NEW
+    this.hotel_name = data.hotel_name || null;          // NEW
+    this.attraction_names = data.attraction_names || []; // NEW
   }
 
+  toObject() {
+    return {
+      // ...existing fields...
+      flight_name: this.flight_name,                // NEW
+      hotel_name: this.hotel_name,                  // NEW
+      attraction_names: this.attraction_names,      // NEW
+    };
+  }
+
+  async save() {
+    const orderDoc = {
+      // ...existing fields...
+      flight_name: this.flight_name,                // NEW
+      hotel_name: this.hotel_name,                  // NEW
+      attraction_names: this.attraction_names,      // NEW
+    };}
   static async findByUserId(userId) {
     return findOrdersByUserIdFromDb(userId);
   }

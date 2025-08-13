@@ -56,59 +56,58 @@ const PersonalArea = () => {
     };
 
     // ✅ Fetch orders function
-    const fetchOrders = async () => {
-        try {
-            const token = localStorage.getItem("authToken");
-            if (!token) {
-                console.error("⚠️ No token found, please log in again.");
-                return;
-            }
+   // ✅ Fetch orders function (correct)
+const fetchOrders = async () => {
+  try {
+    const token = localStorage.getItem("authToken");
+    if (!token) {
+      console.error("⚠️ No token found, please log in again.");
+      return;
+    }
 
-            const response = await fetch("http://localhost:4000/api/order", {
-                method: "GET",
-                headers: {
-                    "Authorization": `Bearer ${token}`,
-                    "Content-Type": "application/json"
-                }
-            });
+    const response = await fetch("http://localhost:4000/api/order", {
+      method: "GET",
+      headers: {
+        "Authorization": `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+    });
 
-            if (!response.ok) {
-                throw new Error(`HTTP error! Status: ${response.status}`);
-            }
+    if (!response.ok) {
+      throw new Error(`HTTP error! Status: ${response.status}`);
+    }
 
-            const data = await response.json();
-            console.log("✅ Orders received from API:", data);
+    const data = await response.json();
+    console.log("✅ Orders received from API:", data);
 
-            // Handle different response structures
-            let ordersArray = [];
-            if (Array.isArray(data)) {
-                ordersArray = data;
-            } else if (data.orders && Array.isArray(data.orders)) {
-                ordersArray = data.orders;
-            } else if (data.data && Array.isArray(data.data)) {
-                ordersArray = data.data;
-            }
+    // Normalize possible shapes
+    let ordersArray = [];
+    if (Array.isArray(data)) {
+      ordersArray = data;
+    } else if (Array.isArray(data?.orders)) {
+      ordersArray = data.orders;
+    } else if (Array.isArray(data?.data)) {
+      ordersArray = data.data;
+    }
 
-            // Filter unique orders based on Departure & Destination
-            const uniqueOrdersMap = new Map();
-            ordersArray.forEach(order => {
-                const key = `${order.departure_city_id}-${order.destination_city_id}`;
-                
-                // Keep only the most recent order for each route
-                if (!uniqueOrdersMap.has(key) || 
-                    new Date(uniqueOrdersMap.get(key).created_at || uniqueOrdersMap.get(key).createdAt) < 
-                    new Date(order.created_at || order.createdAt)) {
-                    uniqueOrdersMap.set(key, order);
-                }
-            });
+    // Keep most-recent per route
+    const uniqueOrdersMap = new Map();
+    ordersArray.forEach(order => {
+      const key = `${order.departure_city_id}-${order.destination_city_id}`;
+      const current = uniqueOrdersMap.get(key);
+      const existingDate = current ? new Date(current.created_at || current.createdAt) : 0;
+      const incomingDate = new Date(order.created_at || order.createdAt);
+      if (!current || existingDate < incomingDate) uniqueOrdersMap.set(key, order);
+    });
 
-            const uniqueOrders = Array.from(uniqueOrdersMap.values());
-            console.log("✅ Unique Orders:", uniqueOrders);
-            setOrders(uniqueOrders);
-        } catch (error) {
-            console.error("⚠️ Failed to fetch orders:", error.message);
-        }
-    };
+    const uniqueOrders = Array.from(uniqueOrdersMap.values());
+    console.log("✅ Unique Orders:", uniqueOrders);
+    setOrders(uniqueOrders);
+  } catch (error) {
+    console.error("⚠️ Failed to fetch orders:", error.message);
+  }
+};
+
 
     // ✅ Initial data fetch
     useEffect(() => {
