@@ -99,21 +99,27 @@ export async function resolveOrderRefs(req, res) {
 
     // 2) Safe helpers (never throw)
     const findCity = async (val) => {
-      try {
+            try {
         if (!val) return null;
-        if (looksLikeOid(val)) return await City.findById(val);
-        // Try common fields
-        return (
-          (await City.findOne({ slug: val })) ||
-          (await City.findOne({ city: val })) ||
-          (await City.findOne({ name: val }))
-        );
-      } catch (e) {
-        console.error("❌ City lookup failed:", e);
+        // If it's a 24-hex string, try by id first
+        if (looksLikeOid(val)) {
+          const byId = await City.findById(val);
+          if (byId) return byId;
+        }
+        // Fall back to your provided method (case-insensitive name match)
+        const byName = await City.findByName(val);
+        if (byName) return byName;
+        // Optional: try a naive slug→name fallback (e.g., "new-york" → "New York")
+        const maybeName = String(val).replace(/-/g, ' ');
+        if (maybeName && maybeName !== val) {
+          const byName2 = await City.findByName(maybeName);
+          if (byName2) return byName2;
+        }
         return null;
+      } catch (e) {
+        console.error("❌ City lookup failed:", e);        return null;
       }
     };
-
     const findFlight = async (val, dstId) => {
       try {
         if (!val) return { doc: null, index: 0 };
