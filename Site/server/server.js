@@ -62,7 +62,7 @@ app.use('/api/auth', authRouter);
 app.use('/api/order', orderRouter);
 app.use('/api/upload', uploadRouter);
 app.use('/api/manager', managerRoutes);
-app.use('/api', travelRoutes);
+app.use('/api/travel', travelRoutes);
 
 
 // 🛑 טיפול ב-404

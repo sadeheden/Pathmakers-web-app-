@@ -16,14 +16,8 @@ export const getCities = async (req, res) => {
 };
 
 // הוסף את זה בתחילת הפונקציה addCity לדיבוג:
-
 export const addCity = async (req, res) => {
-  try {
-    console.log("🔍 DEBUG: Received req.body:", JSON.stringify(req.body, null, 2));
-    console.log("🔍 DEBUG: Request headers:", req.headers);
-    console.log("🔍 DEBUG: Request method:", req.method);
-    console.log("🔍 DEBUG: Request URL:", req.url);
-    
+  try {   
     const db = await connectDB();
     
     // קבלת שם העיר מה-body
@@ -59,10 +53,7 @@ export const addCity = async (req, res) => {
     const createdCity = {
       _id: result.insertedId,
       city: cityName
-    };
-    
-    console.log("🔍 DEBUG: Returning to client:", JSON.stringify(createdCity, null, 2));
-    
+    };    
     res.status(201).json(createdCity);
   } catch (err) {
     console.error("❌ Error creating city:", err);
@@ -87,7 +78,6 @@ export const getCityByName = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
-
 export const deleteCity = async (req, res) => {
   try {
     const db = await connectDB();
