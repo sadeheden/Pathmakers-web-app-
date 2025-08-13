@@ -49,14 +49,13 @@ const DownloadApp = () => {
         </ul>
       </div>
 
-      <button
-        className="floating-support-btn-app"
-        onClick={() => navigate('/support')}
-        aria-label="Support chat"
-        title="Support"
-      >
-        💬 Support
-      </button>
+    <button 
+  className="floating-support-btn"
+  onClick={() => navigate('/support')}
+>
+  ❔
+</button>
+
     </div>
   );
 };
