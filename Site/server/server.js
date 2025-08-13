@@ -63,8 +63,7 @@ app.use('/api/order', orderRouter);
 app.use('/api/upload', uploadRouter);
 app.use('/api/manager', managerRoutes);
 app.use('/api/travel', travelRoutes);
-
-
+app.use('/api/cities', travelRoutes);
 // 🛑 טיפול ב-404
 app.use((req, res, next) => {
   res.status(404).json({ error: '🔍 Route not found', path: req.originalUrl });
