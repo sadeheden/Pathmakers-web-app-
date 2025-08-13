@@ -341,7 +341,6 @@ const Manager = () => {
             url = "http://localhost:4000/api/cities";
             const cityName = formData.cityName.trim();
             
-            // ✅ רק שם העיר - ללא מערכים!
             payload = { city: cityName };
             console.log("Sending payload for city:", payload);
             break;
@@ -388,6 +387,7 @@ const Manager = () => {
         }
 
         console.log("Sending payload:", payload);
+        console.log("✅ Payload type check:", typeof payload.city, payload.city);
         
         const res = await fetch(url, {
           method: "POST",
