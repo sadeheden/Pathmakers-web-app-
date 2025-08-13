@@ -15,8 +15,7 @@ import NotFound from "../pages/NotFound"; // Custom 404 Page
 import Manager from "../pages/Manager";
 import RealChat from "../pages/RealChat";
 import Support from "../pages/support";
-
- 
+import ManageMessages from "../pages/ManageMessages";
  
 export const Router = createBrowserRouter([
   { path: "/", element: <HomePage /> },
@@ -31,9 +30,8 @@ export const Router = createBrowserRouter([
   { path: "/manager", element: <Manager /> },
   { path: "/realChat", element: <RealChat /> },
   { path: "/support", element: <Support /> },
-  <Route path="/manager" element={<Manager />} />
-
- 
+  { path: "/manageMessages", element: <ManageMessages /> },
+  { path: "/manager", element: <Manager /> },
   { path: "*", element: <NotFound /> }, // Handles unmatched routes
 ]);
  

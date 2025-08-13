@@ -46,6 +46,7 @@ import authRouter from './services/auth/auth.router.js';
 import uploadRouter from './services/upload/upload.router.js';
 import managerRoutes from './services/manager/manager.routes.js';
 import travelRoutes from './services/travel/travel.routes.js';
+import supportRouter from './services/support/support.router.js';
 
 // ❗ Keep ONLY ONE orders router import, and it should be the plural path that contains /resolve
 import ordersRouter from './services/order/order.router.js';  // <-- use this one
@@ -60,6 +61,7 @@ app.use('/api/manager', managerRoutes);
 app.use('/api/travel', travelRoutes);
 app.use('/api/cities', travelRoutes);
 app.use('/api/order', ordersRouter);
+app.use('/api/support', supportRouter);
 
 // 🛑 טיפול ב-404
 app.use((req, res, next) => {
