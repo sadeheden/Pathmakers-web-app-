@@ -7,50 +7,54 @@ const PaymentModal = ({ isOpen, onClose, totalAmount, onPaymentSuccess, userResp
     const [cvv, setCvv] = useState("");
     const [paymentSuccess, setPaymentSuccess] = useState(false);
     const [error, setError] = useState("");
+    const method = userResponses?.["Select payment method"];
+const isBank = method === "Bank Transfer";
+
 
     const currentYear = new Date().getFullYear();
     const maxYear = currentYear + 10;
 
-    const handlePayment = () => {
-        let errors = [];
+  const handlePayment = () => {
+  const errs = [];
 
-        if (!fullName.trim() || fullName.trim().length < 3) {
-            errors.push("❌ Invalid Full Name. Enter at least 3 characters.");
-        }
+  if (!fullName.trim() || fullName.trim().length < 3) {
+    errs.push("❌ Invalid Full Name. Enter at least 3 characters.");
+  }
 
-        if (!/^\d{16}$/.test(paymentDetails)) {
-            errors.push("❌ Invalid Payment Number. Must be 16 digits.");
-        }
+  if (!isBank) {
+    if (!/^\d{16}$/.test(paymentDetails)) {
+      errs.push("❌ Invalid Payment Number. Must be 16 digits.");
+    }
+    const expiryMatch = expiryDate.match(/^(0[1-9]|1[0-2])\/(\d{4})$/);
+    const currentYear = new Date().getFullYear();
+    const maxYear = currentYear + 10;
+    if (!expiryMatch || +expiryMatch[2] < currentYear || +expiryMatch[2] > maxYear) {
+      errs.push(`❌ Invalid Expiry Date. Must be MM/YYYY between ${currentYear}-${maxYear}.`);
+    }
+    if (!/^\d{3}$/.test(cvv)) {
+      errs.push("❌ Invalid CVV. Must be exactly 3 digits.");
+    }
+  }
 
-        const expiryMatch = expiryDate.match(/^(0[1-9]|1[0-2])\/(\d{4})$/);
-        if (!expiryMatch || parseInt(expiryMatch[2]) < currentYear || parseInt(expiryMatch[2]) > maxYear) {
-            errors.push(`❌ Invalid Expiry Date. Must be MM/YYYY between ${currentYear}-${maxYear}.`);
-        }
+  if (errs.length) { setError(errs.join("\n")); return; }
 
-        if (!/^\d{3}$/.test(cvv)) {
-            errors.push("❌ Invalid CVV. Must be exactly 3 digits.");
-        }
+  setPaymentSuccess(true);
+  setError("");
 
-        if (errors.length > 0) {
-            setError(errors.join("\n"));
-            return;
-        }
+  setTimeout(() => {
+    setPaymentSuccess(false);
+    onClose();
+    onPaymentSuccess();
+  }, 1600);
+};
 
-        setPaymentSuccess(true);
-        setError("");
-
-        setTimeout(() => {
-            setPaymentSuccess(false);
-            onClose();
-            onPaymentSuccess();
-        }, 2000);
-    };
 
     if (!isOpen) return null;
 
     return (
         <div className="modal-overlay">
-            <div className="modal-content">
+    <div className={`modal-content ${isBank ? "bank" : ""} ${paymentSuccess ? "success" : ""}`}>
+
                 {paymentSuccess ? (
                     <>
                         <h2>🎉 Payment Successful! 🎉</h2>

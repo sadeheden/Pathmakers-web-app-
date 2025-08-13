@@ -220,7 +220,7 @@ const Main = () => {
             className="btn btn-primary"
             onClick={() => navigate("/realChat")}
           >
-            Start AI Chat
+            Start Chatting
           </button>
         </div>
 
@@ -231,7 +231,7 @@ const Main = () => {
             className="btn btn-light"
             onClick={() => navigate("/chat")}
           >
-            Start Manual Chat
+            Start Planning
           </button>
         </div>
       </section>
