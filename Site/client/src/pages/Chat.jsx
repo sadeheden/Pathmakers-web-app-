@@ -1,5 +1,4 @@
 
-
 import React, { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import "../assets/styles/chat.css";
@@ -11,6 +10,7 @@ import { createSteps } from "../config/TravelSteps.jsx";
 import PaymentModal from "../components/PaymentModal.jsx";
 import TripSummary from "../components/TripSummary.jsx";
 import StepContent from "../components/StepContent.jsx";
+import Stepper from "../components/Stepper.jsx";
 
 const TravelPlannerApp = () => {
     const location = useLocation();
@@ -116,29 +116,29 @@ const TravelPlannerApp = () => {
         );
     };
 
-    return (
-        <div className="containerCh">
-            <header>
-                <h1>Travel Planner</h1>
-                {renderProgressBar()}
-            </header>
-            {renderStepContent()}
-            <PaymentModal 
-                isOpen={isPaymentModalOpen} 
-                onClose={() => {
-                    console.log("Closing payment modal...");
-                    setIsPaymentModalOpen(false);
-                }} 
-                onPaymentSuccess={async () => {
-                    console.log("Payment successful, proceeding...");
-                    setPaymentCompleted(true);
-                    setCurrentStep((prev) => prev + 1);
-                }}
-                totalAmount={calculateTotalPrice(userResponses)} 
-                userResponses={userResponses}
-            />
-        </div>
-    );
+return (
+  <div className="planner-page">
+    <div className="containerCh">
+  <header className="card-header">
+  <h1>Travel Planner</h1>
+  <Stepper steps={steps} currentStep={currentStep} />
+  <div className="card-progress">{renderProgressBar()}</div>
+</header>
+
+      {renderStepContent()}
+      <PaymentModal
+        isOpen={isPaymentModalOpen}
+        onClose={() => setIsPaymentModalOpen(false)}
+        onPaymentSuccess={async () => {
+          setPaymentCompleted(true);
+          setCurrentStep((prev) => prev + 1);
+        }}
+        totalAmount={calculateTotalPrice(userResponses)}
+        userResponses={userResponses}
+      />
+    </div>
+  </div>
+);
 };
 
 export default TravelPlannerApp;
