@@ -15,7 +15,7 @@ const sidebarItems = [
   "Dashboard",
   "Trips",
   "Manage Data",
-  "Update City",
+  "Message support",
 ];
 
 const styles = {
