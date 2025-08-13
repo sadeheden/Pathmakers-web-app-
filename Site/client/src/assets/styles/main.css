@@ -1,71 +1,119 @@
-:root {
-  --clr-sky: #4facfe;
-  --clr-sunset: #f093fb;
-  --clr-accent: #ca7af5;
-  --clr-text: #1f2937;
-  --clr-muted: #4a5568;
-  --bg-page: #f9fafb;
-  --bg-card: #fff;
-  --radius-lg: 16px;
-  --shadow-sm: 0 2px 8px rgba(0,0,0,0.05);
-  --shadow-md: 0 4px 20px rgba(0,0,0,0.1);
-  --ff-base: 'Plus Jakarta Sans', sans-serif;
-  --ff-head: 'Noto Sans', sans-serif;
+/* ===========================
+   main.css (uses app.css tokens)
+   =========================== */
+
+/* Keep a light page bg and inherit font from app.css */
+html, body {
+  background: #f9fafb;
+  color: var(--text);
 }
 
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
-
-body {
-  font-family: var(--ff-base);
-  color: var(--clr-text);
-  background: var(--bg-page);
-  line-height: 1.6;
-}
-
-/*==============================================================================
-  WRAPPER
-==============================================================================*/
+/* A scoped place to derive component variables from app.css */
 .trips-page {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 1rem 4rem;
+  --radius-lg: calc(var(--radius-pill) * 1.6);  /* base big radius */
+  --radius-xl: calc(var(--radius-lg) * 2);      /* extra round (hero) */
+  --bg-card: #fff;
+  --bg-page: #f9fafb;
+  
 }
 
-/*==============================================================================
-  HEADER / INTRO (matches screenshot)
-==============================================================================*/
+/* Wrapper */
+.trips-page {
+  max-width: 1300px;
+  margin: 0 auto;
+  padding: 0 1rem 0rem;
+  
+}
+footer, .footer {
+  margin-top: 0 !important;
+}
+
+/* ===========================
+   Header / Intro (Hero)
+   =========================== */
+.hero-merged {
+  position: relative;
+  height: 310px;
+  border-radius: var(--radius-xl);        /* rounder curl */
+  background-size: cover;
+  background-position: center;
+  margin: 20px 0;
+  overflow: hidden;
+}
+.hero-overlay {
+  position: absolute;
+   pointer-events: none;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+}
+.hero-content {
+  position: relative;
+  z-index: 1;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: #fff;
+  padding: 0 20px;
+}
+.hero-content h1 {
+  font-size: clamp(28px, 5vw, 48px);
+  margin-bottom: 10px;
+  font-weight: 800;
+  color: #fff;
+}
+.hero-content p {
+  font-size: clamp(14px, 2vw, 18px);
+  margin-bottom: 20px;
+  color: #fff;
+  opacity: 0.95;
+}
+.hero-buttons {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+/* Use the global .btn from app.css; here we define only the variants */
+.btn-primary {
+  background: var(--brand);
+  color: #fff;
+}
+.btn-primary:hover { background: var(--brand-hover); }
+
+.btn-light {
+  background: #fff;
+  color: var(--text);
+  border: 1px solid rgba(0,0,0,0.15);
+}
+.btn-light:hover { background: #f3f4f6; }
+
+/* ===========================
+   Icons row (optional section)
+   =========================== */
 .trip-intro {
   background: #fff;
   padding: 10rem 2rem 4rem;
   text-align: center;
   margin-bottom: 5rem;
 }
-
 .trip-title {
-  font-family: 'Noto Sans', sans-serif;
-  font-size: clamp(2rem, 2vw, 2rem);
   font-weight: 900;
+  font-size: clamp(2rem, 2vw, 2rem);
   color: #000;
   line-height: 1.6;
   margin-bottom: 1rem;
 }
-
 .trip-subtitle {
-  font-family: 'Plus Jakarta Sans', sans-serif;
   font-size: 1.125rem;
-  color: #4a5568;
+  color: var(--muted);
   max-width: 700px;
   margin: 0 auto 2.5rem;
   line-height: 1.6;
 }
-
-/* Icons row */
 .trip-icons {
   display: flex;
   justify-content: center;
@@ -73,15 +121,12 @@ body {
   flex-wrap: wrap;
   margin-bottom: 2.5rem;
 }
-
 .icon-block {
   display: flex;
   flex-direction: column;
   align-items: center;
   max-width: 140px;
 }
-
-/* For react-icons icons */
 .icon-block .icon {
   background: #fff;
   padding: 12px;
@@ -92,19 +137,15 @@ body {
   color: #1a202c;
   transition: transform 0.2s, background 0.2s;
   font-size: 1.5rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: grid;
+  place-items: center;
   margin-bottom: 0.75rem;
 }
 .icon-block .icon:hover {
   transform: scale(1.1);
   background: #f3f4f6;
 }
-
-/* icon label */
 .icon-block p {
-  font-family: 'Plus Jakarta Sans', sans-serif;
   font-size: 0.875rem;
   color: #1a202c;
   text-align: center;
@@ -112,105 +153,52 @@ body {
   line-height: 1.4;
 }
 
-
-
-/*==============================================================================
-  TRIP OPTIONS (AI vs MANUAL)
-==============================================================================*/
+/* ===========================
+   Trip options (cards row)
+   =========================== */
 .trip-options {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
   gap: 1rem;
   margin-bottom: 4rem;
 }
-
 .trip-card {
   background: var(--bg-card);
   border-radius: var(--radius-lg);
-  padding: 1.3rem 0.7rem;     /* was 2rem 1.5rem */
+  padding: 1.3rem 0.7rem;
   text-align: center;
   box-shadow: var(--shadow-sm);
   transition: transform 0.3s, box-shadow 0.3s;
-  max-width: 480px;           /* add this! */
-  margin: 0 auto;             /* center in grid column */
+  max-width: 480px;
+  margin: 0 auto;
 }
-.trip-card img {
-  width: 90%;                 /* was 100% */
-  max-width: 160px;           /* was 240px */
-}
-
-
 .trip-card:hover {
   transform: translateY(-5px);
-  box-shadow: var(--shadow-md);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.12);
 }
-
 .trip-card img {
-  width: 100%;
-  max-width: 240px;
+  width: 90%;
+  max-width: 160px;
   border-radius: var(--radius-lg);
   margin-bottom: 1.5rem;
 }
+.trip-card h3 { font-size: 1.5rem; margin-bottom: 0.75rem; }
+.trip-card p { color: var(--muted); margin-bottom: 1.5rem; line-height: 1.6; }
 
-.trip-card h3 {
-  font-family: var(--ff-head);
-  font-size: 1.5rem;
-  margin-bottom: 0.75rem;
-}
-
-.trip-card p {
-  color: var(--clr-muted);
-  margin-bottom: 1.5rem;
-  line-height: 1.6;
-}
-
-.trip-card button {
-  padding: 0.75rem 2rem;
-  border: none;
-  border-radius: var(--radius-lg);
-  font-size: 1rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-
-/* AI button = dark gradient */
-.ai-card button {
-  background: linear-gradient(135deg, var(--clr-text), var(--clr-sky));
-  color: #fff;
-}
-.ai-card button:hover {
-  background: #5a89a0;
-}
-
-/* Manual = accent yellow */
-.manual-card button {
-   background: linear-gradient(135deg, var(--clr-text), var(--clr-sky));
-  color: #fff;
-}
-.manual-card button:hover {
-  background: #5a89a0; /* slightly darker accent */
-}
-
-/*==============================================================================
-  POPULAR DESTINATIONS
-==============================================================================*/
-.popular-trips {
-  margin-bottom: 4rem;
-  margin-left: 3rem;;
-}
-
+/* ===========================
+   Popular Destinations
+   =========================== */
+.popular-trips { margin: 0 0 0rem 3rem; }
 .popular-trips h2 {
-  font-family: var(--ff-head);
-  font-size: 2.3rem;      /* was 1.75rem */
-  margin-bottom: 2.2rem;  /* was 1.5rem */
+  font-size: 1.5rem;
+  margin-bottom: 2.2rem;
   text-align: left;
   letter-spacing: -1px;
 }
 .city-cards {
   display: flex;
   flex-wrap: wrap;
-  gap: 2.5rem; /* Adjust as you like */
+  gap: 2.5rem;
   justify-content: center;
   align-items: flex-start;
   padding-bottom: 0.5rem;
@@ -218,314 +206,585 @@ body {
   background: #f8f8ff;
 }
 
-
+/* >>> Rounder city cards (and matching image corners) <<< */
+/* ===== Fix: unify city card sizing to match JS (CARD_WIDTH = 240) ===== */
 .city-card {
-  border-radius: var(--radius-lg);
+  /* remove any earlier width rules by enforcing flex-basis here */
+  flex: 0 0 240px !important;   /* keep in sync with CARD_WIDTH */
+  margin-right: 0; 
+  margin-bottom: 5%;             /* gap handles spacing */
+  border-radius: 12px;
+  overflow: hidden;
   background: #fff;
-  box-shadow: var(--shadow-sm);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  transition: box-shadow 0.2s, transform 0.2s;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
   cursor: pointer;
-  text-decoration: none;
-  width: 100%;           /* Takes full grid column width */
-  max-width: 340px;      /* Controls the max size on wide screens */
-  margin: 0 auto;
+  transition: transform .18s ease, box-shadow .18s ease;
 }
 
+.city-row {
+  display: flex;
+  gap: 16px;               /* a bit less cramped */
+  overflow-x: auto;
+  overflow-y: hidden;      /* prevent 1px vertical scroll artifacts */
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;   /* Firefox hide */
+}
+
+/* Hide scrollbar (Chrome/Safari/Edge) */
+.city-row::-webkit-scrollbar { display: none; }
+
+/* Optional: if you still see a hairline, tuck the scroller */
+.city-scroll-wrapper {
+  padding-bottom: 6px;     /* gives the hidden scrollbar space */
+  margin-bottom: -6px;     /* pulls layout back up so no visible band */
+}
+
+/* Make the arrows sit inside the wrapper a bit */
+.scroll-btn.left  { left: 10px;  }
+.scroll-btn.right { right: 10px; }
+
+/* Keep the smaller card visuals */
 .city-card img {
   width: 100%;
-  height: 160px;         /* Larger image! */
+  height: 120px;
   object-fit: cover;
-  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
   display: block;
-  background: #e9e9e9;
-  margin: 0;
-  box-shadow: 0 2px 12px rgba(70,40,150,0.04);
 }
 
-
-.city-card p {
-  margin: 0.6rem 0 0.8rem 0;
-  font-weight: 700;
-  color: var(--clr-text);
-  font-size: 1.05rem;
-  text-align: center;
+.city-card-text {
+  padding: 10px 12px 14px;
 }
+.city-card-text h3 { font-size: 16px; margin: 0 0 4px; }
+.city-card-text .muted { font-size: 13px; }
 
-/* Optional: pretty hover */
-.city-card:hover {
-  box-shadow: 0 6px 20px rgba(100,60,180,0.10);
-  transform: translateY(-4px) scale(1.03);
-  background: #f6edff;
-}
-
+/* ===========================
+   Modal (single definition)
+   =========================== */
+/* ===== Pretty modal (glass + card header) ===== */
 .modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0,0,0,0.5);
-  display: flex;
-  justify-content: center;
-  align-items: center;
+  position: fixed; inset: 0;
+  display: grid; place-items: center;
+  background: radial-gradient(1200px 800px at 50% 30%, rgba(99,102,241,.22), rgba(0,0,0,.55) 60%, rgba(0,0,0,.65));
   z-index: 1000;
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  animation: overlayIn .18s ease-out;
 }
+@keyframes overlayIn { from { opacity: 0 } to { opacity: 1 } }
 
 .modal-content {
-  background: white;
-  padding: 1.5rem 2rem;
-  border-radius: 1rem;
-  max-width: 360px;
-  width: 90%;
+  --card-pad-x: clamp(1rem, 2vw, 1.5rem);
+  --card-pad-y: clamp(1rem, 2vw, 1.25rem);
+  position: relative;
+  width: min(520px, 92vw);
+  border-radius: calc(var(--radius-lg) * 1.25);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.85), rgba(255,255,255,.92)),
+    radial-gradient(1200px 800px at 50% -10%, rgba(79,172,254,.22), rgba(202,122,245,.12) 45%, transparent 70%);
+  box-shadow: 0 20px 60px rgba(0,0,0,.25), inset 0 1px 0 rgba(255,255,255,.4);
+  padding: 0 0 var(--card-pad-y);
+  overflow: hidden;
+  transform: translateY(6px) scale(.985);
+  animation: cardIn .24s cubic-bezier(.2,.8,.2,1) forwards;
+}
+@keyframes cardIn { to { transform: none; opacity: 1 } }
+
+.modal-close-x {
+  position: absolute; top: 10px; right: 10px;
+  width: 38px; height: 38px;
+  display: grid; place-items: center;
+  border: 0; border-radius: 999px; cursor: pointer;
+  background: rgba(255,255,255,.65);
+  -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
+  color: #6b21a8; font-size: 18px; font-weight: 800;
+  box-shadow: 0 6px 20px rgba(0,0,0,.12), inset 0 1px 0 rgba(255,255,255,.6);
+  transition: transform .12s ease, background .15s ease;
+}
+.modal-close-x:hover { transform: scale(1.04); background: rgba(255,255,255,.85); }
+
+/* ===========================
+   Intro Popup Specific Styles
+   =========================== */
+.modal-content h2 {
+  margin: 0 0 20px 0;
+  padding: 24px var(--card-pad-x) 0;
+  font-size: clamp(22px, 2.8vw, 28px);
+  font-weight: 800;
+  color: var(--brand);
   text-align: center;
-  box-shadow: 0 0 20px rgba(0,0,0,0.3);
-  animation: fadeIn 0.3s ease-in-out;
 }
 
-.modal-content button {
-  margin-top: 1rem;
-  padding: 0.5rem 1.2rem;
-  background-color: #007bff;
-  color: white;
+.modal-content p {
+  margin: 0 0 16px 0;
+  padding: 0 var(--card-pad-x);
+  color: #475569;
+  line-height: 1.6;
+  font-size: 15px;
+}
+
+.modal-content p:last-of-type {
+  margin-bottom: 24px;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.modal-payment-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: calc(100% - 2 * var(--card-pad-x));
+  margin: 0 var(--card-pad-x) 16px;
+  padding: 14px 20px;
   border: none;
-  border-radius: 0.3rem;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 700;
+  color: white;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  box-shadow: 
+    0 8px 24px rgba(102, 126, 234, 0.3),
+    0 2px 6px rgba(102, 126, 234, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
   cursor: pointer;
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
 }
 
-.modal-content button:hover {
-  background-color: #0056b3;
+.modal-payment-btn:before {
+  display: none;
 }
 
-/*==============================================================================
-  RESPONSIVE
-==============================================================================*/
+.modal-payment-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 
+    0 12px 32px rgba(102, 126, 234, 0.4),
+    0 4px 12px rgba(102, 126, 234, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+
+.modal-payment-btn:hover:before {
+  display: none;
+}
+
+.modal-payment-btn:active {
+  transform: translateY(0);
+  box-shadow: 
+    0 4px 16px rgba(102, 126, 234, 0.3),
+    0 1px 4px rgba(102, 126, 234, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+/* Trip Details Modal Improvements */
+.modal-image-wrapper {
+  display: grid; 
+  place-items: center;
+  padding: 16px var(--card-pad-x) 20px;
+}
+
+.modal-city-image {
+  width: 100%; 
+  max-width: 420px; 
+  height: 200px; 
+  object-fit: cover;
+  border-radius: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.8);
+  box-shadow: 
+    0 20px 40px rgba(0, 0, 0, 0.15),
+    0 8px 16px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+.modal-content p strong {
+  color: #1e293b;
+  font-weight: 700;
+}
+
+.modal-btns {
+  padding: 20px var(--card-pad-x) 0;
+  display: flex;
+  gap: 12px;
+}
+
+.modal-btn {
+  flex: 1;
+  display: inline-flex; 
+  align-items: center; 
+  justify-content: center;
+  gap: 8px; 
+  padding: 12px 16px; 
+  font-weight: 700; 
+  font-size: 15px;
+  border: 0; 
+  border-radius: 12px; 
+  cursor: pointer;
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.modal-btn:before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.5s;
+}
+
+.modal-btn:hover:before {
+  left: 100%;
+}
+
+.modal-btn:active { 
+  transform: translateY(1px) scale(.99); 
+}
+
+.modal-btn.primary {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: #fff;
+  box-shadow: 
+    0 8px 24px rgba(16, 185, 129, 0.3),
+    0 2px 6px rgba(16, 185, 129, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.modal-btn.primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 
+    0 12px 32px rgba(16, 185, 129, 0.4),
+    0 4px 12px rgba(16, 185, 129, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+.modal-btn.secondary {
+  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+  border: 1px solid rgba(0,0,0,.08); 
+  color: #475569;
+  box-shadow: 
+    0 4px 12px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+
+.modal-btn.secondary:hover {
+  transform: translateY(-1px);
+  background: linear-gradient(135deg, #ffffff 0%, #f1f5f9 100%);
+  box-shadow: 
+    0 6px 20px rgba(0, 0, 0, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+/* Header band */
+.modal-header {
+  position: relative;
+  padding: 22px var(--card-pad-x) 16px;
+  background: linear-gradient(135deg, var(--brand), #4facfe 60%, #a367d3 100%);
+  color: #fff;
+}
+.modal-header h2 {
+  margin: 0;
+  font-weight: 900;
+  letter-spacing: -.02em;
+  font-size: clamp(20px, 2.6vw, 26px);
+}
+.modal-subtitle {
+  opacity: .95; margin-top: 6px;
+  font-size: 0.95rem; font-weight: 500;
+}
+
+/* Details grid */
+.modal-details {
+  display: grid; gap: 10px;
+  grid-template-columns: 1fr 1fr;
+  padding: 16px var(--card-pad-x) 0;
+}
+.modal-detail {
+  background: #fff; border: 1px solid rgba(0,0,0,.06);
+  border-radius: 12px; padding: 12px 14px;
+  box-shadow: var(--shadow-sm);
+}
+.modal-detail .label { font-size: 12px; color: var(--muted); }
+.modal-detail .value { font-weight: 700; margin-top: 2px; }
+
+/* Price chip */
+.modal-price {
+  margin: 12px var(--card-pad-x) 0;
+  display: flex; align-items: center; justify-content: space-between;
+  background: linear-gradient(135deg, #f7f7ff, #f0f9ff);
+  border: 1px solid rgba(0,0,0,.06);
+  border-radius: 14px; padding: 12px 14px;
+}
+.modal-price .tag {
+  background: #111827; color: #fff; font-weight: 800;
+  padding: 6px 10px; border-radius: 999px; font-size: 0.9rem;
+}
+
+/* Payment form cosmetics in .modal-content */
+.modal-content label { display:block; font-size:.85rem; color:var(--muted); margin:12px var(--card-pad-x) 6px; }
+.modal-content input {
+  width: calc(100% - 2*var(--card-pad-x));
+  margin: 0 var(--card-pad-x);
+  padding: 12px 14px;
+  border-radius: 12px; border: 1px solid #e5e7eb; outline: none;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.6);
+}
+.expiry-cvv { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 0 var(--card-pad-x); }
+.pay-button {
+  margin: 16px var(--card-pad-x) 0; width: calc(100% - 2*var(--card-pad-x));
+  border:0; border-radius: 12px; padding: 12px 14px; font-weight: 800;
+  background: var(--brand); color: #fff;
+  box-shadow: 0 8px 22px rgba(16,185,129,.25);
+}
+.change-payment {
+  margin: 8px var(--card-pad-x) 0; width: calc(100% - 2*var(--card-pad-x));
+  border:1px solid rgba(0,0,0,.08); border-radius: 12px; padding: 10px 12px; font-weight: 700;
+  background:#fff; color: var(--text);
+}
+
+/* Mobile */
+@media (max-width: 560px) {
+  .modal-details { grid-template-columns: 1fr; }
+  .modal-actions { grid-template-columns: 1fr; }
+  .modal-btns { flex-direction: column; }
+}
+/* =========================================
+   FINAL OVERRIDES (paste at the very end)
+   ========================================= */
+
+/* Make ALL CTAs (Continue, Pay now, Pay) use the same gradient */
+.modal-btns .modal-btn.primary,
+.modal-actions .modal-btn.primary,
+.pay-button,
+.modal-payment-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 14px 20px;
+  border: none;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 800;
+  color: #fff;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+  box-shadow:
+    0 8px 24px rgba(102,126,234,.30),
+    0 2px 6px rgba(102,126,234,.20),
+    inset 0 1px 0 rgba(255,255,255,.30);
+  cursor: pointer;
+  transition: transform .15s cubic-bezier(.4,0,.2,1),
+              box-shadow .15s cubic-bezier(.4,0,.2,1);
+}
+
+.modal-btns .modal-btn.primary:hover,
+.modal-actions .modal-btn.primary:hover,
+.pay-button:hover,
+.modal-payment-btn:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 12px 32px rgba(102,126,234,.40),
+    0 4px 12px rgba(102,126,234,.30),
+    inset 0 1px 0 rgba(255,255,255,.40);
+}
+
+.modal-btns .modal-btn.primary:active,
+.modal-actions .modal-btn.primary:active,
+.pay-button:active,
+.modal-payment-btn:active {
+  transform: translateY(0);
+  box-shadow:
+    0 4px 16px rgba(102,126,234,.30),
+    0 1px 4px rgba(102,126,234,.20),
+    inset 0 1px 0 rgba(255,255,255,.20);
+}
+
+/* Date & CVV: full width of their columns + taller height */
+.expiry-cvv {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  padding: 0 var(--card-pad-x);
+}
+@media (max-width: 480px) {
+  .expiry-cvv { grid-template-columns: 1fr; }
+}
+
+/* Single, definitive input rule */
+.modal-content input,
+.expiry-cvv input {
+  width: 100% !important;               /* override earlier calc() */
+  margin: 0;                            /* margins handled by container */
+  padding: 14px 16px;
+  height: 48px;
+  font-size: 15px;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  outline: none;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.6);
+}
+
+/* Keep secondary button neutral if you use it */
+.modal-btns .modal-btn.secondary,
+.modal-actions .modal-btn.secondary {
+  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%) !important;
+  border: 1px solid rgba(0,0,0,.08);
+  color: #475569 !important;
+}
+
+/* ===========================
+   Responsive tweaks
+   =========================== */
 @media (max-width: 768px) {
   .trip-subtitle { font-size: 1rem; }
   .trip-options { gap: 1.5rem; }
   .city-card { width: 130px; }
   .city-card img { height: 80px; }
 }
-.city-card {
-  cursor: pointer;
-  transition: box-shadow 0.2s, transform 0.2s;
-  text-decoration: none;
+
+/* ===== Popular trips: horizontal row ===== */
+.city-scroll-wrapper {
+  position: relative;
+}
+
+.city-row {
+  display: flex;
+  gap: 24px;
+  overflow-x: auto;
+    scrollbar-width: none; 
+ 
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
   
 }
-.city-card:hover {
-  box-shadow: 0 6px 20px rgba(0,0,0,0.10);
-  transform: translateY(-4px) scale(1.04);
-}
-.city-card p {
-  color: var(--clr-text);
-}
 
-
-/* ========== MODAL OVERLAY & LAYOUT ========== */
-.modal-overlay {
-  position: fixed;
-  top: 0; left: 0;
-  width: 100vw; height: 100vh;
-  background: rgba(0,0,0,0.5);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 1000;
+/* Hide/soften scrollbar on WebKit */
+.city-row::-webkit-scrollbar {
+  height: 8px;
+    display: none;
+}
+.city-row::-webkit-scrollbar-track {
+  background: rgba(0,0,0,0.06);
+  border-radius: 9999px;
+}
+.city-row::-webkit-scrollbar-thumb {
+  background: rgba(0,0,0,0.15);
+  border-radius: 9999px;
 }
 
-.modal-content {
-  position: relative;
+/* Card matches the screenshot: fixed width, image rounded, text under */
+.city-card {
+  flex: 0 0 320px;                 /* ← keep in sync with CARD_WIDTH in JS */
+  border-radius: calc(var(--radius-pill) * 2);
   background: #fff;
-  padding: 2rem 2rem 2.5rem 2rem;
-  border-radius: 1.5rem;
-  max-width: 400px;
-  width: 95%;
-  text-align: center;
-  box-shadow: 0 0 32px rgba(0,0,0,0.13);
-  animation: fadeIn 0.25s cubic-bezier(0.42, 0, 0.58, 1);
-}
-
-/* ========== CLOSE X BUTTON (small & top-right) ========== */
-.modal-close-x {
-  position: absolute;
-  top: 0.7rem;
-  right: 1.1rem;
-  font-size: 1.25rem;
-  font-weight: 700;
-  background: none;
-  border: none;
-  color: #a367d3;
+  box-shadow: var(--shadow-sm);
+  scroll-snap-align: start;
+  overflow: hidden;                 /* clip rounded corners */
   cursor: pointer;
-  z-index: 11;
-  padding: 4px 10px 4px 10px;
-  border-radius: 50%;
-  line-height: 1;
-  transition: background 0.15s, color 0.18s, box-shadow 0.18s;
+  transition: transform .18s ease, box-shadow .18s ease;
 }
-.modal-close-x:hover {
-  background: #f3e8ff;
-  color: #7f2fa1;
-  box-shadow: 0 1px 8px rgba(160,80,190,0.10);
+.city-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.12);
 }
 
-/* ========== MODAL IMAGE ========== */
-.modal-image-wrapper {
-  margin: 1.2rem 0 1.5rem 0;
-  display: flex;
-  justify-content: center;
-  align-items: center;
+.city-card img {
   width: 100%;
-}
-
-.modal-city-image {
-  display: block;
-  width: 100%;
-  max-width: 260px;
-  height: auto;
-  max-height: 180px;
+  height: 130px;
   object-fit: cover;
-  border-radius: 1rem;
-  box-shadow: 0 6px 20px rgba(80,70,180,0.09);
-  border: 2px solid #eee;
-  background: #e9e9e9;
-  margin: 0 auto;
-  opacity: 0;
-  animation: fadeInImg 0.44s cubic-bezier(0.42, 0, 0.58, 1) forwards;
-}
-@keyframes fadeInImg {
-  to { opacity: 1; }
+  display: block;
 }
 
-/* ========== MODAL BUTTONS ========== */
-.modal-btns {
-  margin-top: 1.7rem;
-  display: flex;
-  gap: 0.8rem;
-  flex-wrap: wrap;
-  justify-content: center;
+/* Text block under the image */
+.city-card-text {
+  padding: 14px 14px 18px 14px;
 }
-
-.modal-btns button {
-  flex: 1 1 0;
-  min-width: 150px;
-  max-width: 190px;
-  padding: 0.75rem 0;
-  border: none;
-  border-radius: 0.8rem;
-  font-size: 1.08rem;
-  font-family: inherit;
-  font-weight: 600;
-  box-sizing: border-box;
-  text-align: center;
-  cursor: pointer;
-  transition: background 0.19s, box-shadow 0.19s, border 0.15s;
-  margin-bottom: 0.2rem;
-  outline: none;
-  white-space: nowrap;
-
-  /* Here is the gradient! */
-  background: linear-gradient(135deg, var(--clr-text), var(--clr-sky));
-  color: #fff;
-  box-shadow: 0 1px 6px rgba(101, 170, 231, 0.09);
-}
-
-.modal-btns button:hover,
-.modal-btns button:focus {
-  background: #5a89a0; /* Manual card button hover color */
-  color: #fff;
-}
-.modal-content h2 {
-  color: #1f2937;  /* or just #000 for pure black */
-}
-
-
-/* Main action button: accent purple */
-.modal-trip-btn {
-  background: var(--clr-accent);
-  color: #fff;
-  box-shadow: 0 1px 6px rgba(202,122,245,0.09);
-}
-.modal-trip-btn:hover, .modal-trip-btn:focus {
-  background: #a367d3;
-  color: #fff;
-}
-
-/* Payment button: blue gradient, chat style */
-.modal-payment-btn {
-  background: linear-gradient(135deg, #4facfe, #00f2fe 80%);
-  color: #fff;
-  box-shadow: 0 2px 16px rgba(79,172,254,0.11);
-  border: 1px solid #4facfe;
+.city-card-text h3 {
+  margin: 0 0 4px 0;
+  font-size: 18px;
   font-weight: 700;
+  color: var(--text);
 }
-.modal-payment-btn:hover, .modal-payment-btn:focus {
-  background: linear-gradient(135deg, #4facfe 60%, #a367d3 100%);
-  color: #fff;
-  border: 1px solid #a367d3;
-}
-
-/* Remove Close button styles (you don't have it anymore) */
-
-/* ========== RESPONSIVE MODAL ========== */
-@media (max-width: 540px) {
-  .modal-content {
-    padding: 1.1rem 0.4rem 1.4rem 0.4rem;
-    max-width: 99vw;
-  }
-  .modal-city-image {
-    max-width: 100vw;
-  max-height: 45vw; 
-      height: auto;
-  }
-  .modal-btns {
-    flex-direction: column;
-    gap: 0.7rem;
-  }
-  .modal-btns button {
-    min-width: 110px;
-    max-width: none;
-    width: 100%;
-    font-size: 1rem;
-    padding: 0.8rem 0;
-  }
+.city-card-text .muted {
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
 }
 
-/* ========== GENERAL BUTTON FIX FOR ALL .modal-btns (keeps size always matched) ========== */
-.modal-btns button + button {
-  margin-left: 0 !important; /* just uses gap */
-}
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0,0,0,0.5);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 1000;
-}
-.modal-close-x {
+/* Arrow buttons */
+.scroll-btn {
   position: absolute;
-  top: 0.65rem;
-  right: 0.85rem;
-  font-size: 1.25rem;   /* smaller size */
-  font-weight: 700;
-  background: none;
+  top: 50%;
+  transform: translateY(-50%);
   border: none;
-  color: #a367d3;
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+
+  /* Glassmorphic look */
+  background: rgba(255, 255, 255, 0.6);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+
+  box-shadow: var(--shadow-sm);
+  display: grid;
+  place-items: center;
   cursor: pointer;
-  z-index: 11;
-  padding: 2px 8px 4px 8px;
-  border-radius: 50%;
-  transition: background 0.15s, color 0.18s, box-shadow 0.18s;
-  line-height: 1;
+  transition: background .2s ease, transform .1s ease;
+  color: var(--text);
+  z-index: 2;
 }
-.modal-close-x:hover {
-  background: #f3e8ff;
-  color: #7f2fa1;
-  box-shadow: 0 1px 8px rgba(160,80,190,0.10);
+
+.scroll-btn:hover {
+  background: rgba(255, 255, 255, 0.8);
+}
+
+.scroll-btn:active {
+  transform: translateY(-50%) scale(0.98);
+}
+
+.scroll-btn.left  { left: -60px; }
+.scroll-btn.right { right: -50px; }
+
+/* Mobile: let it breathe and hide arrows if cramped */
+@media (max-width: 640px) {
+  .scroll-btn { display: none; }
+  .city-card { flex-basis: 80vw; }
+  .city-card img { height: 42vw; }
+}
+
+/* ===========================
+   Floating Support Button
+   =========================== */
+.floating-support-btn {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 50px;
+  padding: 12px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  box-shadow: 
+    0 8px 24px rgba(102, 126, 234, 0.3),
+    0 4px 12px rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 999;
+}
+
+.floating-support-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 
+    0 12px 32px rgba(102, 126, 234, 0.4),
+    0 6px 16px rgba(0, 0, 0, 0.15);
+}
+
+.floating-support-btn:active {
+  transform: translateY(0);
 }

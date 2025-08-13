@@ -19,10 +19,13 @@ async function getClient() {
   return client;
 }
 
+// order.db.js
 export async function findOrdersByUserIdFromDb(userId) {
   const client = await getClient();
   const db = client.db(dbName);
-  return db.collection("orders").find({ user_id: new ObjectId(userId) }).toArray();
+  const looksLikeOid = typeof userId === "string" && /^[0-9a-fA-F]{24}$/.test(userId);
+  const filter = looksLikeOid ? { user_id: new ObjectId(userId) } : { user_id: userId };
+  return db.collection("orders").find(filter).toArray();
 }
 
 export async function insertOrderToDb(order) {
