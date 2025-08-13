@@ -9,7 +9,6 @@ import {
   LineChart,
   Line,
 } from "recharts";
-import "../assets/styles/manager.css";
 
 const sidebarItems = [
   "Dashboard",
@@ -17,6 +16,7 @@ const sidebarItems = [
   "Manage Data",
   "Message support",
 ];
+
 
 const styles = {
   box: {
@@ -159,6 +159,216 @@ const styles = {
     borderRadius: "8px",
     marginBottom: "10px",
   },
+  // סטיילים עבור Messages
+  messagesContainer: {
+    padding: '20px',
+    maxWidth: '1200px',
+    margin: '0 auto'
+  },
+  messagesHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: '30px'
+  },
+  messagesTitle: {
+    fontSize: '28px',
+    fontWeight: 'bold',
+    color: '#1f2937',
+    margin: 0
+  },
+  filterContainer: {
+    display: 'flex',
+    gap: '10px',
+    alignItems: 'center'
+  },
+  filterSelect: {
+    padding: '8px 16px',
+    borderRadius: '8px',
+    border: '1px solid #d1d5db',
+    backgroundColor: '#fff',
+    fontSize: '14px',
+    cursor: 'pointer'
+  },
+  statsContainer: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+    gap: '20px',
+    marginBottom: '30px'
+  },
+  statCard: {
+    backgroundColor: '#fff',
+    padding: '20px',
+    borderRadius: '12px',
+    border: '1px solid #e5e7eb',
+    boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
+    textAlign: 'center'
+  },
+  statNumber: {
+    fontSize: '32px',
+    fontWeight: 'bold',
+    color: '#1f2937',
+    margin: '10px 0 5px 0'
+  },
+  statLabel: {
+    fontSize: '14px',
+    color: '#6b7280',
+    margin: 0
+  },
+  messagesGrid: {
+    display: 'grid',
+    gap: '16px'
+  },
+  messageCard: {
+    backgroundColor: '#fff',
+    border: '1px solid #e5e7eb',
+    borderRadius: '12px',
+    padding: '20px',
+    boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+    transition: 'all 0.2s ease',
+    cursor: 'pointer'
+  },
+  messageCardHover: {
+    transform: 'translateY(-2px)',
+    boxShadow: '0 8px 16px rgba(0,0,0,0.12)'
+  },
+  messageHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: '15px'
+  },
+  messageInfo: {
+    flex: 1
+  },
+  messageName: {
+    fontSize: '18px',
+    fontWeight: 'bold',
+    color: '#1f2937',
+    margin: '0 0 5px 0'
+  },
+  messageEmail: {
+    fontSize: '14px',
+    color: '#6b7280',
+    margin: '0 0 5px 0'
+  },
+  messageDate: {
+    fontSize: '12px',
+    color: '#9ca3af',
+    margin: 0
+  },
+  statusBadge: {
+    padding: '4px 12px',
+    borderRadius: '20px',
+    fontSize: '12px',
+    fontWeight: 'bold',
+    textTransform: 'uppercase'
+  },
+  statusPending: {
+    backgroundColor: '#fef3c7',
+    color: '#92400e',
+    border: '1px solid #fcd34d'
+  },
+  statusResolved: {
+    backgroundColor: '#d1fae5',
+    color: '#065f46',
+    border: '1px solid #6ee7b7'
+  },
+  statusClosed: {
+    backgroundColor: '#fee2e2',
+    color: '#991b1b',
+    border: '1px solid #fca5a5'
+  },
+  messageContent: {
+    fontSize: '14px',
+    color: '#374151',
+    lineHeight: '1.6',
+    marginBottom: '15px'
+  },
+  messageActions: {
+    display: 'flex',
+    gap: '10px'
+  },
+  actionButton: {
+    padding: '6px 12px',
+    borderRadius: '6px',
+    border: 'none',
+    fontSize: '12px',
+    fontWeight: 'bold',
+    cursor: 'pointer',
+    transition: 'all 0.2s ease'
+  },
+  resolveButton: {
+    backgroundColor: '#10b981',
+    color: '#fff'
+  },
+  closeButton: {
+    backgroundColor: '#ef4444',
+    color: '#fff'
+  },
+  reopenButton: {
+    backgroundColor: '#f59e0b',
+    color: '#fff'
+  },
+  modal: {
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 1000
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderRadius: '12px',
+    padding: '30px',
+    maxWidth: '600px',
+    width: '90%',
+    maxHeight: '80vh',
+    overflow: 'auto'
+  },
+  modalHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: '20px'
+  },
+  modalTitle: {
+    fontSize: '20px',
+    fontWeight: 'bold',
+    margin: 0
+  },
+  closeModalButton: {
+    backgroundColor: 'transparent',
+    border: 'none',
+    fontSize: '24px',
+    cursor: 'pointer',
+    color: '#6b7280'
+  },
+  loading: {
+    textAlign: 'center',
+    padding: '40px',
+    fontSize: '16px',
+    color: '#6b7280'
+  },
+  emptyState: {
+    textAlign: 'center',
+    padding: '60px 20px',
+    color: '#6b7280'
+  },
+  emptyIcon: {
+    fontSize: '48px',
+    marginBottom: '16px'
+  },
+  emptyTitle: {
+    fontSize: '18px',
+    fontWeight: 'bold',
+    marginBottom: '8px'
+  }
 };
 
 const Manager = () => {
@@ -171,6 +381,12 @@ const Manager = () => {
     topDestinations: [],
     revenueByDate: [],
   });
+
+  // States for Messages Management
+  const [messages, setMessages] = useState([]);
+  const [messagesLoading, setMessagesLoading] = useState(false);
+  const [filter, setFilter] = useState('all');
+  const [selectedMessage, setSelectedMessage] = useState(null);
 
   useEffect(() => {
     if (activeItem === "Dashboard") {
@@ -189,138 +405,164 @@ const Manager = () => {
         })
         .catch((err) => console.error("Error loading dashboard data:", err));
     }
+
+    if (activeItem === "Message support") {
+      fetchMessages();
+    }
   }, [activeItem]);
 
-  // UpdateCity component
-  const UpdateCity = () => {
-    const [searchCity, setSearchCity] = useState("");
-    const [cityData, setCityData] = useState(null);
-    const [newAttractions, setNewAttractions] = useState([{ name: "", openingHours: "", price: "" }]);
-    const [newHotels, setNewHotels] = useState([{ name: "", price: "" }]);
-    const [newFlights, setNewFlights] = useState([{ name: "", price: "", duration: "" }]);
-
-    const fetchCityData = async () => {
-      if (!searchCity) {
-        alert("Please enter a city name");
-        return;
+  // Messages Management Functions
+  const fetchMessages = async () => {
+    try {
+      setMessagesLoading(true);
+      const response = await fetch('http://localhost:4000/api/support');
+      if (response.ok) {
+        const data = await response.json();
+        setMessages(data);
+      } else {
+        console.error('Failed to fetch messages');
       }
-
-      try {
-        const response = await fetch(`http://localhost:4000/api/cities/name/${encodeURIComponent(searchCity)}`);
-        let data;
-
-        if (response.ok) {
-          data = await response.json();
-          console.log("✅ Loaded existing city data:", data);
-        } else if (response.status === 404) {
-          const createResponse = await fetch("http://localhost:4000/api/cities", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ city: searchCity }),
-          });
-
-          if (!createResponse.ok) {
-            const errorData = await createResponse.json();
-            throw new Error(errorData.error || "Failed to create new city");
-          }
-
-          data = await createResponse.json();
-          alert(`✅ City '${searchCity}' created successfully`);
-          console.log("🆕 Created new city data:", data);
-          
-          data.attractions = [];
-          data.hotels = [];
-          data.flights = [];
-        } else {
-          throw new Error(`Failed to fetch city. Status: ${response.status}`);
-        }
-
-        setCityData(data);
-        setNewAttractions([{ name: "", openingHours: "", price: "" }]);
-        setNewHotels([{ name: "", price: "" }]);
-        setNewFlights([{ name: "", price: "", duration: "" }]);
-
-      } catch (err) {
-        console.error("Fetch error:", err);
-        alert(`Error: ${err.message}`);
-        setCityData(null);
-      }
-    };
-
-    return (
-      <div className="update-city-container">
-        <h1>Update City Data</h1>
-        <div style={{ marginBottom: "20px", display: "flex", gap: "10px" }}>
-          <input
-            type="text"
-            placeholder="Enter city name"
-            value={searchCity}
-            onChange={(e) => setSearchCity(e.target.value)}
-            style={{ padding: "10px", fontSize: "16px", borderRadius: "8px", border: "1px solid #ccc" }}
-          />
-          <button 
-            onClick={fetchCityData}
-            style={{ 
-              padding: "10px 20px", 
-              fontSize: "16px", 
-              backgroundColor: "#007bff", 
-              color: "white", 
-              border: "none", 
-              borderRadius: "8px", 
-              cursor: "pointer" 
-            }}
-          >
-            Load City Data
-          </button>
-        </div>
-        
-        {cityData && (
-          <>
-            <h2 style={{ color: "#333", marginBottom: "20px" }}>
-              Current Data for {cityData.city} (ID: {cityData._id})
-            </h2>
-            
-            <div style={{ backgroundColor: "#f8f9fa", padding: "20px", borderRadius: "8px", marginBottom: "20px" }}>
-              <h3>Hotels ({cityData.hotels?.length || 0})</h3>
-              {cityData.hotels?.length > 0 ? (
-                <ul>
-                  {cityData.hotels.map((h, i) => (
-                    <li key={i}>{h.name} - ${h.price}</li>
-                  ))}
-                </ul>
-              ) : (
-                <p style={{ color: "#666" }}>No hotels added yet</p>
-              )}
-
-              <h3>Attractions ({cityData.attractions?.length || 0})</h3>
-              {cityData.attractions?.length > 0 ? (
-                <ul>
-                  {cityData.attractions.map((a, i) => (
-                    <li key={i}>{a.name} - {a.openingHours} - ${a.price}</li>
-                  ))}
-                </ul>
-              ) : (
-                <p style={{ color: "#666" }}>No attractions added yet</p>
-              )}
-
-              <h3>Flights ({cityData.flights?.length || 0})</h3>
-              {cityData.flights?.length > 0 ? (
-                <ul>
-                  {cityData.flights.map((f, i) => (
-                    <li key={i}>{f.name} - ${f.price} - {f.duration}</li>
-                  ))}
-                </ul>
-              ) : (
-                <p style={{ color: "#666" }}>No flights added yet</p>
-              )}
-            </div>
-          </>
-        )}
-      </div>
-    );
+    } catch (error) {
+      console.error('Error fetching messages:', error);
+    } finally {
+      setMessagesLoading(false);
+    }
   };
 
-  // ✅ ManageDataUpdateBox - תמיכה במערכי מלונות ואטרקציות
+  const updateMessageStatus = async (messageId, newStatus) => {
+    try {
+      const response = await fetch(`http://localhost:4000/api/support/${messageId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status: newStatus }),
+      });
+
+      if (response.ok) {
+        setMessages(prevMessages =>
+          prevMessages.map(msg =>
+            msg._id === messageId ? { ...msg, status: newStatus } : msg
+          )
+        );
+        setSelectedMessage(null);
+      } else {
+        alert('Failed to update message status');
+      }
+    } catch (error) {
+      console.error('Error updating message status:', error);
+      alert('Error updating message status');
+    }
+  };
+
+  const filteredMessages = messages.filter(message => {
+    if (filter === 'all') return true;
+    return message.status === filter;
+  });
+
+  const messageStats = {
+    total: messages.length,
+    pending: messages.filter(m => m.status === 'pending').length,
+    resolved: messages.filter(m => m.status === 'resolved').length,
+    closed: messages.filter(m => m.status === 'closed').length
+  };
+
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('he-IL', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  const getStatusStyle = (status) => {
+    switch (status) {
+      case 'pending':
+        return { ...styles.statusBadge, ...styles.statusPending };
+      case 'resolved':
+        return { ...styles.statusBadge, ...styles.statusResolved };
+      case 'closed':
+        return { ...styles.statusBadge, ...styles.statusClosed };
+      default:
+        return styles.statusBadge;
+    }
+  };
+
+  const renderActionButtons = (message) => {
+    const buttons = [];
+
+    if (message.status === 'pending') {
+      buttons.push(
+        <button
+          key="resolve"
+          style={{ ...styles.actionButton, ...styles.resolveButton }}
+          onClick={(e) => {
+            e.stopPropagation();
+            updateMessageStatus(message._id, 'resolved');
+          }}
+        >
+          Mark Resolved
+        </button>
+      );
+      buttons.push(
+        <button
+          key="close"
+          style={{ ...styles.actionButton, ...styles.closeButton }}
+          onClick={(e) => {
+            e.stopPropagation();
+            updateMessageStatus(message._id, 'closed');
+          }}
+        >
+          Close
+        </button>
+      );
+    } else if (message.status === 'resolved') {
+      buttons.push(
+        <button
+          key="close"
+          style={{ ...styles.actionButton, ...styles.closeButton }}
+          onClick={(e) => {
+            e.stopPropagation();
+            updateMessageStatus(message._id, 'closed');
+          }}
+        >
+          Close
+        </button>
+      );
+      buttons.push(
+        <button
+          key="reopen"
+          style={{ ...styles.actionButton, ...styles.reopenButton }}
+          onClick={(e) => {
+            e.stopPropagation();
+            updateMessageStatus(message._id, 'pending');
+          }}
+        >
+          Reopen
+        </button>
+      );
+    } else if (message.status === 'closed') {
+      buttons.push(
+        <button
+          key="reopen"
+          style={{ ...styles.actionButton, ...styles.reopenButton }}
+          onClick={(e) => {
+            e.stopPropagation();
+            updateMessageStatus(message._id, 'pending');
+          }}
+        >
+          Reopen
+        </button>
+      );
+    }
+
+    return buttons;
+  };
+
+  // ManageDataUpdateBox Component
   function ManageDataUpdateBox() {
     const [step, setStep] = useState("choose");
     const [collection, setCollection] = useState(null);
@@ -330,8 +572,8 @@ const Manager = () => {
     const [formData, setFormData] = useState({
       cityName: "",
       city: "",
-      hotels: [{ name: "", price: "" }], // מערך מלונות
-      attractions: [{ name: "", openingHours: "", price: "" }], // מערך אטרקציות
+      hotels: [{ name: "", price: "" }],
+      attractions: [{ name: "", openingHours: "", price: "" }],
       flightName: "", 
       flightPrice: "", 
       flightDuration: "",
@@ -349,14 +591,12 @@ const Manager = () => {
       setFormData((prev) => ({ ...prev, [name]: value }));
     };
 
-    // טיפול בשינוי מלון ספציפי
     const handleHotelChange = (index, field, value) => {
       const newHotels = [...formData.hotels];
       newHotels[index][field] = value;
       setFormData(prev => ({ ...prev, hotels: newHotels }));
     };
 
-    // הוספת מלון חדש
     const addHotel = () => {
       setFormData(prev => ({
         ...prev,
@@ -364,7 +604,6 @@ const Manager = () => {
       }));
     };
 
-    // הסרת מלון
     const removeHotel = (index) => {
       if (formData.hotels.length > 1) {
         const newHotels = formData.hotels.filter((_, i) => i !== index);
@@ -372,14 +611,12 @@ const Manager = () => {
       }
     };
 
-    // טיפול בשינוי אטרקציה ספציפית
     const handleAttractionChange = (index, field, value) => {
       const newAttractions = [...formData.attractions];
       newAttractions[index][field] = value;
       setFormData(prev => ({ ...prev, attractions: newAttractions }));
     };
 
-    // הוספת אטרקציה חדשה
     const addAttraction = () => {
       setFormData(prev => ({
         ...prev,
@@ -387,7 +624,6 @@ const Manager = () => {
       }));
     };
 
-    // הסרת אטרקציה
     const removeAttraction = (index) => {
       if (formData.attractions.length > 1) {
         const newAttractions = formData.attractions.filter((_, i) => i !== index);
@@ -425,7 +661,6 @@ const Manager = () => {
           case "hotels":
             if (!formData.city) throw new Error("City is required");
             
-            // בדיקה שיש לפחות מלון אחד עם נתונים
             const validHotels = formData.hotels.filter(h => h.name.trim() && h.price);
             if (validHotels.length === 0) {
               throw new Error("At least one hotel with name and price is required");
@@ -444,7 +679,6 @@ const Manager = () => {
          case "attractions":
           if (!formData.city) throw new Error("City is required");
 
-          // בדיקה שיש לפחות אטרקציה אחת עם כל הפרטים
           const validAttractions = formData.attractions.filter(
             a => a.name?.trim() && a.openingHours?.trim() && a.price != null
           );
@@ -463,32 +697,29 @@ const Manager = () => {
             }))
           };
           break;
-case "flights":
-  if (!formData.city) throw new Error("City is required");
 
-  // ודא שהמערך קיים
-  const flightsArray = formData.flights || [];
+        case "flights":
+          if (!formData.city) throw new Error("City is required");
 
-  // בדיקה שיש לפחות טיסה אחת עם כל הפרטים
-  const validFlights = flightsArray.filter(
-    f => f.name?.trim() && f.price != null && f.duration?.trim()
-  );
+          const flightsArray = formData.flights || [];
+          const validFlights = flightsArray.filter(
+            f => f.name?.trim() && f.price != null && f.duration?.trim()
+          );
 
-  if (validFlights.length === 0) {
-    throw new Error("At least one flight with all details is required");
-  }
+          if (validFlights.length === 0) {
+            throw new Error("At least one flight with all details is required");
+          }
 
-  url = "http://localhost:4000/api/cities/add-flights";
-  payload = {
-    city: formData.city.trim(),
-    flights: validFlights.map(f => ({
-      name: f.name.trim(),
-      price: parseFloat(f.price),
-      duration: f.duration.trim()
-    }))
-  };
-  break;
-
+          url = "http://localhost:4000/api/cities/add-flights";
+          payload = {
+            city: formData.city.trim(),
+            flights: validFlights.map(f => ({
+              name: f.name.trim(),
+              price: parseFloat(f.price),
+              duration: f.duration.trim()
+            }))
+          };
+          break;
 
           default:
             throw new Error("Pick a collection to update");
@@ -519,7 +750,6 @@ case "flights":
       }
     };
 
-    // Step 1 — choose collection
     if (step === "choose") {
       return (
         <div style={styles.box}>
@@ -597,7 +827,6 @@ case "flights":
       );
     }
 
-    // Step 2 — form for the chosen collection
     return (
       <div style={styles.box}>
         <div style={styles.stepHeader}>
@@ -719,72 +948,68 @@ case "flights":
           </div>
         )}
 
-   {collection === "flights" && (
-  <div style={styles.form}>
-    {/* City */}
-    <input 
-      name="city" 
-      placeholder="City" 
-      style={styles.input}
-      value={formData.city} 
-      onChange={handleChange} 
-    />
+        {collection === "flights" && (
+          <div style={styles.form}>
+            <input 
+              name="city" 
+              placeholder="City" 
+              style={styles.input}
+              value={formData.city} 
+              onChange={handleChange} 
+            />
 
-    {/* טיסות */}
-    {formData.flights?.map((flight, index) => (
-      <div key={index} style={{ marginBottom: 10 }}>
-        <input
-          type="text"
-          placeholder="Airline / Flight"
-          style={styles.input}
-          value={flight.name}
-          onChange={e => {
-            const updatedFlights = [...formData.flights];
-            updatedFlights[index].name = e.target.value;
-            setFormData(prev => ({ ...prev, flights: updatedFlights }));
-          }}
-        />
-        <input
-          type="number"
-          placeholder="Price"
-          style={styles.input}
-          value={flight.price}
-          onChange={e => {
-            const updatedFlights = [...formData.flights];
-            updatedFlights[index].price = e.target.value;
-            setFormData(prev => ({ ...prev, flights: updatedFlights }));
-          }}
-        />
-        <input
-          type="text"
-          placeholder="Duration (e.g. 8h 00m)"
-          style={styles.input}
-          value={flight.duration}
-          onChange={e => {
-            const updatedFlights = [...formData.flights];
-            updatedFlights[index].duration = e.target.value;
-            setFormData(prev => ({ ...prev, flights: updatedFlights }));
-          }}
-        />
-      </div>
-    ))}
+            {formData.flights?.map((flight, index) => (
+              <div key={index} style={{ marginBottom: 10 }}>
+                <input
+                  type="text"
+                  placeholder="Airline / Flight"
+                  style={styles.input}
+                  value={flight.name}
+                  onChange={e => {
+                    const updatedFlights = [...formData.flights];
+                    updatedFlights[index].name = e.target.value;
+                    setFormData(prev => ({ ...prev, flights: updatedFlights }));
+                  }}
+                />
+                <input
+                  type="number"
+                  placeholder="Price"
+                  style={styles.input}
+                  value={flight.price}
+                  onChange={e => {
+                    const updatedFlights = [...formData.flights];
+                    updatedFlights[index].price = e.target.value;
+                    setFormData(prev => ({ ...prev, flights: updatedFlights }));
+                  }}
+                />
+                <input
+                  type="text"
+                  placeholder="Duration (e.g. 8h 00m)"
+                  style={styles.input}
+                  value={flight.duration}
+                  onChange={e => {
+                    const updatedFlights = [...formData.flights];
+                    updatedFlights[index].duration = e.target.value;
+                    setFormData(prev => ({ ...prev, flights: updatedFlights }));
+                  }}
+                />
+              </div>
+            ))}
 
-    {/* כפתור הוספת טיסה חדשה */}
-    <button
-      type="button"
-      onClick={() => {
-        setFormData(prev => ({
-          ...prev,
-          flights: [...(prev.flights || []), { name: "", price: "", duration: "" }]
-        }));
-      }}
-      style={{ marginTop: 10 }}
-    >
-      Add Another Flight
-    </button>
-  </div>
-)}
-
+            <button
+              type="button"
+              onClick={() => {
+                setFormData(prev => ({
+                  ...prev,
+                  flights: [...(prev.flights || []), { name: "", price: "", duration: "" }]
+                }));
+              }}
+              style={{ marginTop: 10 }}
+            >
+              Add Another Flight
+            </button>
+          </div>
+        )}
 
         <button onClick={handleSave} style={styles.saveBtn} disabled={saving}>
           {saving ? "Saving..." : "Save"}
@@ -793,12 +1018,12 @@ case "flights":
     );
   }
 
-  // רינדור התוכן בהתאם للشונית פעילה
+  // Main render function
   const renderContent = () => {
     if (activeItem === "Manage Data") {
       return (
         <>
-          <h1 className="main-title">Manage Travel Data</h1>
+          <h1 style={{ fontSize: '32px', fontWeight: 'bold', marginBottom: '20px', color: '#1f2937' }}>Manage Travel Data</h1>
           <ManageDataUpdateBox />
         </>
       );
@@ -807,28 +1032,28 @@ case "flights":
     if (activeItem === "Dashboard") {
       return (
         <>
-          <h1 className="main-title">Dashboard</h1>
-          <section className="stats-section">
-            <div className="stat-card">
-              <p className="stat-title">Trips this month</p>
-              <p className="stat-value">{dashboardData.totalOrders}</p>
-              <p className="stat-change-positive">+10%</p>
+          <h1 style={{ fontSize: '32px', fontWeight: 'bold', marginBottom: '20px', color: '#1f2937' }}>Dashboard</h1>
+          <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px', marginBottom: '30px' }}>
+            <div style={{ backgroundColor: '#fff', padding: '24px', borderRadius: '12px', border: '1px solid #e5e7eb', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
+              <p style={{ fontSize: '14px', color: '#6b7280', margin: '0 0 8px 0' }}>Trips this month</p>
+              <p style={{ fontSize: '32px', fontWeight: 'bold', color: '#1f2937', margin: '0 0 8px 0' }}>{dashboardData.totalOrders}</p>
+              <p style={{ fontSize: '14px', color: '#10b981', margin: 0 }}>+10%</p>
             </div>
-            <div className="stat-card">
-              <p className="stat-title">Revenue this month</p>
-              <p className="stat-value">${(dashboardData.totalRevenue || 0).toFixed(2)}</p>
-              <p className="stat-change-positive">+15%</p>
+            <div style={{ backgroundColor: '#fff', padding: '24px', borderRadius: '12px', border: '1px solid #e5e7eb', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
+              <p style={{ fontSize: '14px', color: '#6b7280', margin: '0 0 8px 0' }}>Revenue this month</p>
+              <p style={{ fontSize: '32px', fontWeight: 'bold', color: '#1f2937', margin: '0 0 8px 0' }}>${(dashboardData.totalRevenue || 0).toFixed(2)}</p>
+              <p style={{ fontSize: '14px', color: '#10b981', margin: 0 }}>+15%</p>
             </div>
-            <div className="stat-card">
-              <p className="stat-title">Average trip rating</p>
-              <p className="stat-value">4.8</p>
-              <p className="stat-change-positive">+5%</p>
+            <div style={{ backgroundColor: '#fff', padding: '24px', borderRadius: '12px', border: '1px solid #e5e7eb', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
+              <p style={{ fontSize: '14px', color: '#6b7280', margin: '0 0 8px 0' }}>Average trip rating</p>
+              <p style={{ fontSize: '32px', fontWeight: 'bold', color: '#1f2937', margin: '0 0 8px 0' }}>4.8</p>
+              <p style={{ fontSize: '14px', color: '#10b981', margin: 0 }}>+5%</p>
             </div>
           </section>
           
-          <section className="graph-section">
-            <div className="graph-card">
-              <p className="graph-title">Trips by destination</p>
+          <section style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+            <div style={{ backgroundColor: '#fff', padding: '24px', borderRadius: '12px', border: '1px solid #e5e7eb', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
+              <p style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '20px' }}>Trips by destination</p>
               {dashboardData.topDestinations?.length > 0 ? (
                 <ResponsiveContainer width="100%" height={200}>
                   <BarChart data={dashboardData.topDestinations}>
@@ -843,8 +1068,8 @@ case "flights":
               )}
             </div>
 
-            <div className="graph-card">
-              <p className="graph-title">Revenue over time</p>
+            <div style={{ backgroundColor: '#fff', padding: '24px', borderRadius: '12px', border: '1px solid #e5e7eb', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
+              <p style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '20px' }}>Revenue over time</p>
               {dashboardData.revenueByMonth?.length > 0 ? (
                 <ResponsiveContainer width="100%" height={200}>
                   <LineChart data={dashboardData.revenueByMonth.map(item => ({
@@ -871,26 +1096,166 @@ case "flights":
       );
     }
 
-    if (activeItem === "Update City") {
-      return <UpdateCity />;
+    if (activeItem === "Message support") {
+      if (messagesLoading) {
+        return <div style={styles.loading}>Loading messages...</div>;
+      }
+
+      return (
+        <div style={styles.messagesContainer}>
+          {/* Header */}
+          <div style={styles.messagesHeader}>
+            <h1 style={styles.messagesTitle}>Support Messages</h1>
+            <div style={styles.filterContainer}>
+              <label htmlFor="statusFilter">Filter by status:</label>
+              <select
+                id="statusFilter"
+                style={styles.filterSelect}
+                value={filter}
+                onChange={(e) => setFilter(e.target.value)}
+              >
+                <option value="all">All Messages</option>
+                <option value="pending">Pending</option>
+                <option value="resolved">Resolved</option>
+                <option value="closed">Closed</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Statistics */}
+          <div style={styles.statsContainer}>
+            <div style={styles.statCard}>
+              <div style={styles.statNumber}>{messageStats.total}</div>
+              <div style={styles.statLabel}>Total Messages</div>
+            </div>
+            <div style={styles.statCard}>
+              <div style={{ ...styles.statNumber, color: '#f59e0b' }}>{messageStats.pending}</div>
+              <div style={styles.statLabel}>Pending</div>
+            </div>
+            <div style={styles.statCard}>
+              <div style={{ ...styles.statNumber, color: '#10b981' }}>{messageStats.resolved}</div>
+              <div style={styles.statLabel}>Resolved</div>
+            </div>
+            <div style={styles.statCard}>
+              <div style={{ ...styles.statNumber, color: '#ef4444' }}>{messageStats.closed}</div>
+              <div style={styles.statLabel}>Closed</div>
+            </div>
+          </div>
+
+          {/* Messages List */}
+          {filteredMessages.length === 0 ? (
+            <div style={styles.emptyState}>
+              <div style={styles.emptyIcon}>📭</div>
+              <div style={styles.emptyTitle}>No messages found</div>
+              <div>No support messages match the current filter.</div>
+            </div>
+          ) : (
+            <div style={styles.messagesGrid}>
+              {filteredMessages.map((message) => (
+                <div
+                  key={message._id}
+                  style={styles.messageCard}
+                  onClick={() => setSelectedMessage(message)}
+                  onMouseEnter={(e) => {
+                    Object.assign(e.currentTarget.style, styles.messageCardHover);
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = '';
+                    e.currentTarget.style.boxShadow = styles.messageCard.boxShadow;
+                  }}
+                >
+                  <div style={styles.messageHeader}>
+                    <div style={styles.messageInfo}>
+                      <h3 style={styles.messageName}>{message.name}</h3>
+                      <p style={styles.messageEmail}>{message.email}</p>
+                      <p style={styles.messageDate}>
+                        {formatDate(message.createdAt)}
+                      </p>
+                    </div>
+                    <div style={getStatusStyle(message.status)}>
+                      {message.status}
+                    </div>
+                  </div>
+                  
+                  <div style={styles.messageContent}>
+                    {message.message.length > 150 
+                      ? `${message.message.substring(0, 150)}...` 
+                      : message.message
+                    }
+                  </div>
+
+                  <div style={styles.messageActions}>
+                    {renderActionButtons(message)}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Modal for viewing full message */}
+          {selectedMessage && (
+            <div style={styles.modal} onClick={() => setSelectedMessage(null)}>
+              <div style={styles.modalContent} onClick={(e) => e.stopPropagation()}>
+                <div style={styles.modalHeader}>
+                  <h2 style={styles.modalTitle}>Message Details</h2>
+                  <button
+                    style={styles.closeModalButton}
+                    onClick={() => setSelectedMessage(null)}
+                  >
+                    ×
+                  </button>
+                </div>
+                
+                <div>
+                  <p><strong>Name:</strong> {selectedMessage.name}</p>
+                  <p><strong>Email:</strong> {selectedMessage.email}</p>
+                  <p><strong>Date:</strong> {formatDate(selectedMessage.createdAt)}</p>
+                  <p><strong>Status:</strong> 
+                    <span style={getStatusStyle(selectedMessage.status)}>
+                      {selectedMessage.status}
+                    </span>
+                  </p>
+                  
+                  <div style={{ marginTop: '20px' }}>
+                    <strong>Message:</strong>
+                    <div style={{
+                      marginTop: '10px',
+                      padding: '15px',
+                      backgroundColor: '#f9fafb',
+                      borderRadius: '8px',
+                      lineHeight: '1.6'
+                    }}>
+                      {selectedMessage.message}
+                    </div>
+                  </div>
+
+                  <div style={{ marginTop: '30px', display: 'flex', gap: '10px' }}>
+                    {renderActionButtons(selectedMessage)}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      );
     }
     
     if (activeItem === "Trips") {
       const tripsData = dashboardData.topDestinations || [];
       return (
         <>
-          <h1 className="main-title">Popular Trips</h1>
-          <section className="stats-section" style={{ marginBottom: 20 }}>
+          <h1 style={{ fontSize: '32px', fontWeight: 'bold', marginBottom: '20px', color: '#1f2937' }}>Popular Trips</h1>
+          <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px', marginBottom: '30px' }}>
             {dashboardData.topDestinations.map(({ name, trips }) => (
-              <div key={name} className="stat-card">
-                <p className="stat-title">{name}</p>
-                <p className="stat-value">{trips}</p>
+              <div key={name} style={{ backgroundColor: '#fff', padding: '24px', borderRadius: '12px', border: '1px solid #e5e7eb', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', textAlign: 'center' }}>
+                <p style={{ fontSize: '14px', color: '#6b7280', margin: '0 0 8px 0' }}>{name}</p>
+                <p style={{ fontSize: '32px', fontWeight: 'bold', color: '#1f2937', margin: 0 }}>{trips}</p>
               </div>
             ))}
           </section>
-          <section className="graph-section">
-            <div className="graph-card" style={{ width: "60%", margin: "0 auto" }}>
-              <p className="graph-title">Trips per Destination</p>
+          <section>
+            <div style={{ backgroundColor: '#fff', padding: '24px', borderRadius: '12px', border: '1px solid #e5e7eb', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', width: '60%', margin: '0 auto' }}>
+              <p style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '20px' }}>Trips per Destination</p>
               <ResponsiveContainer width="100%" height={300}>
                 <BarChart
                   data={tripsData}
@@ -911,24 +1276,50 @@ case "flights":
   };
 
   return (
-    <div className="manager-container">
-      <aside className="sidebar">
-        <div className="sidebar-header">
-          <h1 className="sidebar-title">Pathmakers</h1>
+    <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: '#f8fafc' }}>
+      <aside style={{
+        width: '280px',
+        backgroundColor: '#fff',
+        borderRight: '1px solid #e5e7eb',
+        padding: '24px 0'
+      }}>
+        <div style={{ padding: '0 24px', marginBottom: '32px' }}>
+          <h1 style={{ fontSize: '24px', fontWeight: 'bold', color: '#1f2937', margin: 0 }}>Pathmakers</h1>
         </div>
-        <nav className="sidebar-nav">
+        <nav>
           {sidebarItems.map((item) => (
             <div
               key={item}
-              className={`sidebar-nav-item ${activeItem === item ? "active" : ""}`}
+              style={{
+                padding: '12px 24px',
+                cursor: 'pointer',
+                backgroundColor: activeItem === item ? '#f3f4f6' : 'transparent',
+                borderRight: activeItem === item ? '3px solid #3b82f6' : 'none',
+                transition: 'all 0.2s ease'
+              }}
               onClick={() => setActiveItem(item)}
+              onMouseEnter={(e) => {
+                if (activeItem !== item) {
+                  e.currentTarget.style.backgroundColor = '#f9fafb';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (activeItem !== item) {
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                }
+              }}
             >
-              <p>{item}</p>
+              <p style={{
+                fontSize: '16px',
+                fontWeight: activeItem === item ? 'bold' : 'normal',
+                color: activeItem === item ? '#1f2937' : '#6b7280',
+                margin: 0
+              }}>{item}</p>
             </div>
           ))}
         </nav>
       </aside>
-      <main className="main-content">{renderContent()}</main>
+      <main style={{ flex: 1, padding: '32px' }}>{renderContent()}</main>
     </div>
   );
 };

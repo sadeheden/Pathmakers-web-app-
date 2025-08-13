@@ -14,35 +14,39 @@ const Support = () => {
     setFormData({...formData, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // Here you would integrate with EmailJS or your backend API to send the email
-    console.log("Form submitted:", formData);
+    try {
+      const res = await fetch("http://localhost:4000/api/support", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
+      });
 
-    // Reset form and show success
-    setFormData({ name: "", email: "", message: "" });
-    setSubmitted(true);
-    setTimeout(() => setSubmitted(false), 4000);
+      if (res.ok) {
+        setFormData({ name: "", email: "", message: "" });
+        setSubmitted(true);
+        setTimeout(() => setSubmitted(false), 4000);
+      } else {
+        alert("❌ שגיאה בשליחת ההודעה. נסה שוב מאוחר יותר.");
+      }
+    } catch (err) {
+      console.error("Error sending message:", err);
+      alert("❌ בעיית חיבור לשרת.");
+    }
   };
 
   return (
     <div className="customer-support">
       <h1>Contact Customer Support</h1>
-      
-      <p>
-        We’re here to help!</p><p> Please fill out the form below or reach us through the following:
-      </p>
+      <p>We’re here to help! Please fill out the form below or reach us through the following:</p>
 
       <h2>Email Support</h2>
-      <p>
-        <a href="mailto:pathmakers88@gmail.com">pathmakers88@gmail.com</a>
-      </p>
+      <p><a href="mailto:pathmakers88@gmail.com">pathmakers88@gmail.com</a></p>
 
       <h2>Phone Support</h2>
-      <p>
-        +1 234 567 890 (Mon-Fri, 9 AM - 6 PM)
-      </p>
+      <p>+1 234 567 890 (Mon-Fri, 9 AM - 6 PM)</p>
 
       <h2>Send us a Message</h2>
       <form onSubmit={handleSubmit}>
