@@ -79,21 +79,45 @@ const TripSummary = ({ userResponses, setUserResponses, setCurrentStep, setPayme
             return extractId(item);
         };
 
-        let selectedAttractions = userResponses["Select attractions to visit"];
-        if (!Array.isArray(selectedAttractions)) {
-            selectedAttractions = selectedAttractions ? [selectedAttractions] : [];
-        }
+       let selectedAttractions = userResponses["Select attractions to visit"];
+if (!Array.isArray(selectedAttractions)) {
+  selectedAttractions = selectedAttractions ? [selectedAttractions] : [];
+}
+const cleanedAttractions = selectedAttractions.map(a => extractId(a)).filter(Boolean);
 
-        const orderData = {
-            departureCityId: extractId(userResponses["What is your departure city?"]),
-            destinationCityId: extractId(userResponses["What is your destination city?"]),
-            flightId: extractId(userResponses["Select your flight"]),
-          hotelId: extractHotelId(userResponses["Select your hotel"]),
-            attractions: selectedAttractions.map(a => extractId(a)).filter(Boolean),
-            transportation: userResponses["Select your mode of transportation"] || null,
-            paymentMethod: userResponses["Select payment method"] || "Unknown",
-            totalPrice: calculateTotalPrice(userResponses),
-        };
+// Resolve proper IDs from names/selections
+const resolveRes = await fetch("http://localhost:4000/api/order/resolve", {
+  method: "POST",
+  headers: {
+    "Authorization": `Bearer ${token}`,
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    departure: userResponses["What is your departure city?"]?.name || userResponses["What is your departure city?"],
+    destination: userResponses["What is your destination city?"]?.name || userResponses["What is your destination city?"],
+    flight: userResponses["Select your flight"]?.name || userResponses["Select your flight"],
+    hotel: userResponses["Select your hotel"]?.name || userResponses["Select your hotel"],
+  }),
+});
+
+if (!resolveRes.ok) throw new Error("Could not resolve IDs");
+const { ids } = await resolveRes.json();
+
+// Now create orderData **once**
+const orderData = {
+  departureCityId: ids.departureCityId,
+  destinationCityId: ids.destinationCityId,
+  flightId: ids.flightId,
+  hotelId: ids.hotelId || ids.destinationCityId, // fallback if hotel not found
+  attractions: cleanedAttractions,
+  transportation: userResponses["Select your mode of transportation"] || null,
+  paymentMethod: userResponses["Select payment method"] || "Unknown",
+  totalPrice: calculateTotalPrice(userResponses),
+};
+
+console.log("🔍 Extracted IDs:", orderData);
+
+
 
         console.log("🧪 Checking IDs before sending:");
         console.log("Raw departure city:", userResponses["What is your departure city?"]);
@@ -148,7 +172,7 @@ if (!enrichedOrder) {
   alert("Could not match saved order.");
   return;
 }
-handleGeneratePDF(enrichedOrder); // ✅ Generate PDF
+handleGeneratePDF(savedOrder); // ✅ Generate PDF
 
 
 

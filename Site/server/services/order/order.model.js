@@ -3,7 +3,6 @@ import { findOrdersByUserIdFromDb, insertOrderToDb, findOrderByIdFromDb } from '
 
 // Helper function to validate ObjectId
 export function isValidObjectId(id) {
-
   return typeof id === "string" && id.length === 24 && /^[a-fA-F0-9]{24}$/.test(id);
 }
 
@@ -17,42 +16,52 @@ function toObjectIdOrString(id) {
 }
 
 export default class Order {
- constructor(data = {}) {
-    // ...existing fields...
-    this.flight_name = data.flight_name || null;        // NEW
-    this.hotel_name = data.hotel_name || null;          // NEW
-    this.attraction_names = data.attraction_names || []; // NEW
+  constructor(data = {}) {
+    this._id = data._id || null;
+    this.user_id = data.user_id || null;
+    this.departure_city_id = data.departure_city_id || null;
+    this.destination_city_id = data.destination_city_id || null;
+    this.flight_id = data.flight_id || null;
+    this.hotel_id = data.hotel_id || null;
+    this.attractions = Array.isArray(data.attractions) ? data.attractions : [];
+    this.transportation = data.transportation || null;
+    this.payment_method = data.payment_method || null;
+    this.total_price = data.total_price || 0;
+    this.created_at = data.created_at || new Date();
+    
+    // Denormalized name fields - NEW
+    this.flight_name = data.flight_name || null;
+    this.hotel_name = data.hotel_name || null;
+    this.attraction_names = Array.isArray(data.attraction_names) ? data.attraction_names : [];
+    this.departure_city_name = data.departure_city_name || null;
+    this.destination_city_name = data.destination_city_name || null;
   }
 
-  toObject() {
-    return {
-      // ...existing fields...
-      flight_name: this.flight_name,                // NEW
-      hotel_name: this.hotel_name,                  // NEW
-      attraction_names: this.attraction_names,      // NEW
-    };
-  }
-
-  async save() {
-    const orderDoc = {
-      // ...existing fields...
-      flight_name: this.flight_name,                // NEW
-      hotel_name: this.hotel_name,                  // NEW
-      attraction_names: this.attraction_names,      // NEW
-    };}
   static async findByUserId(userId) {
-    return findOrdersByUserIdFromDb(userId);
+    try {
+      const orders = await findOrdersByUserIdFromDb(userId);
+      return orders.map(orderData => new Order(orderData));
+    } catch (error) {
+      console.error("❌ Error finding orders by user ID:", error);
+      throw error;
+    }
   }
 
   static async findByOrderId(orderId) {
-    return findOrderByIdFromDb(orderId);
+    try {
+      const orderData = await findOrderByIdFromDb(orderId);
+      return orderData ? new Order(orderData) : null;
+    } catch (error) {
+      console.error("❌ Error finding order by ID:", error);
+      throw error;
+    }
   }
 
   static async findById(orderId) {
-    return findOrderByIdFromDb(orderId);
+    return this.findByOrderId(orderId);
   }
 
-  // Add toObject method for compatibility
+  // Convert instance to plain object
   toObject() {
     return {
       _id: this._id,
@@ -65,7 +74,13 @@ export default class Order {
       transportation: this.transportation,
       payment_method: this.payment_method,
       total_price: this.total_price,
-      created_at: this.created_at
+      created_at: this.created_at,
+      // Include denormalized fields
+      flight_name: this.flight_name,
+      hotel_name: this.hotel_name,
+      attraction_names: this.attraction_names,
+      departure_city_name: this.departure_city_name,
+      destination_city_name: this.destination_city_name
     };
   }
 
@@ -115,7 +130,13 @@ export default class Order {
       transportation: this.transportation,
       payment_method: this.payment_method,
       total_price: this.total_price,
-      created_at: this.created_at
+      created_at: this.created_at,
+      // Include denormalized fields
+      flight_name: this.flight_name,
+      hotel_name: this.hotel_name,
+      attraction_names: this.attraction_names,
+      departure_city_name: this.departure_city_name,
+      destination_city_name: this.destination_city_name
     };
 
     console.log("💾 Saving order to database:", orderDoc);
