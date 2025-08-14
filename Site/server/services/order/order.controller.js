@@ -7,9 +7,165 @@ import Attraction from "../attraction/att.model.js";
 import { ObjectId } from "mongodb";
 
 // ===== Helper Functions =====
+// --- ADD NEAR THE TOP (helpers) ---
 function looksLikeObjectId(v) {
   return typeof v === 'string' && /^[0-9a-fA-F]{24}$/.test(v);
 }
+
+// Flexible finders so you can pass slug/name/id
+async function findCityByAny(val) {
+  if (!val) return null;
+  if (looksLikeObjectId(val)) return City.findById(val);
+  // Try common fields (adjust to your schema)
+  return (
+    await City.findOne({ slug: val }) ||
+    await City.findOne({ city: val }) ||
+    await City.findOne({ name: val })
+  );
+}
+
+async function findFlightByAny(val, destinationId) {
+  if (!val) return null;
+  if (looksLikeObjectId(val)) return { doc: await Flight.findById(val), index: 0 };
+
+  // Try to match a code inside an airlines[] array (adjust to your schema)
+  const doc = await Flight.findOne({
+    $or: [
+      { destination_city_id: destinationId },
+      { 'airlines.code': val },
+      { 'flights.code': val },
+      { name: val }, { airline: val }
+    ]
+  });
+  
+
+  // Try to locate the index of that code inside arrays for compound id
+  let index = 0;
+  if (doc?.airlines?.length) {
+    const i = doc.airlines.findIndex(a =>
+      a?.code === val || a?.name === val || a?.airline === val
+    );
+    if (i >= 0) index = i;
+  } else if (doc?.flights?.length) {
+    const i = doc.flights.findIndex(f =>
+      f?.code === val || f?.name === val || f?.airline === val
+    );
+    if (i >= 0) index = i;
+  }
+  return { doc, index };
+}
+
+async function findHotelByAny(val, destinationId) {
+  if (!val) return { doc: await Hotel.findOne({ destination_city_id: destinationId }), index: 0 };
+  if (looksLikeObjectId(val)) return { doc: await Hotel.findById(val), index: 0 };
+
+  const doc = await Hotel.findOne({
+    $or: [
+      { destination_city_id: destinationId },
+      { name: val },
+      { 'hotels.name': val }
+    ]
+  });
+
+  // pick index by name if present; else 0
+  let index = 0;
+  if (doc?.hotels?.length) {
+    const i = doc.hotels.findIndex(h => h?.name === val);
+    if (i >= 0) index = i;
+  }
+  return { doc, index };
+}
+
+// --- ADD THIS NEW CONTROLLER ---
+export async function resolveOrderRefs(req, res) {
+  try {
+    if (!City || !Flight || !Hotel) {
+      return res.status(500).json({ message: "Server models not initialized" });
+    }
+
+    if (!req.body) return res.status(400).json({ message: "Missing JSON body" });
+    const { departure, destination, flight, hotel } = req.body;
+    if (!req.user?.id) return res.status(401).json({ message: "Unauthorized" });
+
+    const looksLikeOid = (v) => typeof v === "string" && /^[0-9a-fA-F]{24}$/.test(v);
+
+const findCity = async (val) => {
+  if (!val) return null;
+
+  // אם זה ObjectId
+  if (looksLikeObjectId(val)) {
+    const byId = await City.findById(val);
+    if (byId) return byId;
+  }
+
+  // חיפוש לפי שם העיר
+  const byName = await City.findByName(val);
+  return byName || null;
+};
+
+
+
+   const findFlight = async (flightId, dstCityId) => {
+  try {
+    if (!flightId) return { doc: null, index: 0 };
+
+    // חפש את מסמך העיר לפי destination_city_id
+    const cityFlights = await Flight.findById(dstCityId);
+    if (!cityFlights?.airlines) return { doc: null, index: 0 };
+
+    // מצא את האינדקס במערך airlines לפי ObjectId או שם
+    const index = cityFlights.airlines.findIndex(a => a._id.toString() === flightId);
+    if (index < 0) return { doc: null, index: 0 };
+
+    return { doc: cityFlights, index };
+  } catch (e) {
+    console.error("❌ Flight lookup failed:", e);
+    return { doc: null, index: 0 };
+  }
+};
+
+
+    const findHotel = async (hotelName, dstCityId) => {
+      if (!hotelName) return null;
+      if (looksLikeOid(hotelName)) return await Hotel.findById(hotelName);
+
+      const hotelsDoc = await Hotel.findByCity(dstCityId);
+      if (!hotelsDoc?.hotels?.length) return null;
+
+      const index = hotelsDoc.hotels.findIndex(h => h.name === hotelName);
+      if (index < 0) return null;
+
+      return { doc: hotelsDoc, index };
+    };
+
+    const [depCity, dstCity] = await Promise.all([findCity(departure), findCity(destination)]);
+    if (!depCity || !dstCity) return res.status(400).json({ message: "Could not resolve city ids" });
+
+    const flightResolved = await findFlight(flight, dstCity._id);
+    if (!flightResolved) return res.status(400).json({ message: "Could not resolve flight" });
+
+    const hotelResolved = await findHotel(hotel, dstCity._id);
+    if (!hotelResolved) return res.status(400).json({ message: "Could not resolve hotel" });
+
+    const flightId = `${flightResolved.doc._id}-${flightResolved.index}`;
+    const hotelId = `${hotelResolved.doc._id}-${hotelResolved.index}`;
+
+    return res.status(200).json({
+      success: true,
+      ids: {
+        departureCityId: depCity._id,
+        destinationCityId: dstCity._id,
+        flightId,
+        hotelId,
+      },
+    });
+
+  } catch (err) {
+    console.error("❌ resolveOrderRefs error:", err.stack || err);
+    return res.status(500).json({ message: "Internal Server Error" });
+  }
+}
+
 
 // Clean and extract the base ObjectId from a possibly compound ID (e.g., "abc123-2")
 function cleanId(id) {
@@ -34,6 +190,7 @@ function cleanId(id) {
 // Extract index from compound ID (e.g., "flight_id-2" returns 2)
 function extractIndex(compoundId) {
   if (typeof compoundId !== 'string') return 0;
+
   const parts = compoundId.split(/[-_]/);
   if (parts.length > 1) {
     const index = parseInt(parts[1], 10);
@@ -43,12 +200,33 @@ function extractIndex(compoundId) {
 }
 
 // Helper to get flight name safely
+// Updated helper functions for nested data structures
+// Helper to get flight name safely - now handles airlines array correctly
+async function findFlightByCityAndAirline(cityNameOrId, airlineName) {
+  // קודם כל נמצא את העיר
+  const cityDoc = await City.findByName(cityNameOrId) || await City.findById(cityNameOrId);
+  if (!cityDoc) return null;
+
+  // עכשיו נמצא את הטיסה בתוך מערך ה-airlines
+  const flightIndex = cityDoc.airlines?.findIndex(
+    (a) => a.name.toLowerCase() === airlineName.toLowerCase()
+  );
+
+  if (flightIndex === undefined || flightIndex === -1) return null;
+
+  return { flightDoc: cityDoc, index: flightIndex };
+}
 function getFlightName(flight, index) {
   if (!flight) return "Flight not found";
+
+  console.log("🔍 Flight document:", flight);
+  console.log("🔍 Flight index:", index);
 
   // Handle airlines array (your actual data structure)
   if (flight.airlines && Array.isArray(flight.airlines)) {
     const selectedFlight = flight.airlines[index];
+    console.log("🔍 Selected flight from airlines:", selectedFlight);
+    
     if (selectedFlight) {
       return selectedFlight.name || selectedFlight.airline || `Flight ${index + 1}`;
     }
@@ -67,10 +245,12 @@ function getFlightName(flight, index) {
   // Handle direct flight object
   if (flight.name) return flight.name;
   if (flight.airline) return flight.airline;
+
   return "Unknown Flight";
 }
 
-// Helper to get hotel name safely
+
+// Helper to get hotel name safely, considering hotel document has hotels array
 function getHotelName(hotelDoc, index) {
   if (!hotelDoc) return "Hotel not found";
 
@@ -81,53 +261,11 @@ function getHotelName(hotelDoc, index) {
   }
 
   if (hotelDoc.name) return hotelDoc.name;
+
   return "Hotel not found";
 }
 
-// Helper function to find city by ID with multiple approaches
-async function findCityById(cityId) {
-  if (!cityId) return null;
-  
-  try {
-    // Try direct ObjectId lookup first
-    if (isValidObjectId(cityId)) {
-      const city = await City.findById(new ObjectId(cityId));
-      if (city) return city;
-    }
-    
-    // Try string lookup
-    const cityByString = await City.findById(cityId);
-    if (cityByString) return cityByString;
-    
-    return null;
-  } catch (error) {
-    console.error("❌ City lookup failed for ID:", cityId, error.message);
-    return null;
-  }
-}
-
-// Safe database operation wrapper
-async function safeDbOperation(operation, fallback = null) {
-  try {
-    return await operation();
-  } catch (error) {
-    if (error.name === 'MongoNetworkError' || error.message.includes('SSL') || error.message.includes('TLS')) {
-      console.error("🔄 MongoDB connection issue, retrying...");
-      // Wait a bit and try once more
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      try {
-        return await operation();
-      } catch (retryError) {
-        console.error("❌ Retry failed:", retryError.message);
-        return fallback;
-      }
-    }
-    console.error("❌ Database operation failed:", error.message);
-    return fallback;
-  }
-}
-
-// POST /api/order - Create new order with city name resolution
+// POST /api/order - Create new order
 export async function createOrder(req, res) {
   if (!req.user?.id) return res.status(401).json({ message: "Unauthorized" });
 
@@ -174,47 +312,43 @@ export async function createOrder(req, res) {
       ? attractions.map(a => cleanId(a)).filter(Boolean)
       : [];
 
-    // Resolve city names for denormalization
-    const [depCity, dstCity] = await Promise.all([
-      safeDbOperation(() => findCityById(depClean), null),
-      safeDbOperation(() => findCityById(dstClean), null)
-    ]);
-
-    // Create new order with denormalized city names
+    // Create new order, store full compound IDs (with indexes if any)
     const newOrder = new Order({
-      user_id: String(req.user.id),
-      departure_city_id: depClean,
-      destination_city_id: dstClean,
-      flight_id: flightId,
-      hotel_id: hotelId,
-     attractions: cleanedAttractions,
-       attraction_names: Array.isArray(attractionNames) ? attractionNames : [],
-      transportation,
-      payment_method: paymentMethod,
-      total_price: totalPrice,
-      created_at: new Date(),
-      // Store denormalized names
-      flight_name: flightName || null,
-      hotel_name: hotelName || null,
-      attraction_names: Array.isArray(attractionNames) ? attractionNames : [],
-      departure_city_name: depCity?.city || depCity?.name || null,
-      destination_city_name: dstCity?.city || dstCity?.name || null
-    });
+    user_id: String(req.user.id),
+    departure_city_id: depClean,
+    destination_city_id: dstClean,
+    flight_id: flightId,
+    hotel_id: hotelId,
+    attractions: cleanedAttractions,
+    transportation,
+    payment_method: paymentMethod,
+    total_price: totalPrice,
+    created_at: new Date(),
+    // NEW: store denormalized names if provided
+    flight_name: flightName || null,
+    hotel_name: hotelName || null,
+    attraction_names: Array.isArray(attractionNames) ? attractionNames : [],
+  });
 
     const savedOrder = await newOrder.save();
-    const orderObject = savedOrder.toObject();
 
     return res.status(201).json({
-      ...orderObject,
-      _id: orderObject._id?.toString() || null,
-      user_id: orderObject.user_id?.toString() || null,
-      departure_city_id: orderObject.departure_city_id?.toString() || null,
-      destination_city_id: orderObject.destination_city_id?.toString() || null,
-      flight_id: orderObject.flight_id?.toString() || null,
-      hotel_id: orderObject.hotel_id?.toString() || null,
-      attractions: Array.isArray(orderObject.attractions)
-        ? orderObject.attractions.map(id => id.toString())
-        : []
+      _id: savedOrder._id.toString(),
+      user_id: savedOrder.user_id?.toString() || null,
+      departure_city_id: savedOrder.departure_city_id?.toString() || null,
+      destination_city_id: savedOrder.destination_city_id?.toString() || null,
+      flight_id: savedOrder.flight_id?.toString() || null,
+      hotel_id: savedOrder.hotel_id?.toString() || null,
+      attractions: Array.isArray(savedOrder.attractions)
+        ? savedOrder.attractions.map(id => id.toString())
+        : [],
+      transportation: savedOrder.transportation,
+      payment_method: savedOrder.payment_method,
+      total_price: savedOrder.total_price,
+      created_at: savedOrder.created_at,
+            flight_name: savedOrder.flight_name ?? null,
+      hotel_name: savedOrder.hotel_name ?? null,
+      attraction_names: savedOrder.attraction_names ?? [],
     });
 
   } catch (err) {
@@ -224,12 +358,12 @@ export async function createOrder(req, res) {
 }
 
 // GET /api/order - Get user orders with enriched data
+// GET /api/order - Get user orders with enriched data
 export async function getUserOrders(req, res) {
   if (!req.user?.id) return res.status(401).json({ message: "Unauthorized" });
 
   try {
     const userId = String(req.user.id);
-    console.log("📦 Fetching orders for user:", userId);
 
     // Fetch orders with retry wrapper
     const rawOrders = await safeDbOperation(() => Order.findByUserId(userId), []);
@@ -241,8 +375,7 @@ export async function getUserOrders(req, res) {
 
     const enrichedOrders = await Promise.all(
       rawOrders.map(async (order) => {
-        try {
-          console.log("🔍 Processing order:", order._id);
+        console.log("🔍 Processing order:", order._id);
 
         
           // Extract clean IDs and indexes
@@ -341,66 +474,43 @@ else if (Array.isArray(orderData.attractions) && orderData.attractions.length > 
   // Your MongoDB shows attractions are already names: ["Eiffel Tower","Louvre Museum"]
   attractionNames = orderData.attractions;
 }
+        const hotelName = hasStoredHotelName
+          ? order.hotel_name
+          : getHotelName(hotelDoc, hotelIndex);
 
-          console.log("✅ Resolved names:", {
-            departure: departureCityName,
-            destination: destinationCityName,
-            flight: flightName,
-            hotel: hotelName,
-          });
+        console.log("✅ Resolved names:", {
+          departure: departureCity?.city || "Unknown",
+          destination: destinationCity?.city || "Unknown",
+          flight: flightName,
+          hotel: hotelName,
+        });
 
         return {
-  _id: orderData._id?.toString() || null,
-  user_id: orderData.user_id?.toString() || null,
-  departure_city_id: orderData.departure_city_id?.toString() || null,
-  destination_city_id: orderData.destination_city_id?.toString() || null,
-  flight_id: orderData.flight_id?.toString() || null,
-  hotel_id: orderData.hotel_id?.toString() || null,
-  attractions: attractionNames,
-  transportation: orderData.transportation,
-  payment_method: orderData.payment_method,
-  total_price: orderData.total_price,
-  created_at: orderData.created_at,
-  createdAt: orderData.created_at, // Alias
+          ...order.toObject?.(),
+          _id: order._id?.toString?.() || null,
+          user_id: order.user_id?.toString?.() || null,
+          departure_city_id: order.departure_city_id?.toString?.() || null,
+          destination_city_id: order.destination_city_id?.toString?.() || null,
+          flight_id: order.flight_id?.toString?.() || null,
+          hotel_id: order.hotel_id?.toString?.() || null,
+          attractions: order.attractions?.map(a => a.toString?.()) || [],
+          total_price: order.total_price,
+          created_at: order.created_at,
+          payment_method: order.payment_method,
+          transportation: order.transportation,
 
-  // Human-readable names
-  departure_city_name: departureCityName,
-  destination_city_name: destinationCityName,
-  flight_name: flightName,
-  hotel_name: hotelName,
-  attraction_names: attractionNames, // ✅ Already stored names
-};
-
-        } catch (orderError) {
-          console.error("❌ Error processing order:", orderError);
-          // Return a safe fallback for this order
-          const orderData = order.toObject ? order.toObject() : order;
-          return {
-            _id: orderData._id?.toString() || null,
-            user_id: orderData.user_id?.toString() || null,
-            departure_city_id: orderData.departure_city_id?.toString() || null,
-            destination_city_id: orderData.destination_city_id?.toString() || null,
-            flight_id: orderData.flight_id?.toString() || null,
-            hotel_id: orderData.hotel_id?.toString() || null,
-            attractions: [],
-            transportation: orderData.transportation || null,
-            payment_method: orderData.payment_method || "Unknown",
-            total_price: orderData.total_price || 0,
-            created_at: orderData.created_at || new Date(),
-            createdAt: orderData.created_at || new Date(),
-            departure_city_name: "Error loading city name",
-            destination_city_name: "Error loading city name",
-            flight_name: "Error loading flight name",
-            hotel_name: "Error loading hotel name",
-            attraction_names: [],
-          };
-        }
+          // Human-readable
+          departure_city_name: departureCity?.city || departureCity?.name || `Unknown (${depCityObjectId})`,
+          destination_city_name: destinationCity?.city || destinationCity?.name || `Unknown (${dstCityObjectId})`,
+          flight_name: flightName,
+          hotel_name: hotelName,
+          attraction_names: attractionNames,
+        };
       })
     );
 
     console.log("✅ Enriched orders completed");
-    return res.status(200).json(enrichedOrders); // Return array directly instead of wrapping in object
-
+    return res.status(200).json({ success: true, orders: enrichedOrders });
   } catch (err) {
     console.error("❌ Error fetching enriched orders:", err);
     return res.status(500).json({
@@ -409,44 +519,10 @@ else if (Array.isArray(orderData.attractions) && orderData.attractions.length > 
     });
   }
 }
-// async function getAttractionNames(attractionIds, destinationCityName) {
-//   if (!attractionIds || attractionIds.length === 0) return [];
-
-//   // If attraction IDs are already names, just return them
-//   if (attractionIds.every(a => typeof a === "string")) return attractionIds;
-
-//   // Otherwise, try to fetch from city document
-//   const attractionDoc = await safeDbOperation(() =>
-//     Attraction.findOne({ city: destinationCityName })
-//   , null);
-
-//   if (!attractionDoc || !Array.isArray(attractionDoc.attractions)) {
-//     console.log("❌ No attractions array found in city document");
-//     return attractionIds.map((_, i) => `Attraction ${i + 1}`);
-//   }
-
-//   return attractionIds.map((id, i) => {
-//     const found = attractionDoc.attractions.find(a => a.name === id || a._id.toString() === id);
-//     return found?.name || `Unknown Attraction ${i + 1}`;
-//   });
-// }
 
 
-
-// Get attraction names helper
 async function getAttractionNames(attractionIds, destinationCityId) {
-  if (!Array.isArray(attractionIds) || attractionIds.length === 0) return [];
-
-  try {
-    const attractionDoc = await Attraction.findOne({ city_id: destinationCityId });
-    if (!attractionDoc || !Array.isArray(attractionDoc.attractions)) return [];
-
-    return attractionIds.map(id => {
-      const found = attractionDoc.attractions.find(a => a._id.toString() === id || a.name === id);
-      return found ? found.name : null;
-    }).filter(Boolean);
-  } catch (err) {
-    console.error("❌ Error fetching attraction names:", err);
+  if (!attractionIds || !Array.isArray(attractionIds) || attractionIds.length === 0) {
     return [];
   }
 }
@@ -560,6 +636,53 @@ const findHotel = async (val, dstId) => {
     if (!depCity || !dstCity) {
       console.warn("⚠️ Could not resolve city ids", { depCity: !!depCity, dstCity: !!dstCity });
       return res.status(400).json({ message: "Could not resolve city ids" });
+
+  try {
+    const cityDoc = await safeDbOperation(
+      () => City.findById(destinationCityId),
+      null
+    );
+
+    if (!cityDoc || !cityDoc.attractions || !Array.isArray(cityDoc.attractions)) {
+      console.log("❌ No attractions array found in city document");
+      return attractionIds.map((_, index) => `Attraction ${index + 1}`);
+    }
+
+    console.log("🔍 City attractions:", cityDoc.attractions.length, "attractions found");
+
+    const attractionNames = attractionIds.map((id, orderIndex) => {
+      // If it's a number or string number, treat as index
+      const index = parseInt(id);
+      if (!isNaN(index) && index >= 0 && index < cityDoc.attractions.length) {
+        return cityDoc.attractions[index].name || `Attraction ${index + 1}`;
+      }
+      
+      // If it's a string, try to find by name
+      if (typeof id === 'string') {
+        const found = cityDoc.attractions.find(attr => attr.name === id);
+        if (found) return found.name;
+      }
+      
+      return `Unknown Attraction ${orderIndex + 1}`;
+    });
+
+    return attractionNames;
+  } catch (error) {
+    console.error("❌ Error fetching attraction names:", error);
+    return attractionIds.map((_, index) => `Attraction ${index + 1}`);
+  }
+}
+
+
+// Helper function to find city by ID with multiple approaches
+async function findCityById(cityId) {
+  if (!cityId) return null;
+  
+  try {
+    // Try direct ObjectId lookup first
+    if (isValidObjectId(cityId)) {
+      const city = await City.findById(new ObjectId(cityId));
+      if (city) return city;
     }
 
     // 4) Flight and hotel, dependent on destination id
