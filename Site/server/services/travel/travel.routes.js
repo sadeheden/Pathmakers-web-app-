@@ -20,27 +20,41 @@ import {
 
 const router = express.Router();
 
-// Cities
-router.get("/cities", getCities);
-router.get("/cities/name/:name", getCityByName);
-router.post("/cities", addCity);
-router.delete("/cities/:id", deleteCity);
+/**
+ * 🏙 Cities Routes
+ * אם ה־app.use('/api/travel/cities', router)
+ * אז כאן נשאיר נתיבים יחסיים בלבד.
+ */
+router.get("/", getCities);                  // GET /api/travel/cities
+router.get("/name/:name", getCityByName);    // GET /api/travel/cities/name/:name
+router.post("/", addCity);                   // POST /api/travel/cities
+router.delete("/:id", deleteCity);           // DELETE /api/travel/cities/:id
 
-// Hotels
-router.get("/hotels", getHotels);
-router.post("/hotels", addHotel);
-router.delete("/hotels/:id", deleteHotel);
-router.post("/add-hotels", addHotelsToCity);
+/**
+ * 🏨 Hotels Routes
+ * אם ה־app.use('/api/travel/hotels', router)
+ */
+router.get("/", getHotels);                  // GET /api/travel/hotels
+router.post("/", addHotel);                  // POST /api/travel/hotels
+router.delete("/:id", deleteHotel);          // DELETE /api/travel/hotels/:id
+router.post("/add-hotels", addHotelsToCity); // POST /api/travel/hotels/add-hotels
 
-// Flights
-router.get("/flights", getFlights);
-router.post("/flights", addFlight);
-router.delete("/flights/:id", deleteFlight);
-router.post("/add-flights", addFlightsToCity);
-// Attractions
-router.get("/attractions", getAttractions);
-router.post("/attractions", addAttraction);
-router.delete("/attractions/:id", deleteAttraction);
-router.post("/add-attractions", addAttractionsToCity);
+/**
+ * ✈ Flights Routes
+ * אם ה־app.use('/api/travel/flights', router)
+ */
+router.get("/", getFlights);                     // GET /api/travel/flights
+router.post("/", addFlight);                     // POST /api/travel/flights
+router.delete("/:id", deleteFlight);             // DELETE /api/travel/flights/:id
+router.post("/add-flights", addFlightsToCity);   // POST /api/travel/flights/add-flights
+
+/**
+ * 🎢 Attractions Routes
+ * אם ה־app.use('/api/travel/attractions', router)
+ */
+router.get("/", getAttractions);                     // GET /api/travel/attractions
+router.post("/", addAttraction);                     // POST /api/travel/attractions
+router.delete("/:id", deleteAttraction);             // DELETE /api/travel/attractions/:id
+router.post("/add-attractions", addAttractionsToCity); // POST /api/travel/attractions/add-attractions
 
 export default router;

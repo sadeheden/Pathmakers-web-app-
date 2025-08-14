@@ -58,8 +58,8 @@ app.use('/api/hotels', hotelRoutes);
 app.use('/api/auth', authRouter);
 app.use('/api/upload', uploadRouter);
 app.use('/api/manager', managerRoutes);
+app.use('/api/travel/cities', travelRoutes);
 app.use('/api/travel', travelRoutes);
-app.use('/api/cities', travelRoutes);
 app.use('/api/order', ordersRouter);
 app.use('/api/support', supportRouter);
 

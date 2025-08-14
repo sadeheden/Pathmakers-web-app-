@@ -19,7 +19,7 @@ export const getCities = async (req, res) => {
 export const addCity = async (req, res) => {
   try {   
     const db = await connectDB();
-    
+    console.log("🔍 DEBUG: Request body:addCity", req.body);
     // קבלת שם העיר מה-body
     const cityName = typeof req.body.city === "string" ? req.body.city.trim() : "";
     console.log("🔍 DEBUG: Extracted cityName:", cityName);
