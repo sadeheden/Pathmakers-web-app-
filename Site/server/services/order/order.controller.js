@@ -244,17 +244,27 @@ export async function getUserOrders(req, res) {
         try {
           console.log("🔍 Processing order:", order._id);
 
-          // Convert order to object if it's an instance
-          const orderData = order.toObject ? order.toObject() : order;
-
+        
           // Extract clean IDs and indexes
-        const flightObjectId = cleanId(orderData.flight_id); // e.g., "6878c5126bcf8c4c6887f6ab"
+     // Extract clean IDs and indexes
+const flightObjectId = cleanId(orderData.flight_id); // e.g., "6878c5126bcf8c4c6887f6ab"
 const flightIndex = extractIndex(orderData.flight_id); // e.g., 0
-const hotelObjectId = cleanId(orderData.hotel_id); // ← missing
-          const hotelIndex = extractIndex(orderData.hotel_id);
-          const depCityObjectId = cleanId(orderData.departure_city_id);
-          const dstCityObjectId = cleanId(orderData.destination_city_id);
+const hotelObjectId = cleanId(orderData.hotel_id); // ← ADD THIS LINE (was commented out)
+if (!hotelName && hotelObjectId) {
+   const hotelDoc = hotelObjectId ? await safeDbOperation(() => Hotel.findById(hotelObjectId), null) : null;
+const hotelName = orderData.hotel_name || getHotelName(hotelDoc, hotelIndex);
+    if (hotelDoc?.hotels && hotelDoc.hotels.length > 0) {
+        const index = extractIndex(orderData.hotel_id); // e.g., "68075f88dc218773e0652231-2" → 2
+        const selectedHotel = hotelDoc.hotels[index] || hotelDoc.hotels[0]; // fallback
+       hotelName = orderData.hotel_name || (hotelObjectId ? getHotelName(await safeDbOperation(() => Hotel.findById(hotelObjectId), null), hotelIndex) : "Hotel not found");
 
+    } else {
+        hotelName = "Hotel not found";
+    }
+}
+const hotelIndex = extractIndex(orderData.hotel_id);
+const depCityObjectId = cleanId(orderData.departure_city_id);
+const dstCityObjectId = cleanId(orderData.destination_city_id);
           // Check if we have stored names (preferred approach)
           const hasStoredDepartureCity = !!orderData.departure_city_name;
           const hasStoredDestinationCity = !!orderData.destination_city_name;
@@ -308,31 +318,29 @@ const hotelObjectId = cleanId(orderData.hotel_id); // ← missing
             ? orderData.flight_name
             : getFlightName(flight, flightIndex);
 
-          const hotelName = hasStoredHotelName
-            ? orderData.hotel_name
-            : getHotelName(hotelDoc, hotelIndex);
+       const hotelName = orderData.hotel_name // use stored value if exists
+  || (hotelObjectId 
+      ? getHotelName(
+          await safeDbOperation(() => Hotel.findById(hotelObjectId), null), 
+          hotelIndex
+        )
+      : "Hotel not found"
+    );
 
           // Handle attractions
-         // Handle attractions
-// Handle attractions: use stored names if available, otherwise fallback to order array
-// Handle attractions
-// Handle attractions
+
+// Handle attractions - they're already stored as names in MongoDB
 let attractionNames = [];
 
-// If stored attraction names exist, use them
-if (storedAttractions.length > 0) {
+// First try stored attraction_names
+if (Array.isArray(storedAttractions) && storedAttractions.length > 0) {
   attractionNames = storedAttractions;
 } 
-// Otherwise, fetch real attraction names from the database
+// Fallback: attractions array contains the actual names (based on your MongoDB doc)
 else if (Array.isArray(orderData.attractions) && orderData.attractions.length > 0) {
-  attractionNames = await getAttractionNames(orderData.attractions, orderData.destination_city_id);
+  // Your MongoDB shows attractions are already names: ["Eiffel Tower","Louvre Museum"]
+  attractionNames = orderData.attractions;
 }
-
-// Fallback to empty array if nothing found
-if (!Array.isArray(attractionNames)) attractionNames = [];
-
-
-
 
           console.log("✅ Resolved names:", {
             departure: departureCityName,
@@ -526,11 +534,12 @@ const findHotel = async (val, dstId) => {
   try {
     if (looksLikeOid(val)) return { doc: await Hotel.findById(val), index: 0 };
 
+    // Fix: dstCity is not available in this scope, use the resolved city
     const doc = await Hotel.findOne({
       $or: [
-        { _id: dstId }, // ✅ Match by city _id since hotel doc has city info
+        { _id: dstId }, 
         { "hotels.name": val },
-        { city: dstCity.city || dstCity.name } // ✅ Match by city name
+        { city_id: dstId } // Match by destination city ID
       ],
     });
 
@@ -592,31 +601,3 @@ const findHotel = async (val, dstId) => {
   }
 }
 
-// 1) Resolve IDs
-const resolveRes = await fetch("/api/order/resolve", {
-  method: "POST",
-  headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-  body: JSON.stringify({
-    departure: userResponses.departureCity,
-    destination: userResponses.destinationCity,
-    flight: userResponses.flight,
-    hotel: userResponses.hotel,
-  }),
-});
-const { ids } = await resolveRes.json();
-
-// 2) Create order using resolved IDs
-const orderRes = await fetch("/api/order", {
-  method: "POST",
-  headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-  body: JSON.stringify({
-    user_id: userId,
-    departureCityId: ids.departureCityId,
-    destinationCityId: ids.destinationCityId,
-    flightId: ids.flightId,
-    hotelId: ids.hotelId,
-    attractions: userResponses.attractions,
-    paymentMethod: userResponses.paymentMethod,
-    totalPrice: calculateTotalPrice(userResponses),
-  }),
-});

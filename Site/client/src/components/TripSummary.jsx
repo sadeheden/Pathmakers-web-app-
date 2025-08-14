@@ -2,7 +2,7 @@ import React from "react";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import { useNavigate } from "react-router-dom";
-import { calculateTotalPrice, cleanId } from "../utils/travelUtils";
+import { calculateTotalPrice } from "../utils/travelUtils";
 
 const TripSummary = ({ userResponses, setUserResponses, setCurrentStep, setPaymentCompleted }) => {
     const navigate = useNavigate();

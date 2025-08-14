@@ -7,54 +7,66 @@ const PaymentModal = ({ isOpen, onClose, totalAmount, onPaymentSuccess, userResp
     const [cvv, setCvv] = useState("");
     const [paymentSuccess, setPaymentSuccess] = useState(false);
     const [error, setError] = useState("");
+
     const method = userResponses?.["Select payment method"];
-const isBank = method === "Bank Transfer";
-
+    const isBank = method === "Bank Transfer";
 
     const currentYear = new Date().getFullYear();
+    const currentMonth = new Date().getMonth() + 1; // 1-12
     const maxYear = currentYear + 10;
 
-  const handlePayment = () => {
-  const errs = [];
+    const handlePayment = () => {
+        const errs = [];
 
-  if (!fullName.trim() || fullName.trim().length < 3) {
-    errs.push("❌ Invalid Full Name. Enter at least 3 characters.");
-  }
+        // Full Name validation
+        if (!fullName.trim() || fullName.trim().length < 3) {
+            errs.push("❌ Invalid Full Name. Enter at least 3 characters.");
+        }
 
-  if (!isBank) {
-    if (!/^\d{16}$/.test(paymentDetails)) {
-      errs.push("❌ Invalid Payment Number. Must be 16 digits.");
-    }
-    const expiryMatch = expiryDate.match(/^(0[1-9]|1[0-2])\/(\d{4})$/);
-    const currentYear = new Date().getFullYear();
-    const maxYear = currentYear + 10;
-    if (!expiryMatch || +expiryMatch[2] < currentYear || +expiryMatch[2] > maxYear) {
-      errs.push(`❌ Invalid Expiry Date. Must be MM/YYYY between ${currentYear}-${maxYear}.`);
-    }
-    if (!/^\d{3}$/.test(cvv)) {
-      errs.push("❌ Invalid CVV. Must be exactly 3 digits.");
-    }
-  }
+        if (!isBank) {
+            // Card number
+            if (!/^\d{16}$/.test(paymentDetails)) {
+                errs.push("❌ Invalid Payment Number. Must be 16 digits.");
+            }
 
-  if (errs.length) { setError(errs.join("\n")); return; }
+            // Expiry date
+            const expiryMatch = expiryDate.match(/^(0[1-9]|1[0-2])\/(\d{4})$/);
+            if (!expiryMatch) {
+                errs.push("❌ Invalid Expiry Date. Must be MM/YYYY.");
+            } else {
+                const month = parseInt(expiryMatch[1], 10);
+                const year = parseInt(expiryMatch[2], 10);
+                if (year < currentYear || year > maxYear || (year === currentYear && month < currentMonth)) {
+                    errs.push(`❌ Expiry Date must be between current month and ${maxYear}.`);
+                }
+            }
 
-  setPaymentSuccess(true);
-  setError("");
+            // CVV
+            if (!/^\d{3}$/.test(cvv)) {
+                errs.push("❌ Invalid CVV. Must be exactly 3 digits.");
+            }
+        }
 
-  setTimeout(() => {
-    setPaymentSuccess(false);
-    onClose();
-    onPaymentSuccess();
-  }, 1600);
-};
+        if (errs.length) {
+            setError(errs.join("\n"));
+            return;
+        }
 
+        setPaymentSuccess(true);
+        setError("");
+
+        setTimeout(() => {
+            setPaymentSuccess(false);
+            onClose();
+            onPaymentSuccess();
+        }, 1600);
+    };
 
     if (!isOpen) return null;
 
     return (
         <div className="modal-overlay">
-    <div className={`modal-content ${isBank ? "bank" : ""} ${paymentSuccess ? "success" : ""}`}>
-
+            <div className={`modal-content ${isBank ? "bank" : ""} ${paymentSuccess ? "success" : ""}`}>
                 {paymentSuccess ? (
                     <>
                         <h2>🎉 Payment Successful! 🎉</h2>
@@ -63,48 +75,52 @@ const isBank = method === "Bank Transfer";
                     </>
                 ) : (
                     <>
-                        <h2>{userResponses["Select payment method"]} Payment</h2>
+                        <h2>{method} Payment</h2>
                         <p><strong>Total Amount: ${totalAmount}</strong></p>
-                        {error && <p className="error-message">{error}</p>}
+                        {error && <p className="error-message" style={{ whiteSpace: "pre-line" }}>{error}</p>}
 
                         <label>Full Name</label>
-                        <input 
-                            type="text" 
+                        <input
+                            type="text"
                             placeholder="John Doe"
                             value={fullName}
                             onChange={(e) => setFullName(e.target.value)}
                         />
 
-                        <label>Payment Number</label>
-                        <input 
-                            type="text" 
-                            placeholder="1234 5678 9012 3456"
-                            maxLength="16"
-                            value={paymentDetails}
-                            onChange={(e) => setPaymentDetails(e.target.value.replace(/\D/g, ""))}
-                        />
+                        {!isBank && (
+                            <>
+                                <label>Payment Number</label>
+                                <input
+                                    type="text"
+                                    placeholder="1234 5678 9012 3456"
+                                    maxLength="16"
+                                    value={paymentDetails}
+                                    onChange={(e) => setPaymentDetails(e.target.value.replace(/\D/g, ""))}
+                                />
 
-                        <div className="expiry-cvv">
-                            <div>
-                                <label>Expiry Date</label>
-                                <input 
-                                    type="text" 
-                                    placeholder="MM/YYYY" 
-                                    value={expiryDate}
-                                    onChange={(e) => setExpiryDate(e.target.value)}
-                                />
-                            </div>
-                            <div>
-                                <label>CVV</label>
-                                <input 
-                                    type="text" 
-                                    placeholder="123"
-                                    maxLength="3"
-                                    value={cvv}
-                                    onChange={(e) => setCvv(e.target.value.replace(/\D/g, ""))}
-                                />
-                            </div>
-                        </div>
+                                <div className="expiry-cvv">
+                                    <div>
+                                        <label>Expiry Date</label>
+                                        <input
+                                            type="text"
+                                            placeholder="MM/YYYY"
+                                            value={expiryDate}
+                                            onChange={(e) => setExpiryDate(e.target.value)}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label>CVV</label>
+                                        <input
+                                            type="text"
+                                            placeholder="123"
+                                            maxLength="3"
+                                            value={cvv}
+                                            onChange={(e) => setCvv(e.target.value.replace(/\D/g, ""))}
+                                        />
+                                    </div>
+                                </div>
+                            </>
+                        )}
 
                         <button className="pay-button" onClick={handlePayment} disabled={paymentSuccess}>
                             {paymentSuccess ? "Processing..." : `Pay $${totalAmount}`}
