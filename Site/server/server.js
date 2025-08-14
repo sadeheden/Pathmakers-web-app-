@@ -48,7 +48,7 @@ import managerRoutes from './services/manager/manager.routes.js';
 import travelRoutes from './services/travel/travel.routes.js';
 import supportRouter from './services/support/support.router.js';
 import ordersRouter from './services/order/order.router.js'; // רק זה נשאר
-
+import orders2Router from './services/orders2/orders2.router.js';
 // ---------- API Endpoints ----------
 app.use('/api/cities', citiesRouter);          // כל הפעולות של cities רגילות
 app.use('/api/attractions', attractionRoutes);
@@ -64,6 +64,7 @@ app.use('/api/travel/cities', travelRoutes);
 app.use('/api/travel', travelRoutes);
 
 app.use('/api/order', ordersRouter);
+app.use('/api/orders2', orders2Router);
 app.use('/api/support', supportRouter);
 
 // 🛑 טיפול ב-404
