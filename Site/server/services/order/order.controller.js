@@ -318,7 +318,8 @@ export async function getUserOrders(req, res) {
           } else if (orderData.attractions && orderData.attractions.length > 0) {
             // Try to resolve attraction names from destination city
             const destinationCityForAttractions = destinationCity || (hasStoredDestinationCity ? null : await safeDbOperation(() => findCityById(dstCityObjectId), null));
-            attractionNames = await getAttractionNames(orderData.attractions, dstCityObjectId, destinationCityForAttractions);
+          // ✅ Pass the destination city ID directly to look up attractions
+attractionNames = await getAttractionNames(orderData.attractions, dstCityObjectId);
           }
 
           console.log("✅ Resolved names:", {
@@ -397,25 +398,26 @@ async function getAttractionNames(attractionIds, destinationCityId, cityDoc = nu
   }
 
   try {
-    const city = cityDoc || await safeDbOperation(() => City.findById(destinationCityId), null);
+    // ✅ Look up attraction document by destination city ID, not city document
+    const attractionDoc = await safeDbOperation(() => Attraction.findOne({ _id: destinationCityId }), null);
 
-    if (!city || !city.attractions || !Array.isArray(city.attractions)) {
-      console.log("❌ No attractions array found in city document");
+    if (!attractionDoc || !attractionDoc.attractions || !Array.isArray(attractionDoc.attractions)) {
+      console.log("❌ No attractions array found in attraction document");
       return attractionIds.map((_, index) => `Attraction ${index + 1}`);
     }
 
-    console.log("🔍 City attractions:", city.attractions.length, "attractions found");
+    console.log("🔍 Attraction document attractions:", attractionDoc.attractions.length, "attractions found");
 
     const attractionNames = attractionIds.map((id, orderIndex) => {
       // If it's a number or string number, treat as index
       const index = parseInt(id);
-      if (!isNaN(index) && index >= 0 && index < city.attractions.length) {
-        return city.attractions[index].name || `Attraction ${index + 1}`;
+      if (!isNaN(index) && index >= 0 && index < attractionDoc.attractions.length) {
+        return attractionDoc.attractions[index].name || `Attraction ${index + 1}`;
       }
       
       // If it's a string, try to find by name
       if (typeof id === 'string') {
-        const found = city.attractions.find(attr => attr.name === id);
+        const found = attractionDoc.attractions.find(attr => attr.name === id);
         if (found) return found.name;
       }
       
@@ -508,17 +510,17 @@ export async function resolveOrderRefs(req, res) {
       }
     };
 
-    const findHotel = async (val, dstId) => {
-      try {
-        if (looksLikeOid(val)) return { doc: await Hotel.findById(val), index: 0 };
+const findHotel = async (val, dstId) => {
+  try {
+    if (looksLikeOid(val)) return { doc: await Hotel.findById(val), index: 0 };
 
-        const doc = await Hotel.findOne({
-          $or: [
-            { destination_city_id: dstId },
-            { "hotels.name": val },
-            { name: val }
-          ],
-        });
+    const doc = await Hotel.findOne({
+      $or: [
+        { _id: dstId }, // ✅ Match by city _id since hotel doc has city info
+        { "hotels.name": val },
+        { city: dstCity.city || dstCity.name } // ✅ Match by city name
+      ],
+    });
 
         let index = 0;
         if (doc?.hotels?.length && val) {
@@ -577,3 +579,32 @@ export async function resolveOrderRefs(req, res) {
     return res.status(500).json({ message: "Internal Server Error" });
   }
 }
+
+// 1) Resolve IDs
+const resolveRes = await fetch("/api/order/resolve", {
+  method: "POST",
+  headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+  body: JSON.stringify({
+    departure: userResponses.departureCity,
+    destination: userResponses.destinationCity,
+    flight: userResponses.flight,
+    hotel: userResponses.hotel,
+  }),
+});
+const { ids } = await resolveRes.json();
+
+// 2) Create order using resolved IDs
+const orderRes = await fetch("/api/order", {
+  method: "POST",
+  headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+  body: JSON.stringify({
+    user_id: userId,
+    departureCityId: ids.departureCityId,
+    destinationCityId: ids.destinationCityId,
+    flightId: ids.flightId,
+    hotelId: ids.hotelId,
+    attractions: userResponses.attractions,
+    paymentMethod: userResponses.paymentMethod,
+    totalPrice: calculateTotalPrice(userResponses),
+  }),
+});
