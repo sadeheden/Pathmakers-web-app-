@@ -279,11 +279,12 @@ const fetchOrders = async () => {
                             <p><strong>Flight:</strong> {selectedOrder.flight_name || selectedOrder.flight_id || "Not selected"}</p>
                             <p><strong>Hotel:</strong> {selectedOrder.hotel_name || selectedOrder.hotel_id || "Not selected"}</p>
 
-                            <p><strong>Attractions:</strong> 
-                                {Array.isArray(selectedOrder.attraction_names) && selectedOrder.attraction_names.length > 0
-                                    ? selectedOrder.attraction_names.join(", ")
-                                    : "None"}
-                            </p>
+                          <p><strong>Attractions:</strong> 
+  {Array.isArray(selectedOrder.attraction_names) && selectedOrder.attraction_names.length > 0
+    ? selectedOrder.attraction_names.join(", ")
+    : "None"}
+</p>
+
 
                             <p><strong>Transportation:</strong> {selectedOrder.transportation || "Not selected"}</p>
                             <p><strong>Payment Method:</strong> {selectedOrder.payment_method}</p>

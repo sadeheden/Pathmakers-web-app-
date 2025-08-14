@@ -187,7 +187,8 @@ export async function createOrder(req, res) {
       destination_city_id: dstClean,
       flight_id: flightId,
       hotel_id: hotelId,
-      attractions: cleanedAttractions,
+     attractions: cleanedAttractions,
+       attraction_names: Array.isArray(attractionNames) ? attractionNames : [],
       transportation,
       payment_method: paymentMethod,
       total_price: totalPrice,
@@ -247,9 +248,9 @@ export async function getUserOrders(req, res) {
           const orderData = order.toObject ? order.toObject() : order;
 
           // Extract clean IDs and indexes
-          const flightObjectId = cleanId(orderData.flight_id);
-          const hotelObjectId = cleanId(orderData.hotel_id);
-          const flightIndex = extractIndex(orderData.flight_id);
+        const flightObjectId = cleanId(orderData.flight_id); // e.g., "6878c5126bcf8c4c6887f6ab"
+const flightIndex = extractIndex(orderData.flight_id); // e.g., 0
+const hotelObjectId = cleanId(orderData.hotel_id); // ← missing
           const hotelIndex = extractIndex(orderData.hotel_id);
           const depCityObjectId = cleanId(orderData.departure_city_id);
           const dstCityObjectId = cleanId(orderData.destination_city_id);
@@ -312,15 +313,26 @@ export async function getUserOrders(req, res) {
             : getHotelName(hotelDoc, hotelIndex);
 
           // Handle attractions
-          let attractionNames = [];
-          if (storedAttractions.length > 0) {
-            attractionNames = storedAttractions;
-          } else if (orderData.attractions && orderData.attractions.length > 0) {
-            // Try to resolve attraction names from destination city
-            const destinationCityForAttractions = destinationCity || (hasStoredDestinationCity ? null : await safeDbOperation(() => findCityById(dstCityObjectId), null));
-          // ✅ Pass the destination city ID directly to look up attractions
-attractionNames = await getAttractionNames(orderData.attractions, dstCityObjectId);
-          }
+         // Handle attractions
+// Handle attractions: use stored names if available, otherwise fallback to order array
+// Handle attractions
+// Handle attractions
+let attractionNames = [];
+
+// If stored attraction names exist, use them
+if (storedAttractions.length > 0) {
+  attractionNames = storedAttractions;
+} 
+// Otherwise, fetch real attraction names from the database
+else if (Array.isArray(orderData.attractions) && orderData.attractions.length > 0) {
+  attractionNames = await getAttractionNames(orderData.attractions, orderData.destination_city_id);
+}
+
+// Fallback to empty array if nothing found
+if (!Array.isArray(attractionNames)) attractionNames = [];
+
+
+
 
           console.log("✅ Resolved names:", {
             departure: departureCityName,
@@ -329,29 +341,28 @@ attractionNames = await getAttractionNames(orderData.attractions, dstCityObjectI
             hotel: hotelName,
           });
 
-          return {
-            _id: orderData._id?.toString() || null,
-            user_id: orderData.user_id?.toString() || null,
-            departure_city_id: orderData.departure_city_id?.toString() || null,
-            destination_city_id: orderData.destination_city_id?.toString() || null,
-            flight_id: orderData.flight_id?.toString() || null,
-            hotel_id: orderData.hotel_id?.toString() || null,
-            attractions: Array.isArray(orderData.attractions) 
-              ? orderData.attractions.map(a => a?.toString() || a) 
-              : [],
-            transportation: orderData.transportation,
-            payment_method: orderData.payment_method,
-            total_price: orderData.total_price,
-            created_at: orderData.created_at,
-            createdAt: orderData.created_at, // Alias for compatibility
+        return {
+  _id: orderData._id?.toString() || null,
+  user_id: orderData.user_id?.toString() || null,
+  departure_city_id: orderData.departure_city_id?.toString() || null,
+  destination_city_id: orderData.destination_city_id?.toString() || null,
+  flight_id: orderData.flight_id?.toString() || null,
+  hotel_id: orderData.hotel_id?.toString() || null,
+  attractions: attractionNames,
+  transportation: orderData.transportation,
+  payment_method: orderData.payment_method,
+  total_price: orderData.total_price,
+  created_at: orderData.created_at,
+  createdAt: orderData.created_at, // Alias
 
-            // Human-readable names
-            departure_city_name: departureCityName,
-            destination_city_name: destinationCityName,
-            flight_name: flightName,
-            hotel_name: hotelName,
-            attraction_names: attractionNames,
-          };
+  // Human-readable names
+  departure_city_name: departureCityName,
+  destination_city_name: destinationCityName,
+  flight_name: flightName,
+  hotel_name: hotelName,
+  attraction_names: attractionNames, // ✅ Already stored names
+};
+
         } catch (orderError) {
           console.error("❌ Error processing order:", orderError);
           // Return a safe fallback for this order
@@ -390,44 +401,45 @@ attractionNames = await getAttractionNames(orderData.attractions, dstCityObjectI
     });
   }
 }
+// async function getAttractionNames(attractionIds, destinationCityName) {
+//   if (!attractionIds || attractionIds.length === 0) return [];
+
+//   // If attraction IDs are already names, just return them
+//   if (attractionIds.every(a => typeof a === "string")) return attractionIds;
+
+//   // Otherwise, try to fetch from city document
+//   const attractionDoc = await safeDbOperation(() =>
+//     Attraction.findOne({ city: destinationCityName })
+//   , null);
+
+//   if (!attractionDoc || !Array.isArray(attractionDoc.attractions)) {
+//     console.log("❌ No attractions array found in city document");
+//     return attractionIds.map((_, i) => `Attraction ${i + 1}`);
+//   }
+
+//   return attractionIds.map((id, i) => {
+//     const found = attractionDoc.attractions.find(a => a.name === id || a._id.toString() === id);
+//     return found?.name || `Unknown Attraction ${i + 1}`;
+//   });
+// }
+
+
 
 // Get attraction names helper
-async function getAttractionNames(attractionIds, destinationCityId, cityDoc = null) {
-  if (!attractionIds || !Array.isArray(attractionIds) || attractionIds.length === 0) {
-    return [];
-  }
+async function getAttractionNames(attractionIds, destinationCityId) {
+  if (!Array.isArray(attractionIds) || attractionIds.length === 0) return [];
 
   try {
-    // ✅ Look up attraction document by destination city ID, not city document
-    const attractionDoc = await safeDbOperation(() => Attraction.findOne({ _id: destinationCityId }), null);
+    const attractionDoc = await Attraction.findOne({ city_id: destinationCityId });
+    if (!attractionDoc || !Array.isArray(attractionDoc.attractions)) return [];
 
-    if (!attractionDoc || !attractionDoc.attractions || !Array.isArray(attractionDoc.attractions)) {
-      console.log("❌ No attractions array found in attraction document");
-      return attractionIds.map((_, index) => `Attraction ${index + 1}`);
-    }
-
-    console.log("🔍 Attraction document attractions:", attractionDoc.attractions.length, "attractions found");
-
-    const attractionNames = attractionIds.map((id, orderIndex) => {
-      // If it's a number or string number, treat as index
-      const index = parseInt(id);
-      if (!isNaN(index) && index >= 0 && index < attractionDoc.attractions.length) {
-        return attractionDoc.attractions[index].name || `Attraction ${index + 1}`;
-      }
-      
-      // If it's a string, try to find by name
-      if (typeof id === 'string') {
-        const found = attractionDoc.attractions.find(attr => attr.name === id);
-        if (found) return found.name;
-      }
-      
-      return `Unknown Attraction ${orderIndex + 1}`;
-    });
-
-    return attractionNames;
-  } catch (error) {
-    console.error("❌ Error fetching attraction names:", error);
-    return attractionIds.map((_, index) => `Attraction ${index + 1}`);
+    return attractionIds.map(id => {
+      const found = attractionDoc.attractions.find(a => a._id.toString() === id || a.name === id);
+      return found ? found.name : null;
+    }).filter(Boolean);
+  } catch (err) {
+    console.error("❌ Error fetching attraction names:", err);
+    return [];
   }
 }
 
