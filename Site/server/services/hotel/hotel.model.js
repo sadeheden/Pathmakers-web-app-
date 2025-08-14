@@ -4,6 +4,7 @@ import {
   saveHotelToDatabase,
   updateHotelInDatabase,
   deleteHotelInDatabase,
+  getHotelsByCityFromDatabase
 } from "./hotel.db.js";
 
 export default class Hotel {
@@ -22,8 +23,15 @@ export default class Hotel {
     return await getHotelByIdFromDatabase(id);
   }
 
-  static async delete(id) {
-    return await deleteHotelInDatabase(id);
+  static async findByCity(cityId) {
+    try {
+      const doc = await getHotelsByCityFromDatabase(cityId);
+      if (!doc || !doc.hotels?.length) return null;
+      return doc;
+    } catch (error) {
+      console.error("❌ Hotel.findByCity error:", error);
+      return null;
+    }
   }
 
   async save() {
@@ -45,5 +53,9 @@ export default class Hotel {
       },
       id
     );
+  }
+
+  static async delete(id) {
+    return await deleteHotelInDatabase(id);
   }
 }

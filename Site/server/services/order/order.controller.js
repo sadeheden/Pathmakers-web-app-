@@ -78,144 +78,85 @@ async function findHotelByAny(val, destinationId) {
 
 // --- ADD THIS NEW CONTROLLER ---
 export async function resolveOrderRefs(req, res) {
- 
   try {
-    // 0) Sanity: models present?
     if (!City || !Flight || !Hotel) {
-      console.error("❌ Models not loaded:", { City: !!City, Flight: !!Flight, Hotel: !!Hotel });
       return res.status(500).json({ message: "Server models not initialized" });
     }
 
-    // 1) Body + auth sanity
-    if (!req.body) {
-      console.error("❌ /resolve: req.body is undefined (missing express.json?)");
-      return res.status(400).json({ message: "Missing JSON body" });
-    }
+    if (!req.body) return res.status(400).json({ message: "Missing JSON body" });
     const { departure, destination, flight, hotel } = req.body;
-    console.log("🔎 /resolve input:", { departure, destination, flight, hotel });
-    if (!req.user?.id) {
-      return res.status(401).json({ message: "Unauthorized" });
-    }
+    if (!req.user?.id) return res.status(401).json({ message: "Unauthorized" });
 
     const looksLikeOid = (v) => typeof v === "string" && /^[0-9a-fA-F]{24}$/.test(v);
 
-    // 2) Safe helpers (never throw)
     const findCity = async (val) => {
-            try {
-        if (!val) return null;
-        // If it's a 24-hex string, try by id first
-        if (looksLikeOid(val)) {
-          const byId = await City.findById(val);
-          if (byId) return byId;
-        }
-        // Fall back to your provided method (case-insensitive name match)
-        const byName = await City.findByName(val);
-        if (byName) return byName;
-        // Optional: try a naive slug→name fallback (e.g., "new-york" → "New York")
-        const maybeName = String(val).replace(/-/g, ' ');
-        if (maybeName && maybeName !== val) {
-          const byName2 = await City.findByName(maybeName);
-          if (byName2) return byName2;
-        }
-        return null;
-      } catch (e) {
-        console.error("❌ City lookup failed:", e);        return null;
+      if (!val) return null;
+      if (looksLikeOid(val)) {
+        const byId = await City.findById(val);
+        if (byId) return byId;
       }
-    };
-    const findFlight = async (val, dstId) => {
-      try {
-        if (!val) return { doc: null, index: 0 };
-        if (looksLikeOid(val)) return { doc: await Flight.findById(val), index: 0 };
-
-        // Try many shapes (array subdocs OR root fields)
-        const doc = await Flight.findOne({
-          $or: [
-            { destination_city_id: dstId },
-            { "airlines.code": val }, { "airlines.name": val }, { "airlines.airline": val },
-            { "flights.code": val },  { "flights.name": val },  { "flights.airline": val },
-            { code: val }, { name: val }, { airline: val }
-          ],
-        });
-
-        let index = 0;
-        if (doc?.airlines?.length) {
-          const i = doc.airlines.findIndex(a => a?.code === val || a?.name === val || a?.airline === val);
-          if (i >= 0) index = i;
-        } else if (doc?.flights?.length) {
-          const i = doc.flights.findIndex(f => f?.code === val || f?.name === val || f?.airline === val);
-          if (i >= 0) index = i;
-        }
-        return { doc, index };
-      } catch (e) {
-        console.error("❌ Flight lookup failed:", e);
-        return { doc: null, index: 0 };
-      }
+      return await City.findByName(val);
     };
 
-    const findHotel = async (val, dstId) => {
-      try {
-        if (looksLikeOid(val)) return { doc: await Hotel.findById(val), index: 0 };
+const findFlight = async (flightId, dstCityId) => {
+  try {
+    if (!flightId) return { doc: null, index: 0 };
+    const cityFlights = await Flight.findById(dstCityId);
+    if (!cityFlights?.airlines?.length) return { doc: null, index: 0 };
 
-        const doc = await Hotel.findOne({
-          $or: [
-            { destination_city_id: dstId },
-            { "hotels.name": val },
-            { name: val }
-          ],
-        });
+    const index = cityFlights.airlines.findIndex(
+      a => a._id?.toString() === flightId || a.name.toLowerCase() === flightId.toLowerCase()
+    );
 
-        let index = 0;
-        if (doc?.hotels?.length && val) {
-          const i = doc.hotels.findIndex(h => h?.name === val);
-          if (i >= 0) index = i;
-        }
-        return { doc, index };
-      } catch (e) {
-        console.error("❌ Hotel lookup failed:", e);
-        return { doc: null, index: 0 };
-      }
-    };
+    if (index < 0) return { doc: null, index: 0 };
+    return { doc: cityFlights, index };
+  } catch (e) {
+    console.error("❌ Flight lookup failed:", e);
+    return { doc: null, index: 0 };
+  }
+};
 
-    // 3) Resolve cities first
+const findHotel = async (hotelId, dstCityId) => {
+  try {
+    if (!hotelId) return { doc: null, index: 0 };
+    const cityHotels = await Hotel.findByCity(dstCityId);
+    if (!cityHotels?.hotels?.length) return { doc: null, index: 0 };
+
+    let index = cityHotels.hotels.findIndex(
+      h => h._id?.toString() === hotelId || h.name.toLowerCase().replace(/\s+/g,'-') === hotelId.toLowerCase()
+    );
+    if (index < 0) index = 0;
+
+    return { doc: cityHotels, index };
+  } catch (e) {
+    console.error("❌ Hotel lookup failed:", e);
+    return { doc: null, index: 0 };
+  }
+};
+
+  
     const [depCity, dstCity] = await Promise.all([findCity(departure), findCity(destination)]);
-    if (!depCity || !dstCity) {
-      console.warn("⚠️ Could not resolve city ids", { depCity: !!depCity, dstCity: !!dstCity });
-      return res.status(400).json({ message: "Could not resolve city ids" });
-    }
+    if (!depCity || !dstCity) return res.status(400).json({ message: "Could not resolve city ids" });
 
-    // 4) Flight and hotel, dependent on destination id
-    const [{ doc: flightDoc, index: flightIndex = 0 }, { doc: hotelDoc, index: hotelIndex = 0 }] =
-      await Promise.all([findFlight(flight, dstCity._id), findHotel(hotel, dstCity._id)]);
+    const flightResolved = await findFlight(flight, dstCity._id);
+    if (!flightResolved) return res.status(400).json({ message: "Could not resolve flight" });
 
-    if (!flightDoc) {
-      console.warn("⚠️ Could not resolve flight", { flight, dest: dstCity._id?.toString() });
-      return res.status(400).json({ message: "Could not resolve flight" });
-    }
-    if (!hotelDoc) {
-      console.warn("⚠️ Could not resolve hotel", { hotel, dest: dstCity._id?.toString() });
-      return res.status(400).json({ message: "Could not resolve hotel" });
-    }
+    const hotelResolved = await findHotel(hotel, dstCity._id);
+    if (!hotelResolved) return res.status(400).json({ message: "Could not resolve hotel" });
 
-    // 5) Build compound ids
-    const flightId = `${flightDoc._id.toString()}-${flightIndex}`;
-    const hotelId  = `${hotelDoc._id.toString()}-${hotelIndex}`;
-
-    console.log("✅ /resolve OK:", {
-      departureCityId: depCity._id.toString(),
-      destinationCityId: dstCity._id.toString(),
-      flightId,
-      hotelId,
-    });
+    const flightId = `${flightResolved.doc._id}-${flightResolved.index}`;
+    const hotelId = `${hotelResolved.doc._id}-${hotelResolved.index}`;
 
     return res.status(200).json({
       success: true,
       ids: {
-        departureCityId: depCity._id.toString(),
-        destinationCityId: dstCity._id.toString(),
+        departureCityId: depCity._id,
+        destinationCityId: dstCity._id,
         flightId,
         hotelId,
       },
     });
+
   } catch (err) {
     console.error("❌ resolveOrderRefs error:", err.stack || err);
     return res.status(500).json({ message: "Internal Server Error" });
@@ -257,8 +198,21 @@ function extractIndex(compoundId) {
 
 // Helper to get flight name safely
 // Updated helper functions for nested data structures
-
 // Helper to get flight name safely - now handles airlines array correctly
+async function findFlightByCityAndAirline(cityNameOrId, airlineName) {
+  // קודם כל נמצא את העיר
+  const cityDoc = await City.findByName(cityNameOrId) || await City.findById(cityNameOrId);
+  if (!cityDoc) return null;
+
+  // עכשיו נמצא את הטיסה בתוך מערך ה-airlines
+  const flightIndex = cityDoc.airlines?.findIndex(
+    (a) => a.name.toLowerCase() === airlineName.toLowerCase()
+  );
+
+  if (flightIndex === undefined || flightIndex === -1) return null;
+
+  return { flightDoc: cityDoc, index: flightIndex };
+}
 function getFlightName(flight, index) {
   if (!flight) return "Flight not found";
 

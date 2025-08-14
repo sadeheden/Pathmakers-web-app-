@@ -11,7 +11,7 @@ let db;
 
 async function connectDB() {
   if (!db) {
-   client = new MongoClient(uri);
+    client = new MongoClient(uri);
     await client.connect();
     db = client.db(dbName);
     console.log("✅ MongoDB connected for hotels");
@@ -19,33 +19,46 @@ async function connectDB() {
   return db;
 }
 
+// Get all hotels
 export async function getAllHotelsFromDatabase() {
   const db = await connectDB();
-  return db.collection(COLLECTION_NAME).find({ isDeleted: { $ne: true } }).toArray();
+  return db.collection(COLLECTION_NAME)
+           .find({ isDeleted: { $ne: true } })
+           .toArray();
 }
 
+// Get hotel by ID
 export async function getHotelByIdFromDatabase(id) {
   const db = await connectDB();
-  return db.collection(COLLECTION_NAME).findOne({ _id: new ObjectId(id), isDeleted: { $ne: true } });
+  return db.collection(COLLECTION_NAME)
+           .findOne({ _id: new ObjectId(id), isDeleted: { $ne: true } });
 }
 
+// Add new hotel
 export async function saveHotelToDatabase(hotel) {
   const db = await connectDB();
   return db.collection(COLLECTION_NAME).insertOne(hotel);
 }
 
+// Update hotel
 export async function updateHotelInDatabase(hotel, id) {
   const db = await connectDB();
-  return db.collection(COLLECTION_NAME).updateOne({ _id: new ObjectId(id) }, { $set: hotel });
+  return db.collection(COLLECTION_NAME)
+           .updateOne({ _id: new ObjectId(id) }, { $set: hotel });
 }
 
+// Delete hotel (soft delete)
 export async function deleteHotelInDatabase(id) {
   const db = await connectDB();
-  return db.collection(COLLECTION_NAME).updateOne({ _id: new ObjectId(id) }, { $set: { isDeleted: true } });
+  return db.collection(COLLECTION_NAME)
+           .updateOne({ _id: new ObjectId(id) }, { $set: { isDeleted: true } });
 }
 
-// New: get hotels by city (case insensitive)
-export async function getHotelsByCity(city) {
-  const db = await connectDB();
-  return db.collection(COLLECTION_NAME).find({ city: { $regex: `^${city}$`, $options: "i" }, isDeleted: { $ne: true } }).toArray();
+// Get hotels by city (case-insensitive)
+export async function getHotelsByCityFromDatabase(cityId) {
+  const db = await connectDB(); // השתמש ב-connectDB()
+  return db.collection("hotels").findOne({
+    destination_city_id: new ObjectId(cityId),
+    isDeleted: { $ne: true }
+  });
 }
