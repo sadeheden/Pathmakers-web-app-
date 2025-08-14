@@ -1,4 +1,4 @@
-// server.js (or app.js)
+// server.js
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
@@ -11,7 +11,7 @@ const app = express();
 const PORT = process.env.PORT || 4000;
 
 // ---------- Middleware ----------
-app.use(cors({ origin: 'http://localhost:5173' })); // adjust if needed
+app.use(cors({ origin: 'http://localhost:5173' }));
 app.use(express.json());
 
 // ---------- Healthcheck ----------
@@ -47,11 +47,10 @@ import uploadRouter from './services/upload/upload.router.js';
 import managerRoutes from './services/manager/manager.routes.js';
 import travelRoutes from './services/travel/travel.routes.js';
 import supportRouter from './services/support/support.router.js';
+import ordersRouter from './services/order/order.router.js'; // רק זה נשאר
 
-// ❗ Keep ONLY ONE orders router import, and it should be the plural path that contains /resolve
-import ordersRouter from './services/order/order.router.js';  // <-- use this one
-
-app.use('/api/cities', citiesRouter);
+// ---------- API Endpoints ----------
+app.use('/api/cities', citiesRouter);          // כל הפעולות של cities רגילות
 app.use('/api/attractions', attractionRoutes);
 app.use('/api/flights', flightsRoutes);
 app.use('/api/hotels', hotelRoutes);
@@ -59,7 +58,11 @@ app.use('/api/auth', authRouter);
 app.use('/api/upload', uploadRouter);
 app.use('/api/manager', managerRoutes);
 app.use('/api/travel/cities', travelRoutes);
+
+// Travel routes – אין כפילויות
+// עכשיו כל הנתיבים בתוך travelRoutes יחסיים ל-/api/travel
 app.use('/api/travel', travelRoutes);
+
 app.use('/api/order', ordersRouter);
 app.use('/api/support', supportRouter);
 
