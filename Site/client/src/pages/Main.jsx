@@ -373,22 +373,28 @@ const Main = () => {
               const transportation = selectedCity?.transportation || null;
               const paymentMethod = "Credit Card";
 
-              const response = await axios.post(
-                "http://localhost:4000/api/orders2",
-                {
-                  departure_city_id: departureCityId,
-                  destination_city_id: destinationCityId,
-                  flight_id: flightId,
-                  hotel_id: hotelId,
-                  attractions: attractions,
-                  transportation: transportation,
-                  paymentMethod: paymentMethod,
-                  totalPrice,
-                  tripDate
-                },
-                { headers: { Authorization: `Bearer ${token}` } }
-              );
-
+   const response = await axios.post(
+  "http://localhost:4000/api/orders2",
+  {
+    departure_city_id: selectedCity?.departure_city_id,
+    destination_city_id: selectedCity?.destination_city_id,
+    flight_id: selectedCity?.flight_id,
+    hotel_id: selectedCity?.hotel_id || null,
+    attractions: selectedCity?.attractions || [],
+    transportation: selectedCity?.transportation || null,
+    cityName: selectedCity?.name,
+    citySlug: selectedCity?.slug,
+    flightNumber: selectedCity?.flight,
+    departure: "Israel (Ben-Gurion Airport)",
+    destination: selectedCity?.name,
+    summary: selectedCity?.summary,
+    cityImage: selectedCity?.img,
+    paymentMethod: "Credit Card",
+    totalPrice,
+    tripDate
+  },
+  { headers: { Authorization: `Bearer ${token}` } }
+);
               console.log("✅ Order created:", response.data);
             } catch (error) {
               console.error("❌ Order flow error:", error.response?.data || error.message);
