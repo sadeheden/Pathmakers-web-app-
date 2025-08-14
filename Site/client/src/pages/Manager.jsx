@@ -845,7 +845,7 @@ const Manager = () => {
         switch (collection) {
           case "cities":
             if (!formData.cityName) throw new Error("City name is required");
-            url = "http://localhost:4000/api/cities";
+            url = "http://localhost:4000/api/travel/cities"; 
             payload = { city: formData.cityName.trim() };
             break;
 

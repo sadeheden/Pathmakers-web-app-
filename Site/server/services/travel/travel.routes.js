@@ -27,7 +27,7 @@ const router = express.Router();
  */
 router.get("/", getCities);                  // GET /api/travel/cities
 router.get("/name/:name", getCityByName);    // GET /api/travel/cities/name/:name
-router.post("/", addCity);                   // POST /api/travel/cities
+router.post("/", addCity);
 router.delete("/:id", deleteCity);           // DELETE /api/travel/cities/:id
 
 /**
