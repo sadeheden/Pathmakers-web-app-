@@ -89,26 +89,34 @@ export async function resolveOrderRefs(req, res) {
 
     const looksLikeOid = (v) => typeof v === "string" && /^[0-9a-fA-F]{24}$/.test(v);
 
-    const findCity = async (val) => {
-      if (!val) return null;
-      if (looksLikeOid(val)) {
-        const byId = await City.findById(val);
-        if (byId) return byId;
-      }
-      return await City.findByName(val);
-    };
+const findCity = async (val) => {
+  if (!val) return null;
 
-const findFlight = async (flightId, dstCityId) => {
+  // אם זה ObjectId
+  if (looksLikeObjectId(val)) {
+    const byId = await City.findById(val);
+    if (byId) return byId;
+  }
+
+  // חיפוש לפי שם העיר
+  const byName = await City.findByName(val);
+  return byName || null;
+};
+
+
+
+   const findFlight = async (flightId, dstCityId) => {
   try {
     if (!flightId) return { doc: null, index: 0 };
+
+    // חפש את מסמך העיר לפי destination_city_id
     const cityFlights = await Flight.findById(dstCityId);
-    if (!cityFlights?.airlines?.length) return { doc: null, index: 0 };
+    if (!cityFlights?.airlines) return { doc: null, index: 0 };
 
-    const index = cityFlights.airlines.findIndex(
-      a => a._id?.toString() === flightId || a.name.toLowerCase() === flightId.toLowerCase()
-    );
-
+    // מצא את האינדקס במערך airlines לפי ObjectId או שם
+    const index = cityFlights.airlines.findIndex(a => a._id.toString() === flightId);
     if (index < 0) return { doc: null, index: 0 };
+
     return { doc: cityFlights, index };
   } catch (e) {
     console.error("❌ Flight lookup failed:", e);
@@ -116,25 +124,20 @@ const findFlight = async (flightId, dstCityId) => {
   }
 };
 
-const findHotel = async (hotelId, dstCityId) => {
-  try {
-    if (!hotelId) return { doc: null, index: 0 };
-    const cityHotels = await Hotel.findByCity(dstCityId);
-    if (!cityHotels?.hotels?.length) return { doc: null, index: 0 };
 
-    let index = cityHotels.hotels.findIndex(
-      h => h._id?.toString() === hotelId || h.name.toLowerCase().replace(/\s+/g,'-') === hotelId.toLowerCase()
-    );
-    if (index < 0) index = 0;
+    const findHotel = async (hotelName, dstCityId) => {
+      if (!hotelName) return null;
+      if (looksLikeOid(hotelName)) return await Hotel.findById(hotelName);
 
-    return { doc: cityHotels, index };
-  } catch (e) {
-    console.error("❌ Hotel lookup failed:", e);
-    return { doc: null, index: 0 };
-  }
-};
+      const hotelsDoc = await Hotel.findByCity(dstCityId);
+      if (!hotelsDoc?.hotels?.length) return null;
 
-  
+      const index = hotelsDoc.hotels.findIndex(h => h.name === hotelName);
+      if (index < 0) return null;
+
+      return { doc: hotelsDoc, index };
+    };
+
     const [depCity, dstCity] = await Promise.all([findCity(departure), findCity(destination)]);
     if (!depCity || !dstCity) return res.status(400).json({ message: "Could not resolve city ids" });
 
