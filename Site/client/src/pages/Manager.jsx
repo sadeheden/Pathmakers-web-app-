@@ -1333,7 +1333,7 @@ const Manager = () => {
             </div>
             <div style={styles.statCard}>
               <div style={{ ...styles.statNumber, color: '#10b981' }}>{userStats.regular}</div>
-              <div style={styles.statLabel}>Regular Users</div>
+              <div style={styles.statLabel}>Created Users</div>
             </div>
           </div>
 
