@@ -17,7 +17,7 @@ export default function HomePage() {
       <div className="text-overlay">
         <div className="text-content">
           <h1 className="main-title">Welcome to Pathmakers</h1>
-          <p className="description-text">.Travel agency which you'll love</p>
+          <p>Travel agency which you'll love.</p>
           <div className="action-buttons">
             <button className="action-btn login-button" onClick={() => navigate("/login")}>
               Log in
