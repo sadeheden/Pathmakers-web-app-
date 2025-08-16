@@ -101,9 +101,18 @@ export async function findOrdersByUserIdFromDb(userId) {
   return withRetry(async () => {
     const client = await getClient();
     const db = client.db(dbName);
+    
+    console.log("🔍 Searching for user_id:", userId); // ✅ ADD THIS
+    
     const looksLikeOid = typeof userId === "string" && /^[0-9a-fA-F]{24}$/.test(userId);
     const filter = looksLikeOid ? { user_id: new ObjectId(userId) } : { user_id: userId };
-    return db.collection("orders").find(filter).toArray();
+    
+    console.log("🔍 Using filter:", filter); // ✅ ADD THIS
+    
+    const result = await db.collection("orders").find(filter).toArray();
+    console.log("🔍 Found orders:", result.length); // ✅ ADD THIS
+    
+    return result;
   });
 }
 

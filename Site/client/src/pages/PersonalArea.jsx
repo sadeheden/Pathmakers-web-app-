@@ -6,6 +6,8 @@ const PersonalArea = () => {
     const [activeTab, setActiveTab] = useState("userInfo");
     const [user, setUser] = useState(null);
     const [email, setEmail] = useState("");
+    const [showUniqueOnly, setShowUniqueOnly] = useState(false);
+
     const [selectedOrder, setSelectedOrder] = useState(null);
     const [loading, setLoading] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
@@ -17,122 +19,164 @@ const PersonalArea = () => {
     const navigate = useNavigate();
     
     // ✅ Fetch user data function
-   const fetchUser = async () => {
-  try {
-    const token = getToken();
-    if (!token) {
-      console.warn("⚠️ No token found. Redirecting to login...");
-      navigate("/login");
-      return null;
-    }
+    const fetchUser = async () => {
+        try {
+            const token = localStorage.getItem("authToken");
+            if (!token) {
+                console.warn("⚠️ No token found. Redirecting to login...");
+                navigate("/login");
+                return null;
+            }
 
-    const response = await fetch("http://localhost:4000/api/auth/user", {
-      method: "GET",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-    });
+            const response = await fetch("http://localhost:4000/api/auth/user", {
+                method: "GET",
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    "Content-Type": "application/json"
+                }
+            });
 
-    if (!response.ok) {
-      throw new Error(`⚠️ Failed to fetch user, status: ${response.status}`);
-    }
+            if (!response.ok) {
+                throw new Error(`⚠️ Failed to fetch user, status: ${response.status}`);
+            }
 
-    const userData = await response.json();
-    const formattedUser = { ...userData, id: userData._id };
-    setUser(formattedUser);
-    setEditedUser({
-      username: userData.username || "",
-      email: userData.email || "",
-    });
-    return formattedUser;
-  } catch (error) {
-    console.error("⚠️ Error fetching user session:", error);
-    navigate("/login");
-    return null;
-  }
-};
+            const userData = await response.json();
+            console.log("✅ User data received:", userData);
+            
+            const formattedUser = { ...userData, id: userData._id };
+            setUser(formattedUser);
+            setEditedUser({
+                username: userData.username || "",
+                email: userData.email || ""
+            });
+
+            return formattedUser;
+        } catch (error) {
+            console.error("⚠️ Error fetching user session:", error);
+            return null;
+        }
+    };
 
 
-    // ✅ Fetch orders function
-   // ✅ Fetch orders function (correct)
+// Updated fetchOrders function
 const fetchOrders = async () => {
   try {
-    // be flexible about the token key
-    const token =
-      localStorage.getItem("authToken") ||
-      localStorage.getItem("token") ||
-      localStorage.getItem("jwt") ||
-      localStorage.getItem("access_token") ||
-      localStorage.getItem("userToken");
-
+    const token = localStorage.getItem("authToken");
     if (!token) {
       console.error("⚠️ No token found, please log in again.");
       return;
     }
 
-    const headers = {
-      "Authorization": `Bearer ${token}`,
-      "Content-Type": "application/json",
-    };
+    const response = await fetch("http://localhost:4000/api/order", {
+      method: "GET",
+      headers: {
+        "Authorization": `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+    });
 
-    // fetch both in parallel (orders from Chat + Traveler-Favorite)
-    const [r1, r2] = await Promise.allSettled([
-      fetch("http://localhost:4000/api/order",   { method: "GET", headers }),
-      fetch("http://localhost:4000/api/orders2", { method: "GET", headers }),
-    ]);
-
-    // helper to safely parse
-    const parse = async (res) => (res && res.ok) ? await res.json() : null;
-
-    const d1 = await parse(r1.status === "fulfilled" ? r1.value : null);
-    const d2 = await parse(r2.status === "fulfilled" ? r2.value : null);
-
-    // normalize shapes from both APIs
-    const list1 =
-      Array.isArray(d1) ? d1 :
-      Array.isArray(d1?.orders) ? d1.orders :
-      Array.isArray(d1?.data) ? d1.data : [];
-
-    const list2 =
-      Array.isArray(d2) ? d2 :
-      Array.isArray(d2?.orders) ? d2.orders :
-      Array.isArray(d2?.data?.orders) ? d2.data.orders : [];
-
-    const merged = [...list1, ...list2];
-
-    // dedupe (route + flight/hotel) and keep newest
-    const keyOf = (o) => {
-      const from  = (o.departure_city_id || o.departureCityId || "").toString();
-      const to    = (o.destination_city_id || o.destinationCityId || "").toString();
-      const flight = (o.flight_id || o.flightId || o.flight_name || "").toString();
-      const hotel  = (o.hotel_id  || o.hotelId  || o.hotel_name  || "").toString();
-      return `${from}→${to}::${flight}::${hotel}`;
-    };
-    const tsOf = (o) =>
-      new Date(
-        o.created_at || o.createdAt || o.booking_date || o.bookingDate || 0
-      ).getTime();
-
-    const map = new Map();
-    for (const o of merged) {
-      const k = keyOf(o);
-      const cur = map.get(k);
-      if (!cur || tsOf(o) > tsOf(cur)) map.set(k, o);
+    if (!response.ok) {
+      throw new Error(`HTTP error! Status: ${response.status}`);
     }
 
-    const finalOrders = Array.from(map.values()).sort((a, b) => tsOf(b) - tsOf(a));
+    const data = await response.json();
+    console.log("✅ Orders received from API:", data);
 
-    console.log("✅ Merged Orders:", finalOrders);
-    setOrders(finalOrders);
-  } catch (err) {
-    console.error("⚠️ Failed to fetch orders:", err?.message || err);
+    // Normalize possible shapes
+    let ordersArray = [];
+    if (Array.isArray(data)) {
+      ordersArray = data;
+    } else if (Array.isArray(data?.orders)) {
+      ordersArray = data.orders;
+    } else if (Array.isArray(data?.data)) {
+      ordersArray = data.data;
+    }
+
+    // Sort by creation date (newest first)
+    const sortedOrders = ordersArray.sort((a, b) => {
+      const dateA = new Date(a.created_at || a.createdAt);
+      const dateB = new Date(b.created_at || b.createdAt);
+      return dateB - dateA;
+    });
+
+    console.log("✅ All Orders:", sortedOrders);
+    console.log("✅ Total orders count:", sortedOrders.length);
+    setOrders(sortedOrders);
+    
+  } catch (error) {
+    console.error("⚠️ Failed to fetch orders:", error.message);
   }
 };
 
+// Function to get filtered orders
+const getFilteredOrders = () => {
+  if (!showUniqueOnly) {
+    return orders; // Show all orders
+  }
+
+  // Show only unique routes (most recent per route)
+  const uniqueOrdersMap = new Map();
+  orders.forEach(order => {
+    const key = `${order.departure_city_id}-${order.destination_city_id}`;
+    const current = uniqueOrdersMap.get(key);
+    const existingDate = current ? new Date(current.created_at || current.createdAt) : 0;
+    const incomingDate = new Date(order.created_at || order.createdAt);
+    if (!current || existingDate < incomingDate) {
+      uniqueOrdersMap.set(key, order);
+    }
+  });
+
+  return Array.from(uniqueOrdersMap.values());
+};
+
+// Replace your orders section JSX with this:
+{/* User Orders */}
+{activeTab === "orders" && (
+  <>
+    <h2 className="heading">Your Previous Orders</h2>
+    
+    {/* Filter Toggle */}
+    <div style={{ marginBottom: '20px' }}>
+      <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <input
+          type="checkbox"
+          checked={showUniqueOnly}
+          onChange={(e) => setShowUniqueOnly(e.target.checked)}
+        />
+        Show only latest order per route
+      </label>
+      <small style={{ color: '#666', marginTop: '4px', display: 'block' }}>
+        Total orders: {orders.length} | 
+        Showing: {getFilteredOrders().length}
+      </small>
+    </div>
+
+    {getFilteredOrders().length > 0 ? (
+      <ul className="orders-list">
+        {getFilteredOrders().map((order, index) => (
+          <li key={order._id || order.id || index} className="order-item">
+            <strong>Route:</strong>{" "}
+            {order.departure_city_name || order.departure_city_id} → {order.destination_city_name || order.destination_city_id}
+            , ${Number(order.total_price || 0).toLocaleString()}
+            <small style={{ display: 'block', color: '#666' }}>
+              {new Date(order.created_at || order.createdAt).toLocaleDateString()}
+            </small>
+            <button className="view-details-button" onClick={() => handleViewOrderDetails(order)}>
+              View Details
+            </button>
+          </li>
+        ))}
+      </ul>
+    ) : (
+      <div>
+        <p>No previous orders found.</p>
+      </div>
+    )}
+  </>
+)}
+
     // ✅ Initial data fetch
     useEffect(() => {
-
         const initializeData = async () => {
             console.log("🔄 Initializing user data...");
             const userData = await fetchUser();
@@ -301,12 +345,11 @@ const fetchOrders = async () => {
                             <p><strong>Flight:</strong> {selectedOrder.flight_name || selectedOrder.flight_id || "Not selected"}</p>
                             <p><strong>Hotel:</strong> {selectedOrder.hotel_name || selectedOrder.hotel_id || "Not selected"}</p>
 
-                          <p><strong>Attractions:</strong> 
-  {Array.isArray(selectedOrder.attraction_names) && selectedOrder.attraction_names.length > 0
-    ? selectedOrder.attraction_names.join(", ")
-    : "None"}
-</p>
-
+                            <p><strong>Attractions:</strong> 
+                                {Array.isArray(selectedOrder.attraction_names) && selectedOrder.attraction_names.length > 0
+                                    ? selectedOrder.attraction_names.join(", ")
+                                    : "None"}
+                            </p>
 
                             <p><strong>Transportation:</strong> {selectedOrder.transportation || "Not selected"}</p>
                             <p><strong>Payment Method:</strong> {selectedOrder.payment_method}</p>

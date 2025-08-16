@@ -84,8 +84,29 @@ if (!Array.isArray(selectedAttractions)) {
   selectedAttractions = selectedAttractions ? [selectedAttractions] : [];
 }
 const cleanedAttractions = selectedAttractions.map(a => extractId(a)).filter(Boolean);
+// ✅ IMPROVED VERSION:
+const getResponseValue = (key) => {
+  const response = userResponses[key];
+  if (!response) return null;
+  
+  // If it's an object with name property
+  if (typeof response === 'object' && response.name) {
+    return response.name;
+  }
+  
+  // If it's a string
+  if (typeof response === 'string') {
+    return response;
+  }
+  
+  // If it's an object with id property, try to use that
+  if (typeof response === 'object' && response.id) {
+    return response.id;
+  }
+  
+  return null;
+};
 
-// Resolve proper IDs from names/selections
 const resolveRes = await fetch("http://localhost:4000/api/order/resolve", {
   method: "POST",
   headers: {
@@ -93,13 +114,12 @@ const resolveRes = await fetch("http://localhost:4000/api/order/resolve", {
     "Content-Type": "application/json",
   },
   body: JSON.stringify({
-    departure: userResponses["What is your departure city?"]?.name || userResponses["What is your departure city?"],
-    destination: userResponses["What is your destination city?"]?.name || userResponses["What is your destination city?"],
-    flight: userResponses["Select your flight"]?.name || userResponses["Select your flight"],
-    hotel: userResponses["Select your hotel"]?.name || userResponses["Select your hotel"],
+    departure: getResponseValue("What is your departure city?"),
+    destination: getResponseValue("What is your destination city?"),
+    flight: getResponseValue("Select your flight"),
+    hotel: getResponseValue("Select your hotel"),
   }),
 });
-
 if (!resolveRes.ok) throw new Error("Could not resolve IDs");
 const { ids } = await resolveRes.json();
 

@@ -112,14 +112,23 @@ async function findFlightByAny(val, destinationId) {
 
 // Hotel by id / name, scoped by destination id
 async function findHotelByAny(val, destinationId) {
-  if (!val) return { doc: await Hotel.findOne({ destination_city_id: destinationId }), index: 0 };
+  // If no specific hotel selected, find any hotel for the destination
+  if (!val) {
+    const doc = await Hotel.findOne({ destination_city_id: destinationId });
+    return { doc, index: 0 };
+  }
+  
   if (looksLikeObjectId(val)) return { doc: await Hotel.findById(val), index: 0 };
 
   const doc = await Hotel.findOne({
-    $or: [
+    $and: [
       { destination_city_id: destinationId },
-      { name: val },
-      { 'hotels.name': val }
+      {
+        $or: [
+          { name: val },
+          { 'hotels.name': val }
+        ]
+      }
     ]
   });
 
@@ -182,34 +191,37 @@ function getHotelName(hotelDoc, index) {
    ========================= */
 
 // POST /api/order/resolve
+// In resolveOrderRefs function, around line 140
 export async function resolveOrderRefs(req, res) {
   try {
-    if (!req.user?.id) return res.status(401).json({ message: "Unauthorized" });
-    if (!req.body) return res.status(400).json({ message: "Missing JSON body" });
+    // ... existing code ...
 
-    const { departure, destination, flight, hotel } = req.body;
-
-    // 1) Resolve cities by id/slug/name
-    const [depCity, dstCity] = await Promise.all([
-      findCityByAny(departure),
-      findCityByAny(destination),
-    ]);
-    if (!depCity || !dstCity) {
-      return res.status(400).json({ message: "Could not resolve city ids" });
-    }
-
-    // 2) Resolve flight & hotel using flexible helpers (accept id/name/code)
+    // 2) Resolve flight & hotel using flexible helpers
     const { doc: flightDoc, index: flightIndex = 0 } =
       await findFlightByAny(flight, dstCity._id?.toString?.());
     if (!flightDoc) return res.status(400).json({ message: "Could not resolve flight" });
 
     const { doc: hotelDoc, index: hotelIndex = 0 } =
       await findHotelByAny(hotel, dstCity._id?.toString?.());
-    if (!hotelDoc) return res.status(400).json({ message: "Could not resolve hotel" });
+    
+    // ❌ CHANGE THIS - Don't fail if no hotel found, use city as fallback
+    if (!hotelDoc) {
+      console.log("⚠️ No hotel found, using destination city as fallback");
+      // Use destination city ID as hotel fallback
+      return res.status(200).json({
+        success: true,
+        ids: {
+          departureCityId: depCity._id.toString(),
+          destinationCityId: dstCity._id.toString(),
+          flightId: `${flightDoc._id.toString()}-${flightIndex}`,
+          hotelId: dstCity._id.toString(), // ✅ Fallback to city ID
+        },
+      });
+    }
 
     // 3) Build compound ids (baseId-index)
     const flightId = `${flightDoc._id.toString()}-${flightIndex}`;
-    const hotelId  = `${hotelDoc._id.toString()}-${hotelIndex}`;
+    const hotelId = `${hotelDoc._id.toString()}-${hotelIndex}`;
 
     return res.status(200).json({
       success: true,
@@ -222,10 +234,12 @@ export async function resolveOrderRefs(req, res) {
     });
   } catch (err) {
     console.error("❌ resolveOrderRefs error:", err.stack || err);
-    return res.status(500).json({ message: "Internal Server Error" });
+    return res.status(500).json({ 
+      message: "Internal Server Error", 
+      error: process.env.NODE_ENV === "development" ? err.message : undefined 
+    });
   }
 }
-
 // POST /api/order - Create new order
 export async function createOrder(req, res) {
   if (!req.user?.id) return res.status(401).json({ message: "Unauthorized" });
