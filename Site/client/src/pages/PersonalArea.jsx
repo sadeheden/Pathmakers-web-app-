@@ -17,100 +17,122 @@ const PersonalArea = () => {
     const navigate = useNavigate();
     
     // ✅ Fetch user data function
-    const fetchUser = async () => {
-        try {
-            const token = localStorage.getItem("authToken");
-            if (!token) {
-                console.warn("⚠️ No token found. Redirecting to login...");
-                navigate("/login");
-                return null;
-            }
-
-            const response = await fetch("http://localhost:4000/api/auth/user", {
-                method: "GET",
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                    "Content-Type": "application/json"
-                }
-            });
-
-            if (!response.ok) {
-                throw new Error(`⚠️ Failed to fetch user, status: ${response.status}`);
-            }
-
-            const userData = await response.json();
-            console.log("✅ User data received:", userData);
-            
-            const formattedUser = { ...userData, id: userData._id };
-            setUser(formattedUser);
-            setEditedUser({
-                username: userData.username || "",
-                email: userData.email || ""
-            });
-
-            return formattedUser;
-        } catch (error) {
-            console.error("⚠️ Error fetching user session:", error);
-            return null;
-        }
-    };
-
-    // ✅ Fetch orders function
-   // ✅ Fetch orders function (correct)
-const fetchOrders = async () => {
+   const fetchUser = async () => {
   try {
-    const token = localStorage.getItem("authToken");
+    const token = getToken();
     if (!token) {
-      console.error("⚠️ No token found, please log in again.");
-      return;
+      console.warn("⚠️ No token found. Redirecting to login...");
+      navigate("/login");
+      return null;
     }
 
-    const response = await fetch("http://localhost:4000/api/order", {
+    const response = await fetch("http://localhost:4000/api/auth/user", {
       method: "GET",
       headers: {
-        "Authorization": `Bearer ${token}`,
+        Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
       },
     });
 
     if (!response.ok) {
-      throw new Error(`HTTP error! Status: ${response.status}`);
+      throw new Error(`⚠️ Failed to fetch user, status: ${response.status}`);
     }
 
-    const data = await response.json();
-    console.log("✅ Orders received from API:", data);
-
-    // Normalize possible shapes
-    let ordersArray = [];
-    if (Array.isArray(data)) {
-      ordersArray = data;
-    } else if (Array.isArray(data?.orders)) {
-      ordersArray = data.orders;
-    } else if (Array.isArray(data?.data)) {
-      ordersArray = data.data;
-    }
-
-    // Keep most-recent per route
-    const uniqueOrdersMap = new Map();
-    ordersArray.forEach(order => {
-      const key = `${order.departure_city_id}-${order.destination_city_id}`;
-      const current = uniqueOrdersMap.get(key);
-      const existingDate = current ? new Date(current.created_at || current.createdAt) : 0;
-      const incomingDate = new Date(order.created_at || order.createdAt);
-      if (!current || existingDate < incomingDate) uniqueOrdersMap.set(key, order);
+    const userData = await response.json();
+    const formattedUser = { ...userData, id: userData._id };
+    setUser(formattedUser);
+    setEditedUser({
+      username: userData.username || "",
+      email: userData.email || "",
     });
-
-    const uniqueOrders = Array.from(uniqueOrdersMap.values());
-    console.log("✅ Unique Orders:", uniqueOrders);
-    setOrders(uniqueOrders);
+    return formattedUser;
   } catch (error) {
-    console.error("⚠️ Failed to fetch orders:", error.message);
+    console.error("⚠️ Error fetching user session:", error);
+    navigate("/login");
+    return null;
   }
 };
 
 
+    // ✅ Fetch orders function
+   // ✅ Fetch orders function (correct)
+const fetchOrders = async () => {
+  try {
+    // be flexible about the token key
+    const token =
+      localStorage.getItem("authToken") ||
+      localStorage.getItem("token") ||
+      localStorage.getItem("jwt") ||
+      localStorage.getItem("access_token") ||
+      localStorage.getItem("userToken");
+
+    if (!token) {
+      console.error("⚠️ No token found, please log in again.");
+      return;
+    }
+
+    const headers = {
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": "application/json",
+    };
+
+    // fetch both in parallel (orders from Chat + Traveler-Favorite)
+    const [r1, r2] = await Promise.allSettled([
+      fetch("http://localhost:4000/api/order",   { method: "GET", headers }),
+      fetch("http://localhost:4000/api/orders2", { method: "GET", headers }),
+    ]);
+
+    // helper to safely parse
+    const parse = async (res) => (res && res.ok) ? await res.json() : null;
+
+    const d1 = await parse(r1.status === "fulfilled" ? r1.value : null);
+    const d2 = await parse(r2.status === "fulfilled" ? r2.value : null);
+
+    // normalize shapes from both APIs
+    const list1 =
+      Array.isArray(d1) ? d1 :
+      Array.isArray(d1?.orders) ? d1.orders :
+      Array.isArray(d1?.data) ? d1.data : [];
+
+    const list2 =
+      Array.isArray(d2) ? d2 :
+      Array.isArray(d2?.orders) ? d2.orders :
+      Array.isArray(d2?.data?.orders) ? d2.data.orders : [];
+
+    const merged = [...list1, ...list2];
+
+    // dedupe (route + flight/hotel) and keep newest
+    const keyOf = (o) => {
+      const from  = (o.departure_city_id || o.departureCityId || "").toString();
+      const to    = (o.destination_city_id || o.destinationCityId || "").toString();
+      const flight = (o.flight_id || o.flightId || o.flight_name || "").toString();
+      const hotel  = (o.hotel_id  || o.hotelId  || o.hotel_name  || "").toString();
+      return `${from}→${to}::${flight}::${hotel}`;
+    };
+    const tsOf = (o) =>
+      new Date(
+        o.created_at || o.createdAt || o.booking_date || o.bookingDate || 0
+      ).getTime();
+
+    const map = new Map();
+    for (const o of merged) {
+      const k = keyOf(o);
+      const cur = map.get(k);
+      if (!cur || tsOf(o) > tsOf(cur)) map.set(k, o);
+    }
+
+    const finalOrders = Array.from(map.values()).sort((a, b) => tsOf(b) - tsOf(a));
+
+    console.log("✅ Merged Orders:", finalOrders);
+    setOrders(finalOrders);
+  } catch (err) {
+    console.error("⚠️ Failed to fetch orders:", err?.message || err);
+  }
+};
+
     // ✅ Initial data fetch
     useEffect(() => {
+
         const initializeData = async () => {
             console.log("🔄 Initializing user data...");
             const userData = await fetchUser();
