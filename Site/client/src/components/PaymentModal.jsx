@@ -1,136 +1,165 @@
 import React, { useState } from "react";
 
 const PaymentModal = ({ isOpen, onClose, totalAmount, onPaymentSuccess, userResponses }) => {
-    const [fullName, setFullName] = useState("");
-    const [paymentDetails, setPaymentDetails] = useState("");
-    const [expiryDate, setExpiryDate] = useState("");
-    const [cvv, setCvv] = useState("");
-    const [paymentSuccess, setPaymentSuccess] = useState(false);
-    const [error, setError] = useState("");
+  const [fullName, setFullName] = useState("");
+  const [paymentDetails, setPaymentDetails] = useState("");
+  const [expiryDate, setExpiryDate] = useState("");
+  const [cvv, setCvv] = useState("");
+  const [paymentSuccess, setPaymentSuccess] = useState(false);
+  const [error, setError] = useState("");
 
-    const method = userResponses?.["Select payment method"];
-    const isBank = method === "Bank Transfer";
+  const method = userResponses?.["Select payment method"];
+  const isBank = method === "Bank Transfer";
 
-    const currentYear = new Date().getFullYear();
-    const currentMonth = new Date().getMonth() + 1; // 1-12
-    const maxYear = currentYear + 10;
+  const currentYear = new Date().getFullYear();
+  const currentMonth = new Date().getMonth() + 1; // 1-12
+  const maxYear = currentYear + 10;
 
-    const handlePayment = () => {
-        const errs = [];
+  // === derive attractions from the user's answers ===
+  // We accept either array of objects ({_id,id,name,...}) or strings (names/ids)
+  const picked = userResponses?.["Select attractions to visit"];
+  const attractionIds = Array.isArray(picked)
+    ? picked
+        .map((a) => a?._id || a?.id || (typeof a === "string" ? a : null))
+        .filter(Boolean)
+    : [];
+  const attractionNames = Array.isArray(picked)
+    ? picked
+        .map((a) => (typeof a === "string" ? a : a?.name))
+        .filter(Boolean)
+    : [];
 
-        // Full Name validation
-        if (!fullName.trim() || fullName.trim().length < 3) {
-            errs.push("❌ Invalid Full Name. Enter at least 3 characters.");
+  const handlePayment = () => {
+    const errs = [];
+
+    // Full Name validation
+    if (!fullName.trim() || fullName.trim().length < 3) {
+      errs.push("❌ Invalid Full Name. Enter at least 3 characters.");
+    }
+
+    if (!isBank) {
+      // Card number
+      if (!/^\d{16}$/.test(paymentDetails)) {
+        errs.push("❌ Invalid Payment Number. Must be 16 digits.");
+      }
+
+      // Expiry date
+      const expiryMatch = expiryDate.match(/^(0[1-9]|1[0-2])\/(\d{4})$/);
+      if (!expiryMatch) {
+        errs.push("❌ Invalid Expiry Date. Must be MM/YYYY.");
+      } else {
+        const month = parseInt(expiryMatch[1], 10);
+        const year = parseInt(expiryMatch[2], 10);
+        if (year < currentYear || year > maxYear || (year === currentYear && month < currentMonth)) {
+          errs.push(`❌ Expiry Date must be between current month and ${maxYear}.`);
         }
+      }
 
-        if (!isBank) {
-            // Card number
-            if (!/^\d{16}$/.test(paymentDetails)) {
-                errs.push("❌ Invalid Payment Number. Must be 16 digits.");
-            }
+      // CVV
+      if (!/^\d{3}$/.test(cvv)) {
+        errs.push("❌ Invalid CVV. Must be exactly 3 digits.");
+      }
+    }
 
-            // Expiry date
-            const expiryMatch = expiryDate.match(/^(0[1-9]|1[0-2])\/(\d{4})$/);
-            if (!expiryMatch) {
-                errs.push("❌ Invalid Expiry Date. Must be MM/YYYY.");
-            } else {
-                const month = parseInt(expiryMatch[1], 10);
-                const year = parseInt(expiryMatch[2], 10);
-                if (year < currentYear || year > maxYear || (year === currentYear && month < currentMonth)) {
-                    errs.push(`❌ Expiry Date must be between current month and ${maxYear}.`);
-                }
-            }
+    if (errs.length) {
+      setError(errs.join("\n"));
+      return;
+    }
 
-            // CVV
-            if (!/^\d{3}$/.test(cvv)) {
-                errs.push("❌ Invalid CVV. Must be exactly 3 digits.");
-            }
-        }
+    setPaymentSuccess(true);
+    setError("");
 
-        if (errs.length) {
-            setError(errs.join("\n"));
-            return;
-        }
+    setTimeout(() => {
+      setPaymentSuccess(false);
+      onClose();
 
-        setPaymentSuccess(true);
-        setError("");
+      // >>> BEFORE the axios.post in the parent, you now have both arrays:
+      // attractionIds (IDs) and attractionNames (human-readable)
+      // Parent can include them in the POST payload.
+      onPaymentSuccess?.({ attractionIds, attractionNames });
 
-        setTimeout(() => {
-            setPaymentSuccess(false);
-            onClose();
-            onPaymentSuccess();
-        }, 1600);
-    };
+    }, 1600);
+  };
 
-    if (!isOpen) return null;
+  if (!isOpen) return null;
 
-    return (
-        <div className="modal-overlay">
-            <div className={`modal-content ${isBank ? "bank" : ""} ${paymentSuccess ? "success" : ""}`}>
-                {paymentSuccess ? (
-                    <>
-                        <h2>🎉 Payment Successful! 🎉</h2>
-                        <p>Your payment of <strong>${totalAmount}</strong> has been processed.</p>
-                        <p>✅ Your trip is now confirmed!</p>
-                    </>
-                ) : (
-                    <>
-                        <h2>{method} Payment</h2>
-                        <p><strong>Total Amount: ${totalAmount}</strong></p>
-                        {error && <p className="error-message" style={{ whiteSpace: "pre-line" }}>{error}</p>}
+  return (
+    <div className="modal-overlay">
+      <div className={`modal-content ${isBank ? "bank" : ""} ${paymentSuccess ? "success" : ""}`}>
+        {paymentSuccess ? (
+          <>
+            <h2>🎉 Payment Successful! 🎉</h2>
+            <p>
+              Your payment of <strong>${totalAmount}</strong> has been processed.
+            </p>
+            <p>✅ Your trip is now confirmed!</p>
+          </>
+        ) : (
+          <>
+            <h2>{method} Payment</h2>
+            <p>
+              <strong>Total Amount: ${totalAmount}</strong>
+            </p>
+            {error && (
+              <p className="error-message" style={{ whiteSpace: "pre-line" }}>
+                {error}
+              </p>
+            )}
 
-                        <label>Full Name</label>
-                        <input
-                            type="text"
-                            placeholder="John Doe"
-                            value={fullName}
-                            onChange={(e) => setFullName(e.target.value)}
-                        />
+            <label>Full Name</label>
+            <input
+              type="text"
+              placeholder="John Doe"
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+            />
 
-                        {!isBank && (
-                            <>
-                                <label>Payment Number</label>
-                                <input
-                                    type="text"
-                                    placeholder="1234 5678 9012 3456"
-                                    maxLength="16"
-                                    value={paymentDetails}
-                                    onChange={(e) => setPaymentDetails(e.target.value.replace(/\D/g, ""))}
-                                />
+            {!isBank && (
+              <>
+                <label>Payment Number</label>
+                <input
+                  type="text"
+                  placeholder="1234 5678 9012 3456"
+                  maxLength="16"
+                  value={paymentDetails}
+                  onChange={(e) => setPaymentDetails(e.target.value.replace(/\D/g, ""))}
+                />
 
-                                <div className="expiry-cvv">
-                                    <div>
-                                        <label>Expiry Date</label>
-                                        <input
-                                            type="text"
-                                            placeholder="MM/YYYY"
-                                            value={expiryDate}
-                                            onChange={(e) => setExpiryDate(e.target.value)}
-                                        />
-                                    </div>
-                                    <div>
-                                        <label>CVV</label>
-                                        <input
-                                            type="text"
-                                            placeholder="123"
-                                            maxLength="3"
-                                            value={cvv}
-                                            onChange={(e) => setCvv(e.target.value.replace(/\D/g, ""))}
-                                        />
-                                    </div>
-                                </div>
-                            </>
-                        )}
+                <div className="expiry-cvv">
+                  <div>
+                    <label>Expiry Date</label>
+                    <input
+                      type="text"
+                      placeholder="MM/YYYY"
+                      value={expiryDate}
+                      onChange={(e) => setExpiryDate(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label>CVV</label>
+                    <input
+                      type="text"
+                      placeholder="123"
+                      maxLength="3"
+                      value={cvv}
+                      onChange={(e) => setCvv(e.target.value.replace(/\D/g, ""))}
+                    />
+                  </div>
+                </div>
+              </>
+            )}
 
-                        <button className="pay-button" onClick={handlePayment} disabled={paymentSuccess}>
-                            {paymentSuccess ? "Processing..." : `Pay $${totalAmount}`}
-                        </button>
-                        <button className="change-payment" onClick={onClose}>Change payment method</button>
-                    </>
-                )}
-            </div>
-        </div>
-    );
+            <button className="pay-button" onClick={handlePayment} disabled={paymentSuccess}>
+              {paymentSuccess ? "Processing..." : `Pay $${totalAmount}`}
+            </button>
+            <button className="change-payment" onClick={onClose}>
+              Change payment method
+            </button>
+          </>
+        )}
+      </div>
+    </div>
+  );
 };
 
 export default PaymentModal;

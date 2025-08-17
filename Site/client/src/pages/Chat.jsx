@@ -232,16 +232,22 @@ const restartTrip = React.useCallback(() => {
 
         {renderStepContent()}
 
-        <PaymentModal
-          isOpen={isPaymentModalOpen}
-          onClose={() => setIsPaymentModalOpen(false)}
-          onPaymentSuccess={async () => {
-            setPaymentCompleted(true);
-            setCurrentStep((prev) => prev + 1);
-          }}
-          totalAmount={calculateTotalPrice(userResponses)}
-          userResponses={userResponses}
-        />
+      <PaymentModal
+  isOpen={isPaymentModalOpen}
+  onClose={() => setIsPaymentModalOpen(false)}
+  onPaymentSuccess={({ attractionIds, attractionNames } = {}) => {
+    // use attractionIds / attractionNames in your POST payload
+    // (fall back to []) to be safe
+    const ids = attractionIds ?? [];
+    const names = attractionNames ?? [];
+    // ... axios.post({ attractions: ids, attractionNames: names, ... })
+    setPaymentCompleted(true);
+    setCurrentStep((prev) => prev + 1);
+  }}
+  totalAmount={calculateTotalPrice(userResponses)}
+  userResponses={userResponses}
+/>
+
       </div>
     </div>
   );

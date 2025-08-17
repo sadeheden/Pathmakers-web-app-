@@ -1,419 +1,468 @@
-import React, { useState, useEffect } from "react";
+// src/pages/PersonalArea.jsx
+import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "../assets/styles/PersonalArea.css";
 
-const PersonalArea = () => {
-    const [activeTab, setActiveTab] = useState("userInfo");
-    const [user, setUser] = useState(null);
-    const [email, setEmail] = useState("");
-    const [showUniqueOnly, setShowUniqueOnly] = useState(false);
+const API_BASE =
+  (import.meta?.env?.VITE_API_BASE && import.meta.env.VITE_API_BASE.replace(/\/$/, "")) ||
+  "http://localhost:4000";
 
-    const [selectedOrder, setSelectedOrder] = useState(null);
-    const [loading, setLoading] = useState(false);
-    const [isEditing, setIsEditing] = useState(false);
-    const [editedUser, setEditedUser] = useState({
-        username: "",
-        email: "",
-    });
-    const [orders, setOrders] = useState([]);
-    const navigate = useNavigate();
-    
-    // ✅ Fetch user data function
-    const fetchUser = async () => {
-        try {
-            const token = localStorage.getItem("authToken");
-            if (!token) {
-                console.warn("⚠️ No token found. Redirecting to login...");
-                navigate("/login");
-                return null;
-            }
+/* ---------- helpers ---------- */
+const looksLikeId = (v) => typeof v === "string" && /^[0-9a-fA-F]{24}$/.test(v);
+const toUsd = (n) =>
+  new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(
+    Number(n ?? 0)
+  );
 
-            const response = await fetch("http://localhost:4000/api/auth/user", {
-                method: "GET",
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                    "Content-Type": "application/json"
-                }
-            });
+const normalizeOrder = (o) => {
+  const departure =
+    o.departureCityName ||
+    o.departure_city_name ||
+    o.departure ||
+    o.departure_city_id ||
+    "—";
 
-            if (!response.ok) {
-                throw new Error(`⚠️ Failed to fetch user, status: ${response.status}`);
-            }
+  const destination =
+    o.destinationCityName ||
+    o.destination_city_name ||
+    o.destination ||
+    o.cityName ||
+    o.destination_city_id ||
+    "—";
 
-            const userData = await response.json();
-            console.log("✅ User data received:", userData);
-            
-            const formattedUser = { ...userData, id: userData._id };
-            setUser(formattedUser);
-            setEditedUser({
-                username: userData.username || "",
-                email: userData.email || ""
-            });
+  const flight = o.flightName || o.flight_name || o.flightNumber || "—";
+  const hotel =
+    o.hotelName ||
+    o.hotel_name ||
+    (o.cityName ? `${o.cityName} Hotel` : null) ||
+    o.hotel_id ||
+    "—";
 
-            return formattedUser;
-        } catch (error) {
-            console.error("⚠️ Error fetching user session:", error);
-            return null;
-        }
-    };
+  const attractions =
+    (Array.isArray(o.attraction_names) && o.attraction_names) ||
+    (Array.isArray(o.attractionNames) && o.attractionNames) ||
+    (Array.isArray(o.attractions) && o.attractions) ||
+    [];
 
+  return {
+    raw: o,
+    id: o._id || o.id,
+    departure,
+    destination,
+    flight,
+    hotel,
+    attractions,
+    transportation: o.transportation || "—",
+    paymentMethod: o.payment_method || o.paymentMethod || "—",
+    totalPrice: Number(o.total_price ?? o.totalPrice ?? 0),
+    createdAt: o.createdAt || o.bookingDate || o.created_at || null,
+  };
+};
 
-// Updated fetchOrders function
-const fetchOrders = async () => {
+async function fetchMyOrders(token) {
+  const headers = token ? { Authorization: `Bearer ${token}` } : undefined;
+
+  const tryFetch = async (url) => {
+    const r = await fetch(url, { headers });
+    if (!r.ok) throw new Error(String(r.status));
+    const j = await r.json();
+    return (
+      j?.data?.orders ||
+      j?.orders ||
+      (Array.isArray(j?.data) ? j.data : Array.isArray(j) ? j : [])
+    );
+  };
+
   try {
-    const token = localStorage.getItem("authToken");
-    if (!token) {
-      console.error("⚠️ No token found, please log in again.");
+    return await tryFetch(`${API_BASE}/api/orders2?limit=100`);
+  } catch {
+    return await tryFetch(`${API_BASE}/api/order?limit=100`);
+  }
+}
+
+const PersonalArea = () => {
+  const navigate = useNavigate();
+
+  const [activeTab, setActiveTab] = useState("userInfo");
+  const [user, setUser] = useState(null);
+  const [email, setEmail] = useState("");
+
+  const [selectedOrder, setSelectedOrder] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  const [orders, setOrders] = useState([]); // normalized orders
+  const [apiError, setApiError] = useState("");
+
+  // date filter + sort
+  const [dateFrom, setDateFrom] = useState(""); // "YYYY-MM-DD"
+  const [dateTo, setDateTo] = useState("");     // "YYYY-MM-DD"
+  const [sortDir, setSortDir] = useState("desc"); // "desc" | "asc"
+
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedUser, setEditedUser] = useState({ username: "", email: "" });
+
+  /* ---------- user fetch ---------- */
+  const fetchUser = async () => {
+    try {
+      const token = localStorage.getItem("authToken");
+      if (!token) {
+        navigate("/login");
+        return null;
+      }
+      const res = await fetch(`${API_BASE}/api/auth/user`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error(`Failed user fetch ${res.status}`);
+      const userData = await res.json();
+      const formatted = { ...userData, id: userData._id };
+      setUser(formatted);
+      setEditedUser({
+        username: userData.username || "",
+        email: userData.email || "",
+      });
+      return formatted;
+    } catch (e) {
+      console.error("user fetch error", e);
+      return null;
+    }
+  };
+
+  /* ---------- orders fetch ---------- */
+  const loadOrders = async () => {
+    try {
+      setApiError("");
+      const token = localStorage.getItem("authToken");
+      if (!token) return;
+      const rawOrders = await fetchMyOrders(token);
+
+      const normalized = rawOrders.map(normalizeOrder);
+      setOrders(normalized);
+    } catch (e) {
+      console.error("orders fetch error", e);
+      setApiError("Failed to load your orders.");
+      setOrders([]);
+    }
+  };
+
+  /* ---------- init ---------- */
+  useEffect(() => {
+    (async () => {
+      const u = await fetchUser();
+      if (u?.id) await loadOrders();
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  /* ---------- memo: date filter + sort ---------- */
+  const filteredOrders = useMemo(() => {
+    let list = [...orders];
+
+    // filter by date range if provided
+    const fromTime = dateFrom ? new Date(dateFrom).setHours(0, 0, 0, 0) : null;
+    const toTime = dateTo ? new Date(dateTo).setHours(23, 59, 59, 999) : null;
+
+    if (fromTime || toTime) {
+      list = list.filter((o) => {
+        if (!o.createdAt) return false;
+        const t = new Date(o.createdAt).getTime();
+        if (Number.isNaN(t)) return false;
+        if (fromTime && t < fromTime) return false;
+        if (toTime && t > toTime) return false;
+        return true;
+      });
+    }
+
+    // sort by createdAt
+    list.sort((a, b) => {
+      const dA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const dB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return sortDir === "asc" ? dA - dB : dB - dA;
+    });
+
+    return list;
+  }, [orders, dateFrom, dateTo, sortDir]);
+
+  /* ---------- actions ---------- */
+  const handleViewOrderDetails = (order) => setSelectedOrder(order);
+
+  const handleLogout = () => {
+    localStorage.removeItem("authToken");
+    setUser(null);
+    navigate("/login");
+  };
+
+  const handleSubscribe = async () => {
+    if (!email.trim()) {
+      alert("Please enter a valid email.");
       return;
     }
-
-    const response = await fetch("http://localhost:4000/api/order", {
-      method: "GET",
-      headers: {
-        "Authorization": `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! Status: ${response.status}`);
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/newsletter`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        throw new Error(j.message || `HTTP ${res.status}`);
+      }
+      alert("Subscription successful — check your inbox!");
+      setEmail("");
+    } catch (e) {
+      alert(`Failed to subscribe: ${e.message}`);
+    } finally {
+      setLoading(false);
     }
+  };
 
-    const data = await response.json();
-    console.log("✅ Orders received from API:", data);
+  const clearFilters = () => {
+    setDateFrom("");
+    setDateTo("");
+    setSortDir("desc");
+  };
 
-    // Normalize possible shapes
-    let ordersArray = [];
-    if (Array.isArray(data)) {
-      ordersArray = data;
-    } else if (Array.isArray(data?.orders)) {
-      ordersArray = data.orders;
-    } else if (Array.isArray(data?.data)) {
-      ordersArray = data.data;
-    }
+  /* ---------- UI ---------- */
+  return (
+    <div>
+      <h1 className="page-title">Personal Area</h1>
 
-    // Sort by creation date (newest first)
-    const sortedOrders = ordersArray.sort((a, b) => {
-      const dateA = new Date(a.created_at || a.createdAt);
-      const dateB = new Date(b.created_at || b.createdAt);
-      return dateB - dateA;
-    });
-
-    console.log("✅ All Orders:", sortedOrders);
-    console.log("✅ Total orders count:", sortedOrders.length);
-    setOrders(sortedOrders);
-    
-  } catch (error) {
-    console.error("⚠️ Failed to fetch orders:", error.message);
-  }
-};
-
-// Function to get filtered orders
-const getFilteredOrders = () => {
-  if (!showUniqueOnly) {
-    return orders; // Show all orders
-  }
-
-  // Show only unique routes (most recent per route)
-  const uniqueOrdersMap = new Map();
-  orders.forEach(order => {
-    const key = `${order.departure_city_id}-${order.destination_city_id}`;
-    const current = uniqueOrdersMap.get(key);
-    const existingDate = current ? new Date(current.created_at || current.createdAt) : 0;
-    const incomingDate = new Date(order.created_at || order.createdAt);
-    if (!current || existingDate < incomingDate) {
-      uniqueOrdersMap.set(key, order);
-    }
-  });
-
-  return Array.from(uniqueOrdersMap.values());
-};
-
-// Replace your orders section JSX with this:
-{/* User Orders */}
-{activeTab === "orders" && (
-  <>
-    <h2 className="heading">Your Previous Orders</h2>
-    
-    {/* Filter Toggle */}
-    <div style={{ marginBottom: '20px' }}>
-      <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-        <input
-          type="checkbox"
-          checked={showUniqueOnly}
-          onChange={(e) => setShowUniqueOnly(e.target.checked)}
-        />
-        Show only latest order per route
-      </label>
-      <small style={{ color: '#666', marginTop: '4px', display: 'block' }}>
-        Total orders: {orders.length} | 
-        Showing: {getFilteredOrders().length}
-      </small>
-    </div>
-
-    {getFilteredOrders().length > 0 ? (
-      <ul className="orders-list">
-        {getFilteredOrders().map((order, index) => (
-          <li key={order._id || order.id || index} className="order-item">
-            <strong>Route:</strong>{" "}
-            {order.departure_city_name || order.departure_city_id} → {order.destination_city_name || order.destination_city_id}
-            , ${Number(order.total_price || 0).toLocaleString()}
-            <small style={{ display: 'block', color: '#666' }}>
-              {new Date(order.created_at || order.createdAt).toLocaleDateString()}
-            </small>
-            <button className="view-details-button" onClick={() => handleViewOrderDetails(order)}>
-              View Details
-            </button>
-          </li>
-        ))}
-      </ul>
-    ) : (
-      <div>
-        <p>No previous orders found.</p>
+      <div className="tab-buttons">
+        <button
+          onClick={() => setActiveTab("userInfo")}
+          className={activeTab === "userInfo" ? "active" : ""}
+        >
+          User Info
+        </button>
+        <button
+          onClick={() => setActiveTab("orders")}
+          className={activeTab === "orders" ? "active" : ""}
+        >
+          Previous Orders
+        </button>
+        <button
+          onClick={() => setActiveTab("newsletter")}
+          className={activeTab === "newsletter" ? "active" : ""}
+        >
+          Sign Up for Newsletter
+        </button>
       </div>
-    )}
-  </>
-)}
 
-    // ✅ Initial data fetch
-    useEffect(() => {
-        const initializeData = async () => {
-            console.log("🔄 Initializing user data...");
-            const userData = await fetchUser();
-            
-            // Only fetch orders if user data was successfully retrieved
-            if (userData && userData.id) {
-                console.log("🔍 Fetching orders for user:", userData.id);
-                await fetchOrders();
-            }
-        };
+      <div className="containerPersonal">
+        {/* User Information */}
+        {activeTab === "userInfo" && (
+          <>
+            <h2 className="heading">User Details</h2>
+            <div className="profileInfo">
+              {user ? (
+                <>
+                  <p>
+                    <strong>Username:</strong> {user.username}
+                  </p>
+                  <p>
+                    <strong>Email:</strong> {user.email}
+                  </p>
+                  <div style={{ marginTop: 12 }}>
+                    <button className="view-details-button" onClick={handleLogout}>
+                      Logout
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <div>
+                  <p>Loading user data...</p>
+                </div>
+              )}
+            </div>
+          </>
+        )}
 
-        initializeData();
-    }, []); // Run only once on component mount
+        {/* Order Details Modal */}
+        {selectedOrder && (
+          <div className="order-modal">
+            <div className="order-modal-content">
+              <button className="close-modal" onClick={() => setSelectedOrder(null)}>
+                ✖
+              </button>
+              <h2>Order Details</h2>
 
-    const handleEditProfile = () => {
-        setIsEditing(true);
-    };
+              <p>
+                <strong>Order ID:</strong> {selectedOrder.id}
+              </p>
+              <p>
+                <strong>Departure City:</strong> {selectedOrder.departure}
+              </p>
+              <p>
+                <strong>Destination City:</strong> {selectedOrder.destination}
+              </p>
 
-    const calculateAge = (birthdate) => {
-        if (!birthdate) return "Not provided";
+              <p>
+                <strong>Flight:</strong> {selectedOrder.flight}
+              </p>
+              <p>
+                <strong>Hotel:</strong> {selectedOrder.hotel}
+              </p>
 
-        const birthDateObj = new Date(birthdate);
-        const today = new Date();
-        let age = today.getFullYear() - birthDateObj.getFullYear();
-        const monthDiff = today.getMonth() - birthDateObj.getMonth();
+              <p>
+                <strong>Attractions:</strong>{" "}
+                {!selectedOrder.attractions?.length
+                  ? "—"
+                  : selectedOrder.attractions.every(looksLikeId)
+                  ? `${selectedOrder.attractions.length} selected`
+                  : selectedOrder.attractions.join(", ")}
+              </p>
 
-        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDateObj.getDate())) {
-            age--;
-        }
+              <p>
+                <strong>Transportation:</strong> {selectedOrder.transportation}
+              </p>
+              <p>
+                <strong>Payment Method:</strong> {selectedOrder.paymentMethod}
+              </p>
+              <p>
+                <strong>Total Price:</strong> {toUsd(selectedOrder.totalPrice)}
+              </p>
+              <p>
+                <strong>Created At:</strong>{" "}
+                {selectedOrder.createdAt
+                  ? new Date(selectedOrder.createdAt).toLocaleString()
+                  : "—"}
+              </p>
+            </div>
+          </div>
+        )}
 
-        return age;
-    };
+        {/* Orders */}
+        {activeTab === "orders" && (
+          <>
+            <h2 className="heading">Your Previous Orders</h2>
 
-    const handleSaveProfile = async () => {
-        setLoading(true);
-        const token = localStorage.getItem("authToken");
+            {apiError && (
+              <div style={{ color: "crimson", marginBottom: 12 }}>{apiError}</div>
+            )}
 
-        const updatedData = {
-            username: editedUser.username,
-            email: editedUser.email,
-        };
-
-        if (editedUser.birthdate) {
-            updatedData.age = calculateAge(editedUser.birthdate);
-        }
-
-        console.log("🔍 Sending update:", updatedData);
-
-        try {
-            const response = await fetch("http://localhost:4000/api/auth/user", {
-                method: "PUT",
-                headers: {
-                    "Authorization": `Bearer ${token}`,
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify(updatedData)
-            });
-
-            const result = await response.json();
-            console.log("🔍 Server response:", result);
-
-            if (response.ok) {
-                setUser(result);
-                setEditedUser(result);
-                setIsEditing(false);
-                console.log("✅ Profile updated successfully.");
-            } else {
-                console.error("⚠️ Failed to update profile:", result);
-                alert("⚠️ Error updating profile: " + (result.message || "Please try again."));
-            }
-        } catch (error) {
-            console.error("⚠️ Error updating profile:", error);
-            alert("⚠️ An error occurred. Please try again later.");
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const handleViewOrderDetails = (order) => {
-        setSelectedOrder(order);
-    };
-
-    const handleLogout = () => {
-        localStorage.removeItem("authToken"); // ✅ Fixed token key
-        setUser(null);
-        navigate("/login");
-    };
-
-    const handleSubscribe = async () => {
-        if (!email.trim()) {
-            alert("⚠️ Please enter a valid email.");
-            return;
-        }
-
-        setLoading(true);
-
-        try {
-            const response = await fetch("http://localhost:4000/api/newsletter", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ email })
-            });
-
-            if (response.ok) {
-                alert("✅ Subscription successful, check your inbox!");
-                setEmail("");
-            } else {
-                const errorData = await response.json();
-                console.error("⚠️ Failed to subscribe:", errorData.message || response.status);
-                alert("⚠️ Failed to subscribe. " + (errorData.message || "Please try again."));
-            }
-        } catch (error) {
-            console.error("⚠️ Error during subscription:", error);
-            alert("⚠️ An error occurred. Please try again later.");
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    return (
-        <div>
-            <h1 className="page-title">Personal Area</h1>
-            <div className="tab-buttons">
-                <button onClick={() => setActiveTab("userInfo")} className={activeTab === "userInfo" ? "active" : ""}>
-                    User Info
+            {/* Compact date + sort filters */}
+            <div
+              className="orders-filters"
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
+                gap: 8,
+                alignItems: "end",
+                marginBottom: 12,
+              }}
+            >
+              <div>
+                <label style={{ display: "block", fontSize: 12, color: "#666" }}>
+                  From
+                </label>
+                <input
+                  type="date"
+                  value={dateFrom}
+                  onChange={(e) => setDateFrom(e.target.value)}
+                  style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid #e5e7eb" }}
+                />
+              </div>
+              <div>
+                <label style={{ display: "block", fontSize: 12, color: "#666" }}>
+                  To
+                </label>
+                <input
+                  type="date"
+                  value={dateTo}
+                  onChange={(e) => setDateTo(e.target.value)}
+                  style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid #e5e7eb" }}
+                />
+              </div>
+              <div>
+                <label style={{ display: "block", fontSize: 12, color: "#666" }}>
+                  Sort
+                </label>
+                <select
+                  value={sortDir}
+                  onChange={(e) => setSortDir(e.target.value)}
+                  style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid #e5e7eb" }}
+                >
+                  <option value="desc">Newest first</option>
+                  <option value="asc">Oldest first</option>
+                </select>
+              </div>
+              <div>
+                <button
+                  onClick={clearFilters}
+                  className="view-details-button"
+                  style={{ width: "100%" }}
+                >
+                  Clear
                 </button>
-                <button onClick={() => setActiveTab("orders")} className={activeTab === "orders" ? "active" : ""}>
-                    Previous Orders
-                </button>
-                <button onClick={() => setActiveTab("newsletter")} className={activeTab === "newsletter" ? "active" : ""}>
-                    Sign Up for Newsletter
-                </button>
+              </div>
             </div>
 
-            <div className="containerPersonal">
-                {/* User Information */}
-                {activeTab === "userInfo" && (
-                    <>
-                        <h2 className="heading">User Details</h2>
-                        <div className="profileInfo">
-                            {user ? (
-                                <>
-                                    <p><strong>Username:</strong> {user.username}</p>
-                                    <p><strong>Email:</strong> {user.email}</p>
-                                </>
-                            ) : (
-                                <div>
-                                    <p>Loading user data...</p>
-                                </div>
-                            )}
-                        </div>
-                    </>
-                )}
+            <small style={{ color: "#666", display: "block", marginBottom: 8 }}>
+              Showing: {filteredOrders.length} of {orders.length}
+            </small>
 
-                {/* Order Details Modal */}
-                {selectedOrder && (
-                    <div className="order-modal">
-                        <div className="order-modal-content">
-                            <button className="close-modal" onClick={() => setSelectedOrder(null)}>✖</button>
-                            <h2>Order Details</h2>
+            {filteredOrders.length > 0 ? (
+              <ul className="orders-list">
+                {filteredOrders.map((o) => (
+                  <li key={o.id} className="order-item">
+                    <strong>Route:</strong> {o.departure} → {o.destination},{" "}
+                    {toUsd(o.totalPrice)}
+                    <small style={{ display: "block", color: "#666" }}>
+                      {o.createdAt
+                        ? new Date(o.createdAt).toLocaleDateString()
+                        : "—"}
+                    </small>
+                    <button
+                      className="view-details-button"
+                      onClick={() => handleViewOrderDetails(o)}
+                    >
+                      View Details
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <div>
+                <p>No orders match the selected dates.</p>
+              </div>
+            )}
+          </>
+        )}
 
-                            <p><strong>Order ID:</strong> {selectedOrder._id || selectedOrder.id}</p>
-                            <p><strong>Departure City:</strong> {selectedOrder.departure_city_name || selectedOrder.departure_city_id}</p>
-                            <p><strong>Destination City:</strong> {selectedOrder.destination_city_name || selectedOrder.destination_city_id}</p>
-                            
-                            <p><strong>Flight:</strong> {selectedOrder.flight_name || selectedOrder.flight_id || "Not selected"}</p>
-                            <p><strong>Hotel:</strong> {selectedOrder.hotel_name || selectedOrder.hotel_id || "Not selected"}</p>
-
-                            <p><strong>Attractions:</strong> 
-                                {Array.isArray(selectedOrder.attraction_names) && selectedOrder.attraction_names.length > 0
-                                    ? selectedOrder.attraction_names.join(", ")
-                                    : "None"}
-                            </p>
-
-                            <p><strong>Transportation:</strong> {selectedOrder.transportation || "Not selected"}</p>
-                            <p><strong>Payment Method:</strong> {selectedOrder.payment_method}</p>
-                            <p><strong>Total Price:</strong> ${Number(selectedOrder.total_price || 0).toLocaleString()}</p>
-                            <p><strong>Created At:</strong> {new Date(selectedOrder.created_at || selectedOrder.createdAt).toLocaleString()}</p>
-                        </div>
-                    </div>
-                )}
-
-                {/* User Orders */}
-                {activeTab === "orders" && (
-                    <>
-                        <h2 className="heading">Your Previous Orders</h2>
-                        {orders && orders.length > 0 ? (
-                            <ul className="orders-list">
-                                {orders.map((order, index) => (
-                                    <li key={order._id || order.id || index} className="order-item">
-                                        <strong>Route:</strong>{" "}
-                                        {order.departure_city_name || order.departure_city_id} → {order.destination_city_name || order.destination_city_id}
-                                        , ${Number(order.total_price || 0).toLocaleString()}
-                                        <button className="view-details-button" onClick={() => handleViewOrderDetails(order)}>
-                                            View Details
-                                        </button>
-                                    </li>
-                                ))}
-                            </ul>
-                        ) : (
-                            <div>
-                                <p>No previous orders found.</p>
-                            </div>
-                        )}
-                    </>
-                )}
-
-                {/* Newsletter Subscription */}
-                {activeTab === "newsletter" && (
-                    <>
-                        <h2 className="heading">Sign Up for Newsletter</h2>
-                        <div className="profileInfo">
-                            <p>Get the latest updates and travel deals straight to your inbox!</p>
-                        </div>
-                        <input
-                            type="email"
-                            placeholder="Enter your email"
-                            className="newsletter-input"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                        />
-                        <button onClick={handleSubscribe} className="newsletter-button" disabled={loading}>
-                            {loading ? "Subscribing..." : "Subscribe"}
-                        </button>
-                    </>
-                )}
+        {/* Newsletter */}
+        {activeTab === "newsletter" && (
+          <>
+            <h2 className="heading">Sign Up for Newsletter</h2>
+            <div className="profileInfo">
+              <p>Get the latest updates and travel deals straight to your inbox!</p>
             </div>
-            
-  <button 
-  className="floating-support-btn"
-  onClick={() => navigate('/support')}
->
-  ❔
-</button>
+            <input
+              type="email"
+              placeholder="Enter your email"
+              className="newsletter-input"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+            <button
+              onClick={handleSubscribe}
+              className="newsletter-button"
+              disabled={loading}
+            >
+              {loading ? "Subscribing..." : "Subscribe"}
+            </button>
+          </>
+        )}
+      </div>
 
-        </div>
-    );   
+      <button
+        className="floating-support-btn"
+        onClick={() => navigate("/support")}
+        aria-label="Support"
+      >
+        ❔
+      </button>
+    </div>
+  );
 };
 
 export default PersonalArea;
