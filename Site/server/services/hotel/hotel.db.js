@@ -54,11 +54,37 @@ export async function deleteHotelInDatabase(id) {
            .updateOne({ _id: new ObjectId(id) }, { $set: { isDeleted: true } });
 }
 
-// Get hotels by city (case-insensitive)
-export async function getHotelsByCityFromDatabase(cityId) {
-  const db = await connectDB(); // השתמש ב-connectDB()
-  return db.collection("hotels").findOne({
-    destination_city_id: new ObjectId(cityId),
-    isDeleted: { $ne: true }
-  });
+// Accepts a 24-hex id (doc _id or city_id) OR a city name like "Paris"
+export async function getHotelsByCityFromDatabase(cityOrId){
+  const db = await connectDB();
+  const hotelsCol = db.collection("hotels"); // make sure your collection is actually named "hotels"
+  const escapeRegExp = (s)=>s.replace(/[.*+?^${}()|[\]\\]/g,"\\$&");
+
+  const raw = (cityOrId ?? "").toString().trim();
+  const isHexId = raw && /^[0-9a-fA-F]{24}$/.test(raw);
+
+  let filter = { isDeleted: { $ne: true } };
+
+  if (isHexId) {
+    // ONLY construct ObjectId if raw is a 24-hex string
+    const oid = new ObjectId(raw);
+    filter = { isDeleted: { $ne: true }, $or: [{ _id: oid }, { city_id: oid }] };
+  } else if (raw) {
+    // Name/slug match by city field (your schema sample uses { city: "Paris", hotels: [...] })
+    const q = new RegExp(`^${escapeRegExp(raw)}$`, "i");
+    filter = { isDeleted: { $ne: true }, city: q };
+  }
+
+  const docs = await hotelsCol.find(filter).toArray();
+
+  // Your schema: one doc per city with hotels[]
+  if (docs.length === 0) return { hotels: [] };
+  if (docs.length === 1 && Array.isArray(docs[0].hotels)) return { hotels: docs[0].hotels };
+
+  // If multiple docs matched, merge hotels[] arrays if present
+  const merged = docs.flatMap(d => Array.isArray(d.hotels) ? d.hotels : []);
+  if (merged.length) return { hotels: merged };
+
+  // Fallback: treat the documents themselves as hotel rows
+  return { hotels: docs };
 }

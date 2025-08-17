@@ -10,15 +10,21 @@ import TripSummary from "../components/TripSummary.jsx";
 import StepContent from "../components/StepContent.jsx";
 import Stepper from "../components/Stepper.jsx";
 
+const API_BASE =
+  (import.meta?.env?.VITE_API_BASE && import.meta.env.VITE_API_BASE.replace(/\/$/, "")) ||
+  "http://localhost:4000"; // change if you have a Vite proxy
+
 const TravelPlannerApp = () => {
   const location = useLocation();
   const navigate = useNavigate();
 
+  // progress
   const [currentStep, setCurrentStep] = useState(() => {
     const savedStep = localStorage.getItem("currentStep");
     return savedStep ? parseInt(savedStep, 10) : 0;
   });
 
+  // responses
   const [userResponses, setUserResponses] = useState(() => {
     const savedResponses = localStorage.getItem("userResponses");
     return savedResponses ? JSON.parse(savedResponses) : {};
@@ -27,7 +33,7 @@ const TravelPlannerApp = () => {
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [paymentCompleted, setPaymentCompleted] = useState(false);
 
-  /* ===== Travel data from hook (MUST exist before effects/steps) ===== */
+  // base data from hook
   const {
     loadedCities = [],
     loadedFlights = [],
@@ -35,17 +41,17 @@ const TravelPlannerApp = () => {
     loadedAttractions = [],
   } = useTravelData(userResponses) || {};
 
-  /* ===== LIVE hotels from API (by chosen destination) ===== */
+  // live hotels from API (by chosen destination)
   const [hotelsFromApi, setHotelsFromApi] = useState([]);
 
   useEffect(() => {
+    // pick any token the app uses (optional header)
     const token =
       localStorage.getItem("authToken") ||
       localStorage.getItem("token") ||
       localStorage.getItem("jwt");
 
-    if (!token) return;
-
+    // destination from responses (id or name/slug)
     const dstId =
       userResponses?.destination_city_id || userResponses?.destinationCityId;
     const dstName =
@@ -60,27 +66,40 @@ const TravelPlannerApp = () => {
     }
 
     const controller = new AbortController();
+
     (async () => {
       try {
         const key = dstId || dstName;
-        const res = await fetch(`/api/hotels/city/${encodeURIComponent(key)}`, {
-          headers: { Authorization: `Bearer ${token}` },
-          signal: controller.signal,
-        });
+        const url = `${API_BASE}/api/hotels/city/${encodeURIComponent(key)}`;
+
+        const headers = token
+          ? { Authorization: `Bearer ${token}` }
+          : undefined;
+
+        const res = await fetch(url, { headers, signal: controller.signal });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
+
         const hotels = Array.isArray(data.hotels)
           ? data.hotels
           : Array.isArray(data?.data?.hotels)
           ? data.data.hotels
           : [];
+
+        // normalize price from Extended JSON if present
+        const normPrice = (p) =>
+          typeof p === "object" && p
+            ? Number(p.$numberInt ?? p.$numberDouble ?? p.value ?? 0)
+            : p ?? null;
+
         const normalized = hotels.map((h, idx) => ({
           id: h._id || h.id || h.optionId || `${h.parentId || "h"}-${idx}`,
           name: h.name || h.hotelName || "Hotel",
-          price: h.price ?? h.cost ?? null,
+          price: normPrice(h.price ?? h.cost),
           rating: h.rating ?? h.stars ?? null,
           image: h.image || (Array.isArray(h.images) ? h.images[0] : null),
         }));
+
         setHotelsFromApi(normalized);
       } catch (e) {
         console.error("hotels fetch failed", e);
@@ -98,7 +117,7 @@ const TravelPlannerApp = () => {
     userResponses?.citySlug,
   ]);
 
-  /* ===== Initial setup effect (login reset) ===== */
+  // initial setup (reset if not logged in)
   useEffect(() => {
     const token = localStorage.getItem("authToken");
     if (!token) {
@@ -111,7 +130,7 @@ const TravelPlannerApp = () => {
     }
   }, []);
 
-  /* ===== Build steps (prefer API hotels when available) ===== */
+  // build steps (prefer API hotels)
   const mergedHotels = hotelsFromApi.length ? hotelsFromApi : loadedHotels;
   const steps = createSteps(
     userResponses,
@@ -121,7 +140,7 @@ const TravelPlannerApp = () => {
     loadedAttractions
   );
 
-  /* ===== Handle "payment only" navigation ===== */
+  // handle "payment only" deep link
   useEffect(() => {
     if (location.state?.onlyPayment) {
       const paymentStepIndex = steps.findIndex((s) => s.label === "Payment");
@@ -131,7 +150,7 @@ const TravelPlannerApp = () => {
     }
   }, [location.state, steps]);
 
-  /* ===== Persist progress & responses ===== */
+  // persist progress & responses
   useEffect(() => {
     localStorage.setItem("currentStep", currentStep);
   }, [currentStep]);
@@ -140,13 +159,13 @@ const TravelPlannerApp = () => {
     localStorage.setItem("userResponses", JSON.stringify(userResponses));
   }, [userResponses]);
 
-  /* ===== UI helpers ===== */
+  // UI helpers
   const renderProgressBar = () => (
     <div className="progress-bar">
       <div
         className="progress-bar-fill"
         style={{ width: `${((currentStep + 1) / steps.length) * 100}%` }}
-      ></div>
+      />
     </div>
   );
 

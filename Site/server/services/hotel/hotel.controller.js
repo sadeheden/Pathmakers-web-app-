@@ -73,14 +73,13 @@ export async function deleteHotel(req, res) {
 }
 
 // Get hotels by city
-export async function getHotelsByCityName(req, res) {
+export async function getHotelsByCityName(req, res){
   const city = req.params.city?.trim();
   if (!city) return res.status(400).json({ error: "City name required" });
-
   try {
-    const hotels = await Hotel.findByCity(city);
-    if (!hotels) return res.status(404).json({ error: `No hotels found for city: ${city}` });
-    return res.status(200).json(hotels);
+    const data = await Hotel.findByCity(city);
+    const hotels = Array.isArray(data?.hotels) ? data.hotels : [];
+    return res.status(200).json({ hotels });
   } catch (error) {
     console.error("Error fetching hotels by city:", error);
     return res.status(500).json({ error: "Server error" });

@@ -23,16 +23,20 @@ export default class Hotel {
     return await getHotelByIdFromDatabase(id);
   }
 
-  static async findByCity(cityId) {
-    try {
-      const doc = await getHotelsByCityFromDatabase(cityId);
-      if (!doc || !doc.hotels?.length) return null;
-      return doc;
-    } catch (error) {
-      console.error("❌ Hotel.findByCity error:", error);
-      return null;
-    }
+static async findByCity(cityOrId){
+  try {
+    const result = await getHotelsByCityFromDatabase(cityOrId);
+    if (!result) return { hotels: [] };
+    if (Array.isArray(result.hotels)) return result;
+    if (Array.isArray(result)) return { hotels: result };
+    return { hotels: [result] };
+  } catch (err) {
+    console.error("❌ Hotel.findByCity error:", err);
+    return { hotels: [] };
   }
+}
+
+
 
   async save() {
     return await saveHotelToDatabase({
