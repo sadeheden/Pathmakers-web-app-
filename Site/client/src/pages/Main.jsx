@@ -375,42 +375,47 @@ const Main = () => {
 
 const TEL_AVIV_ID = "689af474f511eb0daf25e306"; // Tel Aviv city _id
 
-await axios.post("http://localhost:4000/api/orders2", {
-  // canonical IDs
-  departure_city_id: TEL_AVIV_ID,                                   // ✅ always Tel Aviv
-  destination_city_id: selectedCity?.destination_city_id || null,
-  flight_id: selectedCity?.flight_id || null,
-  hotel_id: selectedCity?.hotel_id || null,
+const response = await axios.post(
+  "http://localhost:4000/api/orders2",
+  {
+    // canonical IDs
+    departure_city_id: TEL_AVIV_ID,
+    destination_city_id: selectedCity?.destination_city_id || null,
+    flight_id: selectedCity?.flight_id || null,
+    hotel_id: selectedCity?.hotel_id || null,
 
-  // denormalized display (so UI shows names even if DB lookups fail)
-  departureCityName: "Tel Aviv",                                    // ✅ name for Personal Area
-  destinationCityName: selectedCity?.name || null,
-  flightName: selectedCity?.flight || null,
-  hotelName: selectedCity ? `${selectedCity.name} Hotel` : null,
-  attractionNames: Array.isArray(selectedCity?.attractionsNames) ? selectedCity.attractionsNames : [],
+    // denormalized display
+    departureCityName: "Tel Aviv",
+    destinationCityName: selectedCity?.name || null,
+    flightName: selectedCity?.flight || null,
+    hotelName: selectedCity ? `${selectedCity.name} Hotel` : null,
+    attractionNames: Array.isArray(selectedCity?.attractionsNames) ? selectedCity.attractionsNames : [],
 
-  // attractions IDs (if you have them)
-  attractions: Array.isArray(selectedCity?.attractions) ? selectedCity.attractions : [],
+    // attractions IDs
+    attractions: Array.isArray(selectedCity?.attractions) ? selectedCity.attractions : [],
 
-  transportation: selectedCity?.transportation || null,
+    transportation: selectedCity?.transportation || null,
 
-  // legacy summary fields you already use elsewhere
-  cityName: selectedCity?.name,
-  citySlug: selectedCity?.slug,
-  flightNumber: selectedCity?.flight,
-  departure: TEL_AVIV_ID,                                           // store the same ObjectId here too
-  destination: selectedCity?.name,
-  summary: selectedCity?.summary,
-  cityImage: selectedCity?.img,
+    // legacy summary fields
+    cityName: selectedCity?.name,
+    citySlug: selectedCity?.slug,
+    flightNumber: selectedCity?.flight,
+    departure: TEL_AVIV_ID,
+    destination: selectedCity?.name,
+    summary: selectedCity?.summary,
+    cityImage: selectedCity?.img,
 
-  paymentMethod: "Credit Card",
-  totalPrice,
-  tripDate
-}, { headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }});
-
-
+    paymentMethod: "Credit Card",
+    totalPrice,
+    tripDate
+  },
+  {
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }
+  }
+);
 
 console.log("✅ Order created:", response.data);
+
 
               console.log("✅ Order created:", response.data);
             } catch (error) {
