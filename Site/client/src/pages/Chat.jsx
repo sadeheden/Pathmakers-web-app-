@@ -32,6 +32,25 @@ const TravelPlannerApp = () => {
 
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [paymentCompleted, setPaymentCompleted] = useState(false);
+ 
+  // Start Over: clear answers and jump to step 1
+const restartTrip = React.useCallback(() => {
+  try {
+    setIsPaymentModalOpen(false);
+    setPaymentCompleted(false);
+    setUserResponses({});
+    setCurrentStep(0);
+
+    // clear persisted progress
+    localStorage.removeItem("currentStep");
+    localStorage.removeItem("userResponses");
+    sessionStorage.removeItem("orderSaved");
+  } finally {
+    // bring user back to top
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+}, []);
+
 
   // base data from hook
   const {
@@ -176,12 +195,15 @@ const TravelPlannerApp = () => {
     }
     if (step.label === "Trip Summary") {
       return (
-        <TripSummary
-          userResponses={userResponses}
-          setUserResponses={setUserResponses}
-          setCurrentStep={setCurrentStep}
-          setPaymentCompleted={setPaymentCompleted}
-        />
+      <TripSummary
+  userResponses={userResponses}
+  setUserResponses={setUserResponses}
+  setCurrentStep={setCurrentStep}
+  setPaymentCompleted={setPaymentCompleted}
+  onRestart={restartTrip}                 // <-- this makes the button work
+  personalAreaPath="/personal-area"       // adjust if your route is different
+/>
+
       );
     }
     return (
