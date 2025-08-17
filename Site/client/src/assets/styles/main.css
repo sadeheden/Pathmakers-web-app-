@@ -885,3 +885,65 @@ footer, .footer {
     padding: 1rem;
   }
 }
+/* ===== Tablet layout: iPad / small laptop (768–1180) ===== */
+@media (min-width: 768px) and (max-width: 1180px) {
+  .trips-page {
+    max-width: 750px;
+    padding: 0 12px;
+  }
+
+  /* Hero: trim height so headline + cards fit above the fold */
+  .hero-merged { height: 360px; margin: 16px 0; } /* was 475px */
+  .hero-content h1 { font-size: clamp(26px, 4.2vw, 36px); }
+  .hero-content p  { font-size: clamp(14px, 1.9vw, 16px); }
+
+  /* Icons/intro block has huge top padding on desktop; reduce on tablet */
+  .trip-intro { padding: 4rem 1rem 2rem; margin-bottom: 3rem; } /* was 10rem 2rem 4rem */
+
+  /* Chat cards: tighten grid + padding so two fit comfortably */
+  .chat-options {
+    grid-template-columns: repeat(2, minmax(260px, 1fr));
+    gap: 2rem;                /* was 5.5rem */
+    max-width: 1000px;
+    padding: 0 8px;
+  }
+  .chat-card { padding: 2rem 1.5rem; }   /* was 4.8rem 2.5rem */
+  .chat-card h3 { font-size: 1.4rem; }
+
+  /* Popular Destinations: remove desktop left margin */
+  .popular-trips { margin: 0 0 1rem 0; padding: 0 8px; }  /* was margin-left: 3rem */
+  .popular-trips h2 { text-align: center; margin-bottom: 1.25rem; font-size: 1.35rem; }
+
+ /* Scroll buttons: pull them fully inside the viewport */
+ .scroll-btn {
+    top: 45%;
+    transform: translateY(-50%);
+    z-index:5;
+  }
+  .scroll-btn.right { right: 8px; }   /* keep inside the edge */
+  .scroll-btn.left  { left: 8px;  }
+
+  /* Destination cards: shrink images & tighten padding */
+ .city-card {
+    min-width: 160px;
+    max-width: 180px;
+    margin: 0 8px;   /* small gap so they don't stick to arrows */
+  }
+  .city-card img {
+    height: 95px;       /* was ~150px on desktop */
+    border-radius: 10px;
+  }
+  .city-card h3 {
+    font-size: 0.9rem;
+    margin-top: 0.5rem;
+  }
+  /* Modals: keep them narrower on tablet */
+  .modal-content { width: 80vw; max-width: 520px; padding: 1rem; }
+
+    .city-row {
+    padding: 0 50px;   /* leaves ~50px space left/right for buttons */
+    scroll-padding: 0 50px; /* ensures snapping aligns nicely */
+  }
+
+}
+
