@@ -217,10 +217,10 @@ const PaymentModal = ({ isOpen, onClose, totalAmount, onPaymentSuccess }) => {
                 <input type="text" placeholder="123" maxLength="3" value={cvv} onChange={(e) => setCvv(e.target.value.replace(/\D/g, ""))} />
               </div>
             </div>
-            <button className="pay-button" onClick={handlePayment} disabled={paymentSuccess}>
+<button className="btn btn-primary modal-btn" onClick={handlePayment} disabled={paymentSuccess}>
               {paymentSuccess ? "Processing..." : `Pay $${totalAmount}`}
             </button>
-            <button className="change-payment" onClick={onClose}>Cancel</button>
+      <button className="btn btn-light modal-btn" onClick={onClose}>Cancel</button>
           </>
         )}
       </div>
@@ -263,7 +263,7 @@ const Main = () => {
       <section className="chat-options">
         <div className="chat-card">
           <h3>AI Trip Builder</h3>
-          <p>Let our AI create the perfect trip for you in seconds.</p>
+          <p>Let our AI recommend the perfect trip for you in seconds.</p>
           <button className="btn btn-primary" onClick={() => navigate("/realChat")}>Start Chatting</button>
         </div>
         <div className="chat-card">
@@ -301,7 +301,8 @@ const Main = () => {
             <p>✈️ Awesome! You're about to see your trip details to <strong>{selectedCity.name}</strong>.<br/>This includes flight number, departure info, and trip dates.</p>
             <p>Click <strong>Continue</strong> to review and proceed to payment.</p>
             <p><strong>Price per person*</strong></p>
-            <button className="modal-payment-btn" onClick={() => setShowIntroPopup(false)}>Continue</button>
+          <button className="btn btn-primary modal-btn" onClick={() => setShowIntroPopup(false)}>Continue</button>
+
           </div>
         </div>
       )}
@@ -320,7 +321,8 @@ const Main = () => {
             <p><strong>Return Date:</strong> {returnDate}</p>
             <p><strong>Total Price:</strong> ${totalPrice}</p>
             <div className="modal-btns">
-              <button className="modal-payment-btn" onClick={() => setShowPaymentModal(true)}>Pay Now</button>
+          <button className="btn btn-primary modal-btn" onClick={() => setShowPaymentModal(true)}>Pay Now</button>
+
             </div>
           </div>
         </div>
