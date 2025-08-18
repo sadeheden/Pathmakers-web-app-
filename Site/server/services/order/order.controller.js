@@ -407,12 +407,27 @@ export async function getUserOrders(req, res) {
           : getHotelName(hotelDoc, hotelIndex);
 
         // Attractions: prefer stored names; else keep what's in `order.attractions`
-        let attractionNames = [];
-        if (storedAttractions.length > 0) {
-          attractionNames = storedAttractions;
-        } else if (Array.isArray(order.attractions) && order.attractions.length > 0) {
-          attractionNames = order.attractions; // already names or ids->names upstream
-        }
+        // Attractions: prefer stored names; else resolve IDs -> names from DB
+let attractionNames = [];
+if (storedAttractions.length > 0) {
+  attractionNames = storedAttractions;
+} else if (Array.isArray(order.attractions) && order.attractions.length > 0) {
+  const ids = order.attractions
+    .map(a => (typeof a === "string" ? a : a?.toString?.()))
+    .filter(Boolean)
+    .filter(isValidObjectId)
+    .map(s => new ObjectId(s));
+
+  if (ids.length) {
+    const docs = await safeDbOperation(
+      () => Attraction.find({ _id: { $in: ids } }),
+      []
+    );
+    attractionNames = docs
+      .map(d => d?.name || d?.title || d?.attractionName || d?.label)
+      .filter(Boolean);
+  }
+}
 
         console.log("✅ Resolved names:", {
           departure: departureCityName,

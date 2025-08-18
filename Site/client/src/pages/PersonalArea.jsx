@@ -82,6 +82,7 @@ async function fetchMyOrders(token) {
 
 const PersonalArea = () => {
   const navigate = useNavigate();
+  
 
   const [activeTab, setActiveTab] = useState("userInfo");
   const [user, setUser] = useState(null);
@@ -181,6 +182,22 @@ const PersonalArea = () => {
 
     return list;
   }, [orders, dateFrom, dateTo, sortDir]);
+const [page, setPage] = useState(1);
+  const pageSize = 9;
+
+  const pageCount = useMemo(
+    () => Math.max(1, Math.ceil(filteredOrders.length / pageSize)),
+    [filteredOrders.length]
+  );
+
+  const currentPageOrders = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    return filteredOrders.slice(start, start + pageSize);
+  }, [filteredOrders, page]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [dateFrom, dateTo, sortDir, orders.length]);
 
   /* ---------- actions ---------- */
   const handleViewOrderDetails = (order) => setSelectedOrder(order);
@@ -191,30 +208,41 @@ const PersonalArea = () => {
     navigate("/login");
   };
 
-  const handleSubscribe = async () => {
-    if (!email.trim()) {
-      alert("Please enter a valid email.");
-      return;
-    }
-    setLoading(true);
-    try {
-      const res = await fetch(`${API_BASE}/api/newsletter`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
-      });
-      if (!res.ok) {
-        const j = await res.json().catch(() => ({}));
-        throw new Error(j.message || `HTTP ${res.status}`);
+const handleSubscribe = async () => {
+  if (!email.trim()) {
+    alert("Please enter a valid email.");
+    return;
+  }
+  setLoading(true);
+  try {
+    const res = await fetch(`${API_BASE}/api/newsletter`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+    });
+
+    if (!res.ok) {
+      if (res.status === 404) {
+        throw new Error("Newsletter endpoint not found on the server. Add /api/newsletter route.");
       }
-      alert("Subscription successful — check your inbox!");
-      setEmail("");
-    } catch (e) {
-      alert(`Failed to subscribe: ${e.message}`);
-    } finally {
-      setLoading(false);
+      if (res.status === 409) {
+        alert("You're already subscribed with this email. ✅");
+        setEmail("");
+        return;
+      }
+      const j = await res.json().catch(() => ({}));
+      throw new Error(j.message || `HTTP ${res.status}`);
     }
-  };
+
+    alert("Subscription successful — check your inbox!");
+    setEmail("");
+  } catch (e) {
+    alert(`Failed to subscribe: ${e.message}`);
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   const clearFilters = () => {
     setDateFrom("");
@@ -228,24 +256,30 @@ const PersonalArea = () => {
       <h1 className="page-title">Personal Area</h1>
 
       <div className="tab-buttons">
-        <button
-          onClick={() => setActiveTab("userInfo")}
-          className={activeTab === "userInfo" ? "active" : ""}
-        >
-          User Info
-        </button>
-        <button
-          onClick={() => setActiveTab("orders")}
-          className={activeTab === "orders" ? "active" : ""}
-        >
-          Previous Orders
-        </button>
-        <button
-          onClick={() => setActiveTab("newsletter")}
-          className={activeTab === "newsletter" ? "active" : ""}
-        >
-          Sign Up for Newsletter
-        </button>
+      <button
+  data-tab="userInfo"
+  onClick={() => setActiveTab("userInfo")}
+  className={activeTab === "userInfo" ? "active" : ""}
+>
+  User Info
+</button>
+
+<button
+  data-tab="orders"
+  onClick={() => setActiveTab("orders")}
+  className={activeTab === "orders" ? "active" : ""}   // stays the same
+>
+  Previous Orders
+</button>
+
+<button
+  data-tab="newsletter"
+  onClick={() => setActiveTab("newsletter")}
+  className={activeTab === "newsletter" ? "active" : ""}
+>
+  Sign Up for Newsletter
+</button>
+
       </div>
 
       <div className="containerPersonal">
@@ -278,58 +312,58 @@ const PersonalArea = () => {
         )}
 
         {/* Order Details Modal */}
-        {selectedOrder && (
-          <div className="order-modal">
-            <div className="order-modal-content">
-              <button className="close-modal" onClick={() => setSelectedOrder(null)}>
-                ✖
-              </button>
-              <h2>Order Details</h2>
+  {/* Order Details Modal */}
+{selectedOrder && (
+  <div
+    className="order-modal"
+    role="dialog"
+    aria-modal="true"
+    onClick={() => setSelectedOrder(null)}
+  >
+    <div
+      className="order-modal-content"
+      onClick={(e) => e.stopPropagation()}
+    >
+      <div className="modal-header">Order Details</div>
+      <button className="close-modal" onClick={() => setSelectedOrder(null)} aria-label="Close">×</button>
 
-              <p>
-                <strong>Order ID:</strong> {selectedOrder.id}
-              </p>
-              <p>
-                <strong>Departure City:</strong> {selectedOrder.departure}
-              </p>
-              <p>
-                <strong>Destination City:</strong> {selectedOrder.destination}
-              </p>
+      <div className="modal-body">
+        {/* Wrap details in a grid for nicer layout */}
+        <div className="order-detail-grid">
+          <p><strong>Order ID:</strong> {selectedOrder.id}</p>
+          <p><strong>Created At:</strong> {selectedOrder.createdAt ? new Date(selectedOrder.createdAt).toLocaleString() : "—"}</p>
+          <p><strong>Departure City:</strong> {selectedOrder.departure}</p>
+          <p><strong>Destination City:</strong> {selectedOrder.destination}</p>
+          <p><strong>Flight:</strong> {selectedOrder.flight}</p>
+          <p><strong>Hotel:</strong> {selectedOrder.hotel}</p>
 
-              <p>
-                <strong>Flight:</strong> {selectedOrder.flight}
-              </p>
-              <p>
-                <strong>Hotel:</strong> {selectedOrder.hotel}
-              </p>
+          {/* Attractions (chips) */}
+          <p style={{ gridColumn: "1 / -1" }}>
+            <strong>Attractions:</strong>{" "}
+            {(() => {
+              const names =
+                selectedOrder?.raw?.attraction_names?.length
+                  ? selectedOrder.raw.attraction_names
+                  : (Array.isArray(selectedOrder.attractions) &&
+                      !selectedOrder.attractions.every(v => typeof v === "string" && /^[0-9a-fA-F]{24}$/.test(v))
+                      ? selectedOrder.attractions
+                      : []);
+              return names.length
+                ? <span className="chip-list">{names.map((n,i)=><span key={i} className="chip">{n}</span>)}</span>
+                : "—";
+            })()}
+          </p>
 
-              <p>
-                <strong>Attractions:</strong>{" "}
-                {!selectedOrder.attractions?.length
-                  ? "—"
-                  : selectedOrder.attractions.every(looksLikeId)
-                  ? `${selectedOrder.attractions.length} selected`
-                  : selectedOrder.attractions.join(", ")}
-              </p>
-
-              <p>
-                <strong>Transportation:</strong> {selectedOrder.transportation}
-              </p>
-              <p>
-                <strong>Payment Method:</strong> {selectedOrder.paymentMethod}
-              </p>
-              <p>
-                <strong>Total Price:</strong> {toUsd(selectedOrder.totalPrice)}
-              </p>
-              <p>
-                <strong>Created At:</strong>{" "}
-                {selectedOrder.createdAt
-                  ? new Date(selectedOrder.createdAt).toLocaleString()
-                  : "—"}
-              </p>
-            </div>
-          </div>
-        )}
+          <p><strong>Transportation:</strong> {selectedOrder.transportation}</p>
+          <p><strong>Payment Method:</strong> {selectedOrder.paymentMethod}</p>
+          <p style={{ gridColumn: "1 / -1" }}>
+            <strong>Total Price:</strong> {new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(Number(selectedOrder.totalPrice ?? 0))}
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+)}
 
         {/* Orders */}
         {activeTab === "orders" && (
@@ -401,31 +435,52 @@ const PersonalArea = () => {
               Showing: {filteredOrders.length} of {orders.length}
             </small>
 
-            {filteredOrders.length > 0 ? (
-              <ul className="orders-list">
-                {filteredOrders.map((o) => (
-                  <li key={o.id} className="order-item">
-                    <strong>Route:</strong> {o.departure} → {o.destination},{" "}
-                    {toUsd(o.totalPrice)}
-                    <small style={{ display: "block", color: "#666" }}>
-                      {o.createdAt
-                        ? new Date(o.createdAt).toLocaleDateString()
-                        : "—"}
-                    </small>
-                    <button
-                      className="view-details-button"
-                      onClick={() => handleViewOrderDetails(o)}
-                    >
-                      View Details
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <div>
-                <p>No orders match the selected dates.</p>
-              </div>
-            )}
+         {filteredOrders.length > 0 ? (
+  <>
+    <ul className="orders-grid">
+      {currentPageOrders.map((o) => (
+        <li key={o.id} className="order-card">
+          <div className="top">
+            <div className="route">
+              <strong>{o.departure} → {o.destination}</strong>
+            </div>
+            <div className="price">{toUsd(o.totalPrice)}</div>
+          </div>
+
+          <div className="meta">
+            <div><span className="lbl">Date</span>{o.createdAt ? new Date(o.createdAt).toLocaleDateString() : "—"}</div>
+            <div><span className="lbl">Payment</span>{o.paymentMethod || "—"}</div>
+            <div><span className="lbl">Flight</span>{o.flight}</div>
+            <div><span className="lbl">Hotel</span>{o.hotel}</div>
+          </div>
+
+          <button className="view-details-button" onClick={() => handleViewOrderDetails(o)}>
+            View Details
+          </button>
+        </li>
+      ))}
+    </ul>
+
+    <div className="pager">
+      <button
+        className="pager-btn"
+        onClick={() => setPage(p => Math.max(1, p - 1))}
+        disabled={page === 1}
+      >‹ Prev</button>
+
+      <span className="pager-status">Page {page} / {pageCount}</span>
+
+      <button
+        className="pager-btn"
+        onClick={() => setPage(p => Math.min(pageCount, p + 1))}
+        disabled={page === pageCount}
+      >Next ›</button>
+    </div>
+  </>
+) : (
+  <div><p>No orders match the selected dates.</p></div>
+)}
+
           </>
         )}
 

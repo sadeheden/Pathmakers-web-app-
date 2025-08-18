@@ -49,6 +49,8 @@ import travelRoutes from './services/travel/travel.routes.js';
 import supportRouter from './services/support/support.router.js';
 import ordersRouter from './services/order/order.router.js'; // רק זה נשאר
 import orders2Router from './services/orders2/orders2.router.js';
+import newsletterRouter from './services/newsletter/newsletter.router.js';
+
 // ---------- API Endpoints ----------
 app.use('/api/cities', citiesRouter);          // כל הפעולות של cities רגילות
 app.use('/api/attractions', attractionRoutes);
@@ -58,6 +60,8 @@ app.use('/api/auth', authRouter);
 app.use('/api/upload', uploadRouter);
 app.use('/api/manager', managerRoutes);
 app.use('/api/travel/cities', travelRoutes);
+app.use('/api/newsletter', newsletterRouter);
+
 
 // Travel routes – אין כפילויות
 // עכשיו כל הנתיבים בתוך travelRoutes יחסיים ל-/api/travel
