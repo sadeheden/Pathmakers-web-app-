@@ -260,7 +260,33 @@ onPaymentSuccess={async ({ attractionIds, attractionNames } = {}) => {
 
   try {
     console.log("🔍 Current userResponses:", userResponses);
+// ADD THIS AT THE VERY BEGINNING OF onPaymentSuccess function
+console.log("=== DEBUG START ===");
+console.log("📋 All userResponses keys:", Object.keys(userResponses));
 
+// Check each key one by one
+Object.keys(userResponses).forEach(key => {
+  const value = userResponses[key];
+  console.log(`📋 "${key}":`, typeof value, value);
+  
+  if (value && typeof value === 'object') {
+    console.log(`   📋 Object keys for "${key}":`, Object.keys(value));
+  }
+});
+
+// Specifically look for departure/destination
+const depKey = "What is your departure city?";
+const dstKey = "What is your destination city?";
+
+console.log("🔍 Looking for departure key:", depKey);
+console.log("🔍 Departure exists?", depKey in userResponses);
+console.log("🔍 Departure value:", userResponses[depKey]);
+
+console.log("🔍 Looking for destination key:", dstKey);
+console.log("🔍 Destination exists?", dstKey in userResponses);
+console.log("🔍 Destination value:", userResponses[dstKey]);
+
+console.log("=== DEBUG END ===");
     // 1) Extract values from userResponses
     const dep = getVal("What is your departure city?");
     const dst = getVal("What is your destination city?");
