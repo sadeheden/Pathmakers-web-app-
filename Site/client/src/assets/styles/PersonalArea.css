@@ -340,3 +340,60 @@ small { color: var(--muted); }
   height: 40px;
   font-size: 20px;
 }
+
+
+
+/* ===== Newsletter popup modal ===== */
+.popup-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(2, 6, 23, 0.48);
+  backdrop-filter: blur(2px);
+  display: grid;
+  place-items: center;
+  z-index: 1100; /* מעל כל השאר */
+  animation: fadeIn .16s ease-out;
+}
+
+@keyframes fadeIn { from { opacity: 0 } to { opacity: 1 } }
+
+.popup-content {
+  background: var(--card);
+  padding: 24px 28px;
+  border-radius: var(--radius);
+  max-width: 400px;
+  width: 90%;
+  text-align: center;
+  box-shadow: var(--shadow-md);
+  transform: translateY(6px) scale(.98);
+  animation: popIn .18s ease-out forwards;
+}
+
+@keyframes popIn { to { transform: translateY(0) scale(1) } }
+
+.popup-content p {
+  font-size: 1rem;
+  color: var(--text);
+  margin: 0;
+  line-height: 1.4;
+}
+
+.popup-close {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  width: 36px;
+  height: 36px;
+  border-radius: 9px;
+  font-size: 18px;
+  font-weight: 900;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  box-shadow: var(--shadow-sm);
+  transition: background .2s ease;
+}
+
+.popup-close:hover { background: #f1f5f9; }

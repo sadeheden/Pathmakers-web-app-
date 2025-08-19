@@ -17,12 +17,27 @@ export const sendNewsletterEmail = async (email) => {
             }
         });
 
-        const mailOptions = {
-            from: process.env.EMAIL_USER,
-            to: email,
-            subject: "Newsletter Subscription",
-            text: "Thank you for subscribing to our newsletter!"
-        };
+       const mailOptions = {
+    from: process.env.EMAIL_USER,
+    to: email,
+    subject: "Welcome to PathMakers 🌍",
+    text: `Hey traveler! ✈️
+
+    Thanks for subscribing to our newsletter 🎉  
+    You’re now part of the PathMakers family!  
+
+    From now on, you’ll be the first to know about:
+    ✨ Exclusive travel deals and discounts  
+    🌴 Inspiring destinations and hidden gems  
+    🛎️ Smart tips to make your trip smoother  
+    🎒 Ready-to-go itineraries you can just pack and follow  
+
+    Get ready — a lot of exciting trips and offers are on the way! 🚀  
+
+    Happy travels,  
+    The PathMakers Team 🌎`
+    };
+
 
         console.log("📨 Sending email to:", email);
         const info = await transporter.sendMail(mailOptions);
