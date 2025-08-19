@@ -296,65 +296,63 @@ console.log("=== DEBUG END ===");
     console.log("🔍 Extracted values:", { dep, dst, flt, htl });
 
     // 2) IMPROVED: Extract meaningful values for the resolve endpoint
-    const extractCityValue = (cityData) => {
-      if (!cityData) return "";
-      
-      // If it's a string, return it directly
-      if (typeof cityData === "string") return cityData.trim();
-      
-      // If it's an object, try different properties in order of preference
-      return (
-        cityData.city ||           // most common field name
-        cityData.name ||           // alternative name field
-        cityData.cityName ||       // some APIs use this
-        cityData.label ||          // UI display name
-        cityData.title ||          // another display field
-        cityData.slug ||           // URL-friendly name
-        cityData.id ||             // fallback to ID if no name
-        cityData._id ||            // MongoDB ID
-        ""
-      );
-    };
+ // Chat.jsx (fix)
+// --- helpers used to build the /resolve body ---
 
-    const extractFlightValue = (flightData) => {
-      if (!flightData) return "";
-      
-      if (typeof flightData === "string") return flightData.trim();
-      
-      // Try to build a meaningful identifier
-      return (
-        flightData.compoundId ||   // if you store compound IDs
-        flightData.code ||         // airline code
-        flightData.name ||         // flight name
-        flightData.airline ||      // airline name
-        flightData.id ||           // fallback to ID
-        flightData._id ||          // MongoDB ID
-        ""
-      );
-    };
+const extractCityValue = (city) => {
+  if (!city) return "";
+  if (typeof city === "string") return city.trim();
+  return (
+    city._id ||        // prefer ObjectId
+    city.id ||
+    city.city ||
+    city.name ||
+    city.cityName ||
+    city.label ||
+    city.title ||
+    city.slug ||
+    ""
+  );
+};
 
-    const extractHotelValue = (hotelData) => {
-      if (!hotelData) return "";
-      
-      if (typeof hotelData === "string") return hotelData.trim();
-      
-      return (
-        hotelData.compoundId ||    // if you store compound IDs
-        hotelData.name ||          // hotel name
-        hotelData.hotelName ||     // alternative field
-        hotelData.id ||            // fallback to ID
-        hotelData._id ||           // MongoDB ID
-        ""
-      );
-    };
+const extractFlightValue = (flight) => {
+  if (!flight) return "";
+  if (typeof flight === "string") return flight.trim();
+  return (
+    flight.compoundId ||
+    flight.code ||
+    flight.name ||
+    flight.airline ||
+    flight.id ||
+    flight._id ||
+    ""
+  );
+};
+
+const extractHotelValue = (hotel) => {
+  if (!hotel) return "";
+  if (typeof hotel === "string") return hotel.trim();
+  return (
+    hotel.compoundId ||
+    hotel._id ||
+    hotel.id ||
+    hotel.name ||
+    hotel.hotelName ||
+    hotel.label ||
+    hotel.title ||
+    ""
+  );
+};
+
 
     // 3) Build resolve request body with cleaned values
-    const resolveBody = {
-      departure: extractCityValue(dep),
-      destination: extractCityValue(dst),
-      flight: extractFlightValue(flt),
-      hotel: extractHotelValue(htl),
-    };
+const resolveBody = {
+  departure:   extractCityValue(dep),
+  destination: extractCityValue(dst),
+  flight:      extractFlightValue(flt),
+  hotel:       extractHotelValue(htl),
+};
+
 
     console.log("📤 Sending to resolve endpoint:", resolveBody);
 
