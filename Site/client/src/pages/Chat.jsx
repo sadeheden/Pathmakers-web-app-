@@ -91,9 +91,16 @@ const restartTrip = React.useCallback(() => {
         const key = dstId || dstName;
         const url = `${API_BASE}/api/hotels/city/${encodeURIComponent(key)}`;
 
-        const headers = token
-          ? { Authorization: `Bearer ${token}` }
-          : undefined;
+     const headers = { "Content-Type": "application/json" };
+if (token) {
+  headers.Authorization = `Bearer ${token}`;
+}
+
+const r1 = await fetch(`${API_BASE}/api/order/resolve`, {
+  method: "POST",
+  headers,
+  body: JSON.stringify(resolveBody),
+});
 
         const res = await fetch(url, { headers, signal: controller.signal });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -246,7 +253,35 @@ onPaymentSuccess={async ({ attractionIds, attractionNames } = {}) => {
   if (!token) {
     alert("You must be logged in to save the order.");
     return;
-  }
+  }// === helpers to build safe resolver tokens (use names/slugs not raw IDs) ===
+const tokenFromCity = (v) => {
+  if (!v) return "";
+  if (typeof v === "string") return v.trim();
+  // prefer human-readable fields; fall back to slug, finally id/_id as last resort
+  return (
+    v.city || v.name || v.title || v.label || v.slug ||
+    v.cityName || v.destinationCityName ||
+    v.id || v._id || ""
+  );
+};
+
+const tokenFromFlight = (v) => {
+  if (!v) return "";
+  if (typeof v === "string") return v.trim(); // could be "<id>-idx" or code/name
+  // if you stored a compound id elsewhere, prefer it; else fall back to code/name/id
+  return v.compoundId || v.code || v.name || v.airline || v.id || v._id || "";
+};
+
+const tokenFromHotel = (v) => {
+  if (!v) return "";
+  if (typeof v === "string") return v.trim(); // could be "<id>-idx" or plain name
+  return v.compoundId || v.name || v.id || v._id || "";
+};
+
+// build headers once, only add Authorization when we actually have a token
+const headers = { "Content-Type": "application/json" };
+if (token) headers.Authorization = `Bearer ${token}`;
+
 
   const getVal = (prompt) => userResponses?.[prompt];
   const textOrName = (v) =>
@@ -263,21 +298,23 @@ onPaymentSuccess={async ({ attractionIds, attractionNames } = {}) => {
 
     console.log("🔍 Extracted values:", { dep, dst, flt, htl });
 
-    const resolveBody = {
-      departure: dep?.id || dep,          // id or name/slug
-      destination: dst?.id || dst,
-      flight: flt?.id || textOrName(flt), // id or name/code
-      hotel: htl?.id || textOrName(htl),  // id or name
-    };
+const resolveBody = {
+  // IMPORTANT: send names/slugs for cities, not raw 24-hex ObjectIds
+  departure:  tokenFromCity(dep),
+  destination: tokenFromCity(dst),
+  // flights/hotels can be "<id>-idx" OR code/name
+  flight:      tokenFromFlight(flt),
+  hotel:       tokenFromHotel(htl),
+};
 
-    console.log("📤 Sending to resolve endpoint:", resolveBody);
+console.log("📤 Sending to resolve endpoint:", resolveBody);
 
-    // 2) Resolve IDs (server returns compound flight/hotel ids)
-    const r1 = await fetch(`${API_BASE}/api/order/resolve`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify(resolveBody),
-    });
+const r1 = await fetch(`${API_BASE}/api/order/resolve`, {
+  method: "POST",
+  headers,
+  body: JSON.stringify(resolveBody),
+});
+
     
     if (!r1.ok) {
       const errorText = await r1.text();
@@ -327,13 +364,12 @@ onPaymentSuccess={async ({ attractionIds, attractionNames } = {}) => {
 
     console.log("📤 Sending to create order:", payload);
 
-    // 4) Create order
-    const r2 = await fetch(`${API_BASE}/api/order`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify(payload),
-    });
-    
+const r2 = await fetch(`${API_BASE}/api/order`, {
+  method: "POST",
+  headers,
+  body: JSON.stringify(payload),
+});
+
     if (!r2.ok) {
       const errorText = await r2.text();
       console.error("❌ Create order failed:", r2.status, errorText);
