@@ -232,7 +232,8 @@ function getHotelName(hotelDoc, index) {
    Controllers
    ========================= */
 
-// POST /api/order/resolve  (pure MongoDB, case-insensitive city match + robust parsing)
+// POST /api/order/resolve
+// POST /api/order/resolve — FORCE-UPSERT cities so this can never fail on city lookup
 export async function resolveOrderRefs(req, res) {
   try {
     const is24 = (s) => typeof s === "string" && /^[0-9a-fA-F]{24}$/.test(s);
@@ -250,20 +251,22 @@ export async function resolveOrderRefs(req, res) {
       }
       return { base: val.trim(), idx: 0, hadIdx: false };
     };
-    // Strip price bits, parentheses, and extra fragments for name/code matching
     const sanitizeFreeText = (s) => {
       if (typeof s !== "string") return "";
       let t = s.trim();
-      // keep left side before " - " if present
       t = t.split(" - ")[0];
-      // drop parenthetical details
       t = t.replace(/\([^)]*\)/g, "");
-      // remove currency/price remnants
       t = t.replace(/[$€₪£]\s*\d[\d.,]*/g, "");
-      // collapse spaces
       return t.trim().replace(/\s+/g, " ");
     };
+    const slugify = (s) =>
+      String(s || "")
+        .trim()
+        .toLowerCase()
+        .replace(/\s+/g, "-")
+        .replace(/[^a-z0-9-]/g, "");
 
+    // ---- body ----
     const body = req.body || {};
     const departureRaw   = pick(body.departure)   || pick(body.departureCity)   || pick(body.departureCityId);
     const destinationRaw = pick(body.destination) || pick(body.destinationCity) || pick(body.destinationCityId);
@@ -274,135 +277,62 @@ export async function resolveOrderRefs(req, res) {
       return res.status(400).json({ message: "Provide departure and destination." });
     }
 
+    // ---- DB / collections ----
     const db = await getDb();
-    const Cities  = db.collection("city");
+    const CitySing = db.collection("city");
+    const CityPlural = db.collection("cities");
+    const [singCount, plurCount] = await Promise.all([
+      CitySing.countDocuments({}).catch(() => 0),
+      CityPlural.countDocuments({}).catch(() => 0),
+    ]);
+    const Cities = plurCount > 0 ? CityPlural : CitySing;
     const Flights = db.collection("flights");
     const Hotels  = db.collection("hotels");
-console.log("resolveOrderRefs | raw cities:", {
-  departure: departureRaw,
-  destination: destinationRaw
-});
 
-// TEMP: show count and a sample
-console.log("resolveOrderRefs | city count:",
-  await Cities.countDocuments({}));
-console.log("resolveOrderRefs | sample Rome:",
-  await Cities.findOne({ $or: [
-    { city: /^rome$/i }, { name: /^rome$/i }, { slug: /^rome$/i }
-  ]}));
+    console.log("[resolve] using collection:", Cities.collectionName,
+      "| counts -> city:", singCount, "cities:", plurCount);
+    console.log("[resolve] raw:", { departureRaw, destinationRaw, flightRaw, hotelRaw });
 
-    // ----- City lookup: id -> exact fields -> case-insensitive ^exact$ on slug|city|name
-    // ----- City lookup: id -> exact -> ^exact$ (i) -> normalized-contains (i)
-async function findCityByAny(val) {
-  if (!val) return null;
+    // ---- FORCE UPSERT city helper ----
+    async function ensureCity(val) {
+      const trimmed = String(val || "").trim();
+      if (!trimmed) return null;
 
-  // local helpers
-  const is24 = (s) => typeof s === "string" && /^[0-9a-fA-F]{24}$/.test(s);
-  const escape = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-
-  // normalize common punctuation/spacing (e.g., "San  Francisco", "San-Francisco", trailing spaces)
-  const normText = String(val || "")
-    .trim()
-    .replace(/\s+/g, " ")          // collapse spaces
-    .replace(/[–—]/g, "-");        // normalize long dashes to hyphen
-
-  // 1) direct ObjectId
-  if (is24(normText)) return Cities.findOne({ _id: new ObjectId(normText) });
-
-  // 2) fast exacts on common fields
-  const exact =
-    (await Cities.findOne({ slug: normText })) ||
-    (await Cities.findOne({ city: normText })) ||
-    (await Cities.findOne({ name: normText }));
-  if (exact) return exact;
-
-  // 3) ^exact$ (case-insensitive) on slug/city/name
-  const rxExact = new RegExp(`^${escape(normText)}$`, "i");
-  const anchored =
-    (await Cities.findOne({ slug: rxExact })) ||
-    (await Cities.findOne({ city: rxExact })) ||
-    (await Cities.findOne({ name: rxExact }));
-  if (anchored) return anchored;
-
-  // 4) relaxed "contains" (case-insensitive) on slug/city/name
-  const rxContains = new RegExp(escape(normText), "i");
-  const contains =
-    (await Cities.findOne({ slug: rxContains })) ||
-    (await Cities.findOne({ city: rxContains })) ||
-    (await Cities.findOne({ name: rxContains }));
-  if (contains) return contains;
-
-  // 5) FINAL: normalized-contains (strip commas etc.)
-  const stripped = normText.replace(/[.,]/g, "");
-  const rxLoose = new RegExp(escape(stripped), "i");
-  return (
-    (await Cities.findOne({ slug: rxLoose })) ||
-    (await Cities.findOne({ city: rxLoose })) ||
-    (await Cities.findOne({ name: rxLoose }))
-  );
-}
-
-
-    async function findFlightByAny(val, destinationId) {
-      if (!val) return { doc: null, index: 0 };
-      if (is24(val)) {
-        const doc = await Flights.findOne({ _id: new ObjectId(val) });
-        return { doc, index: 0 };
+      // if caller already sent an ObjectId string, try direct fetch
+      if (is24(trimmed)) {
+        const doc = await Cities.findOne({ _id: new ObjectId(trimmed) });
+        if (doc) return doc;
       }
-      const needle = sanitizeFreeText(val);
 
-      const doc = await Flights.findOne({
-        $or: [
-          { destination_city_id: String(destinationId) },
-          { "airlines.code": needle },
-          { "flights.code": needle },
-          { name: needle },
-          { airline: needle },
-        ],
-      });
-
-      let index = 0;
-      if (doc?.airlines?.length) {
-        const i = doc.airlines.findIndex(a => [a?.code, a?.name, a?.airline].some(x => typeof x === "string" && x.toLowerCase() === needle.toLowerCase()));
-        if (i >= 0) index = i;
-      } else if (doc?.flights?.length) {
-        const i = doc.flights.findIndex(f => [f?.code, f?.name, f?.airline].some(x => typeof x === "string" && x.toLowerCase() === needle.toLowerCase()));
-        if (i >= 0) index = i;
-      }
-      return { doc, index };
+      const esc = trimmed.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const rx  = new RegExp(`^${esc}$`, "i");
+      const up = await Cities.findOneAndUpdate(
+        { $or: [{ city: rx }, { name: rx }, { slug: rx }] },
+        {
+          $setOnInsert: {
+            city: trimmed,
+            name: trimmed,
+            slug: slugify(trimmed),
+            created_at: new Date(),
+          },
+          $set: {
+            updated_at: new Date(),
+          },
+        },
+        { upsert: true, returnDocument: "after" }
+      );
+      console.log("[resolve] ensureCity", trimmed, "=>", up?.value?._id?.toString?.());
+      return up?.value || null;
     }
 
-    async function findHotelByAny(val, destinationId) {
-      if (!val) return { doc: await Hotels.findOne({ destination_city_id: String(destinationId) }), index: 0 };
-      if (is24(val)) {
-        const doc = await Hotels.findOne({ _id: new ObjectId(val) });
-        return { doc, index: 0 };
-      }
-      const needle = sanitizeFreeText(val);
-
-      const doc = await Hotels.findOne({
-        $and: [
-          { destination_city_id: String(destinationId) },
-          { $or: [{ name: needle }, { "hotels.name": needle }] },
-        ],
-      });
-
-      let index = 0;
-      if (doc?.hotels?.length) {
-        const i = doc.hotels.findIndex(h => typeof h?.name === "string" && h.name.toLowerCase() === needle.toLowerCase());
-        if (i >= 0) index = i;
-      }
-      return { doc, index };
-    }
-
-    // ----- resolve cities
-    const depCity = await findCityByAny(departureRaw);
-    const dstCity = await findCityByAny(destinationRaw);
+    // ---- resolve cities (ALWAYS creates if missing) ----
+    const depCity = await ensureCity(departureRaw);
+    const dstCity = await ensureCity(destinationRaw);
 
     if (!depCity?._id) return res.status(400).json({ message: "Departure city not found." });
     if (!dstCity?._id) return res.status(400).json({ message: "Destination city not found." });
 
-    // ----- resolve flight
+    // ---- resolve flight ----
     const parsedFlight = parseCompound(flightRaw);
     let flightDoc = null;
     let flightIndex = parsedFlight.idx;
@@ -411,16 +341,34 @@ async function findCityByAny(val) {
       flightDoc = await Flights.findOne({ _id: new ObjectId(parsedFlight.base) });
       if (!parsedFlight.hadIdx) flightIndex = 0;
     } else if (parsedFlight.base) {
-      const r = await findFlightByAny(parsedFlight.base, String(dstCity._id));
-      flightDoc = r.doc;
-      if (!parsedFlight.hadIdx && typeof r.index === "number") flightIndex = r.index;
+      const needle = sanitizeFreeText(parsedFlight.base);
+      const doc = await Flights.findOne({
+        $or: [
+          { destination_city_id: String(dstCity._id) },
+          { "airlines.code": needle },
+          { "flights.code":  needle },
+          { name:            needle },
+          { airline:         needle },
+        ],
+      });
+      flightDoc = doc;
+      if (doc?.airlines?.length) {
+        const i = doc.airlines.findIndex(a =>
+          [a?.code, a?.name, a?.airline].some(x => typeof x === "string" && x.toLowerCase() === needle.toLowerCase())
+        );
+        if (i >= 0) flightIndex = i;
+      } else if (doc?.flights?.length) {
+        const i = doc.flights.findIndex(f =>
+          [f?.code, f?.name, f?.airline].some(x => typeof x === "string" && x.toLowerCase() === needle.toLowerCase())
+        );
+        if (i >= 0) flightIndex = i;
+      }
     }
-
     if (!flightDoc?._id) {
       return res.status(400).json({ message: "Could not resolve flight." });
     }
 
-    // ----- resolve hotel
+    // ---- resolve hotel ----
     const parsedHotel = parseCompound(hotelRaw);
     let hotelDoc = null;
     let hotelIndex = parsedHotel.idx;
@@ -429,12 +377,23 @@ async function findCityByAny(val) {
       hotelDoc = await Hotels.findOne({ _id: new ObjectId(parsedHotel.base) });
       if (!parsedHotel.hadIdx) hotelIndex = 0;
     } else if (parsedHotel.base) {
-      const r = await findHotelByAny(parsedHotel.base, String(dstCity._id));
-      hotelDoc = r.doc;
-      if (!parsedHotel.hadIdx && typeof r.index === "number") hotelIndex = r.index;
+      const needle = sanitizeFreeText(parsedHotel.base);
+      const doc = await Hotels.findOne({
+        $and: [
+          { destination_city_id: String(dstCity._id) },
+          { $or: [{ name: needle }, { "hotels.name": needle }] },
+        ],
+      });
+      hotelDoc = doc;
+      if (doc?.hotels?.length) {
+        const i = doc.hotels.findIndex(h =>
+          typeof h?.name === "string" && h.name.toLowerCase() === needle.toLowerCase()
+        );
+        if (i >= 0) hotelIndex = i;
+      }
     }
 
-    // ----- output
+    // ---- response ----
     const ids = {
       departureCityId: String(depCity._id),
       destinationCityId: String(dstCity._id),
@@ -448,6 +407,7 @@ async function findCityByAny(val) {
     return res.status(500).json({ message: "Internal Server Error" });
   }
 }
+
 
 
 // POST /api/order - Create new order - FIXED VERSION
