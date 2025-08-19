@@ -4,7 +4,9 @@ import {
   saveAttractionToDatabase,
   updateAttractionInDatabase,
   deleteAttractionInDatabase,
-  getAttractionsByCityFromDatabase // <--- Add this!
+  getAttractionsByCityFromDatabase, // <--- Add this!
+    getAttractionNamesByCityDocIds,      // <— NEW
+  getAttractionNameByDocAndIndex    
 } from './att.db.js';
 
 
@@ -26,7 +28,13 @@ export default class Attraction {
   static async delete(id) {
     return await deleteAttractionInDatabase(id);
   }
+ static async findNamesByCityDocIds(ids) {
+    return await getAttractionNamesByCityDocIds(ids);
+  }
 
+  static async findNameByCityDocAndIndex(id, idx) {
+    return await getAttractionNameByDocAndIndex(id, idx);
+  }
   async save() {
     return await saveAttractionToDatabase({
       name: this.name,

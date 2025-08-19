@@ -4,7 +4,28 @@ import City from "../cities/cities.model.js";
 import Flight from "../flights/flights.model.js";
 import Hotel from "../hotel/hotel.model.js";
 import Attraction from "../attraction/att.model.js";
-import { ObjectId } from "mongodb";
+import { MongoClient, ObjectId } from "mongodb"; // you already import ObjectId; extend it
+
+const uri = process.env.CONNECTION_STRING;
+const dbName = process.env.DB_NAME || "travel";
+let __client;
+
+async function getDb() {
+  if (!__client) {
+    __client = new MongoClient(uri, {
+      maxPoolSize: 10,
+      serverSelectionTimeoutMS: 5000,
+    });
+    await __client.connect();
+  }
+  return __client.db(dbName);
+}
+
+async function coll(name) {
+  const db = await getDb();
+  return db.collection(name);
+}
+
 
 /* =========================
    Helper Functions
@@ -79,36 +100,76 @@ async function findCityByAny(val) {
     await City.findOne({ name: val })
   );
 }
+// parse "id-index" or "id_index" if provided
+function parseCompoundId(val) {
+  if (typeof val !== "string") return { base: val, idx: 0 };
+  const [maybeId, maybeIdx] = val.split(/[-_]/);
+  if (/^[0-9a-fA-F]{24}$/.test(maybeId)) {
+    const n = parseInt(maybeIdx, 10);
+    return { base: maybeId, idx: Number.isNaN(n) ? 0 : n };
+  }
+  return { base: val, idx: 0 };
+}
 
 // Flight by id / airline code / name, scoped by destination id when possible
 async function findFlightByAny(val, destinationId) {
   if (!val) return { doc: null, index: 0 };
-  if (looksLikeObjectId(val)) return { doc: await Flight.findById(val), index: 0 };
 
-  const doc = await Flight.findOne({
+  // Prefer Mongoose if available
+  if (Flight && (typeof Flight.findOne === "function" || typeof Flight.findById === "function")) {
+    if (/^[0-9a-fA-F]{24}$/.test(String(val))) {
+      return { doc: await Flight.findById(val), index: 0 };
+    }
+    const doc = await Flight.findOne({
+      $or: [
+        { destination_city_id: destinationId },
+        { "airlines.code": val },
+        { "flights.code": val },
+        { name: val },
+        { airline: val },
+      ],
+    });
+    // try to infer index from arrays if val was a code/name
+    let index = 0;
+    if (doc?.airlines?.length) {
+      const i = doc.airlines.findIndex(a => a?.code === val || a?.name === val || a?.airline === val);
+      if (i >= 0) index = i;
+    } else if (doc?.flights?.length) {
+      const i = doc.flights.findIndex(f => f?.code === val || f?.name === val || f?.airline === val);
+      if (i >= 0) index = i;
+    }
+    return { doc, index };
+  }
+
+  // Native driver fallback
+  const flightsCol = await coll("flights");
+
+  if (/^[0-9a-fA-F]{24}$/.test(String(val))) {
+    const doc = await flightsCol.findOne({ _id: new ObjectId(String(val)) });
+    return { doc, index: 0 };
+  }
+
+  const doc = await flightsCol.findOne({
     $or: [
       { destination_city_id: destinationId },
-      { 'airlines.code': val },
-      { 'flights.code': val },
+      { "airlines.code": val },
+      { "flights.code": val },
       { name: val },
       { airline: val },
-    ]
+    ],
   });
 
   let index = 0;
   if (doc?.airlines?.length) {
-    const i = doc.airlines.findIndex(a =>
-      a?.code === val || a?.name === val || a?.airline === val
-    );
+    const i = doc.airlines.findIndex(a => a?.code === val || a?.name === val || a?.airline === val);
     if (i >= 0) index = i;
   } else if (doc?.flights?.length) {
-    const i = doc.flights.findIndex(f =>
-      f?.code === val || f?.name === val || f?.airline === val
-    );
+    const i = doc.flights.findIndex(f => f?.code === val || f?.name === val || f?.airline === val);
     if (i >= 0) index = i;
   }
   return { doc, index };
 }
+
 
 // Hotel by id / name, scoped by destination id
 async function findHotelByAny(val, destinationId) {
@@ -186,6 +247,7 @@ function getHotelName(hotelDoc, index) {
   return "Hotel not found";
 }
 
+
 /* =========================
    Controllers
    ========================= */
@@ -193,7 +255,6 @@ function getHotelName(hotelDoc, index) {
 // POST /api/order/resolve
 export async function resolveOrderRefs(req, res) {
   try {
-    // helper to pick a usable string/id from many shapes
     const pick = (v) => {
       if (!v) return "";
       if (typeof v === "string") return v.trim();
@@ -206,33 +267,41 @@ export async function resolveOrderRefs(req, res) {
     const flightRaw      = pick(body.flight);
     const hotelRaw       = pick(body.hotel);
 
-       if (!departureRaw || !destinationRaw) {
-      console.log("❌ Missing departure or destination");
+    if (!departureRaw || !destinationRaw) {
       return res.status(400).json({ message: "Provide departure and destination." });
     }
 
-    // 1) resolve cities
-    const depCity = await findCityByAny(departureRaw);
-    const dstCity = await findCityByAny(destinationRaw);
-    if (!depCity) return res.status(400).json({ message: "Departure city not found." });
-    if (!dstCity) return res.status(400).json({ message: "Destination city not found." });
+    // 1) resolve cities via Cities microservice
+    const depCity = await getCityByAny(departureRaw);
+    const dstCity = await getCityByAny(destinationRaw);
+    if (!depCity?._id) return res.status(400).json({ message: "Departure city not found." });
+    if (!dstCity?._id) return res.status(400).json({ message: "Destination city not found." });
 
-    // 2) resolve flight/hotel (scoped by destination)
-    const { doc: flightDoc, index: flightIndex = 0 } =
-      await findFlightByAny(flightRaw, String(dstCity._id));
-    if (!flightDoc) {
-      return res.status(400).json({ message: "Could not resolve flight" });
+    // 2) resolve flight via Flights microservice
+    const parsedFlight = parseCompoundId(flightRaw);
+    if (!/^[0-9a-fA-F]{24}$/.test(String(parsedFlight.base))) {
+      return res.status(400).json({ message: "Flight must be provided as <docId>_<idx> or <docId>-<idx>." });
     }
+    // Call flights service using "<docId>_<idx>" id (its expected path param) :contentReference[oaicite:4]{index=4}
+    const flightFlat = await getFlightByDocAndIndex(parsedFlight.base, parsedFlight.idx);
+    if (!flightFlat?.id) return res.status(400).json({ message: "Could not resolve flight." });
 
-    const { doc: hotelDoc, index: hotelIndex = 0 } =
-      await findHotelByAny(hotelRaw, String(dstCity._id));
+    // 3) resolve hotel via Hotels microservice
+    const parsedHotel = parseHotelToken(hotelRaw);
+    const hotelDoc = await getHotelByAny(parsedHotel.nameOrId, String(dstCity._id));
+    // If you support hotel arrays similar to flights, select parsedHotel.idx here.
+    const hotelIndex = Number.isInteger(parsedHotel.idx) ? parsedHotel.idx : 0;
 
-    // 3) build ids (hotel falls back to destination city if not found)
+    // 4) build ids for downstream (keep "<docId>-index" convention you used)
+    // flights: extract docId from flat id "<docId>_<idx>" (flights svc returns it in `id`) :contentReference[oaicite:5]{index=5}
+    const [flightDocIdFromFlat, flightIdxFromFlat] = String(flightFlat.id).split("_");
+    const flightIndex = Number.isNaN(parseInt(flightIdxFromFlat, 10)) ? parsedFlight.idx : parseInt(flightIdxFromFlat, 10);
+
     const ids = {
       departureCityId: String(depCity._id),
       destinationCityId: String(dstCity._id),
-      flightId: `${String(flightDoc._id)}-${flightIndex}`,
-      hotelId: hotelDoc ? `${String(hotelDoc._id)}-${hotelIndex}` : String(dstCity._id),
+      flightId: `${flightDocIdFromFlat}-${flightIndex}`, // store with hyphen for your orders layer
+      hotelId: hotelDoc?._id ? `${String(hotelDoc._id)}-${hotelIndex}` : String(dstCity._id),
     };
 
     return res.status(200).json({ success: true, ids });
@@ -241,7 +310,6 @@ export async function resolveOrderRefs(req, res) {
     return res.status(500).json({ message: "Internal Server Error" });
   }
 }
-
 
 // POST /api/order - Create new order - FIXED VERSION
 export async function createOrder(req, res) {
