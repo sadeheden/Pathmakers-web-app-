@@ -130,3 +130,50 @@ export async function getAttractionNameByDocAndIndex(id, idx) {
   const item = arr[idx];
   return item ? (item.name || item.title || item.label) : null;
 }
+
+// POST /attractions/resolve-names
+// Body: { tokens: ["<docId>", "<docId>-2", "Plain Name", ...] }
+export async function resolveAttractionNames(req, res) {
+  try {
+    const tokens = Array.isArray(req.body?.tokens) ? req.body.tokens : [];
+    if (!tokens.length) return res.status(200).json({ names: [] });
+
+    const wholeDocIds = new Set(); // "<docId>" → take ALL names from that city doc
+    const pairs = [];              // ["<docId>", index] → take specific attraction
+    const passthrough = [];        // plain names already provided by client
+
+    for (const t of tokens) {
+      const s = String(t || "");
+      const m = s.match(/^([0-9a-fA-F]{24})(?:[-_](\d+))?$/);
+      if (m) {
+        const base = m[1];
+        const idx  = m[2] !== undefined ? parseInt(m[2], 10) : null;
+        if (idx === null) wholeDocIds.add(base);
+        else pairs.push([base, idx]);
+      } else if (s.trim()) {
+        passthrough.push(s.trim());
+      }
+    }
+
+    let names = [];
+
+    if (wholeDocIds.size) {
+      const all = await Attraction.findNamesByCityDocIds(Array.from(wholeDocIds));
+      names.push(...all);
+    }
+
+    for (const [docId, idx] of pairs) {
+      const n = await Attraction.findNameByCityDocAndIndex(docId, idx);
+      if (n) names.push(n);
+    }
+
+    names.push(...passthrough);
+
+    // de-dup preserve order
+    names = Array.from(new Set(names.filter(Boolean)));
+    return res.status(200).json({ names });
+  } catch (err) {
+    console.error('resolveAttractionNames error:', err);
+    return res.status(500).json({ error: 'Server error' });
+  }
+}
