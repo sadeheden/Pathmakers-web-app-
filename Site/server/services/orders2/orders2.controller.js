@@ -147,19 +147,81 @@ class Orders2Controller {
         return res.status(400).json({ success: false, message: 'Invalid trip date format' });
       }
 
-      // normalize attractions: keep valid 24-hex tokens; keep non-ids as names
-      let attraction_ids = [];
-      let attraction_names = Array.isArray(attractionNames) ? attractionNames : [];
-      if (Array.isArray(attractions)) {
-        for (const a of attractions) {
-          // allow compound "id-idx" too; store the original token so enrichment can resolve later
-          if (typeof a === 'string' && (is24(a) || is24(a.split(/[-_]/)[0]))) {
-            attraction_ids.push(a.trim());
-          } else if (typeof a === 'string' && a.trim()) {
-            attraction_names.push(a.trim());
-          }
+  // === Normalize attractions (accept ids, "id-idx", object/tuple forms, names) ===
+let attraction_ids = [];
+let attraction_names = Array.isArray(attractionNames) ? attractionNames.filter(Boolean) : [];
+
+function pushIdWithIndex(base, idx) {
+  if (!base) return;
+  // cleanId defined above: supports "id-idx" or raw id and returns the 24-hex base
+  const b = cleanId(base);
+  if (!b) return;
+  if (idx === null || idx === undefined || Number.isNaN(Number(idx))) {
+    attraction_ids.push(b);                         // whole doc → ALL attractions
+  } else {
+    attraction_ids.push(`${b}-${parseInt(idx, 10)}`); // specific array position
+  }
+}
+
+if (Array.isArray(attractions)) {
+  for (const a of attractions) {
+    // 1) Existing string forms: "id" or "id-idx" or a plain name
+    if (typeof a === 'string') {
+      const [maybeId, maybeIdx] = a.split(/[-_]/);
+      if (is24(maybeId)) {
+        pushIdWithIndex(maybeId, maybeIdx);
+      } else if (a.trim()) {
+        attraction_names.push(a.trim());
+      }
+      continue;
+    }
+
+    // 2) Tuple form: ["id", 2] or ["id", [1,3]]
+    if (Array.isArray(a) && a.length) {
+      const [maybeId, maybeIdx] = a;
+      const base = cleanId(maybeId);
+      if (base) {
+        if (Array.isArray(maybeIdx)) {
+          for (const i of maybeIdx) pushIdWithIndex(base, i);
+        } else {
+          pushIdWithIndex(base, maybeIdx);
         }
       }
+      continue;
+    }
+
+    // 3) Object form: { docId/_id/id/cityId, index } or { ..., indices: [] } or { name: "..." }
+    if (a && typeof a === 'object') {
+      const base = cleanId(a.docId || a.id || a._id || a.cityId);
+      if (base) {
+        const indices =
+          Array.isArray(a.indices) ? a.indices :
+          (a.index !== undefined ? [a.index] : [null]); // null ⇒ ALL
+        for (const i of indices) pushIdWithIndex(base, i);
+      } else if (a.name) {
+        attraction_names.push(String(a.name));
+      }
+      continue;
+    }
+  }
+}
+
+// 4) Mapping form (optional side-channel): attractions_by_city: { "<docId>": [idx, ...] }
+const byCity = (req.body.attractions_by_city || req.body.attractionsMap);
+if (byCity && typeof byCity === 'object') {
+  for (const [docId, idxs] of Object.entries(byCity)) {
+    if (Array.isArray(idxs)) {
+      for (const i of idxs) pushIdWithIndex(docId, i);
+    } else {
+      pushIdWithIndex(docId, idxs);
+    }
+  }
+}
+
+// De-dup for stability
+attraction_ids = Array.from(new Set(attraction_ids));
+attraction_names = Array.from(new Set(attraction_names));
+
 
       const orderData = {
         user_id: new ObjectId(req.user.id),
