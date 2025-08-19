@@ -338,21 +338,37 @@ const handleSubscribe = async () => {
           <p><strong>Hotel:</strong> {selectedOrder.hotel}</p>
 
           {/* Attractions (chips) */}
-          <p style={{ gridColumn: "1 / -1" }}>
-            <strong>Attractions:</strong>{" "}
-            {(() => {
-              const names =
-                selectedOrder?.raw?.attraction_names?.length
-                  ? selectedOrder.raw.attraction_names
-                  : (Array.isArray(selectedOrder.attractions) &&
-                      !selectedOrder.attractions.every(v => typeof v === "string" && /^[0-9a-fA-F]{24}$/.test(v))
-                      ? selectedOrder.attractions
-                      : []);
-              return names.length
-                ? <span className="chip-list">{names.map((n,i)=><span key={i} className="chip">{n}</span>)}</span>
-                : "—";
-            })()}
-          </p>
+     {/* Attractions (chips) */}
+<p style={{ gridColumn: "1 / -1" }}>
+  <strong>Attractions:</strong>{" "}
+  {(() => {
+    const names =
+      selectedOrder?.raw?.attraction_names?.length
+        ? selectedOrder.raw.attraction_names
+        : (Array.isArray(selectedOrder.attractions) &&
+            !selectedOrder.attractions.every(v => typeof v === "string" && /^[0-9a-fA-F]{24}$/.test(v))
+            ? selectedOrder.attractions
+            : []);
+
+    const ids = Array.isArray(selectedOrder.attractions) ? selectedOrder.attractions : [];
+    const onlyIds = ids.length > 0 && ids.every(v => typeof v === "string" && /^[0-9a-fA-F]{24}$/.test(v));
+
+    if (names.length) {
+      return (
+        <span className="chip-list">
+          {names.map((n, i) => <span key={i} className="chip">{n}</span>)}
+        </span>
+      );
+    }
+
+    if (onlyIds) {
+      return <span className="chip chip--muted">{ids.length} selected</span>;
+    }
+
+    return "—";
+  })()}
+</p>
+
 
           <p><strong>Transportation:</strong> {selectedOrder.transportation}</p>
           <p><strong>Payment Method:</strong> {selectedOrder.paymentMethod}</p>

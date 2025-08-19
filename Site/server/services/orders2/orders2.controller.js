@@ -1,6 +1,7 @@
 // orders2.controller.js
 import orders2DB from './orders2.db.js'; // ✅ ייבוא ה-instance המוכן
 import { ObjectId } from 'mongodb';
+import Attraction from '../attraction/att.model.js';
 
 class Orders2Controller {
   static async createOrder(req, res) {
@@ -137,30 +138,50 @@ if (orderData.returnDate && orderData.returnDate <= orderData.tripDate) {
     }
   }
 
-  static async getUserOrders(req, res) {
-    try {
-      if (!req.user?.id) return res.status(401).json({ success: false, message: 'User authentication required' });
+static async getUserOrders(req, res) {
+  try {
+    if (!req.user?.id) return res.status(401).json({ success: false, message: 'User authentication required' });
 
-      const options = {
-        page: parseInt(req.query.page) || 1,
-        limit: parseInt(req.query.limit) || 10,
-        status: req.query.status || null,
-        sortBy: req.query.sortBy || 'createdAt',
-        sortOrder: req.query.sortOrder === 'asc' ? 1 : -1
-      };
+    const options = {
+      page: parseInt(req.query.page) || 1,
+      limit: parseInt(req.query.limit) || 10,
+      status: req.query.status || null,
+      sortBy: req.query.sortBy || 'createdAt',
+      sortOrder: req.query.sortOrder === 'asc' ? 1 : -1
+    };
 
-      const result = await orders2DB.getUserOrders(req.user.id, options);
+    const result = await orders2DB.getUserOrders(req.user.id, options);
 
-      res.json({ success: true, message: `Found ${result.totalOrders} orders`, data: result });
-    } catch (error) {
-      console.error('❌ Error in getUserOrders controller:', error);
-      res.status(500).json({
-        success: false,
-        message: 'Failed to fetch orders',
-        error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
-      });
-    }
+    // ✅ Enrich attraction names if missing
+    const orders = await Promise.all(result.orders.map(async (o) => {
+      if (Array.isArray(o.attraction_names) && o.attraction_names.length) return o;
+
+      const ids = (Array.isArray(o.attractions) ? o.attractions : [])
+        .map(x => (typeof x === 'string' ? x : x?.toString?.()))
+        .filter(s => /^[0-9a-fA-F]{24}$/.test(s))
+        .map(s => new ObjectId(s));
+
+      if (!ids.length) return o;
+
+      const docs = await Attraction.find({ _id: { $in: ids } });
+      const names = docs
+        .map(d => d?.name || d?.title || d?.attractionName || d?.label)
+        .filter(Boolean);
+
+      return { ...o, attraction_names: names };
+    }));
+
+    res.json({ success: true, message: `Found ${result.totalOrders} orders`, data: { ...result, orders } });
+  } catch (error) {
+    console.error('❌ Error in getUserOrders controller:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch orders',
+      error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
+    });
   }
+}
+
 }
 
 export default Orders2Controller;

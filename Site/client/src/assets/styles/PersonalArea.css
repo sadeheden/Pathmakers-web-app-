@@ -316,6 +316,7 @@ small { color: var(--muted); }
   letter-spacing: .1px;  /* subtle polish */
   padding: 70px;
 }
+.chip--muted { background:#f1f5f9; border-color:#e2e8f0; color:#475569; }
 
 .modal-body {
   padding: 18px 22px 22px;
