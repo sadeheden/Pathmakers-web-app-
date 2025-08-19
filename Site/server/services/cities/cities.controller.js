@@ -5,7 +5,7 @@ import { updateCityAttractionsInDatabase } from './cities.db.js';
 // שליפת כל הערים
 export async function getCities(req, res) {
   try {
-const Cities  = db.collection("city");   // <-- plural
+const cities = await City.findAll();  // <-- plural
     res.status(200).json(cities);
   } catch (error) {
     console.error("Error in getCities:", error);
