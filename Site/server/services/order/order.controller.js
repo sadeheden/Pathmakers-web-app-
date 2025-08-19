@@ -206,7 +206,8 @@ export async function resolveOrderRefs(req, res) {
     const flightRaw      = pick(body.flight);
     const hotelRaw       = pick(body.hotel);
 
-    if (!departureRaw || !destinationRaw) {
+       if (!departureRaw || !destinationRaw) {
+      console.log("❌ Missing departure or destination");
       return res.status(400).json({ message: "Provide departure and destination." });
     }
 
@@ -242,11 +243,13 @@ export async function resolveOrderRefs(req, res) {
 }
 
 
-// POST /api/order - Create new order
+// POST /api/order - Create new order - FIXED VERSION
 export async function createOrder(req, res) {
   if (!req.user?.id) return res.status(401).json({ message: "Unauthorized" });
 
   try {
+    console.log("🆕 Creating new order with body:", JSON.stringify(req.body, null, 2));
+
     const {
       departureCityId,
       destinationCityId,
@@ -271,6 +274,7 @@ export async function createOrder(req, res) {
     if (totalPrice === undefined || totalPrice === null) missing.push('totalPrice');
 
     if (missing.length) {
+      console.log("❌ Missing required fields:", missing);
       return res.status(400).json({ message: `Missing required fields: ${missing.join(', ')}` });
     }
 
@@ -280,22 +284,42 @@ export async function createOrder(req, res) {
     const fltClean = cleanId(flightId);
     const htlClean = cleanId(hotelId);
 
+    console.log("🧹 Cleaned IDs:", { depClean, dstClean, fltClean, htlClean });
+
     if (!depClean || !dstClean || !fltClean || !htlClean) {
+      console.log("❌ Invalid ID format after cleaning");
       return res.status(400).json({ message: "Invalid ID format" });
     }
 
-    // Clean attraction IDs (if they’re ids)
+    // Clean attraction IDs (if they're ObjectIds)
     const cleanedAttractions = Array.isArray(attractions)
-      ? attractions.map(a => cleanId(a)).filter(Boolean)
+      ? attractions
+          .map(a => {
+            // If it's already a valid ObjectId string, keep it
+            if (typeof a === 'string' && isValidObjectId(a)) return a;
+            // Try to clean it
+            const cleaned = cleanId(a);
+            return cleaned;
+          })
+          .filter(Boolean)
       : [];
+
+    console.log("🎯 Cleaned attractions:", cleanedAttractions);
+
+    // Ensure attractionNames is an array
+    const cleanedAttractionNames = Array.isArray(attractionNames) 
+      ? attractionNames.filter(name => name && typeof name === 'string')
+      : [];
+
+    console.log("🎯 Cleaned attraction names:", cleanedAttractionNames);
 
     // Create new order; store full compound IDs for flight/hotel (string with index)
     const newOrder = new Order({
       user_id: String(req.user.id),
       departure_city_id: depClean,
       destination_city_id: dstClean,
-      flight_id: flightId,
-      hotel_id: hotelId,
+      flight_id: flightId,  // Keep as compound string
+      hotel_id: hotelId,    // Keep as compound string
       attractions: cleanedAttractions,
       transportation,
       payment_method: paymentMethod,
@@ -304,10 +328,12 @@ export async function createOrder(req, res) {
       // denormalized names if provided
       flight_name: flightName || null,
       hotel_name: hotelName || null,
-      attraction_names: Array.isArray(attractionNames) ? attractionNames : [],
+      attraction_names: cleanedAttractionNames,
     });
 
+    console.log("💾 Saving order...");
     const savedOrder = await newOrder.save();
+    console.log("✅ Order saved with ID:", savedOrder._id);
 
     return res.status(201).json({
       _id: savedOrder._id.toString(),
@@ -330,10 +356,13 @@ export async function createOrder(req, res) {
 
   } catch (err) {
     console.error("❌ Error creating order:", err);
-    return res.status(500).json({ message: "Internal Server Error" });
+    console.error("❌ Stack trace:", err.stack);
+    return res.status(500).json({ 
+      message: "Internal Server Error",
+      error: process.env.NODE_ENV === "development" ? err.message : "Something went wrong"
+    });
   }
 }
-
 // GET /api/order - Get user orders with enriched data
 export async function getUserOrders(req, res) {
   if (!req.user?.id) return res.status(401).json({ message: "Unauthorized" });
