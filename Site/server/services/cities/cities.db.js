@@ -37,7 +37,13 @@ export async function getCityById(id) {
 export async function getCityByNameFromDatabase(cityName) {
   try {
     const db = await connectToDB();
-    return await db.collection('city').findOne({ city: { $regex: `^${cityName}$`, $options: 'i' } });
+   return await db.collection('city').findOne({
+  $or: [
+    { city: { $regex: `^${cityName}$`, $options: 'i' } },
+    { name: { $regex: `^${cityName}$`, $options: 'i' } }
+  ]
+});
+
   } catch (error) {
     console.error("Error fetching city by name from database:", error);
     throw error;

@@ -5,7 +5,7 @@ import { updateCityAttractionsInDatabase } from './cities.db.js';
 // שליפת כל הערים
 export async function getCities(req, res) {
   try {
-    const cities = await City.findAll();
+const Cities  = db.collection("city");   // <-- plural
     res.status(200).json(cities);
   } catch (error) {
     console.error("Error in getCities:", error);
@@ -174,12 +174,13 @@ export async function addCity(req, res) {
       return res.status(409).json({ error: 'City already exists.' });
     }
 
-    const newCity = new City({
-      city: city.trim(),
-      attractions: [],
-      hotels: [],
-      flights: []
-    });
+const newCity = new City({
+  city: city.trim().toLowerCase(), // normalize
+  attractions: [],
+  hotels: [],
+  flights: []
+});
+
 
     const result = await newCity.save();
     return res.status(201).json(result);

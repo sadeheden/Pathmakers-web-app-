@@ -295,7 +295,7 @@ export async function resolveOrderRefs(req, res) {
     }
 
     const db = await getDb();
-    const Cities  = db.collection("cities");
+    const Cities  = db.collection("city");
     const Flights = db.collection("flights");
     const Hotels  = db.collection("hotels");
 
