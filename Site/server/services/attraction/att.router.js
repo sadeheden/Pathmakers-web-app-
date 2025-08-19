@@ -5,17 +5,20 @@ import {
   addAttraction,
   updateAttraction,
   deleteAttraction,
-  getAttractionsByCity
+  getAttractionsByCity,
+    resolveAttractionNames  
 } from './att.controller.js';
 
 const router = Router();
 
 router
-  .get('/city/:city', getAttractionsByCity) // <-- This is now correct!
+.post('/resolve-names', resolveAttractionNames) // <— NEW
+  .get('/city/:city', getAttractionsByCity)
   .get('/', getAttractions)
   .get('/:id', getAttractionById)
   .post('/', addAttraction)
   .put('/:id', updateAttraction)
   .delete('/:id', deleteAttraction);
+
 
 export default router;
