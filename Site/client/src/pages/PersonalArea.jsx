@@ -80,10 +80,154 @@ async function fetchMyOrders(token) {
   }
 }
 
+// Success Popup Component
+const SuccessPopup = ({ isVisible, onClose, message }) => {
+  if (!isVisible) return null;
+
+  return (
+    <div 
+      className="success-popup-overlay"
+      onClick={onClose}
+      style={{
+        position: "fixed",
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: "rgba(0, 0, 0, 0.5)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        zIndex: 1000,
+        animation: "fadeIn 0.3s ease-out"
+      }}
+    >
+      <div 
+        className="success-popup-content"
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          backgroundColor: "white",
+          borderRadius: "16px",
+          padding: "32px",
+          maxWidth: "400px",
+          width: "90%",
+          boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
+          textAlign: "center",
+          position: "relative",
+          animation: "slideUp 0.3s ease-out"
+        }}
+      >
+        {/* Success Icon */}
+        <div style={{
+          width: "64px",
+          height: "64px",
+          backgroundColor: "#10b981",
+          borderRadius: "50%",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          margin: "0 auto 20px",
+          animation: "scaleIn 0.4s ease-out 0.1s both"
+        }}>
+          <svg 
+            width="32" 
+            height="32" 
+            viewBox="0 0 24 24" 
+            fill="none" 
+            stroke="white" 
+            strokeWidth="3"
+            strokeLinecap="round" 
+            strokeLinejoin="round"
+          >
+            <polyline points="20,6 9,17 4,12"></polyline>
+          </svg>
+        </div>
+        
+        {/* Title */}
+        <h3 style={{
+          fontSize: "24px",
+          fontWeight: "600",
+          color: "#111827",
+          margin: "0 0 12px",
+          animation: "slideUp 0.4s ease-out 0.2s both"
+        }}>
+            Success! 🎉
+        </h3>
+        
+        {/* Message */}
+        <p style={{
+          fontSize: "16px",
+          color: "#6b7280",
+          margin: "0 0 24px",
+          lineHeight: "1.5",
+          animation: "slideUp 0.4s ease-out 0.3s both"
+        }}>
+          {message}
+        </p>
+        
+        {/* Close Button */}
+        <button
+          onClick={onClose}
+          style={{
+            backgroundColor: "#10b981",
+            color: "white",
+            border: "none",
+            borderRadius: "8px",
+            padding: "12px 24px",
+            fontSize: "16px",
+            fontWeight: "500",
+            cursor: "pointer",
+            transition: "all 0.2s ease",
+            animation: "slideUp 0.4s ease-out 0.4s both"
+          }}
+          onMouseEnter={(e) => {
+            e.target.style.backgroundColor = "#059669";
+            e.target.style.transform = "translateY(-1px)";
+          }}
+          onMouseLeave={(e) => {
+            e.target.style.backgroundColor = "#10b981";
+            e.target.style.transform = "translateY(0)";
+          }}
+        >
+          סגור
+        </button>
+      </div>
+      
+      <style jsx>{`
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        
+        @keyframes slideUp {
+          from { 
+            opacity: 0;
+            transform: translateY(20px);
+          }
+          to { 
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        
+        @keyframes scaleIn {
+          from { 
+            opacity: 0;
+            transform: scale(0.5);
+          }
+          to { 
+            opacity: 1;
+            transform: scale(1);
+          }
+        }
+      `}</style>
+    </div>
+  );
+};
+
 const PersonalArea = () => {
   const navigate = useNavigate();
   
-
   const [activeTab, setActiveTab] = useState("userInfo");
   const [user, setUser] = useState(null);
   const [email, setEmail] = useState("");
@@ -101,6 +245,10 @@ const PersonalArea = () => {
 
   const [isEditing, setIsEditing] = useState(false);
   const [editedUser, setEditedUser] = useState({ username: "", email: "" });
+
+  // Success popup state
+  const [showSuccessPopup, setShowSuccessPopup] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
 
   /* ---------- user fetch ---------- */
   const fetchUser = async () => {
@@ -182,7 +330,8 @@ const PersonalArea = () => {
 
     return list;
   }, [orders, dateFrom, dateTo, sortDir]);
-const [page, setPage] = useState(1);
+
+  const [page, setPage] = useState(1);
   const pageSize = 9;
 
   const pageCount = useMemo(
@@ -208,41 +357,45 @@ const [page, setPage] = useState(1);
     navigate("/login");
   };
 
-const handleSubscribe = async () => {
-  if (!email.trim()) {
-    alert("Please enter a valid email.");
-    return;
-  }
-  setLoading(true);
-  try {
-    const res = await fetch(`${API_BASE}/api/newsletter`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email }),
-    });
+  const showSuccessMessage = (message) => {
+    setSuccessMessage(message);
+    setShowSuccessPopup(true);
+  };
 
-    if (!res.ok) {
-      if (res.status === 404) {
-        throw new Error("Newsletter endpoint not found on the server. Add /api/newsletter route.");
-      }
-      if (res.status === 409) {
-        alert("You're already subscribed with this email. ✅");
-        setEmail("");
-        return;
-      }
-      const j = await res.json().catch(() => ({}));
-      throw new Error(j.message || `HTTP ${res.status}`);
+  const handleSubscribe = async () => {
+    if (!email.trim()) {
+      alert("Please enter a valid email.");
+      return;
     }
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/newsletter`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
 
-    alert("Subscription successful — check your inbox!");
-    setEmail("");
-  } catch (e) {
-    alert(`Failed to subscribe: ${e.message}`);
-  } finally {
-    setLoading(false);
-  }
-};
+      if (!res.ok) {
+        if (res.status === 404) {
+          throw new Error("Newsletter endpoint not found on the server. Add /api/newsletter route.");
+        }
+        if (res.status === 409) {
+          showSuccessMessage("You are already subscribed to the newsletter with this email! ✅");
+          setEmail("");
+          return;
+        }
+        const j = await res.json().catch(() => ({}));
+        throw new Error(j.message || `HTTP ${res.status}`);
+      }
 
+      showSuccessMessage("Successfully subscribed to the newsletter! 📧 Check your inbox.");
+      setEmail("");
+    } catch (e) {
+      alert(`Failed to subscribe: ${e.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const clearFilters = () => {
     setDateFrom("");
@@ -256,30 +409,29 @@ const handleSubscribe = async () => {
       <h1 className="page-title">Personal Area</h1>
 
       <div className="tab-buttons">
-      <button
-  data-tab="userInfo"
-  onClick={() => setActiveTab("userInfo")}
-  className={activeTab === "userInfo" ? "active" : ""}
->
-  User Info
-</button>
+        <button
+          data-tab="userInfo"
+          onClick={() => setActiveTab("userInfo")}
+          className={activeTab === "userInfo" ? "active" : ""}
+        >
+          User Info
+        </button>
 
-<button
-  data-tab="orders"
-  onClick={() => setActiveTab("orders")}
-  className={activeTab === "orders" ? "active" : ""}   // stays the same
->
-  Previous Orders
-</button>
+        <button
+          data-tab="orders"
+          onClick={() => setActiveTab("orders")}
+          className={activeTab === "orders" ? "active" : ""}   // stays the same
+        >
+          Previous Orders
+        </button>
 
-<button
-  data-tab="newsletter"
-  onClick={() => setActiveTab("newsletter")}
-  className={activeTab === "newsletter" ? "active" : ""}
->
-  Sign Up for Newsletter
-</button>
-
+        <button
+          data-tab="newsletter"
+          onClick={() => setActiveTab("newsletter")}
+          className={activeTab === "newsletter" ? "active" : ""}
+        >
+          Sign Up for Newsletter
+        </button>
       </div>
 
       <div className="containerPersonal">
@@ -312,74 +464,71 @@ const handleSubscribe = async () => {
         )}
 
         {/* Order Details Modal */}
-  {/* Order Details Modal */}
-{selectedOrder && (
-  <div
-    className="order-modal"
-    role="dialog"
-    aria-modal="true"
-    onClick={() => setSelectedOrder(null)}
-  >
-    <div
-      className="order-modal-content"
-      onClick={(e) => e.stopPropagation()}
-    >
-      <div className="modal-header">Order Details</div>
-      <button className="close-modal" onClick={() => setSelectedOrder(null)} aria-label="Close">×</button>
+        {selectedOrder && (
+          <div
+            className="order-modal"
+            role="dialog"
+            aria-modal="true"
+            onClick={() => setSelectedOrder(null)}
+          >
+            <div
+              className="order-modal-content"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="modal-header">Order Details</div>
+              <button className="close-modal" onClick={() => setSelectedOrder(null)} aria-label="Close">×</button>
 
-      <div className="modal-body">
-        {/* Wrap details in a grid for nicer layout */}
-        <div className="order-detail-grid">
-          <p><strong>Order ID:</strong> {selectedOrder.id}</p>
-          <p><strong>Created At:</strong> {selectedOrder.createdAt ? new Date(selectedOrder.createdAt).toLocaleString() : "—"}</p>
-          <p><strong>Departure City:</strong> {selectedOrder.departure}</p>
-          <p><strong>Destination City:</strong> {selectedOrder.destination}</p>
-          <p><strong>Flight:</strong> {selectedOrder.flight}</p>
-          <p><strong>Hotel:</strong> {selectedOrder.hotel}</p>
+              <div className="modal-body">
+                {/* Wrap details in a grid for nicer layout */}
+                <div className="order-detail-grid">
+                  <p><strong>Order ID:</strong> {selectedOrder.id}</p>
+                  <p><strong>Created At:</strong> {selectedOrder.createdAt ? new Date(selectedOrder.createdAt).toLocaleString() : "—"}</p>
+                  <p><strong>Departure City:</strong> {selectedOrder.departure}</p>
+                  <p><strong>Destination City:</strong> {selectedOrder.destination}</p>
+                  <p><strong>Flight:</strong> {selectedOrder.flight}</p>
+                  <p><strong>Hotel:</strong> {selectedOrder.hotel}</p>
 
-          {/* Attractions (chips) */}
-     {/* Attractions (chips) */}
-<p style={{ gridColumn: "1 / -1" }}>
-  <strong>Attractions:</strong>{" "}
-  {(() => {
-    const names =
-      selectedOrder?.raw?.attraction_names?.length
-        ? selectedOrder.raw.attraction_names
-        : (Array.isArray(selectedOrder.attractions) &&
-            !selectedOrder.attractions.every(v => typeof v === "string" && /^[0-9a-fA-F]{24}$/.test(v))
-            ? selectedOrder.attractions
-            : []);
+                  {/* Attractions (chips) */}
+                  <p style={{ gridColumn: "1 / -1" }}>
+                    <strong>Attractions:</strong>{" "}
+                    {(() => {
+                      const names =
+                        selectedOrder?.raw?.attraction_names?.length
+                          ? selectedOrder.raw.attraction_names
+                          : (Array.isArray(selectedOrder.attractions) &&
+                              !selectedOrder.attractions.every(v => typeof v === "string" && /^[0-9a-fA-F]{24}$/.test(v))
+                              ? selectedOrder.attractions
+                              : []);
 
-    const ids = Array.isArray(selectedOrder.attractions) ? selectedOrder.attractions : [];
-    const onlyIds = ids.length > 0 && ids.every(v => typeof v === "string" && /^[0-9a-fA-F]{24}$/.test(v));
+                      const ids = Array.isArray(selectedOrder.attractions) ? selectedOrder.attractions : [];
+                      const onlyIds = ids.length > 0 && ids.every(v => typeof v === "string" && /^[0-9a-fA-F]{24}$/.test(v));
 
-    if (names.length) {
-      return (
-        <span className="chip-list">
-          {names.map((n, i) => <span key={i} className="chip">{n}</span>)}
-        </span>
-      );
-    }
+                      if (names.length) {
+                        return (
+                          <span className="chip-list">
+                            {names.map((n, i) => <span key={i} className="chip">{n}</span>)}
+                          </span>
+                        );
+                      }
 
-    if (onlyIds) {
-      return <span className="chip chip--muted">{ids.length} selected</span>;
-    }
+                      if (onlyIds) {
+                        return <span className="chip chip--muted">{ids.length} selected</span>;
+                      }
 
-    return "—";
-  })()}
-</p>
+                      return "—";
+                    })()}
+                  </p>
 
-
-          <p><strong>Transportation:</strong> {selectedOrder.transportation}</p>
-          <p><strong>Payment Method:</strong> {selectedOrder.paymentMethod}</p>
-          <p style={{ gridColumn: "1 / -1" }}>
-            <strong>Total Price:</strong> {new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(Number(selectedOrder.totalPrice ?? 0))}
-          </p>
-        </div>
-      </div>
-    </div>
-  </div>
-)}
+                  <p><strong>Transportation:</strong> {selectedOrder.transportation}</p>
+                  <p><strong>Payment Method:</strong> {selectedOrder.paymentMethod}</p>
+                  <p style={{ gridColumn: "1 / -1" }}>
+                    <strong>Total Price:</strong> {new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(Number(selectedOrder.totalPrice ?? 0))}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Orders */}
         {activeTab === "orders" && (
@@ -451,52 +600,51 @@ const handleSubscribe = async () => {
               Showing: {filteredOrders.length} of {orders.length}
             </small>
 
-         {filteredOrders.length > 0 ? (
-  <>
-    <ul className="orders-grid">
-      {currentPageOrders.map((o) => (
-        <li key={o.id} className="order-card">
-          <div className="top">
-            <div className="route">
-              <strong>{o.departure} → {o.destination}</strong>
-            </div>
-            <div className="price">{toUsd(o.totalPrice)}</div>
-          </div>
+            {filteredOrders.length > 0 ? (
+              <>
+                <ul className="orders-grid">
+                  {currentPageOrders.map((o) => (
+                    <li key={o.id} className="order-card">
+                      <div className="top">
+                        <div className="route">
+                          <strong>{o.departure} → {o.destination}</strong>
+                        </div>
+                        <div className="price">{toUsd(o.totalPrice)}</div>
+                      </div>
 
-          <div className="meta">
-            <div><span className="lbl">Date</span>{o.createdAt ? new Date(o.createdAt).toLocaleDateString() : "—"}</div>
-            <div><span className="lbl">Payment</span>{o.paymentMethod || "—"}</div>
-            <div><span className="lbl">Flight</span>{o.flight}</div>
-            <div><span className="lbl">Hotel</span>{o.hotel}</div>
-          </div>
+                      <div className="meta">
+                        <div><span className="lbl">Date</span>{o.createdAt ? new Date(o.createdAt).toLocaleDateString() : "—"}</div>
+                        <div><span className="lbl">Payment</span>{o.paymentMethod || "—"}</div>
+                        <div><span className="lbl">Flight</span>{o.flight}</div>
+                        <div><span className="lbl">Hotel</span>{o.hotel}</div>
+                      </div>
 
-          <button className="view-details-button" onClick={() => handleViewOrderDetails(o)}>
-            View Details
-          </button>
-        </li>
-      ))}
-    </ul>
+                      <button className="view-details-button" onClick={() => handleViewOrderDetails(o)}>
+                        View Details
+                      </button>
+                    </li>
+                  ))}
+                </ul>
 
-    <div className="pager">
-      <button
-        className="pager-btn"
-        onClick={() => setPage(p => Math.max(1, p - 1))}
-        disabled={page === 1}
-      >‹ Prev</button>
+                <div className="pager">
+                  <button
+                    className="pager-btn"
+                    onClick={() => setPage(p => Math.max(1, p - 1))}
+                    disabled={page === 1}
+                  >‹ Prev</button>
 
-      <span className="pager-status">Page {page} / {pageCount}</span>
+                  <span className="pager-status">Page {page} / {pageCount}</span>
 
-      <button
-        className="pager-btn"
-        onClick={() => setPage(p => Math.min(pageCount, p + 1))}
-        disabled={page === pageCount}
-      >Next ›</button>
-    </div>
-  </>
-) : (
-  <div><p>No orders match the selected dates.</p></div>
-)}
-
+                  <button
+                    className="pager-btn"
+                    onClick={() => setPage(p => Math.min(pageCount, p + 1))}
+                    disabled={page === pageCount}
+                  >Next ›</button>
+                </div>
+              </>
+            ) : (
+              <div><p>No orders match the selected dates.</p></div>
+            )}
           </>
         )}
 
@@ -532,6 +680,13 @@ const handleSubscribe = async () => {
       >
         ❔
       </button>
+
+      {/* Success Popup */}
+      <SuccessPopup 
+        isVisible={showSuccessPopup}
+        onClose={() => setShowSuccessPopup(false)}
+        message={successMessage}
+      />
     </div>
   );
 };
