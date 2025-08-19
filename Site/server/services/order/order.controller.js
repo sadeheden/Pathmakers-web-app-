@@ -233,15 +233,161 @@ function getHotelName(hotelDoc, index) {
    ========================= */
 
 // POST /api/order/resolve
-// POST /api/order/resolve — FORCE-UPSERT cities so this can never fail on city lookup
+// POST /api/order/resolve - FIXED VERSION with better debugging and error handling
 export async function resolveOrderRefs(req, res) {
   try {
+    console.log("🔍 [DEBUG] resolveOrderRefs called with body:", JSON.stringify(req.body, null, 2));
+    
     const is24 = (s) => typeof s === "string" && /^[0-9a-fA-F]{24}$/.test(s);
     const pick = (v) => {
       if (!v) return "";
       if (typeof v === "string") return v.trim();
       return v.id || v._id || v.code || v.name || v.city || v.title || v.label || v.slug || "";
     };
+
+    // ---- Extract and clean input values ----
+    const body = req.body || {};
+    const departureRaw   = pick(body.departure)   || pick(body.departureCity)   || pick(body.departureCityId);
+    const destinationRaw = pick(body.destination) || pick(body.destinationCity) || pick(body.destinationCityId);
+    const flightRaw      = pick(body.flight);
+    const hotelRaw       = pick(body.hotel);
+
+    console.log("🔍 [DEBUG] Extracted values:", { 
+      departureRaw, 
+      destinationRaw, 
+      flightRaw, 
+      hotelRaw 
+    });
+
+    if (!departureRaw || !destinationRaw) {
+      console.log("❌ [ERROR] Missing departure or destination");
+      return res.status(400).json({ 
+        message: "Provide departure and destination.",
+        received: { departureRaw, destinationRaw }
+      });
+    }
+
+    // ---- Setup database collections ----
+    const db = await getDb();
+    const CitySing = db.collection("city");
+    const CityPlural = db.collection("cities");
+    
+    const [singCount, plurCount] = await Promise.all([
+      CitySing.countDocuments({}).catch(() => 0),
+      CityPlural.countDocuments({}).catch(() => 0),
+    ]);
+    
+    const Cities = plurCount > 0 ? CityPlural : CitySing;
+    const Flights = db.collection("flights");
+    const Hotels = db.collection("hotels");
+
+    console.log("🔍 [DEBUG] Database info:", {
+      collectionUsed: Cities.collectionName,
+      citySingCount: singCount,
+      cityPluralCount: plurCount
+    });
+
+    // ---- Helper function to find or create cities ----
+    async function ensureCity(val, cityType) {
+      const trimmed = String(val || "").trim();
+      console.log(`🔍 [DEBUG] ensureCity called for ${cityType}:`, trimmed);
+      
+      if (!trimmed) {
+        console.log(`❌ [ERROR] Empty value for ${cityType}`);
+        return null;
+      }
+
+      // If it's already a valid ObjectId, try to find it directly
+      if (is24(trimmed)) {
+        console.log(`🔍 [DEBUG] Looking up ${cityType} by ObjectId:`, trimmed);
+        try {
+          const doc = await Cities.findOne({ _id: new ObjectId(trimmed) });
+          if (doc) {
+            console.log(`✅ [SUCCESS] Found ${cityType} by ObjectId:`, doc._id.toString());
+            return doc;
+          }
+          console.log(`⚠️ [WARNING] No ${cityType} found with ObjectId:`, trimmed);
+        } catch (err) {
+          console.log(`❌ [ERROR] Failed to lookup ${cityType} by ObjectId:`, err.message);
+        }
+      }
+
+      // Try to find by name/city field (case insensitive)
+      const searchQueries = [
+        { city: { $regex: new RegExp(`^${trimmed.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "i") } },
+        { name: { $regex: new RegExp(`^${trimmed.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "i") } },
+      ];
+
+      console.log(`🔍 [DEBUG] Searching for ${cityType} with queries:`, searchQueries);
+
+      for (const query of searchQueries) {
+        try {
+          const existing = await Cities.findOne(query);
+          if (existing) {
+            console.log(`✅ [SUCCESS] Found existing ${cityType}:`, existing._id.toString());
+            return existing;
+          }
+        } catch (err) {
+          console.log(`❌ [ERROR] Search failed for ${cityType}:`, err.message);
+        }
+      }
+
+      // If not found, create new city
+      console.log(`🆕 [CREATE] Creating new ${cityType}:`, trimmed);
+      try {
+        const slugify = (s) =>
+          String(s || "")
+            .trim()
+            .toLowerCase()
+            .replace(/\s+/g, "-")
+            .replace(/[^a-z0-9-]/g, "");
+
+        const newCityDoc = {
+          city: trimmed,
+          name: trimmed,
+          slug: slugify(trimmed),
+          created_at: new Date(),
+          updated_at: new Date(),
+        };
+
+        const result = await Cities.insertOne(newCityDoc);
+        const createdCity = { ...newCityDoc, _id: result.insertedId };
+        
+        console.log(`✅ [SUCCESS] Created new ${cityType}:`, createdCity._id.toString());
+        return createdCity;
+        
+      } catch (err) {
+        console.error(`❌ [ERROR] Failed to create ${cityType}:`, err.message);
+        return null;
+      }
+    }
+
+    // ---- Resolve cities ----
+    const depCity = await ensureCity(departureRaw, "departure city");
+    const dstCity = await ensureCity(destinationRaw, "destination city");
+
+    console.log("🔍 [DEBUG] City resolution results:", {
+      depCity: depCity ? depCity._id.toString() : null,
+      dstCity: dstCity ? dstCity._id.toString() : null
+    });
+
+    if (!depCity?._id) {
+      console.log("❌ [ERROR] Failed to resolve departure city");
+      return res.status(400).json({ 
+        message: "Departure city not found.",
+        input: departureRaw
+      });
+    }
+    
+    if (!dstCity?._id) {
+      console.log("❌ [ERROR] Failed to resolve destination city");
+      return res.status(400).json({ 
+        message: "Destination city not found.",
+        input: destinationRaw
+      });
+    }
+
+    // ---- Resolve flight ----
     const parseCompound = (val) => {
       if (typeof val !== "string") return { base: String(val || ""), idx: 0, hadIdx: false };
       const [maybeId, maybeIdx] = val.split(/[-_]/);
@@ -251,132 +397,69 @@ export async function resolveOrderRefs(req, res) {
       }
       return { base: val.trim(), idx: 0, hadIdx: false };
     };
-    const sanitizeFreeText = (s) => {
-      if (typeof s !== "string") return "";
-      let t = s.trim();
-      t = t.split(" - ")[0];
-      t = t.replace(/\([^)]*\)/g, "");
-      t = t.replace(/[$€₪£]\s*\d[\d.,]*/g, "");
-      return t.trim().replace(/\s+/g, " ");
-    };
-    const slugify = (s) =>
-      String(s || "")
-        .trim()
-        .toLowerCase()
-        .replace(/\s+/g, "-")
-        .replace(/[^a-z0-9-]/g, "");
 
-    // ---- body ----
-    const body = req.body || {};
-    const departureRaw   = pick(body.departure)   || pick(body.departureCity)   || pick(body.departureCityId);
-    const destinationRaw = pick(body.destination) || pick(body.destinationCity) || pick(body.destinationCityId);
-    const flightRaw      = pick(body.flight);
-    const hotelRaw       = pick(body.hotel);
-
-    if (!departureRaw || !destinationRaw) {
-      return res.status(400).json({ message: "Provide departure and destination." });
-    }
-
-    // ---- DB / collections ----
-    const db = await getDb();
-    const CitySing = db.collection("city");
-    const CityPlural = db.collection("cities");
-    const [singCount, plurCount] = await Promise.all([
-      CitySing.countDocuments({}).catch(() => 0),
-      CityPlural.countDocuments({}).catch(() => 0),
-    ]);
-    const Cities = plurCount > 0 ? CityPlural : CitySing;
-    const Flights = db.collection("flights");
-    const Hotels  = db.collection("hotels");
-
-    console.log("[resolve] using collection:", Cities.collectionName,
-      "| counts -> city:", singCount, "cities:", plurCount);
-    console.log("[resolve] raw:", { departureRaw, destinationRaw, flightRaw, hotelRaw });
-
-    // ---- FORCE UPSERT city helper ----
-    async function ensureCity(val) {
-      const trimmed = String(val || "").trim();
-      if (!trimmed) return null;
-
-      // if caller already sent an ObjectId string, try direct fetch
-      if (is24(trimmed)) {
-        const doc = await Cities.findOne({ _id: new ObjectId(trimmed) });
-        if (doc) return doc;
-      }
-
-      const esc = trimmed.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-      const rx  = new RegExp(`^${esc}$`, "i");
-      const up = await Cities.findOneAndUpdate(
-        { $or: [{ city: rx }, { name: rx }, { slug: rx }] },
-        {
-          $setOnInsert: {
-            city: trimmed,
-            name: trimmed,
-            slug: slugify(trimmed),
-            created_at: new Date(),
-          },
-          $set: {
-            updated_at: new Date(),
-          },
-        },
-        { upsert: true, returnDocument: "after" }
-      );
-      console.log("[resolve] ensureCity", trimmed, "=>", up?.value?._id?.toString?.());
-      return up?.value || null;
-    }
-
-    // ---- resolve cities (ALWAYS creates if missing) ----
-    const depCity = await ensureCity(departureRaw);
-    const dstCity = await ensureCity(destinationRaw);
-
-    if (!depCity?._id) return res.status(400).json({ message: "Departure city not found." });
-    if (!dstCity?._id) return res.status(400).json({ message: "Destination city not found." });
-
-    // ---- resolve flight ----
     const parsedFlight = parseCompound(flightRaw);
     let flightDoc = null;
     let flightIndex = parsedFlight.idx;
+
+    console.log("🔍 [DEBUG] Flight resolution:", { parsedFlight, flightRaw });
 
     if (is24(parsedFlight.base)) {
       flightDoc = await Flights.findOne({ _id: new ObjectId(parsedFlight.base) });
       if (!parsedFlight.hadIdx) flightIndex = 0;
     } else if (parsedFlight.base) {
+      const sanitizeFreeText = (s) => {
+        if (typeof s !== "string") return "";
+        let t = s.trim();
+        t = t.split(" - ")[0];
+        t = t.replace(/\([^)]*\)/g, "");
+        t = t.replace(/[$€₪£]\s*\d[\d.,]*/g, "");
+        return t.trim().replace(/\s+/g, " ");
+      };
+      
       const needle = sanitizeFreeText(parsedFlight.base);
       const doc = await Flights.findOne({
         $or: [
           { destination_city_id: String(dstCity._id) },
           { "airlines.code": needle },
-          { "flights.code":  needle },
-          { name:            needle },
-          { airline:         needle },
+          { "flights.code": needle },
+          { name: needle },
+          { airline: needle },
         ],
       });
       flightDoc = doc;
-      if (doc?.airlines?.length) {
-        const i = doc.airlines.findIndex(a =>
-          [a?.code, a?.name, a?.airline].some(x => typeof x === "string" && x.toLowerCase() === needle.toLowerCase())
-        );
-        if (i >= 0) flightIndex = i;
-      } else if (doc?.flights?.length) {
-        const i = doc.flights.findIndex(f =>
-          [f?.code, f?.name, f?.airline].some(x => typeof x === "string" && x.toLowerCase() === needle.toLowerCase())
-        );
-        if (i >= 0) flightIndex = i;
-      }
-    }
-    if (!flightDoc?._id) {
-      return res.status(400).json({ message: "Could not resolve flight." });
     }
 
-    // ---- resolve hotel ----
+    console.log("🔍 [DEBUG] Flight doc found:", !!flightDoc);
+
+    if (!flightDoc?._id) {
+      console.log("❌ [ERROR] Could not resolve flight");
+      return res.status(400).json({ 
+        message: "Could not resolve flight.",
+        input: flightRaw
+      });
+    }
+
+    // ---- Resolve hotel ----
     const parsedHotel = parseCompound(hotelRaw);
     let hotelDoc = null;
     let hotelIndex = parsedHotel.idx;
+
+    console.log("🔍 [DEBUG] Hotel resolution:", { parsedHotel, hotelRaw });
 
     if (is24(parsedHotel.base)) {
       hotelDoc = await Hotels.findOne({ _id: new ObjectId(parsedHotel.base) });
       if (!parsedHotel.hadIdx) hotelIndex = 0;
     } else if (parsedHotel.base) {
+      const sanitizeFreeText = (s) => {
+        if (typeof s !== "string") return "";
+        let t = s.trim();
+        t = t.split(" - ")[0];
+        t = t.replace(/\([^)]*\)/g, "");
+        t = t.replace(/[$€₪£]\s*\d[\d.,]*/g, "");
+        return t.trim().replace(/\s+/g, " ");
+      };
+      
       const needle = sanitizeFreeText(parsedHotel.base);
       const doc = await Hotels.findOne({
         $and: [
@@ -385,15 +468,18 @@ export async function resolveOrderRefs(req, res) {
         ],
       });
       hotelDoc = doc;
-      if (doc?.hotels?.length) {
-        const i = doc.hotels.findIndex(h =>
-          typeof h?.name === "string" && h.name.toLowerCase() === needle.toLowerCase()
-        );
-        if (i >= 0) hotelIndex = i;
-      }
     }
 
-    // ---- response ----
+    // If no specific hotel found, try to find any hotel for the destination
+    if (!hotelDoc && dstCity._id) {
+      console.log("🔍 [DEBUG] No specific hotel found, looking for any hotel in destination");
+      hotelDoc = await Hotels.findOne({ destination_city_id: String(dstCity._id) });
+      hotelIndex = 0;
+    }
+
+    console.log("🔍 [DEBUG] Hotel doc found:", !!hotelDoc);
+
+    // ---- Build response ----
     const ids = {
       departureCityId: String(depCity._id),
       destinationCityId: String(dstCity._id),
@@ -401,13 +487,19 @@ export async function resolveOrderRefs(req, res) {
       hotelId: hotelDoc?._id ? `${String(hotelDoc._id)}-${hotelIndex}` : String(dstCity._id),
     };
 
+    console.log("✅ [SUCCESS] Resolved IDs:", ids);
+
     return res.status(200).json({ success: true, ids });
+
   } catch (err) {
-    console.error("resolveOrderRefs error:", err);
-    return res.status(500).json({ message: "Internal Server Error" });
+    console.error("❌ [ERROR] resolveOrderRefs error:", err);
+    console.error("❌ [ERROR] Stack trace:", err.stack);
+    return res.status(500).json({ 
+      message: "Internal Server Error",
+      error: process.env.NODE_ENV === "development" ? err.message : undefined
+    });
   }
 }
-
 
 
 // POST /api/order - Create new order - FIXED VERSION

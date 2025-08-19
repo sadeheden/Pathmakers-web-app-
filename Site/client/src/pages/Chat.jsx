@@ -238,6 +238,7 @@ if (token) {
    <PaymentModal
   isOpen={isPaymentModalOpen}
   onClose={() => setIsPaymentModalOpen(false)}
+// FIXED Payment Success Handler in Chat.jsx
 onPaymentSuccess={async ({ attractionIds, attractionNames } = {}) => {
   console.log("💳 Payment success called with:", { attractionIds, attractionNames });
   
@@ -249,152 +250,205 @@ onPaymentSuccess={async ({ attractionIds, attractionNames } = {}) => {
   if (!token) {
     alert("You must be logged in to save the order.");
     return;
-  }// === helpers to build safe resolver tokens (use names/slugs not raw IDs) ===
-const tokenFromCity = (v) => {
-  if (!v) return "";
-  if (typeof v === "string") return v.trim();
-  // prefer human-readable fields; fall back to slug, finally id/_id as last resort
-  return (
-    v.city || v.name || v.title || v.label || v.slug ||
-    v.cityName || v.destinationCityName ||
-    v.id || v._id || ""
-  );
-};
+  }
 
-const tokenFromFlight = (v) => {
-  if (!v) return "";
-  if (typeof v === "string") return v.trim(); // could be "<id>-idx" or code/name
-  // if you stored a compound id elsewhere, prefer it; else fall back to code/name/id
-  return v.compoundId || v.code || v.name || v.airline || v.id || v._id || "";
-};
-
-const tokenFromHotel = (v) => {
-  if (!v) return "";
-  if (typeof v === "string") return v.trim(); // could be "<id>-idx" or plain name
-  return v.compoundId || v.name || v.id || v._id || "";
-};
-
-// build headers once, only add Authorization when we actually have a token
-const headers = { "Content-Type": "application/json" };
-if (token) headers.Authorization = `Bearer ${token}`;
-
+  // Build headers once
+  const headers = { "Content-Type": "application/json" };
+  if (token) headers.Authorization = `Bearer ${token}`;
 
   const getVal = (prompt) => userResponses?.[prompt];
-  const textOrName = (v) =>
-    typeof v === "string" ? v : (v?.name || v?.city || v?.title || v?.airline || v?.label);
 
- try {
-  console.log("🔍 Current userResponses:", userResponses);
+  try {
+    console.log("🔍 Current userResponses:", userResponses);
 
-  // 1) Build flexible inputs for resolver
-  const dep = getVal("What is your departure city?");
-  const dst = getVal("What is your destination city?");
-  const flt = getVal("Select your flight");
-  const htl = getVal("Select your hotel");
+    // 1) Extract values from userResponses
+    const dep = getVal("What is your departure city?");
+    const dst = getVal("What is your destination city?");
+    const flt = getVal("Select your flight");
+    const htl = getVal("Select your hotel");
 
-  console.log("🔍 Extracted values:", { dep, dst, flt, htl });
+    console.log("🔍 Extracted values:", { dep, dst, flt, htl });
 
-  const resolveBody = {
-    // send names/slugs for cities, not raw 24-hex ObjectIds
-    departure:  tokenFromCity(dep),
-    destination: tokenFromCity(dst),
-    // flights/hotels can be "<id>-idx" OR code/name
-    flight:      tokenFromFlight(flt),
-    hotel:       tokenFromHotel(htl),
-  };
+    // 2) IMPROVED: Extract meaningful values for the resolve endpoint
+    const extractCityValue = (cityData) => {
+      if (!cityData) return "";
+      
+      // If it's a string, return it directly
+      if (typeof cityData === "string") return cityData.trim();
+      
+      // If it's an object, try different properties in order of preference
+      return (
+        cityData.city ||           // most common field name
+        cityData.name ||           // alternative name field
+        cityData.cityName ||       // some APIs use this
+        cityData.label ||          // UI display name
+        cityData.title ||          // another display field
+        cityData.slug ||           // URL-friendly name
+        cityData.id ||             // fallback to ID if no name
+        cityData._id ||            // MongoDB ID
+        ""
+      );
+    };
 
-  console.log("📤 Sending to resolve endpoint:", resolveBody);
+    const extractFlightValue = (flightData) => {
+      if (!flightData) return "";
+      
+      if (typeof flightData === "string") return flightData.trim();
+      
+      // Try to build a meaningful identifier
+      return (
+        flightData.compoundId ||   // if you store compound IDs
+        flightData.code ||         // airline code
+        flightData.name ||         // flight name
+        flightData.airline ||      // airline name
+        flightData.id ||           // fallback to ID
+        flightData._id ||          // MongoDB ID
+        ""
+      );
+    };
 
-  // 👉 You deleted this line earlier — add it back:
-  const r1 = await fetch(`${API_BASE}/api/order/resolve`, {
-    method: "POST",
-    headers,
-    body: JSON.stringify(resolveBody),
-  });
+    const extractHotelValue = (hotelData) => {
+      if (!hotelData) return "";
+      
+      if (typeof hotelData === "string") return hotelData.trim();
+      
+      return (
+        hotelData.compoundId ||    // if you store compound IDs
+        hotelData.name ||          // hotel name
+        hotelData.hotelName ||     // alternative field
+        hotelData.id ||            // fallback to ID
+        hotelData._id ||           // MongoDB ID
+        ""
+      );
+    };
 
-  if (!r1.ok) {
-    const errorText = await r1.text();
-    console.error("❌ Resolve failed:", r1.status, errorText);
-    let errorMessage;
-    try {
-      const errorJson = JSON.parse(errorText);
-      errorMessage = errorJson.message || `Resolve failed (HTTP ${r1.status})`;
-    } catch {
-      errorMessage = `Resolve failed (HTTP ${r1.status}): ${errorText}`;
+    // 3) Build resolve request body with cleaned values
+    const resolveBody = {
+      departure: extractCityValue(dep),
+      destination: extractCityValue(dst),
+      flight: extractFlightValue(flt),
+      hotel: extractHotelValue(htl),
+    };
+
+    console.log("📤 Sending to resolve endpoint:", resolveBody);
+
+    // 4) Validate we have required data before sending
+    if (!resolveBody.departure || !resolveBody.destination) {
+      console.error("❌ Missing required city data:", {
+        departure: resolveBody.departure,
+        destination: resolveBody.destination,
+        originalDep: dep,
+        originalDst: dst
+      });
+      throw new Error("Missing departure or destination city. Please go back and select cities.");
     }
-    throw new Error(errorMessage);
-  }
 
-  const { ids } = await r1.json();
-  console.log("✅ Resolved IDs:", ids);
+    // 5) Call resolve endpoint
+    const r1 = await fetch(`${API_BASE}/api/order/resolve`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(resolveBody),
+    });
 
-  // 3) Prepare create payload
-  const payMethodRaw = getVal("Select payment method");
-  const paymentMethod = typeof payMethodRaw === "string"
-    ? payMethodRaw
-    : (payMethodRaw?.name || payMethodRaw?.id || "Unknown");
-  const transportation = getVal("Select your mode of transportation") || "—";
-  const totalPrice = calculateTotalPrice(userResponses);
-
-  const cleanAttractionIds = Array.isArray(attractionIds)
-    ? attractionIds.filter(id => id && typeof id === "string")
-    : [];
-  const cleanAttractionNames = Array.isArray(attractionNames)
-    ? attractionNames.filter(name => name && typeof name === "string")
-    : [];
-
-  console.log("🎯 Clean attractions:", { cleanAttractionIds, cleanAttractionNames });
-
-  const textOrName = (v) =>
-    typeof v === "string" ? v : (v?.name || v?.city || v?.title || v?.airline || v?.label);
-
-  const payload = {
-    departureCityId: ids.departureCityId,
-    destinationCityId: ids.destinationCityId,
-    flightId: ids.flightId,     // "<id>-idx"
-    hotelId: ids.hotelId,       // "<id>-idx" or city fallback
-    attractions: cleanAttractionIds,
-    attractionNames: cleanAttractionNames,
-    flightName: textOrName(flt) || null,
-    hotelName: textOrName(htl) || null,
-    transportation,
-    paymentMethod,
-    totalPrice,
-  };
-
-  console.log("📤 Sending to create order:", payload);
-
-  const r2 = await fetch(`${API_BASE}/api/order`, {
-    method: "POST",
-    headers,
-    body: JSON.stringify(payload),
-  });
-
-  if (!r2.ok) {
-    const errorText = await r2.text();
-    console.error("❌ Create order failed:", r2.status, errorText);
-    let errorMessage;
-    try {
-      const errorJson = JSON.parse(errorText);
-      errorMessage = errorJson.message || `Create failed (HTTP ${r2.status})`;
-    } catch {
-      errorMessage = `Create failed (HTTP ${r2.status}): ${errorText}`;
+    if (!r1.ok) {
+      const errorText = await r1.text();
+      console.error("❌ Resolve failed:", r1.status, errorText);
+      
+      let errorMessage;
+      try {
+        const errorJson = JSON.parse(errorText);
+        errorMessage = errorJson.message || `Resolve failed (HTTP ${r1.status})`;
+      } catch {
+        errorMessage = `Resolve failed (HTTP ${r1.status}): ${errorText}`;
+      }
+      throw new Error(errorMessage);
     }
-    throw new Error(errorMessage);
+
+    const { ids } = await r1.json();
+    console.log("✅ Resolved IDs:", ids);
+
+    // 6) Prepare create order payload
+    const payMethodRaw = getVal("Select payment method");
+    const paymentMethod = typeof payMethodRaw === "string"
+      ? payMethodRaw
+      : (payMethodRaw?.name || payMethodRaw?.id || "Unknown");
+    
+    const transportation = getVal("Select your mode of transportation") || "—";
+    const totalPrice = calculateTotalPrice(userResponses);
+
+    const cleanAttractionIds = Array.isArray(attractionIds)
+      ? attractionIds.filter(id => id && typeof id === "string")
+      : [];
+    const cleanAttractionNames = Array.isArray(attractionNames)
+      ? attractionNames.filter(name => name && typeof name === "string")
+      : [];
+
+    console.log("🎯 Clean attractions:", { cleanAttractionIds, cleanAttractionNames });
+
+    // Helper to extract display name
+    const getDisplayName = (data) => {
+      if (typeof data === "string") return data;
+      return (
+        data?.name ||
+        data?.city ||
+        data?.title ||
+        data?.airline ||
+        data?.label ||
+        data?.hotelName ||
+        data?.cityName ||
+        ""
+      );
+    };
+
+    const payload = {
+      departureCityId: ids.departureCityId,
+      destinationCityId: ids.destinationCityId,
+      flightId: ids.flightId,
+      hotelId: ids.hotelId,
+      attractions: cleanAttractionIds,
+      attractionNames: cleanAttractionNames,
+      flightName: getDisplayName(flt) || null,
+      hotelName: getDisplayName(htl) || null,
+      transportation,
+      paymentMethod,
+      totalPrice,
+    };
+
+    console.log("📤 Sending to create order:", payload);
+
+    // 7) Create the order
+    const r2 = await fetch(`${API_BASE}/api/order`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(payload),
+    });
+
+    if (!r2.ok) {
+      const errorText = await r2.text();
+      console.error("❌ Create order failed:", r2.status, errorText);
+      
+      let errorMessage;
+      try {
+        const errorJson = JSON.parse(errorText);
+        errorMessage = errorJson.message || `Create failed (HTTP ${r2.status})`;
+      } catch {
+        errorMessage = `Create failed (HTTP ${r2.status}): ${errorText}`;
+      }
+      throw new Error(errorMessage);
+    }
+
+    const result = await r2.json();
+    console.log("✅ Order created successfully:", result);
+
+    sessionStorage.setItem("orderSaved", "1");
+    setPaymentCompleted(true);
+    setCurrentStep((prev) => prev + 1);
+    alert("✅ Order saved!");
+
+  } catch (err) {
+    console.error("❌ Save order error:", err);
+    alert(`Failed to save order: ${err.message}`);
   }
-
-  const result = await r2.json();
-  console.log("✅ Order created successfully:", result);
-
-  sessionStorage.setItem("orderSaved", "1");
-  setPaymentCompleted(true);
-  setCurrentStep((prev) => prev + 1);
-  alert("✅ Order saved!");
-} catch (err) {
-  console.error("❌ Save order error:", err);
-  alert(`Failed to save order: ${err.message}`);
-}
-
 }}
   totalAmount={calculateTotalPrice(userResponses)}
   userResponses={userResponses}
