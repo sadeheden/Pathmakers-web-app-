@@ -239,7 +239,7 @@ const StepContent = ({
           }
           className="custom-btn2"
         >
-          {currentStep === steps.length - 1 ? "Finish" : "Next"} <ChevronRight />
+          {currentStep === steps.length - 1 ? "Finish" : "Next"} 
         </button>
       </div>
     </div>

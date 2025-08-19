@@ -857,7 +857,7 @@ const Manager = () => {
               throw new Error("At least one hotel with name and price is required");
             }
 
-            url = "http://localhost:4000/api/cities/add-hotels";
+            url = "http://localhost:4000/api/manager/collections/hotels/upsertItems";
             payload = {
               city: formData.city.trim(),
               hotels: validHotels.map(h => ({
@@ -878,7 +878,7 @@ const Manager = () => {
             throw new Error("At least one attraction with all details is required");
           }
 
-          url = "http://localhost:4000/api/cities/add-attractions";
+          url = "http://localhost:4000/api/manager/collections/attractions/upsertItems";
           payload = {
             city: formData.city.trim(),
             attractions: validAttractions.map(a => ({
@@ -901,7 +901,7 @@ const Manager = () => {
             throw new Error("At least one flight with all details is required");
           }
 
-          url = "http://localhost:4000/api/cities/add-flights";
+          url = "http://localhost:4000/api/manager/collections/flights/upsertItems";
           payload = {
             city: formData.city.trim(),
             flights: validFlights.map(f => ({
