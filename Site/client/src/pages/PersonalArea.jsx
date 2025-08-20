@@ -587,7 +587,7 @@ const PersonalArea = () => {
                 </>
               ) : (
                 <div>
-                  <p>לא ניתן לטעון את פרטי המשתמש</p>
+                  <p>no user data available</p>
                 </div>
               )}
             </div>
