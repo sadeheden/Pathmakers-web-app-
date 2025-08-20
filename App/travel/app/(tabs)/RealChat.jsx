@@ -38,12 +38,13 @@ export default function RealChatScreen() {
  
       const chatPayload = [systemPrompt, ...messages, userMessage];
  
-      const response = await hf.chatCompletion({
-        model: "meta-llama/Llama-3.1-8B-Instruct",
-        messages: chatPayload,
-        temperature: 0.7,
-        max_tokens: 150,
-      });
+     const response = await hf.chatCompletion({
+      model: "meta-llama/Meta-Llama-3-8B-Instruct",
+      messages: chatPayload,
+      temperature: 0.7,
+      max_tokens: 150,
+    });
+
  
       if (response.choices?.[0]?.message?.content) {
         setMessages((prev) => [...prev, userMessage, response.choices[0].message]);
