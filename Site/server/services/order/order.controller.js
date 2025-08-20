@@ -567,23 +567,25 @@ export async function createOrder(req, res) {
 
     console.log("🎯 Cleaned attraction names:", cleanedAttractionNames);
 
-    // Create new order; store full compound IDs for flight/hotel (string with index)
-    const newOrder = new Order({
-      user_id: String(req.user.id),
-      departure_city_id: depClean,
-      destination_city_id: dstClean,
-      flight_id: flightId,  // Keep as compound string
-      hotel_id: hotelId,    // Keep as compound string
-      attractions: cleanedAttractions,
-      transportation,
-      payment_method: paymentMethod,
-      total_price: totalPrice,
-      created_at: new Date(),
-      // denormalized names if provided
-      flight_name: flightName || null,
-      hotel_name: hotelName || null,
-      attraction_names: cleanedAttractionNames,
-    });
+// Create new order; store full compound IDs for flight/hotel (string with index)
+const userId = ObjectId.isValid(req.user.id) ? new ObjectId(req.user.id) : String(req.user.id);
+const newOrder = new Order({
+   // choose ObjectId when possible so reads match queries
+   user_id: userId,
+  departure_city_id: depClean,
+  destination_city_id: dstClean,
+  flight_id: flightId,  // Keep as compound string
+  hotel_id: hotelId,    // Keep as compound string
+  attractions: cleanedAttractions,
+  transportation,
+  payment_method: paymentMethod,
+  total_price: totalPrice,
+  created_at: new Date(),
+  // denormalized names if provided
+  flight_name: flightName || null,
+  hotel_name: hotelName || null,
+  attraction_names: cleanedAttractionNames,
+});
 
     console.log("💾 Saving order...");
     const savedOrder = await newOrder.save();
