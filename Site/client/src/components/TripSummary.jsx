@@ -59,8 +59,6 @@ const handleDownloadReceipt = async () => {
     alert("Could not download the PDF receipt. Please try again.");
   }
 };
-
-
   const handleGoToPersonalArea = () => {
     // Ensure this path exists in your <Routes>. Change personalAreaPath if needed.
     navigate(personalAreaPath, { replace: true });

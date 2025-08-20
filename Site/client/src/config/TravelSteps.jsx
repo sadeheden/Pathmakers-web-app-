@@ -90,20 +90,28 @@ export const createSteps = (
   const attractionsList = attractionsForCity(destName);
 
   return [
+   {
+  label: "Destination",
+  icon: MapPin,
+  questions: [
     {
-      label: "Destination",
-      icon: MapPin,
-      questions: [
-        {
-          prompt: "What is your departure city?",
-          options: cities.length ? cities.map((c) => ({ id: c._id, name: c.city })) : [],
-        },
-        {
-          prompt: "What is your destination city?",
-          options: cities.length ? cities.map((c) => ({ id: c._id, name: c.city })) : [],
-        },
-      ],
+      prompt: "What is your departure city?",
+      options: cities.length ? cities.map((c) => ({ id: c._id, name: c.city })) : [],
     },
+    {
+      prompt: "What is your destination city?",
+      options: cities.length 
+        ? cities
+            .filter((c) => {
+              // סינון עיר היעד - לא להציג את עיר המוצא
+              const departureCity = userResponses["What is your departure city?"];
+              return departureCity ? c._id !== departureCity.id : true;
+            })
+            .map((c) => ({ id: c._id, name: c.city }))
+        : [],
+    },
+  ],
+},
     {
       label: "Flight",
       icon: Plane,
