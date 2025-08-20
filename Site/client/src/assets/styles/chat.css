@@ -589,3 +589,19 @@ select:focus {
   border-color: rgba(185,28,28,.35);
 }
 .btn-outline:hover { transform: translateY(-1px); }
+/* --- Toast --- */
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 28px;
+  transform: translateX(-50%);
+  background: #111827;
+  color: #fff;
+  padding: 10px 14px;
+  border-radius: 10px;
+  box-shadow: 0 10px 30px rgba(0,0,0,.25);
+  font-weight: 600;
+  z-index: 9999;
+}
+.toast.success { background: #16a34a; }  /* green */
+.toast.error   { background: #dc2626; }  /* red */

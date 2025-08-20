@@ -17,6 +17,8 @@ const API_BASE =
 const TravelPlannerApp = () => {
   const location = useLocation();
   const navigate = useNavigate();
+// Chat.jsx
+const [toast, setToast] = useState(null); // { type: 'success' | 'error', text: string }
 
   // progress
   const [currentStep, setCurrentStep] = useState(() => {
@@ -461,22 +463,38 @@ const resolveBody = {
       throw new Error(errorMessage);
     }
 
-    const result = await r2.json();
-    console.log("✅ Order created successfully:", result);
+  try {
+  const result = await r2.json();
+  console.log("✅ Order created successfully:", result);
 
-    sessionStorage.setItem("orderSaved", "1");
-    setPaymentCompleted(true);
-    setCurrentStep((prev) => prev + 1);
-    alert("✅ Order saved!");
+  // store orderSaved and orderId
+  sessionStorage.setItem("orderSaved", "1");
+  if (result?._id) sessionStorage.setItem("lastOrderId", result._id);
 
-  } catch (err) {
-    console.error("❌ Save order error:", err);
-    alert(`Failed to save order: ${err.message}`);
-  }
-}}
+  setPaymentCompleted(true);
+  setCurrentStep((prev) => prev + 1);
+
+  // 🔔 instead of alert, trigger toast
+  setToast({ type: "success", text: "✅ Order saved!" });
+  setTimeout(() => setToast(null), 3000);
+
+} catch (err) {
+  console.error("❌ Save order error:", err);
+
+  setToast({ type: "error", text: `Failed to save order: ${err.message}` });
+  setTimeout(() => setToast(null), 4000);
+}
+    } catch (err) {
+      console.error("❌ Payment success error:", err);
+}}}
   totalAmount={calculateTotalPrice(userResponses)}
   userResponses={userResponses}
-/>
+/>{toast && (
+  <div className={`toast ${toast.type}`}>
+    {toast.text}
+  </div>
+)}
+
 
       </div>
     </div>
