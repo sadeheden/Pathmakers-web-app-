@@ -80,6 +80,115 @@ async function fetchMyOrders(token) {
   }
 }
 
+// Beautiful Loading Component
+const LoadingSpinner = ({ size = "large", message = "טוען..." }) => {
+  const spinnerSize = size === "small" ? "40px" : size === "medium" ? "60px" : "80px";
+  
+  return (
+    <div 
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "40px 20px",
+        minHeight: size === "large" ? "300px" : "150px",
+      }}
+    >
+      <div
+        style={{
+          width: spinnerSize,
+          height: spinnerSize,
+          border: "4px solid #f3f4f6",
+          borderTop: "4px solid #3b82f6",
+          borderRadius: "50%",
+          animation: "spin 1s linear infinite",
+          marginBottom: "16px"
+        }}
+      />
+      <p style={{
+        color: "#6b7280",
+        fontSize: "16px",
+        fontWeight: "500",
+        margin: 0,
+        textAlign: "center"
+      }}>
+        {message}
+      </p>
+      
+      <style jsx>{`
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+      `}</style>
+    </div>
+  );
+};
+
+// Page Loading Overlay Component
+const PageLoadingOverlay = ({ message = "טוען נתונים..." }) => {
+  return (
+    <div 
+      style={{
+        position: "fixed",
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: "rgba(255, 255, 255, 0.9)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        zIndex: 9999,
+        animation: "fadeIn 0.3s ease-out"
+      }}
+    >
+      <div style={{
+        backgroundColor: "white",
+        borderRadius: "16px",
+        padding: "40px",
+        boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
+        textAlign: "center",
+        maxWidth: "300px",
+        width: "90%"
+      }}>
+        <div
+          style={{
+            width: "60px",
+            height: "60px",
+            border: "4px solid #f3f4f6",
+            borderTop: "4px solid #3b82f6",
+            borderRadius: "50%",
+            animation: "spin 1s linear infinite",
+            margin: "0 auto 20px"
+          }}
+        />
+        <p style={{
+          color: "#374151",
+          fontSize: "18px",
+          fontWeight: "500",
+          margin: 0
+        }}>
+          {message}
+        </p>
+      </div>
+      
+      <style jsx>{`
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+      `}</style>
+    </div>
+  );
+};
+
 // Success Popup Component
 const SuccessPopup = ({ isVisible, onClose, message }) => {
   if (!isVisible) return null;
@@ -235,6 +344,11 @@ const PersonalArea = () => {
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [loading, setLoading] = useState(false);
 
+  // Loading states
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const [isUserLoading, setIsUserLoading] = useState(false);
+  const [isOrdersLoading, setIsOrdersLoading] = useState(false);
+
   const [orders, setOrders] = useState([]); // normalized orders
   const [apiError, setApiError] = useState("");
 
@@ -253,6 +367,7 @@ const PersonalArea = () => {
   /* ---------- user fetch ---------- */
   const fetchUser = async () => {
     try {
+      setIsUserLoading(true);
       const token = localStorage.getItem("authToken");
       if (!token) {
         navigate("/login");
@@ -273,12 +388,15 @@ const PersonalArea = () => {
     } catch (e) {
       console.error("user fetch error", e);
       return null;
+    } finally {
+      setIsUserLoading(false);
     }
   };
 
   /* ---------- orders fetch ---------- */
   const loadOrders = async () => {
     try {
+      setIsOrdersLoading(true);
       setApiError("");
       const token = localStorage.getItem("authToken");
       if (!token) return;
@@ -290,14 +408,20 @@ const PersonalArea = () => {
       console.error("orders fetch error", e);
       setApiError("Failed to load your orders.");
       setOrders([]);
+    } finally {
+      setIsOrdersLoading(false);
     }
   };
 
   /* ---------- init ---------- */
   useEffect(() => {
     (async () => {
+      setIsInitialLoading(true);
       const u = await fetchUser();
-      if (u?.id) await loadOrders();
+      if (u?.id) {
+        await loadOrders();
+      }
+      setIsInitialLoading(false);
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -403,6 +527,11 @@ const PersonalArea = () => {
     setSortDir("desc");
   };
 
+  // Show initial loading overlay
+  if (isInitialLoading) {
+    return <PageLoadingOverlay message="Loading your Profile.." />;
+  }
+
   /* ---------- UI ---------- */
   return (
     <div>
@@ -420,7 +549,7 @@ const PersonalArea = () => {
         <button
           data-tab="orders"
           onClick={() => setActiveTab("orders")}
-          className={activeTab === "orders" ? "active" : ""}   // stays the same
+          className={activeTab === "orders" ? "active" : ""}
         >
           Previous Orders
         </button>
@@ -440,7 +569,9 @@ const PersonalArea = () => {
           <>
             <h2 className="heading">User Details</h2>
             <div className="profileInfo">
-              {user ? (
+              {isUserLoading ? (
+                <LoadingSpinner size="medium" message="טוען פרטי משתמש..." />
+              ) : user ? (
                 <>
                   <p>
                     <strong>Username:</strong> {user.username}
@@ -456,7 +587,7 @@ const PersonalArea = () => {
                 </>
               ) : (
                 <div>
-                  <p>Loading user data...</p>
+                  <p>לא ניתן לטעון את פרטי המשתמש</p>
                 </div>
               )}
             </div>
@@ -539,111 +670,117 @@ const PersonalArea = () => {
               <div style={{ color: "crimson", marginBottom: 12 }}>{apiError}</div>
             )}
 
-            {/* Compact date + sort filters */}
-            <div
-              className="orders-filters"
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
-                gap: 8,
-                alignItems: "end",
-                marginBottom: 12,
-              }}
-            >
-              <div>
-                <label style={{ display: "block", fontSize: 12, color: "#666" }}>
-                  From
-                </label>
-                <input
-                  type="date"
-                  value={dateFrom}
-                  onChange={(e) => setDateFrom(e.target.value)}
-                  style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid #e5e7eb" }}
-                />
-              </div>
-              <div>
-                <label style={{ display: "block", fontSize: 12, color: "#666" }}>
-                  To
-                </label>
-                <input
-                  type="date"
-                  value={dateTo}
-                  onChange={(e) => setDateTo(e.target.value)}
-                  style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid #e5e7eb" }}
-                />
-              </div>
-              <div>
-                <label style={{ display: "block", fontSize: 12, color: "#666" }}>
-                  Sort
-                </label>
-                <select
-                  value={sortDir}
-                  onChange={(e) => setSortDir(e.target.value)}
-                  style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid #e5e7eb" }}
-                >
-                  <option value="desc">Newest first</option>
-                  <option value="asc">Oldest first</option>
-                </select>
-              </div>
-              <div>
-                <button
-                  onClick={clearFilters}
-                  className="view-details-button"
-                  style={{ width: "100%" }}
-                >
-                  Clear
-                </button>
-              </div>
-            </div>
-
-            <small style={{ color: "#666", display: "block", marginBottom: 8 }}>
-              Showing: {filteredOrders.length} of {orders.length}
-            </small>
-
-            {filteredOrders.length > 0 ? (
-              <>
-                <ul className="orders-grid">
-                  {currentPageOrders.map((o) => (
-                    <li key={o.id} className="order-card">
-                      <div className="top">
-                        <div className="route">
-                          <strong>{o.departure} → {o.destination}</strong>
-                        </div>
-                        <div className="price">{toUsd(o.totalPrice)}</div>
-                      </div>
-
-                      <div className="meta">
-                        <div><span className="lbl">Date</span>{o.createdAt ? new Date(o.createdAt).toLocaleDateString() : "—"}</div>
-                        <div><span className="lbl">Payment</span>{o.paymentMethod || "—"}</div>
-                        <div><span className="lbl">Flight</span>{o.flight}</div>
-                        <div><span className="lbl">Hotel</span>{o.hotel}</div>
-                      </div>
-
-                      <button className="view-details-button" onClick={() => handleViewOrderDetails(o)}>
-                        View Details
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-
-                <div className="pager">
-                  <button
-                    className="pager-btn"
-                    onClick={() => setPage(p => Math.max(1, p - 1))}
-                    disabled={page === 1}
-                  >‹ Prev</button>
-
-                  <span className="pager-status">Page {page} / {pageCount}</span>
-
-                  <button
-                    className="pager-btn"
-                    onClick={() => setPage(p => Math.min(pageCount, p + 1))}
-                    disabled={page === pageCount}
-                  >Next ›</button>
-                </div>
-              </>
+            {isOrdersLoading ? (
+              <LoadingSpinner size="large" message="טוען הזמנות קודמות..." />
             ) : (
-              <div><p>No orders match the selected dates.</p></div>
+              <>
+                {/* Compact date + sort filters */}
+                <div
+                  className="orders-filters"
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
+                    gap: 8,
+                    alignItems: "end",
+                    marginBottom: 12,
+                  }}
+                >
+                  <div>
+                    <label style={{ display: "block", fontSize: 12, color: "#666" }}>
+                      From
+                    </label>
+                    <input
+                      type="date"
+                      value={dateFrom}
+                      onChange={(e) => setDateFrom(e.target.value)}
+                      style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid #e5e7eb" }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: "block", fontSize: 12, color: "#666" }}>
+                      To
+                    </label>
+                    <input
+                      type="date"
+                      value={dateTo}
+                      onChange={(e) => setDateTo(e.target.value)}
+                      style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid #e5e7eb" }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: "block", fontSize: 12, color: "#666" }}>
+                      Sort
+                    </label>
+                    <select
+                      value={sortDir}
+                      onChange={(e) => setSortDir(e.target.value)}
+                      style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid #e5e7eb" }}
+                    >
+                      <option value="desc">Newest first</option>
+                      <option value="asc">Oldest first</option>
+                    </select>
+                  </div>
+                  <div>
+                    <button
+                      onClick={clearFilters}
+                      className="view-details-button"
+                      style={{ width: "100%" }}
+                    >
+                      Clear
+                    </button>
+                  </div>
+                </div>
+
+                <small style={{ color: "#666", display: "block", marginBottom: 8 }}>
+                  Showing: {filteredOrders.length} of {orders.length}
+                </small>
+
+                {filteredOrders.length > 0 ? (
+                  <>
+                    <ul className="orders-grid">
+                      {currentPageOrders.map((o) => (
+                        <li key={o.id} className="order-card">
+                          <div className="top">
+                            <div className="route">
+                              <strong>{o.departure} → {o.destination}</strong>
+                            </div>
+                            <div className="price">{toUsd(o.totalPrice)}</div>
+                          </div>
+
+                          <div className="meta">
+                            <div><span className="lbl">Date</span>{o.createdAt ? new Date(o.createdAt).toLocaleDateString() : "—"}</div>
+                            <div><span className="lbl">Payment</span>{o.paymentMethod || "—"}</div>
+                            <div><span className="lbl">Flight</span>{o.flight}</div>
+                            <div><span className="lbl">Hotel</span>{o.hotel}</div>
+                          </div>
+
+                          <button className="view-details-button" onClick={() => handleViewOrderDetails(o)}>
+                            View Details
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+
+                    <div className="pager">
+                      <button
+                        className="pager-btn"
+                        onClick={() => setPage(p => Math.max(1, p - 1))}
+                        disabled={page === 1}
+                      >‹ Prev</button>
+
+                      <span className="pager-status">Page {page} / {pageCount}</span>
+
+                      <button
+                        className="pager-btn"
+                        onClick={() => setPage(p => Math.min(pageCount, p + 1))}
+                        disabled={page === pageCount}
+                      >Next ›</button>
+                    </div>
+                  </>
+                ) : (
+                  <div><p>No orders match the selected dates.</p></div>
+                )}
+              </>
             )}
           </>
         )}
@@ -667,7 +804,21 @@ const PersonalArea = () => {
               className="newsletter-button"
               disabled={loading}
             >
-              {loading ? "Subscribing..." : "Subscribe"}
+              {loading ? (
+                <span style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}>
+                  <div style={{
+                    width: "16px",
+                    height: "16px",
+                    border: "2px solid transparent",
+                    borderTop: "2px solid #ffffff",
+                    borderRadius: "50%",
+                    animation: "spin 1s linear infinite"
+                  }} />
+                  loading...
+                </span>
+              ) : (
+                "Subscribe"
+              )}
             </button>
           </>
         )}
