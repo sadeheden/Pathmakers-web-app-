@@ -248,7 +248,6 @@ export async function resolveOrderRefs(req, res) {
       return (v._id || v.id || v.code || v.name || v.city || v.title || v.label || v.slug || "");
     };
 
-    // 1) extract
     const body = req.body || {};
     const departureRaw   = pick(body.departure)   || pick(body.departureCity)   || pick(body.departureCityId);
     const destinationRaw = pick(body.destination) || pick(body.destinationCity) || pick(body.destinationCityId);
@@ -264,7 +263,7 @@ export async function resolveOrderRefs(req, res) {
       });
     }
 
-    // 2) db/collections
+    // db
     const db = await getDb();
     const CitySing   = db.collection("city");
     const CityPlural = db.collection("cities");
@@ -276,41 +275,29 @@ export async function resolveOrderRefs(req, res) {
     const Flights = db.collection("flights");
     const Hotels  = db.collection("hotels");
 
-    console.log("🔍 [DEBUG] Database info:", {
-      collectionUsed: Cities.collectionName,
-      citySingCount: singCount,
-      cityPluralCount: plurCount
-    });
-
-    // 3) ensureCity (native, atomic)
+    // helpers
     const escape  = (s) => String(s).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     const slugify = (s) => String(s || "").trim().toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
 
     async function ensureCity(val, cityType) {
       const trimmed = String(val || "").trim();
-      console.log(`🔍 [DEBUG] ensureCity called for ${cityType}:`, trimmed);
       if (!trimmed) return null;
 
-      // fast path by _id
+      // by _id
       if (is24(trimmed)) {
         try {
           const byId = await Cities.findOne({ _id: new ObjectId(trimmed) });
-          if (byId) {
-            console.log(`✅ [SUCCESS] ${cityType} found by _id: ${byId._id}`);
-            return byId;
-          }
-          console.log(`⚠️ [WARN] No ${cityType} with _id ${trimmed}`);
+          if (byId) return byId;
         } catch (e) {
           console.log(`❌ [ERROR] ${cityType} _id lookup failed: ${e.message}`);
         }
       }
 
-      // atomic upsert by name/slug
       const slug = slugify(trimmed);
       const filter = {
         $or: [
-          { city: { $regex: new RegExp(`^${escape(trimmed)}$`, "i") } },
-          { name: { $regex: new RegExp(`^${escape(trimmed)}$`, "i") } },
+          { city: { $regex: `^${escape(trimmed)}$`, $options: "i" } },
+          { name: { $regex: `^${escape(trimmed)}$`, $options: "i" } },
           { slug },
         ],
       };
@@ -322,31 +309,21 @@ export async function resolveOrderRefs(req, res) {
 
       try {
         const resu = await Cities.findOneAndUpdate(filter, update, opts);
-        const doc = resu?.value || null;
-        if (doc) {
-          const created = !!resu?.lastErrorObject?.upserted;
-          console.log(
-            created ? `🆕 [CREATED] ${cityType}: ${doc.name} (${doc._id})`
-                    : `✅ [FOUND] ${cityType}: ${doc.name} (${doc._id})`
-          );
-          return doc;
+        const doc = resu?.value;
+        if (!doc) {
+          const insertRes = await Cities.insertOne({ city: trimmed, name: trimmed, slug, created_at: new Date(), updated_at: new Date() });
+          return await Cities.findOne({ _id: insertRes.insertedId });
         }
-        console.log(`❌ [ERROR] Upsert returned no value for ${cityType}`);
-        return null;
+        return doc;
       } catch (e) {
         console.log(`❌ [ERROR] Upsert failed for ${cityType}: ${e.message}`);
         return null;
       }
     }
 
-    // 4) resolve cities FIRST (OUTSIDE ensureCity)
+    // resolve cities
     const depCity = await ensureCity(departureRaw, "departure city");
     const dstCity = await ensureCity(destinationRaw, "destination city");
-
-    console.log("🔍 [DEBUG] City resolution results:", {
-      depCity: depCity ? depCity._id.toString() : null,
-      dstCity: dstCity ? dstCity._id.toString() : null,
-    });
 
     if (!depCity?._id) {
       return res.status(400).json({ message: "Departure city not found.", input: departureRaw });
@@ -355,110 +332,60 @@ export async function resolveOrderRefs(req, res) {
       return res.status(400).json({ message: "Destination city not found.", input: destinationRaw });
     }
 
-    // 5) flight — align with flights API (city doc with airlines[]; id: "<docId>_<idx>")
-    const escapeRx = (s) => String(s).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-
+    // flight
     const parseCompound = (val) => {
       if (typeof val !== "string") return { base: String(val || ""), idx: 0, hadIdx: false };
-      const m = val.match(/^([0-9a-fA-F]{24})[_-](\d+)$/); // support "_" or "-" input
+      const m = val.match(/^([0-9a-fA-F]{24})[_-](\d+)$/);
       if (m) return { base: m[1], idx: parseInt(m[2], 10) || 0, hadIdx: true };
       return { base: val.trim(), idx: 0, hadIdx: false };
     };
-
-    const airlineFromLabel = (s) => {
-      if (typeof s !== "string") return "";
-      // e.g. "All Nippon Airways - $850" -> "All Nippon Airways"
-      return s.split(" - ")[0].replace(/\([^)]*\)/g, "").trim();
-    };
-
+    const airlineFromLabel = (s) => typeof s === "string" ? s.split(" - ")[0].replace(/\([^)]*\)/g, "").trim() : "";
     const parsePrice = (s) => {
       if (typeof s !== "string") return null;
       const m = s.match(/[$€₪£]\s*([\d.,]+)/);
       if (!m) return null;
-      const n = Number(m[1].replace(/,/g, ""));
-      return Number.isFinite(n) ? n : null;
+      return Number(m[1].replace(/,/g, ""));
     };
 
     const parsedFlight = parseCompound(flightRaw);
     let flightDoc = null;
     let flightIndex = parsedFlight.idx;
 
-    console.log("🔍 [DEBUG] Flight resolution:", { parsedFlight, flightRaw });
-
     if (/^[0-9a-fA-F]{24}$/.test(parsedFlight.base)) {
-      // If client sent "<docId>_<idx>", fetch the docId and use idx
       flightDoc = await Flights.findOne({ _id: new ObjectId(parsedFlight.base) });
       if (!parsedFlight.hadIdx) flightIndex = 0;
     } else {
-      // Fuzzy by city + airline name (and optional price)
-      const dstCityName =
-        (dstCity && (dstCity.city || dstCity.name)) ? String(dstCity.city || dstCity.name).trim() : "";
-
+      const dstCityName = String(dstCity.city || dstCity.name).trim();
       const airlineName = airlineFromLabel(parsedFlight.base);
       const priceVal = parsePrice(flightRaw);
 
-      // 1) find the city flights document by city (case-insensitive)
-      flightDoc = await Flights.findOne({
-        city: { $regex: new RegExp(`^${escapeRx(dstCityName)}$`, "i") }
-      });
+      flightDoc = await Flights.findOne({ city: { $regex: new RegExp(`^${escape(dstCityName)}$`, "i") } });
 
-      // 2) if found, select airline index by name/price
       if (flightDoc?.airlines?.length) {
-        let idx = flightDoc.airlines.findIndex(a =>
-          new RegExp(`^${escapeRx(airlineName)}$`, "i").test(a?.name || "")
-        );
-
-        // if exact name didn’t match, try contains
-        if (idx < 0) {
-          idx = flightDoc.airlines.findIndex(a =>
-            new RegExp(escapeRx(airlineName), "i").test(a?.name || "")
-          );
-        }
-
-        // if still not found, try same price
-        if (idx < 0 && priceVal != null) {
-          idx = flightDoc.airlines.findIndex(a => Number(a?.price) === priceVal);
-        }
-
-        flightIndex = idx >= 0 ? idx : 0; // fallback: first airline
+        let idx = flightDoc.airlines.findIndex(a => new RegExp(`^${escape(airlineName)}$`, "i").test(a?.name || ""));
+        if (idx < 0) idx = flightDoc.airlines.findIndex(a => new RegExp(escape(airlineName), "i").test(a?.name || ""));
+        if (idx < 0 && priceVal != null) idx = flightDoc.airlines.findIndex(a => Number(a?.price) === priceVal);
+        flightIndex = idx >= 0 ? idx : 0;
       }
     }
 
-    // If we still didn't find any doc for that city, try a soft fallback (don't 400)
     if (!flightDoc) {
-      console.log("⚠️ [WARN] No flights doc for destination city; picking any flights doc as fallback");
       flightDoc = await Flights.findOne({});
       flightIndex = 0;
     }
 
-    console.log("🔍 [DEBUG] Flight doc found:", !!flightDoc);
-    if (!flightDoc?._id) {
-      return res.status(400).json({ message: "Could not resolve flight.", input: flightRaw });
-    }
-
-    // IMPORTANT: flights API expects underscore between docId and index
     const flightCompoundId = `${String(flightDoc._id)}_${flightIndex}`;
 
-    // 6) hotel
+    // hotel
     const parsedHotel = parseCompound(hotelRaw);
     let hotelDoc = null;
     let hotelIndex = parsedHotel.idx;
-
-    console.log("🔍 [DEBUG] Hotel resolution:", { parsedHotel, hotelRaw });
 
     if (is24(parsedHotel.base)) {
       hotelDoc = await Hotels.findOne({ _id: new ObjectId(parsedHotel.base) });
       if (!parsedHotel.hadIdx) hotelIndex = 0;
     } else if (parsedHotel.base) {
-      const sanitize = (s) => {
-        if (typeof s !== "string") return "";
-        let t = s.trim();
-        t = t.split(" - ")[0];
-        t = t.replace(/\([^)]*\)/g, "");
-        t = t.replace(/[$€₪£]\s*\d[\d.,]*/g, "");
-        return t.trim().replace(/\s+/g, " ");
-      };
-      const needle = sanitize(parsedHotel.base);
+      const needle = parsedHotel.base.split(" - ")[0].replace(/\([^)]*\)/g, "").trim();
       hotelDoc = await Hotels.findOne({
         $and: [
           { destination_city_id: String(dstCity._id) },
@@ -468,18 +395,14 @@ export async function resolveOrderRefs(req, res) {
     }
 
     if (!hotelDoc && dstCity._id) {
-      console.log("🔍 [DEBUG] No specific hotel found, looking for any hotel in destination");
       hotelDoc = await Hotels.findOne({ destination_city_id: String(dstCity._id) });
       hotelIndex = 0;
     }
 
-    console.log("🔍 [DEBUG] Hotel doc found:", !!hotelDoc);
-
-    // 7) respond
     const ids = {
       departureCityId: String(depCity._id),
       destinationCityId: String(dstCity._id),
-      flightId: flightCompoundId, // <-- underscore, matches flights API
+      flightId: flightCompoundId,
       hotelId: hotelDoc?._id ? `${String(hotelDoc._id)}-${hotelIndex}` : String(dstCity._id),
     };
 
@@ -488,7 +411,6 @@ export async function resolveOrderRefs(req, res) {
 
   } catch (err) {
     console.error("❌ [ERROR] resolveOrderRefs error:", err);
-    console.error("❌ [ERROR] Stack trace:", err.stack);
     return res.status(500).json({
       message: "Internal Server Error",
       error: process.env.NODE_ENV === "development" ? err.message : undefined
