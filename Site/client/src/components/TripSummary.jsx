@@ -1,6 +1,6 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import { calculateTotalPrice } from "../utils/travelUtils.jsx";
+import { calculateTotalPrice,downloadReceipt  } from "../utils/travelUtils.jsx";
 
 const TripSummary = ({
   userResponses,
@@ -98,7 +98,7 @@ const handleDownloadReceipt = async () => {
         <button
           type="button"
           className="btn btn-light"
-          onClick={handleDownloadReceipt}
+       onClick={() => downloadReceipt(sessionStorage.getItem("lastOrderId"))}
           aria-label="Download receipt"
         >
           Download Receipt

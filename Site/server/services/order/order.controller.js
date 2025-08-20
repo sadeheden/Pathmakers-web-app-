@@ -1,4 +1,5 @@
 import Order from './order.model.js';
+import path from "path";
 import pdfkit from "pdfkit";
 import City from "../cities/cities.model.js";
 import Flight from "../flights/flights.model.js";
@@ -757,57 +758,158 @@ if (storedAttractions.length > 0) {
     });
   }
 }
-// order.controller.js
+
+// ==== Brand/theme (tweak to your colors/assets) ====
+const BRAND = {
+  name: "AI Tripper",
+  primary: "#111827", // near-black header/title text
+  accent:  "#0ea5e9", // cyan accent (like TransferWise blue)
+  text:    "#111827",
+  muted:   "#6b7280",
+  line:    "#e5e7eb",
+  footerBg:"#f8fafc",
+  // Optional: put a real logo file and point to it
+  // logoPath: path.resolve("assets/logo.png"),
+  // Optional: for full Unicode, register a TTF (see font note below)
+  // fontPath: path.resolve("assets/fonts/NotoSans-Regular.ttf"),
+};
+
 export async function getOrderReceiptPdf(req, res) {
   try {
+    console.log("🧾 getOrderReceiptPdf: START", req.params?.id); // <-- runtime proof
+
     const { id } = req.params;
     if (!id || !ObjectId.isValid(id)) {
       return res.status(400).json({ message: "Invalid order id" });
     }
 
-    const db = await getDb();
+    const db = await getDb(); // you already have this helper in this file
     const order = await db.collection("orders").findOne({ _id: new ObjectId(id) });
     if (!order) return res.status(404).json({ message: "Order not found" });
 
-    // Pull readable fields (fallbacks if not stored)
-    const dep = order.departure_city_name || order.departure_city_id || "—";
-    const dst = order.destination_city_name || order.destination_city_id || "—";
-    const flt = order.flight_name || order.flight_id || "—";
-    const htl = order.hotel_name || order.hotel_id || "—";
-    const att = Array.isArray(order.attraction_names) && order.attraction_names.length
+    // values (same fallbacks as before)
+    const dep   = order.departure_city_name || order.departure_city_id || "—";
+    const dst   = order.destination_city_name || order.destination_city_id || "—";
+    const flt   = order.flight_name || order.flight_id || "—";
+    const htl   = order.hotel_name || order.hotel_id || "—";
+    const att   = Array.isArray(order.attraction_names) && order.attraction_names.length
       ? order.attraction_names.join(", ")
       : (Array.isArray(order.attractions) ? order.attractions.join(", ") : "—");
-    const pay = order.payment_method || "—";
-    const tran = order.transportation || "—";
-    const total = Number(order.total_price ?? 0).toFixed(2);
+    const pay   = order.payment_method || "—";
+    const tran  = order.transportation || "—";
+    const total = Number(order.total_price ?? 0);
 
     res.setHeader("Content-Type", "application/pdf");
-    res.setHeader("Content-Disposition", `attachment; filename="receipt-${String(dst).toLowerCase().replace(/\s+/g, "-")}.pdf"`);
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="receipt-${String(dst).toLowerCase().replace(/\s+/g, "-")}.pdf"`
+    );
+    res.setHeader("X-Receipt-Design", "v2"); // <-- check this in Network tab
 
-    const doc = new pdfkit({ size: "A4", margin: 50 });
+    const doc = new pdfkit({ size: "A4", margin: 56 });
+    doc.on("error", (e) => {
+      console.error("PDF stream error:", e);
+      if (!res.headersSent) res.status(500).end("Failed to generate PDF");
+    });
     doc.pipe(res);
 
-    doc.fontSize(20).text("AI Tripper — Receipt", { align: "center" });
-    doc.moveDown(0.5).fontSize(10).text(`Date: ${new Date().toLocaleString()}`, { align: "center" });
-    doc.moveDown();
+    // font
+    doc.font("Helvetica");
 
-    const line = () => doc.moveTo(50, doc.y).lineTo(545, doc.y).strokeColor("#cccccc").stroke().moveDown(0.5);
-    line();
+    const left = doc.page.margins.left;
+    const right = doc.page.width - doc.page.margins.right;
 
-    doc.fontSize(12);
-    doc.text(`From: ${dep}`);
-    doc.text(`To: ${dst}`);
-    doc.text(`Flight: ${flt}`);
-    doc.text(`Hotel: ${htl}`);
-    doc.text(`Attractions: ${att}`);
-    doc.text(`Transportation: ${tran}`);
-    doc.text(`Payment Method: ${pay}`);
-    line();
-    doc.fontSize(14).text(`Total: $${total}`, { align: "right" });
+    // ===== BIG CYAN HEADER BAR (super obvious) =====
+    const headerHeight = 64;
+    doc.save()
+      .rect(0, 0, doc.page.width, headerHeight)
+      .fill("#0ea5e9")
+      .restore();
+
+    // Title in header
+    doc.fillColor("#ffffff").fontSize(22)
+      .text("Transfer Confirmation", left, 20, { width: right - left, align: "left" });
+
+    // Design tag (top-right)
+    doc.fillColor("#ffffff").fontSize(10)
+      .text("DESIGN V2", right - 90, 22, { width: 80, align: "right" });
+
+    // Move below header
+    doc.y = headerHeight + 20;
+
+    // helper lines
+    const hr = () => {
+      doc.moveTo(left, doc.y).lineTo(right, doc.y).lineWidth(1).strokeColor("#e5e7eb").stroke();
+      doc.moveDown(0.6);
+    };
+    const twoCol = (label, value, xLabel = left, xValue = left + 160) => {
+      const y = doc.y;
+      doc.fillColor("#6b7280").fontSize(10).text(label, xLabel, y);
+      doc.fillColor("#111827").fontSize(11).text(String(value ?? "—"), xValue, y);
+      doc.moveDown(0.2);
+    };
+    const section = (title) => {
+      doc.moveDown(1.0);
+      doc.fillColor("#111827").fontSize(12).text(title);
+      hr();
+    };
+
+    // Meta (dates/ids)
+    const createdAt = new Date(order.created_at || Date.now());
+    twoCol("Funded", createdAt.toLocaleDateString());
+    twoCol("Paid out", createdAt.toLocaleDateString());
+    twoCol("Transfer", `#${String(order._id).slice(-8)}`);
+    twoCol("Membership", order.membership_id || "—");
+    hr();
+
+    // Transfer overview (left / right columns)
+    section("Transfer overview");
+    const startY = doc.y;
+    // left column
+    twoCol("Amount paid", `$${total.toFixed(2)}`, left, left + 160);
+    twoCol("Fee", `$0.00`, left, left + 160);
+    twoCol("Amount converted", `$${total.toFixed(2)}`, left, left + 160);
+
+    // right column aligned to top row
+    const col2X = left + 300;
+    doc.y = startY;
+    twoCol("Exchange rate", "1 USD = 1.00 USD", col2X, col2X + 160);
+    twoCol("Converted and sent to", `$${total.toFixed(2)}`, col2X, col2X + 160);
+    hr();
+
+    // Sent to
+    section("Sent to");
+    twoCol("Name", order.beneficiary_name || dst);
+    twoCol("Reference", order.reference || flt);
+    twoCol("Account details", order.beneficiary_account || "—");
+    hr();
+
+    // Paid out from
+    section("Paid out from");
+    twoCol("Name", `AI Tripper on behalf of ${order.user_name || "Customer"}`);
+    twoCol("Delivered via", "Local bank transfer");
+    twoCol("Banking partner", order.banking_partner || "—");
+    twoCol("Banking partner reference", order.banking_partner_ref || "—");
+
+    // Total (big, right-aligned)
+    doc.moveDown(1.0);
+    doc.fillColor("#111827").fontSize(16)
+      .text(`Total: $${total.toFixed(2)}`, left, doc.y, { width: right - left, align: "right" });
+
+    // Footer band (light gray)
+    doc.moveDown(2);
+    const footTop = doc.y + 12;
+    const footH = 60;
+    doc.save().rect(0, footTop, doc.page.width, footH).fill("#f8fafc").restore();
+    doc.fillColor("#6b7280").fontSize(9)
+      .text(
+        `Generated ${new Date().toLocaleString()} — Thank you for traveling with us.`,
+        left, footTop + 18, { width: right - left, align: "center" }
+      );
 
     doc.end();
   } catch (err) {
     console.error("❌ PDF generation error:", err);
-    res.status(500).json({ message: "Failed to generate PDF" });
+    if (!res.headersSent) res.status(500).json({ message: "Failed to generate PDF" });
   }
 }

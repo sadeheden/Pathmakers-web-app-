@@ -1,3 +1,5 @@
+import { API_BASE } from "../config/api.js";
+
 export const calculateTotalPrice = (userResponses) => {
     let total = 0;
 
@@ -48,3 +50,34 @@ export const cleanId = (id) => {
     
     return null;
 };
+// src/utils/receiptUtils.js
+export async function downloadReceipt(orderId) {
+  const token =
+    localStorage.getItem("authToken") ||
+    localStorage.getItem("token") ||
+    localStorage.getItem("jwt");
+
+  if (!token) {
+    alert("Please log in first");
+    return;
+  }
+
+  const res = await fetch(`${API_BASE}/api/order/${orderId}/receipt.pdf`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`Failed (${res.status}): ${text}`);
+  }
+
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `receipt-${orderId}.pdf`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
