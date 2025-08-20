@@ -757,3 +757,57 @@ if (storedAttractions.length > 0) {
     });
   }
 }
+// order.controller.js
+export async function getOrderReceiptPdf(req, res) {
+  try {
+    const { id } = req.params;
+    if (!id || !ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "Invalid order id" });
+    }
+
+    const db = await getDb();
+    const order = await db.collection("orders").findOne({ _id: new ObjectId(id) });
+    if (!order) return res.status(404).json({ message: "Order not found" });
+
+    // Pull readable fields (fallbacks if not stored)
+    const dep = order.departure_city_name || order.departure_city_id || "—";
+    const dst = order.destination_city_name || order.destination_city_id || "—";
+    const flt = order.flight_name || order.flight_id || "—";
+    const htl = order.hotel_name || order.hotel_id || "—";
+    const att = Array.isArray(order.attraction_names) && order.attraction_names.length
+      ? order.attraction_names.join(", ")
+      : (Array.isArray(order.attractions) ? order.attractions.join(", ") : "—");
+    const pay = order.payment_method || "—";
+    const tran = order.transportation || "—";
+    const total = Number(order.total_price ?? 0).toFixed(2);
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename="receipt-${String(dst).toLowerCase().replace(/\s+/g, "-")}.pdf"`);
+
+    const doc = new pdfkit({ size: "A4", margin: 50 });
+    doc.pipe(res);
+
+    doc.fontSize(20).text("AI Tripper — Receipt", { align: "center" });
+    doc.moveDown(0.5).fontSize(10).text(`Date: ${new Date().toLocaleString()}`, { align: "center" });
+    doc.moveDown();
+
+    const line = () => doc.moveTo(50, doc.y).lineTo(545, doc.y).strokeColor("#cccccc").stroke().moveDown(0.5);
+    line();
+
+    doc.fontSize(12);
+    doc.text(`From: ${dep}`);
+    doc.text(`To: ${dst}`);
+    doc.text(`Flight: ${flt}`);
+    doc.text(`Hotel: ${htl}`);
+    doc.text(`Attractions: ${att}`);
+    doc.text(`Transportation: ${tran}`);
+    doc.text(`Payment Method: ${pay}`);
+    line();
+    doc.fontSize(14).text(`Total: $${total}`, { align: "right" });
+
+    doc.end();
+  } catch (err) {
+    console.error("❌ PDF generation error:", err);
+    res.status(500).json({ message: "Failed to generate PDF" });
+  }
+}

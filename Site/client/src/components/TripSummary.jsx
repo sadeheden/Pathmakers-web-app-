@@ -24,49 +24,42 @@ const TripSummary = ({
 
   const textOrName = (v) => (typeof v === "string" ? v : v?.name);
 
-  const handleDownloadReceipt = () => {
-    const lines = [
-      "AI Tripper — Receipt",
-      `Date: ${new Date().toLocaleString()}`,
-      "",
-      `Departure: ${textOrName(dep) || "—"}`,
-      `Destination: ${textOrName(dst) || "—"}`,
-      `Flight: ${textOrName(flight) || "—"}`,
-      `Hotel: ${textOrName(hotel) || "—"}`,
-      `Attractions: ${
-        Array.isArray(attractions)
-          ? attractions.map((a) => textOrName(a) || a).join(", ")
-          : textOrName(attractions) || "—"
-      }`,
-      `Transportation: ${transport || "—"}`,
-      `Payment method: ${payMethod || "—"}`,
-      "",
-      `Total: $${total}`,
-    ].join("\r\n"); // better for Windows viewers
+ // TripSummary.jsx
+const handleDownloadReceipt = async () => {
+  const orderId = sessionStorage.getItem("lastOrderId");
+  if (!orderId) {
+    alert("No order id found. Please create an order first.");
+    return;
+  }
 
-    try {
-      const blob = new Blob([lines], { type: "text/plain;charset=utf-8" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      const fileSlug = (textOrName(dst) || "trip")
-        .toString()
-        .toLowerCase()
-        .replace(/\s+/g, "-");
+  const token =
+    localStorage.getItem("authToken") ||
+    localStorage.getItem("token") ||
+    localStorage.getItem("jwt");
 
-      a.href = url;
-      a.setAttribute("download", `receipt-${fileSlug}.txt`);
-      // Safari fallback
-      a.setAttribute("target", "_blank");
+  try {
+    const resp = await fetch(`/api/order/${orderId}/receipt.pdf`, {
+      method: "GET",
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
 
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      setTimeout(() => URL.revokeObjectURL(url), 0);
-    } catch (e) {
-      console.error("Receipt download failed:", e);
-      alert("Could not download the receipt. Please try again.");
-    }
-  };
+    const blob = await resp.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    const fileSlug = (textOrName(dst) || "trip").toString().toLowerCase().replace(/\s+/g, "-");
+    a.href = url;
+    a.download = `receipt-${fileSlug}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 0);
+  } catch (e) {
+    console.error("Receipt download failed:", e);
+    alert("Could not download the PDF receipt. Please try again.");
+  }
+};
+
 
   const handleGoToPersonalArea = () => {
     // Ensure this path exists in your <Routes>. Change personalAreaPath if needed.
