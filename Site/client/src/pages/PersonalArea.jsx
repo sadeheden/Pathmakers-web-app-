@@ -90,11 +90,16 @@ const parseAnyDate = (v) => {
 };
 
 const normalizeOrder = (o) => {
-  // id (supports ObjectId, string, or Mongo export)
-  const id =
-    typeof o?._id === "object"
-      ? (o._id?.$oid ?? String(o._id))
-      : (o._id ?? o.id);
+  // id (handles ObjectId, {$oid}, strings)
+  const id = (() => {
+    const raw = o?._id ?? o?.id ?? null;
+    if (!raw) return null;
+    if (typeof raw === "object") {
+      if (raw.$oid) return raw.$oid;
+      try { return String(raw); } catch { return null; }
+    }
+    return String(raw);
+  })();
 
   const departure =
     o.departureCityName || o.departure_city_name || o.departure || o.departure_city_id || "—";
@@ -113,9 +118,9 @@ const normalizeOrder = (o) => {
     (Array.isArray(o.attractions) && o.attractions) ||
     [];
 
-  // choose the "created" source (order of preference)
+  // robust date handling
   const createdRaw = o.created_at ?? o.createdAt ?? o.bookingDate ?? o.tripDate ?? null;
-  const { ts: createdAtTs, iso: createdAt } = parseAnyDate(createdRaw);
+  const { ts: createdAtTs, iso: createdAtISO } = parseAnyDate(createdRaw);
 
   const totalPrice = Number(o.total_price ?? o.totalPrice ?? 0);
 
@@ -130,8 +135,8 @@ const normalizeOrder = (o) => {
     transportation: o.transportation || "—",
     paymentMethod: o.payment_method || o.paymentMethod || "—",
     totalPrice,
-    createdAt,   // ISO for display
-    createdAtTs, // number (ms) for sort/filter
+    createdAt: createdAtISO,     // string for display
+    createdAtTs,                 // number for filtering/sorting
     source: o.cityName ? "orders2" : "order",
   };
 };
@@ -496,24 +501,40 @@ const fetchUser = async () => {
 
 
   /* ---------- orders fetch ---------- */
-  const loadOrders = async () => {
-    try {
-      setIsOrdersLoading(true);
-      setApiError("");
-      const token = localStorage.getItem("authToken");
-      if (!token) return;
-      const rawOrders = await fetchMyOrders(token);
+const loadOrders = async () => {
+  try {
+    setIsOrdersLoading(true);
+    setApiError("");
+    const token = localStorage.getItem("authToken");
+    if (!token) return;
 
-      const normalized = rawOrders.map(normalizeOrder);
-      setOrders(normalized);
-    } catch (e) {
-      console.error("orders fetch error", e);
-      setApiError("Failed to load your orders.");
-      setOrders([]);
-    } finally {
-      setIsOrdersLoading(false);
+    const rawOrders = await fetchMyOrders(token);
+
+    // normalize
+    const normalized = rawOrders.map(normalizeOrder);
+
+    // dedupe by a composite key
+    const makeKey = (o) =>
+      `${o.source || "order"}:${o.id || o.raw?.orderNumber || o.createdAt || Math.random()}`;
+
+    const map = new Map();
+    for (const o of normalized) {
+      const k = makeKey(o);
+      if (!map.has(k)) map.set(k, o);
     }
-  };
+    const deduped = Array.from(map.values());
+
+    setOrders(deduped);
+  } catch (e) {
+    console.error("orders fetch error", e);
+    setApiError("Failed to load your orders.");
+    setOrders([]);
+  } finally {
+    setIsOrdersLoading(false);
+  }
+};
+
+
 // inside PersonalArea.jsx > when selectedOrder opens:
 // ✅ keep as-is, or drop the onlyIds check if you want to always resolve
 useEffect(() => {
@@ -869,9 +890,11 @@ useEffect(() => {
 
                 {filteredOrders.length > 0 ? (
                   <>
-                    <ul className="orders-grid">
-                      {currentPageOrders.map((o) => (
-                        <li key={o.id} className="order-card">
+              <ul className="orders-grid">
+                {currentPageOrders.map((o, index) => (
+                  <li
+                    key={`${o.source || 'order'}:${o.id || o.raw?.orderNumber || o.createdAt || index}`}
+                    className="order-card">
                           <div className="top">
                             <div className="route">
                               <strong>{o.departure} → {o.destination}</strong>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import "../assets/styles/chat.css";
 
@@ -18,6 +18,8 @@ const TravelPlannerApp = () => {
   const location = useLocation();
   const navigate = useNavigate();
 // Chat.jsx
+const savingOrderRef = useRef(false);
+
 const [toast, setToast] = useState(null); // { type: 'success' | 'error', text: string }
 
   // progress
@@ -287,6 +289,7 @@ console.log("🔍 Departure value:", userResponses[depKey]);
 console.log("🔍 Looking for destination key:", dstKey);
 console.log("🔍 Destination exists?", dstKey in userResponses);
 console.log("🔍 Destination value:", userResponses[dstKey]);
+const looksLikeObjectId = (v) => typeof v === "string" && /^[0-9a-fA-F]{24}$/.test(v);
 
 console.log("=== DEBUG END ===");
     // 1) Extract values from userResponses
@@ -296,10 +299,31 @@ console.log("=== DEBUG END ===");
     const htl = getVal("Select your hotel");
 
     console.log("🔍 Extracted values:", { dep, dst, flt, htl });
-
+const depName = getCityName(dep, loadedCities);
+const dstName = getCityName(dst, loadedCities);
     // 2) IMPROVED: Extract meaningful values for the resolve endpoint
  // Chat.jsx (fix)
 // --- helpers used to build the /resolve body ---
+const getCityName = (city, fallbackList = []) => {
+  if (!city) return "";
+  if (typeof city === "string") {
+    // if it's a plain name, use it; if it's an id, try to map via fallbackList
+    if (!looksLikeObjectId(city)) return city.trim();
+    const hit = Array.isArray(fallbackList)
+      ? fallbackList.find(c => String(c._id || c.id) === city)
+      : null;
+    return (hit?.city || hit?.name || hit?.label || hit?.title || "").trim();
+  }
+    return (
+    city.city ||
+    city.name ||
+    city.cityName ||
+    city.label ||
+    city.title ||
+    city.slug ||
+    ""
+  ).trim();
+};
 
 const extractCityValue = (city) => {
   if (!city) return "";
@@ -316,7 +340,11 @@ const extractCityValue = (city) => {
     ""
   );
 };
-
+const getCityId = (city) => {
+  if (!city || typeof city !== "object") return null;
+  const s = String(city._id || city.id || "").trim();
+  return looksLikeObjectId(s) ? s : null;
+};
 const extractFlightValue = (flight) => {
   if (!flight) return "";
   if (typeof flight === "string") return flight.trim();
@@ -349,11 +377,19 @@ const extractHotelValue = (hotel) => {
 
     // 3) Build resolve request body with cleaned values
 const resolveBody = {
-  departure:   extractCityValue(dep),
-  destination: extractCityValue(dst),
-  flight:      extractFlightValue(flt),
-  hotel:       extractHotelValue(htl),
+  departure: depName,                // <-- always a name
+  destination: dstName,              // <-- always a name
+  departureCityId: getCityId(dep),   // optional fast-path
+  destinationCityId: getCityId(dst), // optional fast-path
+  flight: extractFlightValue(flt),
+  hotel:  extractHotelValue(htl),
 };
+
+console.log("📤 Sending to resolve endpoint:", resolveBody);
+
+if (!resolveBody.departure || !resolveBody.destination) {
+  throw new Error("Missing departure or destination city. Please select cities.");
+}
 
 
     console.log("📤 Sending to resolve endpoint:", resolveBody);
@@ -429,24 +465,20 @@ const resolveBody = {
 const payload = {
   departureCityId: ids.departureCityId,
   destinationCityId: ids.destinationCityId,
-  destinationCityName: destinationCityName,   // <-- add this if you have it
   flightId: ids.flightId,
   hotelId: ids.hotelId,
 
-  // trigger backend to include ALL attractions for the destination city:
   selectAllCityAttractions: true,
+  attractionNames: [],
+  attractions: [],
 
-  // IMPORTANT: leave these empty/omit so selectAll takes effect:
-  attractionNames: [],        // or just omit this key entirely
-  attractions: [],            // optional; omit if you’re not sending specific IDs
-
-  // rest
   flightName: getDisplayName(flt) || null,
   hotelName: getDisplayName(htl) || null,
   transportation,
   paymentMethod,
   totalPrice,
 };
+
 
 
     console.log("📤 Sending to create order:", payload);
