@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import "../assets/styles/chat.css";
 
@@ -18,6 +18,8 @@ const TravelPlannerApp = () => {
   const location = useLocation();
   const navigate = useNavigate();
 // Chat.jsx
+const savingOrderRef = useRef(false);
+
 const [toast, setToast] = useState(null); // { type: 'success' | 'error', text: string }
 
   // progress
@@ -242,176 +244,119 @@ if (token) {
   onClose={() => setIsPaymentModalOpen(false)}
 // FIXED Payment Success Handler in Chat.jsx
 onPaymentSuccess={async ({ attractionIds, attractionNames } = {}) => {
-  console.log("💳 Payment success called with:", { attractionIds, attractionNames });
-  
-  const token =
-    localStorage.getItem("authToken") ||
-    localStorage.getItem("token") ||
-    localStorage.getItem("jwt");
-
-  if (!token) {
-    alert("You must be logged in to save the order.");
+  // prevent duplicate saves in the same session
+  if (sessionStorage.getItem("orderSaved") === "1") {
+    setToast({ type: "success", text: "Order already saved." });
+    setTimeout(() => setToast(null), 2000);
     return;
   }
-
-  // Build headers once
-  const headers = { "Content-Type": "application/json" };
-  if (token) headers.Authorization = `Bearer ${token}`;
-
-  const getVal = (prompt) => userResponses?.[prompt];
+  // prevent concurrent double-clicks
+  if (savingOrderRef.current) return;
+  savingOrderRef.current = true;
 
   try {
-    console.log("🔍 Current userResponses:", userResponses);
-// ADD THIS AT THE VERY BEGINNING OF onPaymentSuccess function
-console.log("=== DEBUG START ===");
-console.log("📋 All userResponses keys:", Object.keys(userResponses));
+    const token =
+      localStorage.getItem("authToken") ||
+      localStorage.getItem("token") ||
+      localStorage.getItem("jwt");
 
-// Check each key one by one
-Object.keys(userResponses).forEach(key => {
-  const value = userResponses[key];
-  console.log(`📋 "${key}":`, typeof value, value);
-  
-  if (value && typeof value === 'object') {
-    console.log(`   📋 Object keys for "${key}":`, Object.keys(value));
-  }
-});
+    if (!token) {
+      alert("You must be logged in to save the order.");
+      return;
+    }
 
-// Specifically look for departure/destination
-const depKey = "What is your departure city?";
-const dstKey = "What is your destination city?";
+    const headers = { "Content-Type": "application/json" };
+    if (token) headers.Authorization = `Bearer ${token}`;
 
-console.log("🔍 Looking for departure key:", depKey);
-console.log("🔍 Departure exists?", depKey in userResponses);
-console.log("🔍 Departure value:", userResponses[depKey]);
+    const getVal = (prompt) => userResponses?.[prompt];
 
-console.log("🔍 Looking for destination key:", dstKey);
-console.log("🔍 Destination exists?", dstKey in userResponses);
-console.log("🔍 Destination value:", userResponses[dstKey]);
+    // ---------- helpers (declare BEFORE use) ----------
+   const looksLikeObjectId = (v) => typeof v === "string" && /^[0-9a-fA-F]{24}$/.test(v);
+const getCityIdFromAny = (city) => {
+  if (!city) return null;
+  if (typeof city === "string") return looksLikeObjectId(city) ? city : null;
+  const s = String(city._id || city.id || "").trim();
+  return looksLikeObjectId(s) ? s : null;
+};
 
-console.log("=== DEBUG END ===");
-    // 1) Extract values from userResponses
-    const dep = getVal("What is your departure city?");
-    const dst = getVal("What is your destination city?");
-    const flt = getVal("Select your flight");
-    const htl = getVal("Select your hotel");
-
-    console.log("🔍 Extracted values:", { dep, dst, flt, htl });
-
-    // 2) IMPROVED: Extract meaningful values for the resolve endpoint
- // Chat.jsx (fix)
-// --- helpers used to build the /resolve body ---
-
-const extractCityValue = (city) => {
+// returns a displayable city name when you already have one
+const getCityNameFromAny = (city) => {
   if (!city) return "";
   if (typeof city === "string") return city.trim();
   return (
-    city._id ||        // prefer ObjectId
-    city.id ||
-    city.city ||
-    city.name ||
-    city.cityName ||
-    city.label ||
-    city.title ||
-    city.slug ||
-    ""
-  );
+    city.city || city.name || city.cityName ||
+    city.label || city.title || city.slug || ""
+  ).trim();
 };
 
-const extractFlightValue = (flight) => {
-  if (!flight) return "";
-  if (typeof flight === "string") return flight.trim();
-  return (
-    flight.compoundId ||
-    flight.code ||
-    flight.name ||
-    flight.airline ||
-    flight.id ||
-    flight._id ||
-    ""
-  );
+// fetch city by name to get its canonical id from your backend
+const fetchCityIdByName = async (name, headers) => {
+  const res = await fetch(`${API_BASE}/api/cities/name/${encodeURIComponent(name)}`, { headers });
+  if (!res.ok) return null; // treat not-found as null; we'll error later if needed
+  const data = await res.json();
+  // adapt this to your controller's payload shape if different
+  const doc = data?.data || data?.city || data; 
+  const id = String(doc?._id || doc?.id || "").trim();
+  return looksLikeObjectId(id) ? id : null;
 };
-
-const extractHotelValue = (hotel) => {
-  if (!hotel) return "";
-  if (typeof hotel === "string") return hotel.trim();
-  return (
-    hotel.compoundId ||
-    hotel._id ||
-    hotel.id ||
-    hotel.name ||
-    hotel.hotelName ||
-    hotel.label ||
-    hotel.title ||
-    ""
-  );
-};
-
-
-    // 3) Build resolve request body with cleaned values
-const resolveBody = {
-  departure:   extractCityValue(dep),
-  destination: extractCityValue(dst),
-  flight:      extractFlightValue(flt),
-  hotel:       extractHotelValue(htl),
-};
-
-
-    console.log("📤 Sending to resolve endpoint:", resolveBody);
-
-    // 4) Validate we have required data before sending
-    if (!resolveBody.departure || !resolveBody.destination) {
-      console.error("❌ Missing required city data:", {
-        departure: resolveBody.departure,
-        destination: resolveBody.destination,
-        originalDep: dep,
-        originalDst: dst
-      });
-      throw new Error("Missing departure or destination city. Please go back and select cities.");
-    }
-
-    // 5) Call resolve endpoint
-    const r1 = await fetch(`${API_BASE}/api/order/resolve`, {
-      method: "POST",
-      headers,
-      body: JSON.stringify(resolveBody),
-    });
-
-    if (!r1.ok) {
-      const errorText = await r1.text();
-      console.error("❌ Resolve failed:", r1.status, errorText);
-      
-      let errorMessage;
-      try {
-        const errorJson = JSON.parse(errorText);
-        errorMessage = errorJson.message || `Resolve failed (HTTP ${r1.status})`;
-      } catch {
-        errorMessage = `Resolve failed (HTTP ${r1.status}): ${errorText}`;
+    const getCityName = (city, list = []) => {
+      if (!city) return "";
+      if (typeof city === "string") {
+        // plain name => use; objectId-like => map via list
+        if (!looksLikeObjectId(city)) return city.trim();
+        const hit = Array.isArray(list)
+          ? list.find((c) => String(c._id || c.id) === city)
+          : null;
+        return (
+          (hit?.city || hit?.name || hit?.label || hit?.title || "").trim()
+        );
       }
-      throw new Error(errorMessage);
-    }
+      return (
+        city.city ||
+        city.name ||
+        city.cityName ||
+        city.label ||
+        city.title ||
+        city.slug ||
+        ""
+      ).trim();
+    };
 
-    const { ids } = await r1.json();
-    console.log("✅ Resolved IDs:", ids);
+    const getCityId = (city) => {
+      if (!city || typeof city !== "object") return null;
+      const s = String(city._id || city.id || "").trim();
+      return looksLikeObjectId(s) ? s : null;
+    };
 
-    // 6) Prepare create order payload
-    const payMethodRaw = getVal("Select payment method");
-    const paymentMethod = typeof payMethodRaw === "string"
-      ? payMethodRaw
-      : (payMethodRaw?.name || payMethodRaw?.id || "Unknown");
-    
-    const transportation = getVal("Select your mode of transportation") || "—";
-    const totalPrice = calculateTotalPrice(userResponses);
+    const extractFlightValue = (flight) => {
+      if (!flight) return "";
+      if (typeof flight === "string") return flight.trim();
+      return (
+        flight.compoundId ||
+        flight.code ||
+        flight.name ||
+        flight.airline ||
+        flight.id ||
+        flight._id ||
+        ""
+      );
+    };
 
-    const cleanAttractionIds = Array.isArray(attractionIds)
-      ? attractionIds.filter(id => id && typeof id === "string")
-      : [];
-    const cleanAttractionNames = Array.isArray(attractionNames)
-      ? attractionNames.filter(name => name && typeof name === "string")
-      : [];
+    const extractHotelValue = (hotel) => {
+      if (!hotel) return "";
+      if (typeof hotel === "string") return hotel.trim();
+      return (
+        hotel.compoundId ||
+        hotel._id ||
+        hotel.id ||
+        hotel.name ||
+        hotel.hotelName ||
+        hotel.label ||
+        hotel.title ||
+        ""
+      );
+    };
 
-    console.log("🎯 Clean attractions:", { cleanAttractionIds, cleanAttractionNames });
-
-    // Helper to extract display name
     const getDisplayName = (data) => {
       if (typeof data === "string") return data;
       return (
@@ -425,14 +370,77 @@ const resolveBody = {
         ""
       );
     };
+    // --------------------------------------------------
+
+    // 1) read selections
+    const dep = getVal("What is your departure city?");
+    const dst = getVal("What is your destination city?");
+    const flt = getVal("Select your flight");
+    const htl = getVal("Select your hotel");
+
+    // 2) map to names (backend expects names), include optional ids
+    const depName = getCityName(dep, loadedCities);
+    const dstName = getCityName(dst, loadedCities);
+
+    const resolveBody = {
+      departure: depName,
+      destination: dstName,
+      departureCityId: getCityId(dep) || undefined,
+      destinationCityId: getCityId(dst) || undefined,
+      flight: extractFlightValue(flt),
+      hotel: extractHotelValue(htl),
+    };
+
+    if (!resolveBody.departure || !resolveBody.destination) {
+      throw new Error("Missing departure or destination city. Please select cities.");
+    }
+
+    // 3) resolve ids on server
+    const r1 = await fetch(`${API_BASE}/api/order/resolve`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(resolveBody),
+    });
+    if (!r1.ok) {
+      const text = await r1.text();
+      try {
+        const j = JSON.parse(text);
+        throw new Error(j.message || `Resolve failed (${r1.status})`);
+      } catch {
+        throw new Error(`Resolve failed (${r1.status}): ${text}`);
+      }
+    }
+    const { ids } = await r1.json();
+
+    // if another tab just saved while we were resolving
+    if (sessionStorage.getItem("orderSaved") === "1") {
+      setToast({ type: "success", text: "Order already saved." });
+      setTimeout(() => setToast(null), 2000);
+      return;
+    }
+
+    // 4) build order payload
+    const payMethodRaw = getVal("Select payment method");
+    const paymentMethod =
+      typeof payMethodRaw === "string"
+        ? payMethodRaw
+        : payMethodRaw?.name || payMethodRaw?.id || "Unknown";
+
+    const transportation =
+      getVal("Select your mode of transportation") || "—";
+    const totalPrice = calculateTotalPrice(userResponses);
 
     const payload = {
       departureCityId: ids.departureCityId,
       destinationCityId: ids.destinationCityId,
       flightId: ids.flightId,
       hotelId: ids.hotelId,
-      attractions: cleanAttractionIds,
-      attractionNames: cleanAttractionNames,
+
+      // include all destination attractions server-side
+      selectAllCityAttractions: true,
+      attractionNames: [],
+      attractions: [],
+
       flightName: getDisplayName(flt) || null,
       hotelName: getDisplayName(htl) || null,
       transportation,
@@ -440,62 +448,48 @@ const resolveBody = {
       totalPrice,
     };
 
-    console.log("📤 Sending to create order:", payload);
-
-    // 7) Create the order
+    // 5) create order
     const r2 = await fetch(`${API_BASE}/api/order`, {
       method: "POST",
       headers,
       body: JSON.stringify(payload),
     });
-
     if (!r2.ok) {
-      const errorText = await r2.text();
-      console.error("❌ Create order failed:", r2.status, errorText);
-      
-      let errorMessage;
+      const text = await r2.text();
       try {
-        const errorJson = JSON.parse(errorText);
-        errorMessage = errorJson.message || `Create failed (HTTP ${r2.status})`;
+        const j = JSON.parse(text);
+        throw new Error(j.message || `Create failed (${r2.status})`);
       } catch {
-        errorMessage = `Create failed (HTTP ${r2.status}): ${errorText}`;
+        throw new Error(`Create failed (${r2.status}): ${text}`);
       }
-      throw new Error(errorMessage);
     }
 
-  try {
-  const result = await r2.json();
-  console.log("✅ Order created successfully:", result);
+    const result = await r2.json();
+    sessionStorage.setItem("orderSaved", "1");
+    if (result?._id) sessionStorage.setItem("lastOrderId", result._id);
 
-  // store orderSaved and orderId
-  sessionStorage.setItem("orderSaved", "1");
-  if (result?._id) sessionStorage.setItem("lastOrderId", result._id);
+    setPaymentCompleted(true);
+    setCurrentStep((prev) => prev + 1);
+    setToast({ type: "success", text: "✅ Order saved!" });
+    setTimeout(() => setToast(null), 3000);
+  } catch (err) {
+    console.error("❌ Payment success error:", err);
+    setToast({ type: "error", text: String(err.message || err) });
+    setTimeout(() => setToast(null), 4000);
+  } finally {
+    savingOrderRef.current = false;
+  }
+}}
+        />
 
-  setPaymentCompleted(true);
-  setCurrentStep((prev) => prev + 1);
+        {toast && (
+          <div className={`toast toast-${toast.type}`}>
+            {toast.text}
+            <button onClick={() => setToast(null)}>&times;</button>
+          </div>
+        )}
 
-  // 🔔 instead of alert, trigger toast
-  setToast({ type: "success", text: "✅ Order saved!" });
-  setTimeout(() => setToast(null), 3000);
-
-} catch (err) {
-  console.error("❌ Save order error:", err);
-
-  setToast({ type: "error", text: `Failed to save order: ${err.message}` });
-  setTimeout(() => setToast(null), 4000);
-}
-    } catch (err) {
-      console.error("❌ Payment success error:", err);
-}}}
-  totalAmount={calculateTotalPrice(userResponses)}
-  userResponses={userResponses}
-/>{toast && (
-  <div className={`toast ${toast.type}`}>
-    {toast.text}
-  </div>
-)}
-
-
+     
       </div>
     </div>
   );
