@@ -14,7 +14,10 @@ const toUsd = (n) =>
     Number(n ?? 0)
   );
 
+// Replace the normalizeOrder function in your PersonalArea.jsx with this:
+
 const normalizeOrder = (o) => {
+  // Handle both order systems' data structures
   const departure =
     o.departureCityName ||
     o.departure_city_name ||
@@ -30,7 +33,12 @@ const normalizeOrder = (o) => {
     o.destination_city_id ||
     "—";
 
-  const flight = o.flightName || o.flight_name || o.flightNumber || "—";
+  const flight = 
+    o.flightName || 
+    o.flight_name || 
+    o.flightNumber || 
+    "—";
+    
   const hotel =
     o.hotelName ||
     o.hotel_name ||
@@ -44,6 +52,21 @@ const normalizeOrder = (o) => {
     (Array.isArray(o.attractions) && o.attractions) ||
     [];
 
+  // Handle different date field names
+  const createdAt = 
+    o.createdAt || 
+    o.bookingDate || 
+    o.created_at || 
+    o.tripDate ||
+    null;
+
+  // Handle different price field names
+  const totalPrice = Number(
+    o.total_price ?? 
+    o.totalPrice ?? 
+    0
+  );
+
   return {
     raw: o,
     id: o._id || o.id,
@@ -54,8 +77,10 @@ const normalizeOrder = (o) => {
     attractions,
     transportation: o.transportation || "—",
     paymentMethod: o.payment_method || o.paymentMethod || "—",
-    totalPrice: Number(o.total_price ?? o.totalPrice ?? 0),
-    createdAt: o.createdAt || o.bookingDate || o.created_at || null,
+    totalPrice,
+    createdAt,
+    // Add source indicator for debugging
+    source: o.cityName ? 'orders2' : 'order'
   };
 };
 
@@ -73,13 +98,26 @@ async function fetchMyOrders(token) {
     );
   };
 
-  try {
-    return await tryFetch(`${API_BASE}/api/orders2?limit=100`);
-  } catch {
-    return await tryFetch(`${API_BASE}/api/order?limit=100`);
-  }
-}
+  // Fetch from both endpoints
+  const [orders1, orders2] = await Promise.allSettled([
+    tryFetch(`${API_BASE}/api/order?limit=100`).catch(() => []),
+    tryFetch(`${API_BASE}/api/orders2?limit=100`).catch(() => [])
+  ]);
 
+  // Combine results
+  const allOrders = [
+    ...(orders1.status === 'fulfilled' ? orders1.value : []),
+    ...(orders2.status === 'fulfilled' ? orders2.value : [])
+  ];
+
+  console.log("🔍 Fetched orders:", {
+    fromOrder: orders1.status === 'fulfilled' ? orders1.value.length : 0,
+    fromOrders2: orders2.status === 'fulfilled' ? orders2.value.length : 0,
+    total: allOrders.length
+  });
+
+  return allOrders;
+}
 // Beautiful Loading Component
 const LoadingSpinner = ({ size = "large", message = "טוען..." }) => {
   const spinnerSize = size === "small" ? "40px" : size === "medium" ? "60px" : "80px";
