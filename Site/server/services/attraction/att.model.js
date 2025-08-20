@@ -6,8 +6,10 @@ import {
   deleteAttractionInDatabase,
   getAttractionsByCityFromDatabase, // <--- Add this!
     getAttractionNamesByCityDocIds,      // <— NEW
-  getAttractionNameByDocAndIndex    
+  getAttractionNameByDocAndIndex ,
+  getAttractionsByIds   
 } from './att.db.js';
+
 
 
 export default class Attraction {

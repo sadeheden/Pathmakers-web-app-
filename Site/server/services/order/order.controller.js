@@ -1,10 +1,10 @@
 import Order from './order.model.js';
 import path from "path";
+import { getAttractionsByIds,getAllAttractionNamesForCity  } from "../attraction/att.db.js"; // ← adjust path if needed
 import pdfkit from "pdfkit";
 import City from "../cities/cities.model.js";
 import Flight from "../flights/flights.model.js";
 import Hotel from "../hotel/hotel.model.js";
-import Attraction from "../attraction/att.model.js";
 import { MongoClient, ObjectId } from "mongodb"; // you already import ObjectId; extend it
 
 const uri = process.env.CONNECTION_STRING;
@@ -509,13 +509,17 @@ export async function createOrder(req, res) {
       destinationCityId,
       flightId,
       hotelId,
-      attractions,
+      attractions,        // array of attraction IDs (optional)
       flightName,
       hotelName,
       transportation,
-      attractionNames,
+      attractionNames,    // array of strings (optional)
       paymentMethod,
-      totalPrice
+      totalPrice,
+
+      // NEW flags from chat:
+      selectAllCityAttractions,      // boolean → auto-include ALL city attractions
+      destinationCityName            // optional helpful fallback (string)
     } = req.body;
 
     // Validate required fields
@@ -549,10 +553,8 @@ export async function createOrder(req, res) {
     const cleanedAttractions = Array.isArray(attractions)
       ? attractions
           .map(a => {
-            // If it's already a valid ObjectId string, keep it
-            if (typeof a === 'string' && isValidObjectId(a)) return a;
-            // Try to clean it
-            const cleaned = cleanId(a);
+            if (typeof a === 'string' && ObjectId.isValid(a)) return a; // already valid string ObjectId
+            const cleaned = cleanId(a); // handles possible "id-index" strings
             return cleaned;
           })
           .filter(Boolean)
@@ -560,32 +562,64 @@ export async function createOrder(req, res) {
 
     console.log("🎯 Cleaned attractions:", cleanedAttractions);
 
-    // Ensure attractionNames is an array
-    const cleanedAttractionNames = Array.isArray(attractionNames) 
+    // Ensure attractionNames is an array of strings (if provided)
+    const cleanedAttractionNames = Array.isArray(attractionNames)
       ? attractionNames.filter(name => name && typeof name === 'string')
       : [];
 
-    console.log("🎯 Cleaned attraction names:", cleanedAttractionNames);
+    console.log("🎯 Cleaned attraction names (from body):", cleanedAttractionNames);
 
-// Create new order; store full compound IDs for flight/hotel (string with index)
-const userId = ObjectId.isValid(req.user.id) ? new ObjectId(req.user.id) : String(req.user.id);
-const newOrder = new Order({
-   // choose ObjectId when possible so reads match queries
-   user_id: userId,
-  departure_city_id: depClean,
-  destination_city_id: dstClean,
-  flight_id: flightId,  // Keep as compound string
-  hotel_id: hotelId,    // Keep as compound string
-  attractions: cleanedAttractions,
-  transportation,
-  payment_method: paymentMethod,
-  total_price: totalPrice,
-  created_at: new Date(),
-  // denormalized names if provided
-  flight_name: flightName || null,
-  hotel_name: hotelName || null,
-  attraction_names: cleanedAttractionNames,
-});
+    // Decide finalAttractionNames (priority):
+    // 1) If client sent names → use them.
+    // 2) Else if selectAllCityAttractions → pull ALL names for destination city.
+    // 3) Else if attraction IDs exist → resolve IDs → names.
+    let finalAttractionNames = cleanedAttractionNames;
+
+    if (!finalAttractionNames.length && selectAllCityAttractions) {
+      const namesFromCity = await safeDbOperation(
+        () => getAllAttractionNamesForCity({
+          cityId: dstClean,
+          cityName: destinationCityName || null
+        }),
+        []
+      );
+      if (namesFromCity.length) {
+        finalAttractionNames = namesFromCity;
+        console.log(`🧳 Filled ${namesFromCity.length} attraction names from city`);
+      }
+    }
+
+    if (!finalAttractionNames.length && cleanedAttractions.length) {
+      const docs = await safeDbOperation(
+        () => getAttractionsByIds(cleanedAttractions),
+        []
+      );
+      finalAttractionNames = (docs || [])
+        .map(d => d?.name || d?.title || d?.label)
+        .filter(Boolean);
+      console.log(`🔗 Resolved ${finalAttractionNames.length} attraction names from IDs`);
+    }
+
+    // Create new order; store full compound IDs for flight/hotel (string with index)
+    const userId = ObjectId.isValid(req.user.id) ? new ObjectId(req.user.id) : String(req.user.id);
+    const newOrder = new Order({
+      // choose ObjectId when possible so reads match queries
+      user_id: userId,
+      departure_city_id: depClean,
+      destination_city_id: dstClean,
+      flight_id: flightId,    // Keep as compound string (e.g., "<docId>_<idx>")
+      hotel_id: hotelId,      // Keep as compound string (e.g., "<docId>-<idx>")
+      attractions: cleanedAttractions,        // keep ids if provided (can be empty)
+      transportation,
+      payment_method: paymentMethod,
+      total_price: totalPrice,
+      created_at: new Date(),
+
+      // denormalized names
+      flight_name: flightName || null,
+      hotel_name: hotelName || null,
+      attraction_names: finalAttractionNames || [], // 👈 auto-filled when selectAllCityAttractions is true
+    });
 
     console.log("💾 Saving order...");
     const savedOrder = await newOrder.save();
@@ -613,12 +647,13 @@ const newOrder = new Order({
   } catch (err) {
     console.error("❌ Error creating order:", err);
     console.error("❌ Stack trace:", err.stack);
-    return res.status(500).json({ 
+    return res.status(500).json({
       message: "Internal Server Error",
       error: process.env.NODE_ENV === "development" ? err.message : "Something went wrong"
     });
   }
 }
+
 // GET /api/order - Get user orders with enriched data
 export async function getUserOrders(req, res) {
   if (!req.user?.id) return res.status(401).json({ message: "Unauthorized" });
@@ -695,26 +730,26 @@ export async function getUserOrders(req, res) {
 
         // Attractions: prefer stored names; else keep what's in `order.attractions`
         // Attractions: prefer stored names; else resolve IDs -> names from DB
+// PATCH: Attractions — prefer stored names; else resolve via native helper
+// Attractions — prefer stored names; else resolve via native helper
+// Attractions — prefer stored names; else resolve via native helper
 let attractionNames = [];
 if (storedAttractions.length > 0) {
   attractionNames = storedAttractions;
 } else if (Array.isArray(order.attractions) && order.attractions.length > 0) {
-  const ids = order.attractions
+  const idStrings = order.attractions
     .map(a => (typeof a === "string" ? a : a?.toString?.()))
-    .filter(Boolean)
-    .filter(isValidObjectId)
-    .map(s => new ObjectId(s));
+    .filter(Boolean);
 
-  if (ids.length) {
-    const docs = await safeDbOperation(
-      () => Attraction.find({ _id: { $in: ids } }),
-      []
-    );
-    attractionNames = docs
-      .map(d => d?.name || d?.title || d?.attractionName || d?.label)
+  if (idStrings.length) {
+    const docs = await safeDbOperation(() => getAttractionsByIds(idStrings), []);
+    attractionNames = (docs || [])
+      .map(d => d?.name || d?.title || d?.label)
       .filter(Boolean);
   }
 }
+
+
 
         console.log("✅ Resolved names:", {
           departure: departureCityName,

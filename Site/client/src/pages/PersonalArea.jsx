@@ -15,36 +15,97 @@ const toUsd = (n) =>
   );
 
 // Replace the normalizeOrder function in your PersonalArea.jsx with this:
+// convert many possible shapes into a real Date (or null)
+const toDateObj = (v) => {
+  if (!v) return null;
+  if (v instanceof Date) return v;
+  if (typeof v === "number") return new Date(v);
+  if (typeof v === "string") {
+    const d = new Date(v);
+    return Number.isNaN(d) ? null : d;
+  }
+  if (typeof v === "object") {
+    // Mongo export styles
+    if (v.$date) {
+      const inner = v.$date;
+      if (typeof inner === "string" || typeof inner === "number") {
+        return new Date(Number(inner));
+      }
+      if (inner && typeof inner === "object" && inner.$numberLong) {
+        return new Date(Number(inner.$numberLong));
+      }
+    }
+    if (v.$numberLong) {
+      return new Date(Number(v.$numberLong));
+    }
+  }
+  return null;
+};
+// Robust date parser for many Mongo/JS shapes → { ts:number|null, iso:string|null }
+const parseAnyDate = (v) => {
+  const toISO = (d) => (Number.isNaN(+d) ? null : d.toISOString());
+  const toTS  = (d) => (Number.isNaN(+d) ? null : d.getTime());
+
+  if (!v) return { ts: null, iso: null };
+
+  // plain Date
+  if (v instanceof Date) return { ts: v.getTime(), iso: v.toISOString() };
+
+  // number (ms)
+  if (typeof v === "number") {
+    const d = new Date(v);
+    return { ts: toTS(d), iso: toISO(d) };
+  }
+
+  // string (ISO or millis)
+  if (typeof v === "string") {
+    const isDigits = /^\d+$/.test(v.trim());
+    const d = isDigits ? new Date(Number(v)) : new Date(v);
+    return { ts: toTS(d), iso: toISO(d) };
+  }
+
+  // Mongo export shapes
+  if (typeof v === "object") {
+    // {"$date": "..."} OR {"$date":{"$numberLong":"..."}}
+    if (v.$date !== undefined) {
+      const inner = v.$date;
+      if (typeof inner === "string") {
+        const isDigits = /^\d+$/.test(inner.trim());
+        const d = isDigits ? new Date(Number(inner)) : new Date(inner);
+        return { ts: toTS(d), iso: toISO(d) };
+      }
+      if (inner && typeof inner === "object" && inner.$numberLong) {
+        const d = new Date(Number(inner.$numberLong));
+        return { ts: toTS(d), iso: toISO(d) };
+      }
+    }
+    // {"$numberLong":"..."}
+    if (v.$numberLong) {
+      const d = new Date(Number(v.$numberLong));
+      return { ts: toTS(d), iso: toISO(d) };
+    }
+  }
+
+  return { ts: null, iso: null };
+};
 
 const normalizeOrder = (o) => {
-  // Handle both order systems' data structures
+  // id (supports ObjectId, string, or Mongo export)
+  const id =
+    typeof o?._id === "object"
+      ? (o._id?.$oid ?? String(o._id))
+      : (o._id ?? o.id);
+
   const departure =
-    o.departureCityName ||
-    o.departure_city_name ||
-    o.departure ||
-    o.departure_city_id ||
-    "—";
+    o.departureCityName || o.departure_city_name || o.departure || o.departure_city_id || "—";
 
   const destination =
-    o.destinationCityName ||
-    o.destination_city_name ||
-    o.destination ||
-    o.cityName ||
-    o.destination_city_id ||
-    "—";
+    o.destinationCityName || o.destination_city_name || o.destination || o.cityName || o.destination_city_id || "—";
 
-  const flight = 
-    o.flightName || 
-    o.flight_name || 
-    o.flightNumber || 
-    "—";
-    
+  const flight = o.flightName || o.flight_name || o.flightNumber || "—";
+
   const hotel =
-    o.hotelName ||
-    o.hotel_name ||
-    (o.cityName ? `${o.cityName} Hotel` : null) ||
-    o.hotel_id ||
-    "—";
+    o.hotelName || o.hotel_name || (o.cityName ? `${o.cityName} Hotel` : null) || o.hotel_id || "—";
 
   const attractions =
     (Array.isArray(o.attraction_names) && o.attraction_names) ||
@@ -52,24 +113,15 @@ const normalizeOrder = (o) => {
     (Array.isArray(o.attractions) && o.attractions) ||
     [];
 
-  // Handle different date field names
-  const createdAt = 
-    o.createdAt || 
-    o.bookingDate || 
-    o.created_at || 
-    o.tripDate ||
-    null;
+  // choose the "created" source (order of preference)
+  const createdRaw = o.created_at ?? o.createdAt ?? o.bookingDate ?? o.tripDate ?? null;
+  const { ts: createdAtTs, iso: createdAt } = parseAnyDate(createdRaw);
 
-  // Handle different price field names
-  const totalPrice = Number(
-    o.total_price ?? 
-    o.totalPrice ?? 
-    0
-  );
+  const totalPrice = Number(o.total_price ?? o.totalPrice ?? 0);
 
   return {
     raw: o,
-    id: o._id || o.id,
+    id,
     departure,
     destination,
     flight,
@@ -78,11 +130,12 @@ const normalizeOrder = (o) => {
     transportation: o.transportation || "—",
     paymentMethod: o.payment_method || o.paymentMethod || "—",
     totalPrice,
-    createdAt,
-    // Add source indicator for debugging
-    source: o.cityName ? 'orders2' : 'order'
+    createdAt,   // ISO for display
+    createdAtTs, // number (ms) for sort/filter
+    source: o.cityName ? "orders2" : "order",
   };
 };
+
 
 async function fetchMyOrders(token) {
   const headers = token ? { Authorization: `Bearer ${token}` } : undefined;
@@ -154,13 +207,13 @@ const LoadingSpinner = ({ size = "large", message = "טוען..." }) => {
         {message}
       </p>
       
-      <style jsx>{`
-        @keyframes spin {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
-        }
-      `}</style>
-    </div>
+<style >{`
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+`}</style>
+</div>
   );
 };
 
@@ -212,7 +265,7 @@ const PageLoadingOverlay = ({ message = "טוען נתונים..." }) => {
         </p>
       </div>
       
-      <style jsx>{`
+      <style >{`
         @keyframes fadeIn {
           from { opacity: 0; }
           to { opacity: 1; }
@@ -340,7 +393,7 @@ const SuccessPopup = ({ isVisible, onClose, message }) => {
         </button>
       </div>
       
-      <style jsx>{`
+      <style>{`
         @keyframes fadeIn {
           from { opacity: 0; }
           to { opacity: 1; }
@@ -461,6 +514,33 @@ const fetchUser = async () => {
       setIsOrdersLoading(false);
     }
   };
+// inside PersonalArea.jsx > when selectedOrder opens:
+// ✅ keep as-is, or drop the onlyIds check if you want to always resolve
+useEffect(() => {
+  if (!selectedOrder) return;
+  const ids = Array.isArray(selectedOrder.attractions) ? selectedOrder.attractions : [];
+  const onlyIds = ids.length > 0 && ids.every(v => /^[0-9a-fA-F]{24}$/.test(v));
+  if (!onlyIds) return;
+
+  let cancelled = false;
+  (async () => {
+    try {
+      const token = localStorage.getItem("authToken");
+      const q = ids.join(",");
+      const r = await fetch(`${API_BASE}/api/attractions?ids=${encodeURIComponent(q)}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      });
+      const { data = [] } = await r.json();
+      const names = data.map(a => a.name).filter(Boolean);
+      if (!cancelled) {
+        setSelectedOrder(prev => ({ ...prev, attractionNamesResolved: names }));
+      }
+    } catch {}
+  })();
+  return () => { cancelled = true; };
+}, [selectedOrder]);
+
+// and in the render, prefer selectedOrder.attractionNamesResolved || raw.attraction_names || …
 
   /* ---------- init ---------- */
   useEffect(() => {
@@ -477,32 +557,30 @@ const fetchUser = async () => {
 
   /* ---------- memo: date filter + sort ---------- */
   const filteredOrders = useMemo(() => {
-    let list = [...orders];
+  let list = [...orders];
 
-    // filter by date range if provided
-    const fromTime = dateFrom ? new Date(dateFrom).setHours(0, 0, 0, 0) : null;
-    const toTime = dateTo ? new Date(dateTo).setHours(23, 59, 59, 999) : null;
+  // date range bounds in local time (inclusive)
+  const fromTime = dateFrom ? new Date(`${dateFrom}T00:00:00`).getTime() : null;
+  const toTime   = dateTo   ? new Date(`${dateTo}T23:59:59.999`).getTime() : null;
 
-    if (fromTime || toTime) {
-      list = list.filter((o) => {
-        if (!o.createdAt) return false;
-        const t = new Date(o.createdAt).getTime();
-        if (Number.isNaN(t)) return false;
-        if (fromTime && t < fromTime) return false;
-        if (toTime && t > toTime) return false;
-        return true;
-      });
-    }
-
-    // sort by createdAt
-    list.sort((a, b) => {
-      const dA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-      const dB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-      return sortDir === "asc" ? dA - dB : dB - dA;
+  if (fromTime !== null || toTime !== null) {
+    list = list.filter((o) => {
+      const t = typeof o.createdAtTs === "number" ? o.createdAtTs : null;
+      if (t === null) return false;
+      if (fromTime !== null && t < fromTime) return false;
+      if (toTime   !== null && t > toTime)   return false;
+      return true;
     });
+  }
 
-    return list;
-  }, [orders, dateFrom, dateTo, sortDir]);
+  list.sort((a, b) => {
+    const dA = typeof a.createdAtTs === "number" ? a.createdAtTs : 0;
+    const dB = typeof b.createdAtTs === "number" ? b.createdAtTs : 0;
+    return sortDir === "asc" ? dA - dB : dB - dA; // desc = newest first
+  });
+
+  return list;
+}, [orders, dateFrom, dateTo, sortDir]);
 
   const [page, setPage] = useState(1);
   const pageSize = 9;
@@ -669,35 +747,40 @@ const fetchUser = async () => {
                   <p><strong>Hotel:</strong> {selectedOrder.hotel}</p>
 
                   {/* Attractions (chips) */}
-                  <p style={{ gridColumn: "1 / -1" }}>
-                    <strong>Attractions:</strong>{" "}
-                    {(() => {
-                      const names =
-                        selectedOrder?.raw?.attraction_names?.length
-                          ? selectedOrder.raw.attraction_names
-                          : (Array.isArray(selectedOrder.attractions) &&
-                              !selectedOrder.attractions.every(v => typeof v === "string" && /^[0-9a-fA-F]{24}$/.test(v))
-                              ? selectedOrder.attractions
-                              : []);
+               <p style={{ gridColumn: "1 / -1" }}>
+  <strong>Attractions:</strong>{" "}
+  {(() => {
+    const rawNames = selectedOrder?.raw?.attraction_names;
+    const resolved = selectedOrder?.attractionNamesResolved;
+    const attrs = Array.isArray(selectedOrder?.attractions) ? selectedOrder.attractions : [];
 
-                      const ids = Array.isArray(selectedOrder.attractions) ? selectedOrder.attractions : [];
-                      const onlyIds = ids.length > 0 && ids.every(v => typeof v === "string" && /^[0-9a-fA-F]{24}$/.test(v));
+    const ID_RE = /^[0-9a-fA-F]{24}$/;
+    const onlyIds = attrs.length > 0 && attrs.every(v => typeof v === "string" && ID_RE.test(v));
 
-                      if (names.length) {
-                        return (
-                          <span className="chip-list">
-                            {names.map((n, i) => <span key={i} className="chip">{n}</span>)}
-                          </span>
-                        );
-                      }
+    // 👇 priority: resolved names from useEffect → names saved on the order → non-ID strings in attractions
+    const names =
+      (Array.isArray(resolved) && resolved.length ? resolved : null) ??
+      (Array.isArray(rawNames) && rawNames.length ? rawNames : null) ??
+      (attrs.length && !onlyIds ? attrs : []);
 
-                      if (onlyIds) {
-                        return <span className="chip chip--muted">{ids.length} selected</span>;
-                      }
+    // Loading state while resolving IDs to names
+    if (!names.length && onlyIds) {
+      return <span className="chip chip--muted">Resolving {attrs.length}…</span>;
+    }
 
-                      return "—";
-                    })()}
-                  </p>
+    if (names.length) {
+      return (
+        <span className="chip-list">
+          {names.map((n, i) => (
+            <span key={i} className="chip">{n}</span>
+          ))}
+        </span>
+      );
+    }
+
+    return "—";
+  })()}
+</p>
 
                   <p><strong>Transportation:</strong> {selectedOrder.transportation}</p>
                   <p><strong>Payment Method:</strong> {selectedOrder.paymentMethod}</p>

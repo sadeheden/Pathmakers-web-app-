@@ -426,19 +426,28 @@ const resolveBody = {
       );
     };
 
-    const payload = {
-      departureCityId: ids.departureCityId,
-      destinationCityId: ids.destinationCityId,
-      flightId: ids.flightId,
-      hotelId: ids.hotelId,
-      attractions: cleanAttractionIds,
-      attractionNames: cleanAttractionNames,
-      flightName: getDisplayName(flt) || null,
-      hotelName: getDisplayName(htl) || null,
-      transportation,
-      paymentMethod,
-      totalPrice,
-    };
+const payload = {
+  departureCityId: ids.departureCityId,
+  destinationCityId: ids.destinationCityId,
+  destinationCityName: destinationCityName,   // <-- add this if you have it
+  flightId: ids.flightId,
+  hotelId: ids.hotelId,
+
+  // trigger backend to include ALL attractions for the destination city:
+  selectAllCityAttractions: true,
+
+  // IMPORTANT: leave these empty/omit so selectAll takes effect:
+  attractionNames: [],        // or just omit this key entirely
+  attractions: [],            // optional; omit if you’re not sending specific IDs
+
+  // rest
+  flightName: getDisplayName(flt) || null,
+  hotelName: getDisplayName(htl) || null,
+  transportation,
+  paymentMethod,
+  totalPrice,
+};
+
 
     console.log("📤 Sending to create order:", payload);
 
