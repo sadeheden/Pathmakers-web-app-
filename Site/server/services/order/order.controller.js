@@ -238,66 +238,53 @@ function getHotelName(hotelDoc, index) {
 // POST /api/order/resolve - FIXED VERSION with better debugging and error handling
 export async function resolveOrderRefs(req, res) {
   try {
-    console.log("🔍 [DEBUG] resolveOrderRefs called with body:", JSON.stringify(req.body, null, 2));
-
-    // helpers
     const is24 = (s) => typeof s === "string" && /^[0-9a-fA-F]{24}$/.test(s);
     const pick = (v) => {
       if (!v) return "";
       if (typeof v === "string") return v.trim();
       return (v._id || v.id || v.code || v.name || v.city || v.title || v.label || v.slug || "");
     };
+    const escapeRx = (s) => String(s).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const slugify = (s) => String(s || "").trim().toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
 
     const body = req.body || {};
-    const departureRaw   = pick(body.departure)   || pick(body.departureCity)   || pick(body.departureCityId);
+    const departureRaw = pick(body.departure) || pick(body.departureCity) || pick(body.departureCityId);
     const destinationRaw = pick(body.destination) || pick(body.destinationCity) || pick(body.destinationCityId);
-    const flightRaw      = pick(body.flight);
-    const hotelRaw       = pick(body.hotel);
-
-    console.log("🔍 [DEBUG] Extracted values:", { departureRaw, destinationRaw, flightRaw, hotelRaw });
+    const flightRaw = pick(body.flight);
+    const hotelRaw = pick(body.hotel);
 
     if (!departureRaw || !destinationRaw) {
-      return res.status(400).json({
-        message: "Provide departure and destination.",
-        received: { departureRaw, destinationRaw }
-      });
+      return res.status(400).json({ message: "Provide departure and destination.", received: { departureRaw, destinationRaw } });
     }
 
-    // db
     const db = await getDb();
-    const CitySing   = db.collection("city");
+    const CitySing = db.collection("city");
     const CityPlural = db.collection("cities");
     const [singCount, plurCount] = await Promise.all([
-      CitySing.countDocuments({}).catch(() => 0),
-      CityPlural.countDocuments({}).catch(() => 0),
+      CitySing.countDocuments().catch(() => 0),
+      CityPlural.countDocuments().catch(() => 0),
     ]);
-    const Cities  = plurCount > 0 ? CityPlural : CitySing;
+    const Cities = plurCount > 0 ? CityPlural : CitySing;
     const Flights = db.collection("flights");
-    const Hotels  = db.collection("hotels");
-
-    // helpers
-    const escape  = (s) => String(s).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    const slugify = (s) => String(s || "").trim().toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
+    const Hotels = db.collection("hotels");
 
     async function ensureCity(val, cityType) {
       const trimmed = String(val || "").trim();
       if (!trimmed) return null;
 
-      // by _id
+      // fast path by _id
       if (is24(trimmed)) {
         try {
           const byId = await Cities.findOne({ _id: new ObjectId(trimmed) });
           if (byId) return byId;
-        } catch (e) {
-          console.log(`❌ [ERROR] ${cityType} _id lookup failed: ${e.message}`);
-        }
+        } catch {}
       }
 
       const slug = slugify(trimmed);
       const filter = {
         $or: [
-          { city: { $regex: `^${escape(trimmed)}$`, $options: "i" } },
-          { name: { $regex: `^${escape(trimmed)}$`, $options: "i" } },
+          { city: { $regex: new RegExp(`^${escapeRx(trimmed)}$`, "i") } },
+          { name: { $regex: new RegExp(`^${escapeRx(trimmed)}$`, "i") } },
           { slug },
         ],
       };
@@ -307,32 +294,28 @@ export async function resolveOrderRefs(req, res) {
       };
       const opts = { upsert: true, returnDocument: "after" };
 
+      let doc = null;
       try {
         const resu = await Cities.findOneAndUpdate(filter, update, opts);
-        const doc = resu?.value;
+        doc = resu?.value || null;
         if (!doc) {
-          const insertRes = await Cities.insertOne({ city: trimmed, name: trimmed, slug, created_at: new Date(), updated_at: new Date() });
-          return await Cities.findOne({ _id: insertRes.insertedId });
+          // fallback – create manually אם upsert נכשל
+          const insertRes = await Cities.insertOne({ city: trimmed, name: trimmed, slug, created_at: new Date() });
+          doc = await Cities.findOne({ _id: insertRes.insertedId });
         }
         return doc;
       } catch (e) {
-        console.log(`❌ [ERROR] Upsert failed for ${cityType}: ${e.message}`);
         return null;
       }
     }
 
-    // resolve cities
     const depCity = await ensureCity(departureRaw, "departure city");
     const dstCity = await ensureCity(destinationRaw, "destination city");
 
-    if (!depCity?._id) {
-      return res.status(400).json({ message: "Departure city not found.", input: departureRaw });
-    }
-    if (!dstCity?._id) {
-      return res.status(400).json({ message: "Destination city not found.", input: destinationRaw });
-    }
+    if (!depCity?._id) return res.status(400).json({ message: "Departure city not found.", input: departureRaw });
+    if (!dstCity?._id) return res.status(400).json({ message: "Destination city not found.", input: destinationRaw });
 
-    // flight
+    // --- Flight ---
     const parseCompound = (val) => {
       if (typeof val !== "string") return { base: String(val || ""), idx: 0, hadIdx: false };
       const m = val.match(/^([0-9a-fA-F]{24})[_-](\d+)$/);
@@ -340,12 +323,7 @@ export async function resolveOrderRefs(req, res) {
       return { base: val.trim(), idx: 0, hadIdx: false };
     };
     const airlineFromLabel = (s) => typeof s === "string" ? s.split(" - ")[0].replace(/\([^)]*\)/g, "").trim() : "";
-    const parsePrice = (s) => {
-      if (typeof s !== "string") return null;
-      const m = s.match(/[$€₪£]\s*([\d.,]+)/);
-      if (!m) return null;
-      return Number(m[1].replace(/,/g, ""));
-    };
+    const parsePrice = (s) => { const m = typeof s === "string" ? s.match(/[$€₪£]\s*([\d.,]+)/) : null; return m ? Number(m[1].replace(/,/g, "")) : null; };
 
     const parsedFlight = parseCompound(flightRaw);
     let flightDoc = null;
@@ -358,44 +336,30 @@ export async function resolveOrderRefs(req, res) {
       const dstCityName = String(dstCity.city || dstCity.name).trim();
       const airlineName = airlineFromLabel(parsedFlight.base);
       const priceVal = parsePrice(flightRaw);
-
-      flightDoc = await Flights.findOne({ city: { $regex: new RegExp(`^${escape(dstCityName)}$`, "i") } });
-
+      flightDoc = await Flights.findOne({ city: { $regex: new RegExp(`^${escapeRx(dstCityName)}$`, "i") } });
       if (flightDoc?.airlines?.length) {
-        let idx = flightDoc.airlines.findIndex(a => new RegExp(`^${escape(airlineName)}$`, "i").test(a?.name || ""));
-        if (idx < 0) idx = flightDoc.airlines.findIndex(a => new RegExp(escape(airlineName), "i").test(a?.name || ""));
+        let idx = flightDoc.airlines.findIndex(a => new RegExp(`^${escapeRx(airlineName)}$`, "i").test(a?.name || ""));
+        if (idx < 0) idx = flightDoc.airlines.findIndex(a => new RegExp(escapeRx(airlineName), "i").test(a?.name || ""));
         if (idx < 0 && priceVal != null) idx = flightDoc.airlines.findIndex(a => Number(a?.price) === priceVal);
         flightIndex = idx >= 0 ? idx : 0;
       }
     }
+    if (!flightDoc) { flightDoc = await Flights.findOne({}); flightIndex = 0; }
+    const flightCompoundId = flightDoc ? `${String(flightDoc._id)}_${flightIndex}` : `${new ObjectId()}_0`; // fallback dummy
 
-    if (!flightDoc) {
-      flightDoc = await Flights.findOne({});
-      flightIndex = 0;
-    }
-
-    const flightCompoundId = `${String(flightDoc._id)}_${flightIndex}`;
-
-    // hotel
+    // --- Hotel ---
     const parsedHotel = parseCompound(hotelRaw);
     let hotelDoc = null;
     let hotelIndex = parsedHotel.idx;
-
-    if (is24(parsedHotel.base)) {
-      hotelDoc = await Hotels.findOne({ _id: new ObjectId(parsedHotel.base) });
-      if (!parsedHotel.hadIdx) hotelIndex = 0;
-    } else if (parsedHotel.base) {
-      const needle = parsedHotel.base.split(" - ")[0].replace(/\([^)]*\)/g, "").trim();
-      hotelDoc = await Hotels.findOne({
-        $and: [
-          { destination_city_id: String(dstCity._id) },
-          { $or: [{ name: needle }, { "hotels.name": needle }] },
-        ],
-      });
+    if (is24(parsedHotel.base)) hotelDoc = await Hotels.findOne({ _id: new ObjectId(parsedHotel.base) });
+    else if (parsedHotel.base) {
+      const needle = parsedHotel.base.replace(/\([^)]*\)/g, "").split(" - ")[0].trim();
+      hotelDoc = await Hotels.findOne({ $and: [{ destination_city_id: String(dstCity._id) }, { $or: [{ name: needle }, { "hotels.name": needle }] }] });
     }
-
-    if (!hotelDoc && dstCity._id) {
-      hotelDoc = await Hotels.findOne({ destination_city_id: String(dstCity._id) });
+    if (!hotelDoc) hotelDoc = await Hotels.findOne({ destination_city_id: String(dstCity._id) });
+    if (!hotelDoc) {
+      // fallback – אם אין מלון בכלל, צור dummy עם city id
+      hotelDoc = { _id: dstCity._id };
       hotelIndex = 0;
     }
 
@@ -403,22 +367,16 @@ export async function resolveOrderRefs(req, res) {
       departureCityId: String(depCity._id),
       destinationCityId: String(dstCity._id),
       flightId: flightCompoundId,
-      hotelId: hotelDoc?._id ? `${String(hotelDoc._id)}-${hotelIndex}` : String(dstCity._id),
+      hotelId: `${String(hotelDoc._id)}-${hotelIndex}`, // תמיד קיים
     };
 
-    console.log("✅ [SUCCESS] Resolved IDs:", ids);
     return res.status(200).json({ success: true, ids });
 
   } catch (err) {
-    console.error("❌ [ERROR] resolveOrderRefs error:", err);
-    return res.status(500).json({
-      message: "Internal Server Error",
-      error: process.env.NODE_ENV === "development" ? err.message : undefined
-    });
+    console.error(err);
+    return res.status(500).json({ message: "Internal Server Error", error: process.env.NODE_ENV === "development" ? err.message : undefined });
   }
 }
-
-
 // POST /api/order - Create new order - FIXED VERSION
 export async function createOrder(req, res) {
   if (!req.user?.id) return res.status(401).json({ message: "Unauthorized" });
