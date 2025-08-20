@@ -365,33 +365,44 @@ const PersonalArea = () => {
   const [successMessage, setSuccessMessage] = useState("");
 
   /* ---------- user fetch ---------- */
-  const fetchUser = async () => {
-    try {
-      setIsUserLoading(true);
-      const token = localStorage.getItem("authToken");
-      if (!token) {
-        navigate("/login");
-        return null;
-      }
-      const res = await fetch(`${API_BASE}/api/auth/user`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error(`Failed user fetch ${res.status}`);
-      const userData = await res.json();
-      const formatted = { ...userData, id: userData._id };
-      setUser(formatted);
-      setEditedUser({
-        username: userData.username || "",
-        email: userData.email || "",
-      });
-      return formatted;
-    } catch (e) {
-      console.error("user fetch error", e);
+const fetchUser = async () => {
+  try {
+    setIsUserLoading(true);
+
+    const token =
+      localStorage.getItem("authToken") ||
+      localStorage.getItem("token") ||
+      localStorage.getItem("jwt");
+
+    if (!token) {
+      navigate("/login");
       return null;
-    } finally {
-      setIsUserLoading(false);
     }
-  };
+
+    const res = await fetch(`${API_BASE}/api/auth/user`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) throw new Error(`Failed user fetch ${res.status}`);
+
+    const userData = await res.json();
+    // ✅ fixed: spread the fetched user object correctly
+    const formatted = { ...userData, id: userData._id };
+
+    setUser(formatted);
+    setEditedUser({
+      username: userData.username || "",
+      email: userData.email || "",
+    });
+
+    return formatted;
+  } catch (e) {
+    console.error("user fetch error", e);
+    return null;
+  } finally {
+    setIsUserLoading(false);
+  }
+};
+
 
   /* ---------- orders fetch ---------- */
   const loadOrders = async () => {
