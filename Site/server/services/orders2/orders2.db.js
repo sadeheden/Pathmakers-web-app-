@@ -9,8 +9,17 @@ class Orders2DB {
 
   async createOrder(orderData) {
     try {
-      console.log('🔄 Creating new order in DB:', orderData);
-      const savedOrder = await this.Order2.create(orderData);
+      // ✅ ensure timestamps are set once on insert
+      const now = new Date();
+      const payload = {
+        ...orderData,
+        createdAt: orderData.createdAt ?? now,   // do not overwrite if provided
+        updatedAt: now,
+        bookingDate: orderData.bookingDate ?? now
+      };
+
+      console.log('🔄 Creating new order in DB:', payload);
+      const savedOrder = await this.Order2.create(payload);
       console.log('✅ Order created successfully with ID:', savedOrder._id);
       return savedOrder;
     } catch (error) {
@@ -21,18 +30,40 @@ class Orders2DB {
 
   async getUserOrders(userId, options = {}) {
     try {
-      const { page = 1, limit = 10, status = null, sortBy = 'createdAt', sortOrder = -1 } = options;
+      const {
+        page = 1,
+        limit = 10,
+        status = null,
+        sortBy = 'createdAt',
+        sortOrder = -1, // -1 = desc (newest first), 1 = asc
+      } = options;
+
       const query = { user_id: new ObjectId(userId) };
       if (status) query.status = status;
 
-      const orders = await this.Order2.collection
-        .find(query)
-        .sort({ [sortBy]: sortOrder })
-        .skip((page - 1) * limit)
-        .limit(limit)
-        .toArray();
+      // ✅ Use a stable sort key: createdAt || bookingDate || tripDate
+      //    so we always get a consistent newest→oldest order even if some fields are missing.
+      const pipeline = [
+        { $match: query },
+        {
+          $addFields: {
+            sortKey: {
+              $ifNull: [
+                '$createdAt',
+                { $ifNull: ['$bookingDate', '$tripDate'] }
+              ]
+            }
+          }
+        },
+        { $sort: sortBy === 'createdAt' ? { sortKey: sortOrder } : { [sortBy]: sortOrder } },
+        { $skip: (page - 1) * limit },
+        { $limit: limit },
+      ];
 
-      const totalOrders = await this.Order2.collection.countDocuments(query);
+      const [orders, totalOrders] = await Promise.all([
+        this.Order2.collection.aggregate(pipeline).toArray(),
+        this.Order2.collection.countDocuments(query),
+      ]);
 
       return {
         orders,
@@ -40,18 +71,16 @@ class Orders2DB {
         currentPage: page,
         totalPages: Math.ceil(totalOrders / limit),
         hasNextPage: page < Math.ceil(totalOrders / limit),
-        hasPrevPage: page > 1
+        hasPrevPage: page > 1,
       };
     } catch (error) {
       console.error('❌ Error fetching user orders:', error);
       throw new Error(`Failed to fetch user orders: ${error.message}`);
     }
   }
-
-  // אפשר להוסיף פה שאר הפונקציות כמו getOrderById, updateOrderStatus וכו'
 }
 
-// ---- יצירת connection ל־MongoDB ----
+// ---- Mongo connection (unchanged) ----
 const client = new MongoClient(process.env.CONNECTION_STRING);
 await client.connect();
 const db = client.db(process.env.DB_NAME || 'travel');
@@ -59,4 +88,4 @@ const db = client.db(process.env.DB_NAME || 'travel');
 const order2Model = new Order2Model(db);
 const orders2DB = new Orders2DB(order2Model);
 
-export default orders2DB; // ✅ מייצא instance מוכן לשימוש
+export default orders2DB;

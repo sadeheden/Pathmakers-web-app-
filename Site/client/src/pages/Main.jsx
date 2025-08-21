@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import '../assets/styles/main.css';
 import flag from '../assets/images/flag.jpg'; // Importing the flag image
+import { API_BASE } from "../config/api"; // or wherever you defined it
 
 // React icons
 import { FiChevronLeft, FiChevronRight } from 'react-icons/fi';
@@ -278,15 +279,26 @@ const Main = () => {
         <div className="city-scroll-wrapper">
           <button className="scroll-btn left" aria-label="Scroll left" onClick={() => scrollByCards(-1)}><FiChevronLeft /></button>
           <div className="city-row" ref={rowRef}>
-            {visibleCities.map((city, i) => (
-              <div className="city-card" key={i} onClick={() => { setSelectedCity(city); setPaymentCompleted(false); setShowPaymentModal(false); setShowIntroPopup(true); }}>
-                <img src={city.img} alt={city.name} />
-                <div className="city-card-text">
-                  <h3>{city.name}</h3>
-                  <p className="muted">{city.summary}</p>
-                </div>
-              </div>
-            ))}
+           {visibleCities.map((city, i) => (
+  <div
+    className="city-card"
+    key={i}
+    onClick={() => {
+      sessionStorage.removeItem("mainOrders2Saved"); // reset guard
+      setSelectedCity(city);
+      setPaymentCompleted(false);
+      setShowPaymentModal(false);
+      setShowIntroPopup(true);
+    }}
+  >
+    <img src={city.img} alt={city.name} />
+    <div className="city-card-text">
+      <h3>{city.name}</h3>
+      <p className="muted">{city.summary}</p>
+    </div>
+  </div>
+))}
+
           </div>
           <button className="scroll-btn right" aria-label="Scroll right" onClick={() => scrollByCards(1)}><FiChevronRight /></button>
         </div>
@@ -335,6 +347,10 @@ const Main = () => {
           onClose={() => setShowPaymentModal(false)}
           totalAmount={totalPrice}
           onPaymentSuccess={async () => {
+             if (sessionStorage.getItem("mainOrders2Saved") === "1") {
+    return;
+  }
+            
             setPaymentCompleted(true);
             setShowPaymentModal(false);
 
@@ -378,7 +394,7 @@ const Main = () => {
 const TEL_AVIV_ID = "689af474f511eb0daf25e306"; // Tel Aviv city _id
 
 const response = await axios.post(
-  "http://localhost:4000/api/orders2",
+  `${API_BASE}/api/orders2`,
   {
     // canonical IDs
     departure_city_id: TEL_AVIV_ID,
@@ -417,6 +433,7 @@ const response = await axios.post(
 );
 
 console.log("✅ Order created:", response.data);
+sessionStorage.setItem("mainOrders2Saved", "1");
 
 
               console.log("✅ Order created:", response.data);
