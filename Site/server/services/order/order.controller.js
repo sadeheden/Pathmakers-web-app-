@@ -676,9 +676,9 @@ if (storedAttractions.length > 0) {
   }
 }
 
+// === REPLACE ENTIRE getOrderReceiptPdf WITH THIS ===
 export async function getOrderReceiptPdf(req, res) {
   try {
-    // ========== VALIDATION ==========
     const { id } = req.params;
     if (!id || !ObjectId.isValid(id)) {
       return res.status(400).json({ message: "Invalid order ID" });
@@ -688,274 +688,184 @@ export async function getOrderReceiptPdf(req, res) {
     const order = await db.collection("orders").findOne({ _id: new ObjectId(id) });
     if (!order) return res.status(404).json({ message: "Order not found" });
 
-    // ========== RESOLVE NAMES FROM IDs ==========
-    let departureCityName = order.departure_city_name || "Not specified";
-    let destinationCityName = order.destination_city_name || "Not specified";
-    let flightName = order.flight_name || "Not specified";
-    let hotelName = order.hotel_name || "Not specified";
+    // ---------- Resolve display values to mirror .summary-details ----------
+    // We reuse your helpers so IDs -> human names work.
+    let departureCityName = order.departure_city_name || "";
+    let destinationCityName = order.destination_city_name || "";
+    let flightName = order.flight_name || "";
+    let hotelName  = order.hotel_name  || "";
 
-    // If we only have IDs, resolve them to names
-    if (!departureCityName || departureCityName === "Not specified") {
-      const depCityId = cleanId(order.departure_city_id);
-      if (depCityId) {
-        const depCity = await safeDbOperation(() => City.findById(depCityId), null);
-        departureCityName = depCity?.city || depCity?.name || `City (${depCityId})`;
+    // Resolve city names if not stored
+    if (!departureCityName) {
+      const depId = cleanId(order.departure_city_id);
+      if (depId) {
+        const depDoc = await safeDbOperation(() => City.findById(depId), null);
+        departureCityName = depDoc?.city || depDoc?.name || "";
+      }
+    }
+    if (!destinationCityName) {
+      const dstId = cleanId(order.destination_city_id);
+      if (dstId) {
+        const dstDoc = await safeDbOperation(() => City.findById(dstId), null);
+        destinationCityName = dstDoc?.city || dstDoc?.name || "";
       }
     }
 
-    if (!destinationCityName || destinationCityName === "Not specified") {
-      const dstCityId = cleanId(order.destination_city_id);
-      if (dstCityId) {
-        const dstCity = await safeDbOperation(() => City.findById(dstCityId), null);
-        destinationCityName = dstCity?.city || dstCity?.name || `City (${dstCityId})`;
+    // Resolve flight/hotel names if not stored
+    if (!flightName) {
+      const fId = cleanId(order.flight_id);
+      const fIdx = extractIndex(order.flight_id);
+      if (fId) {
+        const fDoc = await safeDbOperation(() => Flight.findById(fId), null);
+        flightName = getFlightName(fDoc, fIdx);
+      }
+    }
+    if (!hotelName) {
+      const hId = cleanId(order.hotel_id);
+      const hIdx = extractIndex(order.hotel_id);
+      if (hId) {
+        const hDoc = await safeDbOperation(() => Hotel.findById(hId), null);
+        hotelName = getHotelName(hDoc, hIdx);
       }
     }
 
-    if (!flightName || flightName === "Not specified") {
-      const flightObjectId = cleanId(order.flight_id);
-      const flightIndex = extractIndex(order.flight_id);
-      if (flightObjectId) {
-        const flightDoc = await safeDbOperation(() => Flight.findById(flightObjectId), null);
-        flightName = getFlightName(flightDoc, flightIndex);
-      }
+    // Attractions — prefer stored names; else keep empty (to match summary)
+    let attractionsList = "";
+    if (Array.isArray(order.attraction_names) && order.attraction_names.length) {
+      attractionsList = order.attraction_names.join(", ");
     }
 
-    if (!hotelName || hotelName === "Not specified") {
-      const hotelObjectId = cleanId(order.hotel_id);
-      const hotelIndex = extractIndex(order.hotel_id);
-      if (hotelObjectId) {
-        const hotelDoc = await safeDbOperation(() => Hotel.findById(hotelObjectId), null);
-        hotelName = getHotelName(hotelDoc, hotelIndex);
-      }
-    }
+    // Transportation, Payment, Total (these are already on the order)
+    const transportation = order.transportation || "";
+    const paymentMethod  = order.payment_method || "";
+    const total          = Number(order.total_price ?? 0);
 
-    // Handle attractions - prefer stored names, fallback to resolving IDs
-    let attractionsList = "Not specified";
-    if (Array.isArray(order.attraction_names) && order.attraction_names.length > 0) {
-      attractionsList = order.attraction_names.join(" • ");
-    } else if (Array.isArray(order.attractions) && order.attractions.length > 0) {
-      const attractionDocs = await safeDbOperation(
-        () => getAttractionsByIds(order.attractions),
-        []
-      );
-      if (attractionDocs && attractionDocs.length > 0) {
-        const names = attractionDocs
-          .map(doc => doc?.name || doc?.title || doc?.label)
-          .filter(Boolean);
-        attractionsList = names.length > 0 ? names.join(" • ") : "Not specified";
-      }
-    }
-
-    // ========== PDF DATA ==========
-    const totalAmount = Number(order.total_price ?? 0);
-    const createdDate = new Date(order.created_at || Date.now());
-    const orderId = String(order._id);
-
-    // ========== RESPONSE HEADERS ==========
+    // ---------- PDF headers ----------
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader(
       "Content-Disposition",
-      `attachment; filename="ai-tripper-receipt-${destinationCityName.toLowerCase().replace(/\s+/g, "-")}-${createdDate.getFullYear()}.pdf"`
+      `inline; filename="trip-summary-${(destinationCityName || "trip").toLowerCase().replace(/\s+/g, "-")}.pdf"`
     );
 
-    // ========== PDF SETUP ==========
-    const doc = new pdfkit({ 
-      size: "A4", 
-      margin: 50,
+    const doc = new pdfkit({
+      size: "A4",
+      margin: 40,
+      bufferPages: true,
       info: {
-        Title: "AI Tripper - Travel Receipt",
-        Author: "AI Tripper",
-        Subject: "Travel Booking Receipt",
-        Creator: "AI Tripper Platform"
-      }
+        Title: "Trip Summary",
+        Author: "PathMakers",
+        Subject: "Trip Summary Receipt",
+      },
     });
     doc.pipe(res);
 
-    // ========== DESIGN THEME ==========
-    const colors = {
-      primary: "#1e40af",      // Professional blue
-      secondary: "#64748b",    // Slate gray
-      success: "#059669",      // Emerald
-      background: "#f8fafc",   // Light background
-      text: "#1f2937",         // Dark text
-      textLight: "#6b7280",    // Light text
-      border: "#e2e8f0",       // Border
-      white: "#ffffff"
+    // ---------- Theme: use your Chat page colors ----------
+    const COLORS = {
+      brand: "#004e75",       // --brand
+      brandHover: "#003b5c",  // --brand-hover
+      text: "#0f172a",        // --text
+      muted: "#334155",       // approx of rgba(51,65,85,0.9)
+      bgPage: "#f9fafb",      // --bg-page
+      bgCard: "#ffffff",      // --bg-card
+      border: "#e5e7eb",
+      line: "#d1d5db",
     };
 
-    const pageWidth = doc.page.width;
-    const pageHeight = doc.page.height;
-    const margin = 50;
-    const contentWidth = pageWidth - (margin * 2);
+    const MARGIN = 40;
+    const WIDTH  = doc.page.width - MARGIN * 2;
 
-    // ========== HELPER FUNCTIONS ==========
-    const addSection = (title, y, height = 120) => {
-      // Card background
-      doc.rect(margin, y, contentWidth, height)
-         .fill(colors.white)
-         .stroke(colors.border);
-      
-      // Section header
-      doc.rect(margin, y, contentWidth, 30)
-         .fill(colors.background);
-      
-      doc.fillColor(colors.primary)
-         .font("Helvetica-Bold")
-         .fontSize(12)
-         .text(title, margin + 15, y + 10);
-      
-      return y + 40; // Return content start position
+    // Helpers
+    const hr = (y) => {
+      doc.save()
+        .strokeColor(COLORS.line).lineWidth(1)
+        .moveTo(MARGIN, y).lineTo(MARGIN + WIDTH, y).stroke()
+        .restore();
+    };
+    const sectionCard = (title, y, height) => {
+      // card background
+      doc.save()
+        .lineWidth(1)
+        .rect(MARGIN, y, WIDTH, height).fillAndStroke(COLORS.bgCard, COLORS.border)
+        .restore();
+      // section header strip
+      doc.save()
+        .rect(MARGIN, y, WIDTH, 32).fill(COLORS.bgPage)
+        .restore();
+      doc.fillColor(COLORS.brand).font("Helvetica-Bold").fontSize(12)
+        .text(title, MARGIN + 14, y + 10);
+      return y + 42; // content start
+    };
+    const row = (label, value, x, y, w) => {
+      doc.font("Helvetica").fontSize(9).fillColor(COLORS.muted)
+        .text(label.toUpperCase(), x, y);
+      doc.font("Helvetica").fontSize(11).fillColor(COLORS.text)
+        .text(value || "—", x, y + 12, { width: w });
+      return y + 38;
     };
 
-    const addField = (label, value, x, y, options = {}) => {
-      const { bold = false, color = colors.text, fontSize = 10 } = options;
-      
-      doc.fillColor(colors.textLight)
-         .font("Helvetica")
-         .fontSize(8)
-         .text(label.toUpperCase(), x, y);
-      
-      doc.fillColor(color)
-         .font(bold ? "Helvetica-Bold" : "Helvetica")
-         .fontSize(fontSize)
-         .text(String(value), x, y + 12);
-      
-      return y + 35;
-    };
+    // ---------- Header Banner ----------
+    const top = 28;
+    doc.save().rect(0, 0, doc.page.width, 90).fill(COLORS.brand).restore();
+    doc.fillColor("#ffffff").font("Helvetica-Bold").fontSize(22)
+      .text("Trip Summary", MARGIN, 28, { width: WIDTH / 2 });
+    doc.font("Helvetica").fontSize(10)
+      .text(new Date(order.created_at || Date.now()).toLocaleString(), MARGIN, 60);
 
-    // ========== HEADER SECTION ==========
-    let currentY = 0;
-    
-    // Header background
-    doc.rect(0, 0, pageWidth, 100).fill(colors.primary);
-    
-    // Company info
-    doc.fillColor(colors.white)
-       .font("Helvetica-Bold")
-       .fontSize(32)
-       .text("AI TRIPPER", margin, 25);
-    
-    doc.font("Helvetica")
-       .fontSize(14)
-       .text("Travel Booking Receipt", margin, 60);
-    
-    // Receipt info (right side)
-    doc.font("Helvetica")
-       .fontSize(10)
-       .text("RECEIPT #", pageWidth - margin - 120, 25, { width: 120, align: "right" });
-    
-    doc.font("Helvetica-Bold")
-       .fontSize(12)
-       .text(orderId.slice(-12).toUpperCase(), pageWidth - margin - 120, 40, { width: 120, align: "right" });
-    
-    doc.font("Helvetica")
-       .fontSize(9)
-       .text(createdDate.toLocaleDateString("en-US", {
-         year: "numeric",
-         month: "long", 
-         day: "numeric"
-       }), pageWidth - margin - 120, 55, { width: 120, align: "right" });
+    // Right header box
+    doc.save()
+      .lineWidth(1)
+      .rect(MARGIN + WIDTH - 180, 28, 180, 54).fillAndStroke("#ffffff", "rgba(255,255,255,0.4)")
+      .restore();
+    doc.fillColor(COLORS.brandHover).font("Helvetica-Bold").fontSize(10)
+      .text("ORDER ID", MARGIN + WIDTH - 170, 36, { width: 160, align: "right" });
+    doc.fillColor(COLORS.brandHover).font("Helvetica-Bold").fontSize(14)
+      .text(String(order._id).slice(-10).toUpperCase(), MARGIN + WIDTH - 170, 52, { width: 160, align: "right" });
 
-    currentY = 130;
+    // ---------- “Your Trip Summary” section (matches .summary-details) ----------
+    let y = 120;
+    const contentStart = sectionCard("YOUR TRIP SUMMARY", y, 220);
+    y = contentStart;
 
-    // ========== BOOKING DETAILS SECTION ==========
-    const detailsY = addSection("BOOKING DETAILS", currentY, 140);
-    
-    addField("Departure City", departureCityName, margin + 20, detailsY);
-    addField("Destination City", destinationCityName, margin + 20, detailsY + 35);
-    addField("Travel Date", createdDate.toLocaleDateString("en-US", {
-      weekday: "long",
-      year: "numeric", 
-      month: "long",
-      day: "numeric"
-    }), margin + 20, detailsY + 70);
+    // Two columns inside card
+    const colGap = 24;
+    const colW = (WIDTH - colGap) / 2;
+    let yL = y, yR = y;
 
-    currentY += 160;
+    // Left column values (exact keys from your UI)
+    yL = row("From", departureCityName, MARGIN + 16, yL, colW - 32);
+    yL = row("To", destinationCityName, MARGIN + 16, yL, colW - 32);
+    yL = row("Flight", flightName, MARGIN + 16, yL, colW - 32);
+    yL = row("Hotel", hotelName, MARGIN + 16, yL, colW - 32);
 
-    // ========== SERVICES SECTION ==========
-    const servicesY = addSection("TRAVEL SERVICES", currentY, 140);
-    
-    addField("Flight", flightName, margin + 20, servicesY);
-    addField("Hotel", hotelName, margin + 20, servicesY + 35);
-    addField("Attractions", attractionsList, margin + 20, servicesY + 70);
+    // Right column
+    yR = row("Attractions", attractionsList, MARGIN + colW + colGap + 16, yR, colW - 32);
+    yR = row("Transportation", transportation, MARGIN + colW + colGap + 16, yR, colW - 32);
+    yR = row("Payment", paymentMethod, MARGIN + colW + colGap + 16, yR, colW - 32);
 
-    currentY += 160;
+    // Bottom total strip in the same card
+    const cardBottom = Math.max(yL, yR) + 8;
+    hr(cardBottom);
+    doc.fillColor(COLORS.brand).font("Helvetica-Bold").fontSize(12)
+      .text("TOTAL", MARGIN + 16, cardBottom + 12);
+    doc.fillColor(COLORS.brand).font("Helvetica-Bold").fontSize(20)
+      .text(`$${total.toFixed(2)}`, MARGIN + WIDTH - 16 - 160, cardBottom + 8, { width: 160, align: "right" });
 
-    // ========== PAYMENT SECTION ==========  
-    const paymentY = addSection("PAYMENT INFORMATION", currentY, 100);
-    
-    addField("Payment Method", order.payment_method || "Credit Card", margin + 20, paymentY);
-    addField("Transaction ID", `TXN-${orderId.slice(-10).toUpperCase()}`, margin + 20, paymentY + 35);
+    // ---------- Notes / Footer ----------
+    const footerY = cardBottom + 70;
+    const noteH = 70;
+    const ns = sectionCard("NOTES", footerY, noteH);
+    doc.fillColor(COLORS.muted).font("Helvetica").fontSize(9)
+      .text("This PDF mirrors the summary shown in the chat’s Trip Summary panel.", MARGIN + 16, ns)
+      .text("For questions, reply to your booking email or contact support.", MARGIN + 16, ns + 16);
 
-    currentY += 120;
+    doc.fillColor(COLORS.muted).font("Helvetica").fontSize(9)
+      .text("Thank you for choosing PathMakers!", MARGIN, doc.page.height - 20, { width: WIDTH, align: "center" });
 
-    // ========== TOTAL AMOUNT SECTION ==========
-    doc.rect(margin, currentY, contentWidth, 80)
-       .fill(colors.success);
-    
-    doc.fillColor(colors.white)
-       .font("Helvetica-Bold")
-       .fontSize(16)
-       .text("TOTAL PAID", margin + 20, currentY + 20);
-    
-    doc.fontSize(32)
-       .text(`$${totalAmount.toFixed(2)}`, margin + 20, currentY + 40);
-    
-    // Paid status badge
-    doc.rect(pageWidth - margin - 100, currentY + 25, 80, 30)
-       .fill(colors.white);
-    
-    doc.fillColor(colors.success)
-       .fontSize(14)
-       .text("✓ PAID", pageWidth - margin - 100, currentY + 35, { 
-         width: 80, 
-         align: "center" 
-       });
-
-    currentY += 100;
-
-    // ========== IMPORTANT NOTES ==========
-    const notesY = addSection("IMPORTANT INFORMATION", currentY, 80);
-    
-    doc.fillColor(colors.textLight)
-       .font("Helvetica")
-       .fontSize(9)
-       .text("• This receipt serves as confirmation of your booking with AI Tripper", margin + 20, notesY)
-       .text("• Please keep this receipt for your travel records", margin + 20, notesY + 15)  
-       .text("• For support or changes, contact us at support@aitripper.com", margin + 20, notesY + 30);
-
-    // ========== FOOTER ==========
-    const footerY = pageHeight - 60;
-    
-    doc.rect(0, footerY - 20, pageWidth, 80)
-       .fill(colors.background);
-    
-    doc.fillColor(colors.primary)
-       .font("Helvetica-Bold")
-       .fontSize(14)
-       .text("Thank you for choosing AI Tripper!", margin, footerY, {
-         width: contentWidth,
-         align: "center"
-       });
-    
-    doc.fillColor(colors.textLight)
-       .font("Helvetica")
-       .fontSize(9)
-       .text(`Generated on ${new Date().toLocaleString()}`, margin, footerY + 25, {
-         width: contentWidth,
-         align: "center"  
-       });
-
-    // ========== FINALIZE PDF ==========
     doc.end();
-
   } catch (err) {
     console.error("❌ PDF generation error:", err);
     if (!res.headersSent) {
-      res.status(500).json({ 
-        message: "Failed to generate receipt PDF",
-        error: process.env.NODE_ENV === "development" ? err.message : undefined
-      });
+      res.status(500).json({ message: "Failed to generate receipt PDF" });
     }
   }
 }
