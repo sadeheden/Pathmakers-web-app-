@@ -131,13 +131,16 @@ class Orders2Controller {
       if (!req.user?.id) {
         return res.status(401).json({ success: false, message: 'User authentication required' });
       }
-      if ((!cityName && !departure_city_id) || (!flightNumber && !flight_id) || !tripDate || totalPrice == null) {
-        return res.status(400).json({
-          success: false,
-          message: 'Missing required fields',
-          required: ['cityName or departure_city_id', 'flightNumber or flight_id', 'tripDate', 'totalPrice'],
-          received: Object.keys(req.body)
-        });
+        const hasCityInfo = cityName || departureCityName || destinationCityName || departure_city_id || destination_city_id;
+    const hasFlightInfo = flightNumber || flightName || flight_id;
+    
+    if (!hasCityInfo || !hasFlightInfo || !tripDate || totalPrice == null) {
+      return res.status(400).json({
+        success: false,
+        message: 'Missing required fields',
+        required: ['city information', 'flight information', 'tripDate', 'totalPrice'],
+        received: Object.keys(req.body)
+      });
       }
       if (isNaN(totalPrice) || Number(totalPrice) <= 0) {
         return res.status(400).json({ success: false, message: 'Total price must be a positive number' });
@@ -223,70 +226,69 @@ attraction_ids = Array.from(new Set(attraction_ids));
 attraction_names = Array.from(new Set(attraction_names));
 
 
-      const orderData = {
-        user_id: new ObjectId(req.user.id),
+     const orderData = {
+      user_id: new ObjectId(req.user.id),
 
-        // denormalized trip summary
-        cityName: cityName?.trim() || null,
-        citySlug: citySlug ? citySlug.trim() : (cityName ? cityName.toLowerCase().replace(/\s+/g, '-') : null),
-        flightNumber: flightNumber?.trim() || null,
-        departure: departure?.trim() || null,
-        destination: destination?.trim() || null,
+      // denormalized trip summary
+      cityName: cityName?.trim() || destinationCityName?.trim() || null,
+      citySlug: citySlug ? citySlug.trim() : (cityName ? cityName.toLowerCase().replace(/\s+/g, '-') : null),
+      flightNumber: flightNumber?.trim() || flightName?.trim() || null,
+      departure: departure?.trim() || departureCityName?.trim() || null,
+      destination: destination?.trim() || destinationCityName?.trim() || null,
 
-        tripDate: tripDateObj,
-        returnDate: toDateOrNull(returnDate),
+      tripDate: tripDateObj,
+      returnDate: toDateOrNull(returnDate),
 
-        total_price: Number(totalPrice),
-        payment_method: paymentMethod || 'Credit Card',
+      total_price: Number(totalPrice),
+      payment_method: paymentMethod || 'Credit Card',
 
-        status: bodyStatus || 'confirmed',
-        bookingDate: bodyBookingDate ? new Date(bodyBookingDate) : new Date(),
+      status: bodyStatus || 'confirmed',
+      bookingDate: bodyBookingDate ? new Date(bodyBookingDate) : new Date(),
 
-        summary: summary?.trim() || null,
-        cityImage: cityImage?.trim() || null,
+      summary: summary?.trim() || null,
+      cityImage: cityImage?.trim() || null,
 
-        // canonical ids (24-hex only)
-        departure_city_id: is24(departure_city_id) ? departure_city_id : null,
-        destination_city_id: is24(destination_city_id) ? destination_city_id : null,
-        flight_id: is24(flight_id) ? flight_id : null,
-        hotel_id: is24(hotel_id) ? hotel_id : null,
+      // ✅ FIXED: Only set IDs if they are valid 24-hex strings
+      departure_city_id: is24(departure_city_id) ? departure_city_id : null,
+      destination_city_id: is24(destination_city_id) ? destination_city_id : null,
+      flight_id: is24(flight_id) ? flight_id : null,
+      hotel_id: is24(hotel_id) ? hotel_id : null,
 
-        transportation: transportation || null,
+      transportation: transportation || null,
 
-        // attractions: preserve tokens; enrich later
-        attractions: attraction_ids,
-        attraction_names,
+      // attractions: preserve tokens; enrich later
+      attractions: attraction_ids,
+      attraction_names,
 
-        // optional denormalized display names
-        flight_name: flightName || null,
-        hotel_name: hotelName || null,
+      // optional denormalized display names
+      flight_name: flightName || null,
+      hotel_name: hotelName || null,
 
-        departureCityName: departureCityName || null,
-        destinationCityName: destinationCityName || null
-      };
+      departureCityName: departureCityName || null,
+      destinationCityName: destinationCityName || null
+    };
 
-      if (orderData.returnDate && orderData.returnDate <= orderData.tripDate) {
-        return res.status(400).json({ success: false, message: 'Return date must be after trip date' });
-      }
-
-      const savedOrder = await orders2DB.createOrder(orderData);
-      res.status(201).json({
-        success: true,
-        message: 'Order created successfully',
-        order: savedOrder,
-        orderId: savedOrder._id,
-        orderNumber: savedOrder.orderNumber || null
-      });
-    } catch (error) {
-      console.error('❌ Error in createOrder controller:', error);
-      res.status(500).json({
-        success: false,
-        message: 'Failed to create order',
-        error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
-      });
+    if (orderData.returnDate && orderData.returnDate <= orderData.tripDate) {
+      return res.status(400).json({ success: false, message: 'Return date must be after trip date' });
     }
-  }
 
+    const savedOrder = await orders2DB.createOrder(orderData);
+    res.status(201).json({
+      success: true,
+      message: 'Order created successfully',
+      order: savedOrder,
+      orderId: savedOrder._id,
+      orderNumber: savedOrder.orderNumber || null
+    });
+  } catch (error) {
+    console.error('❌ Error in createOrder controller:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to create order',
+      error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
+    });
+  }
+}
   /* ---------------------- GET /api/orders2 ---------------------- */
   static async getUserOrders(req, res) {
     try {

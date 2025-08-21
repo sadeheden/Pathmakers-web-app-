@@ -1,9 +1,11 @@
+// Main.jsx - Fixed version with proper ID handling
+
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import '../assets/styles/main.css';
-import flag from '../assets/images/flag.jpg'; // Importing the flag image
-import { API_BASE } from "../config/api"; // or wherever you defined it
+import flag from '../assets/images/flag.jpg';
+import { API_BASE } from "../config/api";
 
 // React icons
 import { FiChevronLeft, FiChevronRight } from 'react-icons/fi';
@@ -18,7 +20,7 @@ import londonImg from '../assets/images/london.png';
 import bangkokImg from '../assets/images/bangkok.png';
 import dubaiImg from '../assets/images/dubai.png';
 
-// Cities data
+// Cities data - REMOVED hardcoded IDs
 const cities = [
   {
     img: parisImg,
@@ -26,11 +28,6 @@ const cities = [
     slug: 'paris',
     flight: 'AF123',
     summary: 'Art & Romance',
-    departure_city_id: '68022f445f7300b11f986830',
-    destination_city_id: '68022f445f7300b11f986831',
-    flight_id: '68075f88dc218773e0652232',
-    hotel_id: '68022f445f7300b11f986831',
-    attractions: ['6807610adc218773e0652255'],
     transportation: 'Public Transport'
   },
   {
@@ -39,11 +36,6 @@ const cities = [
     slug: 'tokyo',
     flight: 'JL456',
     summary: 'Neon & Tradition',
-    departure_city_id: '68022f445f7300b11f986832',
-    destination_city_id: '68022f445f7300b11f986833',
-    flight_id: '68075f88dc218773e0652233',
-    hotel_id: '68022f445f7300b11f986834',
-    attractions: ['6807610adc218773e0652256'],
     transportation: 'Train'
   },
   {
@@ -52,11 +44,6 @@ const cities = [
     slug: 'new-york',
     flight: 'DL789',
     summary: 'City That Never Sleeps',
-    departure_city_id: '68022f445f7300b11f986835',
-    destination_city_id: '68022f445f7300b11f986836',
-    flight_id: '68075f88dc218773e0652234',
-    hotel_id: '68022f445f7300b11f986837',
-    attractions: ['6807610adc218773e0652257'],
     transportation: 'Taxi'
   },
   {
@@ -65,11 +52,6 @@ const cities = [
     slug: 'barcelona',
     flight: 'IB234',
     summary: 'Beaches & Gaudí',
-    departure_city_id: '68022f445f7300b11f986838',
-    destination_city_id: '68022f445f7300b11f986839',
-    flight_id: '68075f88dc218773e0652235',
-    hotel_id: '68022f445f7300b11f986840',
-    attractions: ['6807610adc218773e0652258'],
     transportation: 'Bus'
   },
   {
@@ -78,11 +60,6 @@ const cities = [
     slug: 'rome',
     flight: 'AZ567',
     summary: 'History & Pasta',
-    departure_city_id: '68022f445f7300b11f986841',
-    destination_city_id: '68022f445f7300b11f986842',
-    flight_id: '68075f88dc218773e0652236',
-    hotel_id: '68022f445f7300b11f986843',
-    attractions: ['6807610adc218773e0652259'],
     transportation: 'Metro'
   },
   {
@@ -91,11 +68,6 @@ const cities = [
     slug: 'london',
     flight: 'BA890',
     summary: 'Royalty & Culture',
-    departure_city_id: '68022f445f7300b11f986844',
-    destination_city_id: '68022f445f7300b11f986845',
-    flight_id: '68075f88dc218773e0652237',
-    hotel_id: '68022f445f7300b11f986846',
-    attractions: ['6807610adc218773e0652260'],
     transportation: 'Underground'
   },
   {
@@ -104,11 +76,6 @@ const cities = [
     slug: 'bangkok',
     flight: 'TG321',
     summary: 'Temples & Street Food',
-    departure_city_id: '68022f445f7300b11f986847',
-    destination_city_id: '68022f445f7300b11f986848',
-    flight_id: '68075f88dc218773e0652238',
-    hotel_id: '68022f445f7300b11f986849',
-    attractions: ['6807610adc218773e0652261'],
     transportation: 'Tuk-Tuk'
   },
   {
@@ -117,11 +84,6 @@ const cities = [
     slug: 'dubai',
     flight: 'EK654',
     summary: 'Luxury & Desert',
-    departure_city_id: '68022f445f7300b11f986850',
-    destination_city_id: '68022f445f7300b11f986851',
-    flight_id: '68075f88dc218773e0652239',
-    hotel_id: '68022f445f7300b11f986852',
-    attractions: ['6807610adc218773e0652262'],
     transportation: 'Car'
   }
 ];
@@ -141,7 +103,7 @@ const getPriceByCity = (cityName) => {
   }
 };
 
-// Payment Modal
+// Payment Modal component (unchanged)
 const PaymentModal = ({ isOpen, onClose, totalAmount, onPaymentSuccess }) => {
   const [fullName, setFullName] = useState("");
   const [paymentDetails, setPaymentDetails] = useState("");
@@ -156,17 +118,17 @@ const PaymentModal = ({ isOpen, onClose, totalAmount, onPaymentSuccess }) => {
     let errors = [];
 
     if (!fullName.trim() || fullName.trim().length < 3) {
-      errors.push("❌ Invalid Full Name. Enter at least 3 characters.");
+      errors.push("⚠ Invalid Full Name. Enter at least 3 characters.");
     }
     if (!/^\d{16}$/.test(paymentDetails)) {
-      errors.push("❌ Invalid Payment Number. Must be 16 digits.");
+      errors.push("⚠ Invalid Payment Number. Must be 16 digits.");
     }
     const expiryMatch = expiryDate.match(/^(0[1-9]|1[0-2])\/(\d{4})$/);
     if (!expiryMatch || parseInt(expiryMatch[2]) < currentYear || parseInt(expiryMatch[2]) > maxYear) {
-      errors.push(`❌ Invalid Expiry Date. Must be MM/YYYY between ${currentYear}-${maxYear}.`);
+      errors.push(`⚠ Invalid Expiry Date. Must be MM/YYYY between ${currentYear}-${maxYear}.`);
     }
     if (!/^\d{3}$/.test(cvv)) {
-      errors.push("❌ Invalid CVV. Must be exactly 3 digits.");
+      errors.push("⚠ Invalid CVV. Must be exactly 3 digits.");
     }
     if (errors.length > 0) {
       setError(errors.join("\n"));
@@ -218,10 +180,10 @@ const PaymentModal = ({ isOpen, onClose, totalAmount, onPaymentSuccess }) => {
                 <input type="text" placeholder="123" maxLength="3" value={cvv} onChange={(e) => setCvv(e.target.value.replace(/\D/g, ""))} />
               </div>
             </div>
-<button className="btn btn-primary modal-btn" onClick={handlePayment} disabled={paymentSuccess}>
+            <button className="btn btn-primary modal-btn" onClick={handlePayment} disabled={paymentSuccess}>
               {paymentSuccess ? "Processing..." : `Pay $${totalAmount}`}
             </button>
-      <button className="btn btn-light modal-btn" onClick={onClose}>Cancel</button>
+            <button className="btn btn-light modal-btn" onClick={onClose}>Cancel</button>
           </>
         )}
       </div>
@@ -256,7 +218,7 @@ const Main = () => {
       <section className="hero-merged" style={{ backgroundImage: `url(${flag})` }}>
         <div className="hero-overlay"></div>
         <div className="hero-content">
-          <h1> Let’s Plan Your Next Adventure!</h1>
+          <h1>Let's Plan Your Next Adventure!</h1>
           <p>From dreamy escapes to thrilling getaways find your perfect trip with a little magic</p>
         </div>
       </section>
@@ -279,26 +241,25 @@ const Main = () => {
         <div className="city-scroll-wrapper">
           <button className="scroll-btn left" aria-label="Scroll left" onClick={() => scrollByCards(-1)}><FiChevronLeft /></button>
           <div className="city-row" ref={rowRef}>
-           {visibleCities.map((city, i) => (
-  <div
-    className="city-card"
-    key={i}
-    onClick={() => {
-      sessionStorage.removeItem("mainOrders2Saved"); // reset guard
-      setSelectedCity(city);
-      setPaymentCompleted(false);
-      setShowPaymentModal(false);
-      setShowIntroPopup(true);
-    }}
-  >
-    <img src={city.img} alt={city.name} />
-    <div className="city-card-text">
-      <h3>{city.name}</h3>
-      <p className="muted">{city.summary}</p>
-    </div>
-  </div>
-))}
-
+            {visibleCities.map((city, i) => (
+              <div
+                className="city-card"
+                key={i}
+                onClick={() => {
+                  sessionStorage.removeItem("mainOrders2Saved");
+                  setSelectedCity(city);
+                  setPaymentCompleted(false);
+                  setShowPaymentModal(false);
+                  setShowIntroPopup(true);
+                }}
+              >
+                <img src={city.img} alt={city.name} />
+                <div className="city-card-text">
+                  <h3>{city.name}</h3>
+                  <p className="muted">{city.summary}</p>
+                </div>
+              </div>
+            ))}
           </div>
           <button className="scroll-btn right" aria-label="Scroll right" onClick={() => scrollByCards(1)}><FiChevronRight /></button>
         </div>
@@ -313,8 +274,7 @@ const Main = () => {
             <p>✈️ Awesome! You're about to see your trip details to <strong>{selectedCity.name}</strong>.<br/>This includes flight number, departure info, and trip dates.</p>
             <p>Click <strong>Continue</strong> to review and proceed to payment.</p>
             <p><strong>Price per person*</strong></p>
-          <button className="btn btn-primary modal-btn" onClick={() => setShowIntroPopup(false)}>Continue</button>
-
+            <button className="btn btn-primary modal-btn" onClick={() => setShowIntroPopup(false)}>Continue</button>
           </div>
         </div>
       )}
@@ -327,14 +287,13 @@ const Main = () => {
             <h2>Your Trip is Ready!</h2>
             <div className="modal-image-wrapper"><img src={selectedCity.img} alt={selectedCity.name} className="modal-city-image" /></div>
             <p><strong>Destination:</strong> {selectedCity.name}</p>
-            <p><strong>Departure:</strong> Israel (Ben-Gurion Airport)</p>
+            <p><strong>Departure:</strong> Tel Aviv (Ben-Gurion Airport)</p>
             <p><strong>Flight Number:</strong> {selectedCity.flight}</p>
             <p><strong>Trip Date:</strong> {tripDate}</p>
             <p><strong>Return Date:</strong> {returnDate}</p>
             <p><strong>Total Price:</strong> ${totalPrice}</p>
             <div className="modal-btns">
-          <button className="btn btn-primary modal-btn" onClick={() => setShowPaymentModal(true)}>Pay Now</button>
-
+              <button className="btn btn-primary modal-btn" onClick={() => setShowPaymentModal(true)}>Pay Now</button>
             </div>
           </div>
         </div>
@@ -347,9 +306,9 @@ const Main = () => {
           onClose={() => setShowPaymentModal(false)}
           totalAmount={totalPrice}
           onPaymentSuccess={async () => {
-             if (sessionStorage.getItem("mainOrders2Saved") === "1") {
-    return;
-  }
+            if (sessionStorage.getItem("mainOrders2Saved") === "1") {
+              return;
+            }
             
             setPaymentCompleted(true);
             setShowPaymentModal(false);
@@ -383,62 +342,53 @@ const Main = () => {
             }
 
             try {
-              const departureCityId = selectedCity?.departure_city_id;
-              const destinationCityId = selectedCity?.destination_city_id;
-              const flightId = selectedCity?.flight_id;
-              const hotelId = selectedCity?.hotel_id || null;
-              const attractions = selectedCity?.attractions || [];
-              const transportation = selectedCity?.transportation || null;
-              const paymentMethod = "Credit Card";
+              // FIXED: Create order with minimal, clean data - no hardcoded IDs
+              const response = await axios.post(
+                `${API_BASE}/api/orders2`,
+                {
+                  // ✅ Use display names only - no hardcoded IDs that might be wrong
+                  departureCityName: "Tel Aviv",
+                  destinationCityName: selectedCity.name,
+                  flightName: selectedCity.flight,
+                  hotelName: `${selectedCity.name} Hotel`,
+                  
+                  // Legacy summary fields for UI display
+                  cityName: selectedCity.name,
+                  citySlug: selectedCity.slug,
+                  flightNumber: selectedCity.flight,
+                  departure: "Tel Aviv",
+                  destination: selectedCity.name,
+                  summary: selectedCity.summary,
+                  cityImage: selectedCity.img,
 
-const TEL_AVIV_ID = "689af474f511eb0daf25e306"; // Tel Aviv city _id
+                  // Basic trip data
+                  transportation: selectedCity.transportation,
+                  paymentMethod: "Credit Card",
+                  totalPrice,
+                  tripDate,
+                  returnDate,
+                  
+                  // ✅ Leave IDs null - let backend handle ID resolution if needed
+                  departure_city_id: null,
+                  destination_city_id: null,
+                  flight_id: null,
+                  hotel_id: null,
+                  attractions: [],
+                  attractionNames: []
+                },
+                {
+                  headers: { 
+                    Authorization: `Bearer ${token}`, 
+                    "Content-Type": "application/json" 
+                  }
+                }
+              );
 
-const response = await axios.post(
-  `${API_BASE}/api/orders2`,
-  {
-    // canonical IDs
-    departure_city_id: TEL_AVIV_ID,
-    destination_city_id: selectedCity?.destination_city_id || null,
-    flight_id: selectedCity?.flight_id || null,
-    hotel_id: selectedCity?.hotel_id || null,
+              console.log("✅ Order created successfully:", response.data);
+              sessionStorage.setItem("mainOrders2Saved", "1");
 
-    // denormalized display
-    departureCityName: "Tel Aviv",
-    destinationCityName: selectedCity?.name || null,
-    flightName: selectedCity?.flight || null,
-    hotelName: selectedCity ? `${selectedCity.name} Hotel` : null,
-    attractionNames: Array.isArray(selectedCity?.attractionsNames) ? selectedCity.attractionsNames : [],
-
-    // attractions IDs
-    attractions: Array.isArray(selectedCity?.attractions) ? selectedCity.attractions : [],
-
-    transportation: selectedCity?.transportation || null,
-
-    // legacy summary fields
-    cityName: selectedCity?.name,
-    citySlug: selectedCity?.slug,
-    flightNumber: selectedCity?.flight,
-    departure: TEL_AVIV_ID,
-    destination: selectedCity?.name,
-    summary: selectedCity?.summary,
-    cityImage: selectedCity?.img,
-
-    paymentMethod: "Credit Card",
-    totalPrice,
-    tripDate
-  },
-  {
-    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }
-  }
-);
-
-console.log("✅ Order created:", response.data);
-sessionStorage.setItem("mainOrders2Saved", "1");
-
-
-              console.log("✅ Order created:", response.data);
             } catch (error) {
-              console.error("❌ Order flow error:", error.response?.data || error.message);
+              console.error("❌ Order creation error:", error.response?.data || error.message);
               if (error.response?.status === 401) {
                 alert("Your session has expired. Please log in again.");
                 localStorage.removeItem("token");
