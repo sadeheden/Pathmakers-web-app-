@@ -138,11 +138,14 @@ const destination =
       (typeof o?.id === "string") ? o.id :
       null;
 
-    const oidTs = tsFromObjectId(idForTs);
-    if (Number.isFinite(oidTs)) {
-      createdAtTs = oidTs;
-      try { createdAtISO = new Date(oidTs).toISOString(); } catch {}
-    }
+ // Extract creation time from a Mongo ObjectId (as ms since epoch)
+function tsFromObjectId(id) {
+  if (!id || typeof id !== "string" || id.length < 8) return null;
+  const hex = id.slice(0, 8);
+  const secs = parseInt(hex, 16);
+  if (Number.isNaN(secs)) return null;
+  return secs * 1000;
+}
   }
 
   const totalPrice = Number(o.total_price ?? o.totalPrice ?? 0);
@@ -191,6 +194,7 @@ const LoadingSpinner = ({ size = "large", message = "Loading..." }) => {
 };
 
 // 2) Keep fetch purely for data
+// Fetch orders from BOTH collections and return one combined array
 async function fetchMyOrders(token) {
   const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
@@ -198,13 +202,30 @@ async function fetchMyOrders(token) {
     const r = await fetch(url, { headers });
     if (!r.ok) throw new Error(String(r.status));
     const j = await r.json();
-    return j?.data?.orders || j?.orders || (Array.isArray(j?.data) ? j.data : Array.isArray(j) ? j : []);
+    return (
+      j?.data?.orders ||
+      j?.orders ||
+      (Array.isArray(j?.data) ? j.data : Array.isArray(j) ? j : [])
+    );
   };
 
-  // Use only the new collection
-  const orders2 = await tryFetch(`${API_BASE}/api/orders2?limit=100`).catch(() => []);
-  console.log("Fetched orders:", { fromOrders2: orders2.length, total: orders2.length });
-  return orders2; // <- nothing after this return
+  // Legacy orders + new orders2
+  const [orders1Res, orders2Res] = await Promise.allSettled([
+    tryFetch(`${API_BASE}/api/order?limit=100`),   // legacy
+    tryFetch(`${API_BASE}/api/orders2?limit=100`)  // new
+  ]);
+
+  const orders1 = orders1Res.status === "fulfilled" ? orders1Res.value : [];
+  const orders2 = orders2Res.status === "fulfilled" ? orders2Res.value : [];
+  const all = [...orders1, ...orders2];
+
+  console.log("🔍 Fetched orders:", {
+    fromOrder: orders1.length,
+    fromOrders2: orders2.length,
+    total: all.length
+  });
+
+  return all;
 }
 
 
@@ -496,24 +517,20 @@ const loadOrders = async () => {
 
     const rawOrders = await fetchMyOrders(token);
 
-    // normalize
+    // normalize both kinds
     const normalized = rawOrders.map(normalizeOrder);
 
-    // ✅ keep only new system
-    const onlyNew = normalized.filter(o => o.source === "orders2");
-
-    // optional: dedupe by a composite key (usually not needed now)
+    // optional: de-dupe by a stable key
     const makeKey = (o) =>
       `${o.source || "order"}:${o.id || o.raw?.orderNumber || o.createdAt || Math.random()}`;
 
     const map = new Map();
-    for (const o of onlyNew) {
+    for (const o of normalized) {
       const k = makeKey(o);
       if (!map.has(k)) map.set(k, o);
     }
-    const deduped = Array.from(map.values());
 
-    setOrders(deduped);
+    setOrders(Array.from(map.values()));
   } catch (e) {
     console.error("orders fetch error", e);
     setApiError("Failed to load your orders.");
@@ -522,6 +539,7 @@ const loadOrders = async () => {
     setIsOrdersLoading(false);
   }
 };
+
 
 
 // inside PersonalArea.jsx > when selectedOrder opens:
