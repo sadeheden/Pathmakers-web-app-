@@ -76,6 +76,11 @@ useEffect(() => {
             });
             if (!response.ok) throw new Error(`Logout failed: ${response.statusText}`);
             // Clean up
+            // 🧹 clear ALL chat/order memory
+   localStorage.removeItem("currentStep");
+   localStorage.removeItem("userResponses");
+   sessionStorage.removeItem("orderSaved");
+   sessionStorage.removeItem("lastOrderId");
             localStorage.removeItem("authToken");
             window.dispatchEvent(new Event("userChanged"));
             sessionStorage.removeItem("hasLoggedIn");

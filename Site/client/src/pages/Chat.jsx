@@ -21,6 +21,8 @@ const TravelPlannerApp = () => {
 const savingOrderRef = useRef(false);
 
 const [toast, setToast] = useState(null); // { type: 'success' | 'error', text: string }
+// Chat.jsx
+const [isPlacingOrder, setIsPlacingOrder] = useState(false);
 
   // progress
   const [currentStep, setCurrentStep] = useState(() => {
@@ -66,6 +68,28 @@ const restartTrip = React.useCallback(() => {
 
   // live hotels from API (by chosen destination)
   const [hotelsFromApi, setHotelsFromApi] = useState([]);
+// Chat.jsx
+useEffect(() => {
+  const onAppLogout = () => {
+    // reset all in-memory chat state
+    setIsPaymentModalOpen(false);
+    setPaymentCompleted(false);
+    setUserResponses({});
+    setCurrentStep(0);
+
+    // double-sure: wipe persisted progress
+    localStorage.removeItem("currentStep");
+    localStorage.removeItem("userResponses");
+    sessionStorage.removeItem("orderSaved");
+    sessionStorage.removeItem("lastOrderId");
+
+    // scroll to top (optional)
+    try { window.scrollTo({ top: 0, behavior: "smooth" }); } catch {}
+  };
+
+  window.addEventListener("app:logout", onAppLogout);
+  return () => window.removeEventListener("app:logout", onAppLogout);
+}, []);
 
   useEffect(() => {
     // pick any token the app uses (optional header)
@@ -241,13 +265,18 @@ if (token) {
 
    <PaymentModal
   isOpen={isPaymentModalOpen}
-  onClose={() => setIsPaymentModalOpen(false)}
+   onClose={() => !isPlacingOrder && setIsPaymentModalOpen(false)}
+ busy={isPlacingOrder}
+  total={calculateTotalPrice(userResponses)}
+  totalAmount={calculateTotalPrice(userResponses)}
 // FIXED Payment Success Handler in Chat.jsx
 onPaymentSuccess={async ({ attractionIds, attractionNames } = {}) => {
+  setIsPlacingOrder(true);
   // prevent duplicate saves in the same session
   if (sessionStorage.getItem("orderSaved") === "1") {
     setToast({ type: "success", text: "Order already saved." });
     setTimeout(() => setToast(null), 2000);
+    setIsPlacingOrder(false);
     return;
   }
   // prevent concurrent double-clicks
@@ -480,10 +509,66 @@ if (result?._id) {
     setToast({ type: "error", text: String(err.message || err) });
     setTimeout(() => setToast(null), 4000);
   } finally {
+    setIsPlacingOrder(false);
     savingOrderRef.current = false;
   }
 }}
-        />
+        />{isPlacingOrder && (
+  <div
+    role="alert"
+    aria-live="assertive"
+    aria-busy="true"
+    style={{
+      position: "fixed",
+      inset: 0,
+      background: "rgba(0,0,0,0.35)",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      zIndex: 9999
+    }}
+  >
+    <div
+      style={{
+        background: "#fff",
+        borderRadius: 12,
+        padding: "20px 24px",
+        minWidth: 260,
+        textAlign: "center",
+        boxShadow: "0 10px 30px rgba(0,0,0,0.2)",
+        border: "1px solid rgba(0,0,0,0.06)"
+      }}
+    >
+      {/* spinner */}
+      <div
+        style={{
+          width: 36,
+          height: 36,
+          margin: "0 auto 12px",
+          border: "4px solid #e5e7eb",
+          borderTopColor: "#004e75", // your --brand
+          borderRadius: "50%",
+          animation: "pmk-spin 0.9s linear infinite"
+        }}
+      />
+      <div style={{ fontWeight: 700, color: "#004e75", marginBottom: 4 }}>
+        Processing payment…
+      </div>
+      <div style={{ fontSize: 13, color: "#334155" }}>
+        Please wait while we create your order.
+      </div>
+    </div>
+
+    {/* inline keyframes */}
+    <style>{`
+      @keyframes pmk-spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+      }
+    `}</style>
+  </div>
+)}
+
 
         {toast && (
           <div className={`toast toast-${toast.type}`}>
