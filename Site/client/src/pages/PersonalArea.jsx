@@ -109,9 +109,8 @@ const destination =
   o.destinationCityName ??
   o.destination_city_name ??
   (typeof o.destination === "string" ? o.destination : null) ??
-  // if you *really* want a last resort, try to resolve the id to a name,
-  // but do NOT show raw ids or unrelated fields like `cityName`
-  null;
+  (typeof o.cityName === "string" ? o.cityName : "—"); // last resort for legacy
+
 
 
   const flight = o.flightName || o.flight_name || o.flightNumber || "—";
@@ -165,85 +164,49 @@ const destination =
   };
 };
 
+const LoadingSpinner = ({ size = "large", message = "Loading..." }) => {
+  const spinnerSize = size === "small" ? "40px" : size === "medium" ? "60px" : "80px";
+  return (
+    <div style={{
+      display: "flex", flexDirection: "column", alignItems: "center",
+      justifyContent: "center", padding: "40px 20px",
+      minHeight: size === "large" ? "300px" : "150px",
+    }}>
+      <div
+        style={{
+          width: spinnerSize, height: spinnerSize,
+          border: "4px solid #f3f4f6", borderTop: "4px solid #3b82f6",
+          borderRadius: "50%", animation: "spin 1s linear infinite",
+          marginBottom: "16px"
+        }}
+      />
+      <p style={{ color: "#6b7280", fontSize: 16, fontWeight: 500, margin: 0 }}>
+        {message}
+      </p>
+      <style>{`
+        @keyframes spin { 0% { transform: rotate(0deg) } 100% { transform: rotate(360deg) } }
+      `}</style>
+    </div>
+  );
+};
+
+// 2) Keep fetch purely for data
 async function fetchMyOrders(token) {
-  const headers = token ? { Authorization: `Bearer ${token}` } : undefined;
+  const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
   const tryFetch = async (url) => {
     const r = await fetch(url, { headers });
     if (!r.ok) throw new Error(String(r.status));
     const j = await r.json();
-    return (
-      j?.data?.orders ||
-      j?.orders ||
-      (Array.isArray(j?.data) ? j.data : Array.isArray(j) ? j : [])
-    );
+    return j?.data?.orders || j?.orders || (Array.isArray(j?.data) ? j.data : Array.isArray(j) ? j : []);
   };
 
-  // Fetch from both endpoints
-  const [orders1, orders2] = await Promise.allSettled([
-    tryFetch(`${API_BASE}/api/order?limit=100`).catch(() => []),
-    tryFetch(`${API_BASE}/api/orders2?limit=100`).catch(() => [])
-  ]);
-
-  // Combine results
-  const allOrders = [
-    ...(orders1.status === 'fulfilled' ? orders1.value : []),
-    ...(orders2.status === 'fulfilled' ? orders2.value : [])
-  ];
-
-  console.log("🔍 Fetched orders:", {
-    fromOrder: orders1.status === 'fulfilled' ? orders1.value.length : 0,
-    fromOrders2: orders2.status === 'fulfilled' ? orders2.value.length : 0,
-    total: allOrders.length
-  });
-
-  return allOrders;
+  // Use only the new collection
+  const orders2 = await tryFetch(`${API_BASE}/api/orders2?limit=100`).catch(() => []);
+  console.log("Fetched orders:", { fromOrders2: orders2.length, total: orders2.length });
+  return orders2; // <- nothing after this return
 }
-// Beautiful Loading Component
-const LoadingSpinner = ({ size = "large", message = "טוען..." }) => {
-  const spinnerSize = size === "small" ? "40px" : size === "medium" ? "60px" : "80px";
-  
-  return (
-    <div 
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: "40px 20px",
-        minHeight: size === "large" ? "300px" : "150px",
-      }}
-    >
-      <div
-        style={{
-          width: spinnerSize,
-          height: spinnerSize,
-          border: "4px solid #f3f4f6",
-          borderTop: "4px solid #3b82f6",
-          borderRadius: "50%",
-          animation: "spin 1s linear infinite",
-          marginBottom: "16px"
-        }}
-      />
-      <p style={{
-        color: "#6b7280",
-        fontSize: "16px",
-        fontWeight: "500",
-        margin: 0,
-        textAlign: "center"
-      }}>
-        {message}
-      </p>
-      
-<style >{`
-  @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-  }
-`}</style>
-</div>
-  );
-};
+
 
 // Page Loading Overlay Component
 const PageLoadingOverlay = ({ message = "טוען נתונים..." }) => {
@@ -536,12 +499,15 @@ const loadOrders = async () => {
     // normalize
     const normalized = rawOrders.map(normalizeOrder);
 
-    // dedupe by a composite key
+    // ✅ keep only new system
+    const onlyNew = normalized.filter(o => o.source === "orders2");
+
+    // optional: dedupe by a composite key (usually not needed now)
     const makeKey = (o) =>
       `${o.source || "order"}:${o.id || o.raw?.orderNumber || o.createdAt || Math.random()}`;
 
     const map = new Map();
-    for (const o of normalized) {
+    for (const o of onlyNew) {
       const k = makeKey(o);
       if (!map.has(k)) map.set(k, o);
     }
