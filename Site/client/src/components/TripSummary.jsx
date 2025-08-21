@@ -1,6 +1,11 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import { calculateTotalPrice,downloadReceipt  } from "../utils/travelUtils.jsx";
+import { 
+  calculateTotalPrice,
+  downloadReceipt,
+  getLastOrderId
+} from "../utils/travelUtils.jsx";
+
 
 const TripSummary = ({
   userResponses,
@@ -93,14 +98,26 @@ const handleDownloadReceipt = async () => {
           Go to Personal Area
         </button>
 
-        <button
-          type="button"
-          className="btn btn-light"
-       onClick={() => downloadReceipt(sessionStorage.getItem("lastOrderId"))}
-          aria-label="Download receipt"
-        >
-          Download Receipt
-        </button>
+      <button
+  type="button"
+  className="btn btn-light"
+  onClick={async () => {
+    const id24 = getLastOrderId();
+    if (!id24) {
+      alert("No order found. Please create an order first or open it from your Personal Area.");
+      return;
+    }
+    try {
+      await downloadReceipt(id24);
+    } catch (e) {
+      // already alerted inside downloadReceipt
+    }
+  }}
+  aria-label="Download receipt"
+>
+  Download Receipt
+</button>
+
 
         <button
           type="button"

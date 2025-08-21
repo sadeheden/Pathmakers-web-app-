@@ -466,8 +466,11 @@ const fetchCityIdByName = async (name, headers) => {
 
     const result = await r2.json();
     sessionStorage.setItem("orderSaved", "1");
-    if (result?._id) sessionStorage.setItem("lastOrderId", result._id);
-
+if (result?._id) {
+  sessionStorage.setItem("lastOrderId", result._id);
+  // Also save in userResponses for immediate access
+  setUserResponses(prev => ({ ...prev, orderId: result._id }));
+}
     setPaymentCompleted(true);
     setCurrentStep((prev) => prev + 1);
     setToast({ type: "success", text: "✅ Order saved!" });
