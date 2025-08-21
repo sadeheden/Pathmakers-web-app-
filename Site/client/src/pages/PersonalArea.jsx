@@ -89,6 +89,7 @@ const parseAnyDate = (v) => {
   return { ts: null, iso: null };
 };
 
+
 const normalizeOrder = (o) => {
   // id (handles ObjectId, {$oid}, strings)
   const id = (() => {
@@ -104,13 +105,21 @@ const normalizeOrder = (o) => {
   const departure =
     o.departureCityName || o.departure_city_name || o.departure || o.departure_city_id || "—";
 
-  const destination =
-    o.destinationCityName || o.destination_city_name || o.destination || o.cityName || o.destination_city_id || "—";
+const destination =
+  o.destinationCityName ??
+  o.destination_city_name ??
+  (typeof o.destination === "string" ? o.destination : null) ??
+  // if you *really* want a last resort, try to resolve the id to a name,
+  // but do NOT show raw ids or unrelated fields like `cityName`
+  null;
+
 
   const flight = o.flightName || o.flight_name || o.flightNumber || "—";
 
-  const hotel =
-    o.hotelName || o.hotel_name || (o.cityName ? `${o.cityName} Hotel` : null) || o.hotel_id || "—";
+ const hotel =
+  o.hotelName ??
+  o.hotel_name ??
+  (typeof o.hotel_id === "string" ? o.hotel_id : "—");
 
   const attractions =
     (Array.isArray(o.attraction_names) && o.attraction_names) ||
@@ -119,8 +128,23 @@ const normalizeOrder = (o) => {
     [];
 
   // robust date handling
-  const createdRaw = o.created_at ?? o.createdAt ?? o.bookingDate ?? o.tripDate ?? null;
-  const { ts: createdAtTs, iso: createdAtISO } = parseAnyDate(createdRaw);
+ const createdRaw = o.created_at ?? o.createdAt ?? o.bookingDate ?? o.tripDate ?? null;
+  let { ts: createdAtTs, iso: createdAtISO } = parseAnyDate(createdRaw);
+
+  // ⬇️ NEW: fallback from ObjectId timestamp
+  if (!Number.isFinite(createdAtTs)) {
+    const idForTs =
+      (typeof o?._id === "object" && o?._id?.$oid) ? o._id.$oid :
+      (typeof o?._id === "string") ? o._id :
+      (typeof o?.id === "string") ? o.id :
+      null;
+
+    const oidTs = tsFromObjectId(idForTs);
+    if (Number.isFinite(oidTs)) {
+      createdAtTs = oidTs;
+      try { createdAtISO = new Date(oidTs).toISOString(); } catch {}
+    }
+  }
 
   const totalPrice = Number(o.total_price ?? o.totalPrice ?? 0);
 
@@ -135,12 +159,11 @@ const normalizeOrder = (o) => {
     transportation: o.transportation || "—",
     paymentMethod: o.payment_method || o.paymentMethod || "—",
     totalPrice,
-    createdAt: createdAtISO,     // string for display
-    createdAtTs,                 // number for filtering/sorting
+    createdAt: createdAtISO ?? null,
+    createdAtTs: Number.isFinite(createdAtTs) ? createdAtTs : null,
     source: o.cityName ? "orders2" : "order",
   };
 };
-
 
 async function fetchMyOrders(token) {
   const headers = token ? { Authorization: `Bearer ${token}` } : undefined;
@@ -594,11 +617,20 @@ useEffect(() => {
     });
   }
 
-  list.sort((a, b) => {
-    const dA = typeof a.createdAtTs === "number" ? a.createdAtTs : 0;
-    const dB = typeof b.createdAtTs === "number" ? b.createdAtTs : 0;
-    return sortDir === "asc" ? dA - dB : dB - dA; // desc = newest first
-  });
+ list.sort((a, b) => {
+  const hasA = Number.isFinite(a.createdAtTs);
+  const hasB = Number.isFinite(b.createdAtTs);
+
+  // always put items without a date at the end
+  if (hasA && !hasB) return -1;
+  if (!hasA && hasB) return 1;
+  if (!hasA && !hasB) return 0;
+
+  return sortDir === "asc"
+    ? a.createdAtTs - b.createdAtTs
+    : b.createdAtTs - a.createdAtTs;
+});
+
 
   return list;
 }, [orders, dateFrom, dateTo, sortDir]);
