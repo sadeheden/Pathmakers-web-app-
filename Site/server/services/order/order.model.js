@@ -139,7 +139,7 @@ export default class Order {
       destination_city_name: this.destination_city_name
     };
 
-    console.log("💾 Saving order to database:", orderDoc);
+    console.log(" Saving order to database:", orderDoc);
 
     try {
       const result = await insertOrderToDb(orderDoc);

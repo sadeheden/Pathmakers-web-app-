@@ -39,13 +39,18 @@ const PaymentModal = ({
 
     const errs = [];
     if (!fullName.trim() || fullName.trim().length < 3) {
-      errs.push("❌ Invalid Full Name. Enter at least 3 characters.");
+    errs.push("❌ Invalid Full Name. Enter at least 3 characters.");
+  } else {
+    const parts = fullName.trim().split(/\s+/);
+    if (parts.length < 2) {
+      errs.push("❌ Full Name must contain at least two words (first and last).");
     }
-
+  }
     if (!isBank) {
       if (!/^\d{16}$/.test(paymentDetails)) {
         errs.push("❌ Invalid Payment Number. Must be 16 digits.");
       }
+      
 
       const expiryMatch = expiryDate.match(/^(0[1-9]|1[0-2])\/(\d{4})$/);
       if (!expiryMatch) {
