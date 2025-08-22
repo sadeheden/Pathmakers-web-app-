@@ -360,8 +360,6 @@ const handleCityPress = (city) => {
   navigation.navigate('Pay', { city });
 };
 
-
-
   const handleLike = (id) => {
   // if already voted, block further changes
   if (userVotes[id]) return;
