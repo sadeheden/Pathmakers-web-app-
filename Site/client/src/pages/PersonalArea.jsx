@@ -198,35 +198,121 @@ const LoadingSpinner = ({ size = "large", message = "Loading..." }) => {
 async function fetchMyOrders(token) {
   const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
-  const tryFetch = async (url) => {
+  const tryFetch = async (url, source) => {
     const r = await fetch(url, { headers });
-    if (!r.ok) throw new Error(String(r.status));
+    if (!r.ok) throw new Error(`${source} ${r.status}`);
     const j = await r.json();
-    return (
+    const arr =
       j?.data?.orders ||
       j?.orders ||
-      (Array.isArray(j?.data) ? j.data : Array.isArray(j) ? j : [])
-    );
+      (Array.isArray(j?.data) ? j.data : Array.isArray(j) ? j : []);
+    return Array.isArray(arr) ? arr : [];
   };
 
-  // Legacy orders + new orders2
+  // Fetch both in parallel
   const [orders1Res, orders2Res] = await Promise.allSettled([
-    tryFetch(`${API_BASE}/api/order?limit=100`),   // legacy
-    tryFetch(`${API_BASE}/api/orders2?limit=100`)  // new
+    tryFetch(`${API_BASE}/api/order?limit=100`, "order"),     // enriched
+    tryFetch(`${API_BASE}/api/orders2?limit=100`, "orders2"), // basic
   ]);
 
-  const orders1 = orders1Res.status === "fulfilled" ? orders1Res.value : [];
-  const orders2 = orders2Res.status === "fulfilled" ? orders2Res.value : [];
-  const all = [...orders1, ...orders2];
+  const ordersFromOrder   = orders1Res.status === "fulfilled" ? orders1Res.value : [];
+  const ordersFromOrders2 = orders2Res.status === "fulfilled" ? orders2Res.value : [];
+
+  // Helpers
+  const getId = (o) =>
+    (o && typeof o._id === "string" && o._id) ||
+    (o && o._id && typeof o._id.$oid === "string" && o._id.$oid) ||
+    (o && typeof o.id === "string" && o.id) ||
+    null;
+
+// robust date handling for orders
+const toTs = (v) => {
+  if (!v) return NaN;
+  const t = new Date(v).getTime();
+  return Number.isFinite(t) ? t : NaN;
+};
+
+const tsFromObjectId = (id) => {
+  if (!id || typeof id !== "string" || id.length < 8) return NaN;
+  const secs = parseInt(id.slice(0, 8), 16);
+  return Number.isFinite(secs) ? secs * 1000 : NaN;
+};
+
+// returns a stable timestamp per order (ms since epoch)
+const getOrderCreatedTs = (o) => {
+  // Prefer stored fields from your two backends
+  const t =
+    toTs(o?.created_at) ||          // legacy /api/order (server)
+    toTs(o?.createdAt)  ||          // orders2 model wrote this for some docs
+    toTs(o?.bookingDate) ||         // orders2 controller may set this
+    toTs(o?.tripDate);              // last-resort stored date
+
+  if (Number.isFinite(t)) return t;
+
+  // FINAL fallback: derive from MongoDB ObjectId (stable, per-document)
+  const id =
+    (typeof o?._id === "string" && o._id) ||
+    (o?._id?.$oid) ||
+    (typeof o?.id === "string" && o.id) ||
+    null;
+
+  return tsFromObjectId(id) || 0;
+};
+
+  // Build a map by _id; prefer enriched fields from /api/order when both exist
+  const byId = new Map();
+
+  // First ingest orders2 (acts as a fallback)
+  for (const o of ordersFromOrders2) {
+    const id = getId(o);
+    if (!id) continue;
+    byId.set(id, o);
+  }
+
+  // Then overlay the enriched /api/order results (these win)
+  for (const o of ordersFromOrder) {
+    const id = getId(o);
+    if (!id) continue;
+
+    const existing = byId.get(id);
+    if (!existing) {
+      byId.set(id, o);
+      continue;
+    }
+
+    // Merge: enriched fields take precedence; keep anything missing
+    byId.set(id, {
+      ...existing,
+      ...o, // overwrite with enriched values
+      // ensure denormalized names stick if present in either
+      flight_name: o.flight_name ?? existing.flight_name ?? null,
+      hotel_name: o.hotel_name ?? existing.hotel_name ?? null,
+      departure_city_name: o.departure_city_name ?? existing.departure_city_name ?? null,
+      destination_city_name: o.destination_city_name ?? existing.destination_city_name ?? null,
+      attraction_names:
+        Array.isArray(o.attraction_names) && o.attraction_names.length
+          ? o.attraction_names
+          : Array.isArray(existing.attraction_names)
+          ? existing.attraction_names
+          : [],
+    });
+  }
+
+  const merged = Array.from(byId.values());
+
+  // Sort newest first (fallback to ObjectId timestamp if needed)
+merged.sort((a, b) => getOrderCreatedTs(b) - getOrderCreatedTs(a));
 
   console.log("🔍 Fetched orders:", {
-    fromOrder: orders1.length,
-    fromOrders2: orders2.length,
-    total: all.length
+    fromOrder: ordersFromOrder.length,
+    fromOrders2: ordersFromOrders2.length,
+    totalRaw: ordersFromOrder.length + ordersFromOrders2.length,
+    totalAfterDedup: merged.length,
   });
 
-  return all;
+  return merged;
 }
+
 
 
 // Page Loading Overlay Component
@@ -519,7 +605,15 @@ const loadOrders = async () => {
 
     // normalize both kinds
     const normalized = rawOrders.map(normalizeOrder);
+const byId = new Map();
+for (const o of normalized) {
+  const key = o.id || o.raw?._id?.$oid || o.raw?._id || null;
+  // skip if we somehow don't have an id
+  if (!key) continue;
+  if (!byId.has(key)) byId.set(key, o);
+}
 
+setOrders(Array.from(byId.values()));
     // optional: de-dupe by a stable key
     const makeKey = (o) =>
       `${o.source || "order"}:${o.id || o.raw?.orderNumber || o.createdAt || Math.random()}`;
