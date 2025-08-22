@@ -31,6 +31,75 @@ const cities = [
   { img: bangkokImg, name: "Bangkok", slug: "bangkok", flight: "TG321", summary: "Temples & Street Food", transportation: "Tuk-Tuk" },
   { img: dubaiImg, name: "Dubai", slug: "dubai", flight: "EK654", summary: "Luxury & Desert", transportation: "Car" },
 ];
+function slugifyCity(name) {
+  return String(name || "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, "-");
+}
+// ---- helpers for attractions (doc-per-city -> array of objects) ----
+async function fetchCityAttractionNames(API_BASE, cityName, token) {
+  const headers = token ? { Authorization: `Bearer ${token}` } : {};
+  const fetchJson = async (url) => {
+    try {
+      const r = await fetch(url, { headers });
+      if (!r.ok) return null;
+      return await r.json();
+    } catch {
+      return null;
+    }
+  };
+const candidates = [
+    // your current route
+    `${API_BASE}/api/attractions/city/${encodeURIComponent(cityName)}`,
+    // slug version
+    `${API_BASE}/api/attractions/city/${encodeURIComponent(slugifyCity(cityName))}`,
+    // query-string fallback
+    `${API_BASE}/api/attractions?city=${encodeURIComponent(cityName)}`,
+  ];
+
+  // Unwrap common response shapes into { attractions: [...] }
+  const unwrap = (j) => {
+    if (!j) return null;
+    // { city, attractions: [...] }
+    if (j.city && Array.isArray(j.attractions)) return j;
+    // { data: { city, attractions } }
+    if (j.data && !Array.isArray(j.data) && Array.isArray(j.data.attractions)) return j.data;
+    // { data: [ { city, attractions }, ... ] } or [ { city, attractions }, ... ]
+    const arr = Array.isArray(j.data) ? j.data : Array.isArray(j) ? j : null;
+    if (arr && arr.length && Array.isArray(arr[0].attractions)) return arr[0];
+    return null;
+  };
+
+  for (const url of candidates) {
+    const j = await fetchJson(url);
+    const doc = unwrap(j);
+    if (doc) {
+      const names = Array.from(
+        new Set(
+          (doc.attractions || [])
+            .map(a => a && a.name)
+            .filter(Boolean)
+            .map(String)
+        )
+      );
+      if (names.length) return names;
+    }
+  }
+
+  // Last-resort client fallback so something gets saved visually
+  const localFallback = {
+    Paris: ["Eiffel Tower", "Louvre Museum", "Notre-Dame"],
+    Tokyo: ["Senso-ji", "Shibuya Crossing", "Tokyo Skytree"],
+    "New York": ["Central Park", "Times Square", "Statue of Liberty"],
+    Barcelona: ["Sagrada Família", "Park Güell", "La Rambla"],
+    Rome: ["Colosseum", "Trevi Fountain", "Pantheon"],
+    London: ["Tower Bridge", "British Museum", "Buckingham Palace"],
+    Bangkok: ["Grand Palace", "Wat Arun", "Chatuchak Market"],
+    Dubai: ["Burj Khalifa", "Dubai Mall", "Palm Jumeirah"],
+  };
+  return localFallback[cityName] || [];
+}
 
 // Price helper
 const getPriceByCity = (cityName) => {
@@ -348,6 +417,9 @@ const Main = () => {
 
             try {
               if (!selectedCity) throw new Error("No city selected");
+// 🔎 fetch attractions for the selected city
+const attractionNames =
+  await fetchCityAttractionNames(API_BASE, selectedCity.name, token);
 
               const response = await axios.post(
                 `${API_BASE}/api/orders2`,
@@ -381,7 +453,8 @@ const Main = () => {
                   flight_id: null,
                   hotel_id: null,
                   attractions: [],
-                  attractionNames: [],
+                  attraction_names: attractionNames,
+               attractionNames: attractionNames,
                 },
                 {
                   headers: {

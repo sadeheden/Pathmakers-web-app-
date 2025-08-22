@@ -349,6 +349,7 @@ small { color: var(--muted); }
   position: fixed;
   inset: 0;
   background: rgba(2, 6, 23, 0.48);
+  -webkit-backdrop-filter: blur(2px);
   backdrop-filter: blur(2px);
   display: grid;
   place-items: center;
