@@ -355,6 +355,8 @@ const handleWeatherPress = () => {
   };
 
 const handleCityPress = (city) => {
+   setSelectedDestination(city);
+     setShowIntroPopup(true); 
   navigation.navigate('Pay', { city });
 };
 
@@ -381,35 +383,55 @@ const handleDislike = (id) => {
 
 
   // *** הפונקציה המשופרת לטיפול בתשלום מוצלח ***
-  const handlePaymentSuccess = async () => {
-    setPaymentCompleted(true);
-    setShowPaymentModal(false);
+const handlePaymentSuccess = async () => {
+  setPaymentCompleted(true);
+  setShowPaymentModal(false);
 
-    console.log('🏁 Starting order creation process...');
-    console.log('📍 Selected destination:', selectedDestination);
+  // 🔐 make sure we have a destination
+  if (!selectedDestination) {
+    Alert.alert('Missing data', 'Please pick a destination again.');
+    return;
+  }
 
-    // בנה את נתוני ההזמנה עם מזהים נכונים
- const selectedHotel = Array.isArray(global?.hotelsList)
-  ? global.hotelsList.find(h => h._id === getHotelId(selectedDestination))
-  : null; // or pass hotelsList in via props/context and use that
-    const orderData = {
-      departureCityId: getDepartureCityId(selectedDestination),
-      departureCityName: selectedDestination?.name || selectedDestination?.slug || '',
+  // 🛫 resolve flight id and verify it’s truthy
+  const resolvedFlightId = getFlightId(selectedDestination);
+  if (!resolvedFlightId) {
+    Alert.alert('Missing flight', 'Could not resolve a flight for this destination.');
+    return;
+  }
 
-      destinationCityId: getDestinationCityId(selectedDestination),
-      destinationCityName: selectedDestination?.name || selectedDestination?.slug || '',
+  // (optional) also verify destination id resolution
+  const destId = getDestinationCityId(selectedDestination);
+  if (!destId) {
+    Alert.alert('Missing destination', 'Could not resolve destination city ID.');
+    return;
+  }
 
-      flightId: getFlightId(selectedDestination),
-      flightName: selectedDestination?.name ? `${selectedDestination.name} Flight` : '',
+  // If you don’t really have hotels for now, don’t send empty string — send null/omit
+  const selectedHotel = Array.isArray(global?.hotelsList)
+    ? global.hotelsList.find(h => h._id === getHotelId(selectedDestination))
+    : null;
 
-      hotelId: selectedHotel?._id || '',
-      hotelName: selectedHotel?.name || '',
+  const orderData = {
+    departureCityId: getDepartureCityId(selectedDestination),
+    departureCityName: selectedDestination?.name || selectedDestination?.slug || '',
 
-      attractions: selectedAttractions || [],
-      transportation: selectedTransportation,
-      paymentMethod: selectedPaymentMethod,
-      totalPrice: parseInt(selectedDestination?.price) || 0
-    };
+    destinationCityId: destId,
+    destinationCityName: selectedDestination?.name || selectedDestination?.slug || '',
+
+    flightId: resolvedFlightId,                               // ✅ guaranteed non-empty
+    flightName: selectedDestination?.name ? `${selectedDestination.name} Flight` : '',
+
+    // Don’t send '' — send null or omit if unknown
+    hotelId: selectedHotel?._id ?? null,
+    hotelName: selectedHotel?.name ?? '',
+
+    attractions: selectedAttractions || [],
+    transportation: selectedTransportation,
+    paymentMethod: selectedPaymentMethod,
+    totalPrice: parseInt(selectedDestination?.price) || 0,
+  };
+
 
     console.log('📋 Order data prepared:', JSON.stringify(orderData, null, 2));
     console.log('💰 Price selected by user:', orderData.totalPrice);

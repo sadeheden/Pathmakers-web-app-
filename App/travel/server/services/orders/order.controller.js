@@ -19,6 +19,36 @@ const reqUserId = (req) => {
   console.log('🔍 Extracted user ID from request:', userId);
   return userId;
 };
+// place right after reqUserId(...)
+async function resolveFlightIdIfMissing(db, { flightId, destinationCityId }) {
+  if (flightId) return { flightId, flightNameFromDb: null };
+
+  const toId = (v) => toObjectId(v) || v || null;
+  const destId = toId(destinationCityId);
+
+  let flightDoc = null;
+  if (destId) {
+    flightDoc = await db.collection('flights').findOne({
+      $or: [
+        { destination_city_id: destId },
+        { destination: destId },
+        { 'route.to': destId },
+      ],
+    });
+  }
+
+  if (!flightDoc) {
+    flightDoc = await db.collection('flights').findOne({});
+  }
+
+  if (!flightDoc?._id) {
+    return { flightId: null, flightNameFromDb: null };
+  }
+
+  const flightNameFromDb =
+    flightDoc.name || flightDoc.title || flightDoc.airline || '';
+  return { flightId: String(flightDoc._id), flightNameFromDb };
+}
 
 /** ========= CREATE ORDER =========
  * Expects camelCase fields from RN and stores snake_case in Mongo.
@@ -39,6 +69,8 @@ export async function createOrder(req, res) {
     }
 
     console.log('✅ Valid user ObjectId:', userObjectId);
+// ⬇️ add this small helper near the top of the file (below toObjectId)
+
 
     // Extract required fields
     const {
@@ -55,6 +87,9 @@ export async function createOrder(req, res) {
       paymentMethod = '',
       totalPrice,
     } = req.body || {};
+
+    const { flightId: resolvedFlightId, flightNameFromDb } =
+  await resolveFlightIdIfMissing(db, { flightId, destinationCityId });
 
     // Basic validation with detailed logging
     const missing = [];
