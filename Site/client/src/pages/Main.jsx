@@ -1,109 +1,53 @@
-// Main.jsx - Fixed version with proper ID handling
+// Main.jsx - fixed, copy-paste ready
 
-import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
-import '../assets/styles/main.css';
-import flag from '../assets/images/flag.jpg';
+import React, { useState, useRef, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
+import axios from "axios";
+import "../assets/styles/main.css";
+import flag from "../assets/images/flag.jpg";
 import { API_BASE } from "../config/api";
 
 // React icons
-import { FiChevronLeft, FiChevronRight } from 'react-icons/fi';
+import { FiChevronLeft, FiChevronRight } from "react-icons/fi";
 
 // Images
-import parisImg from '../assets/images/paris.png';
-import tokyoImg from '../assets/images/tokyo.png';
-import newYorkImg from '../assets/images/newyork.png';
-import barcelonaImg from '../assets/images/barcelona.png';
-import romeImg from '../assets/images/rome.png';
-import londonImg from '../assets/images/london.png';
-import bangkokImg from '../assets/images/bangkok.png';
-import dubaiImg from '../assets/images/dubai.png';
+import parisImg from "../assets/images/paris.png";
+import tokyoImg from "../assets/images/tokyo.png";
+import newYorkImg from "../assets/images/newyork.png";
+import barcelonaImg from "../assets/images/barcelona.png";
+import romeImg from "../assets/images/rome.png";
+import londonImg from "../assets/images/london.png";
+import bangkokImg from "../assets/images/bangkok.png";
+import dubaiImg from "../assets/images/dubai.png";
 
-// Cities data - REMOVED hardcoded IDs
+// Cities data (no hardcoded DB IDs)
 const cities = [
-  {
-    img: parisImg,
-    name: 'Paris',
-    slug: 'paris',
-    flight: 'AF123',
-    summary: 'Art & Romance',
-    transportation: 'Public Transport'
-  },
-  {
-    img: tokyoImg,
-    name: 'Tokyo',
-    slug: 'tokyo',
-    flight: 'JL456',
-    summary: 'Neon & Tradition',
-    transportation: 'Train'
-  },
-  {
-    img: newYorkImg,
-    name: 'New York',
-    slug: 'new-york',
-    flight: 'DL789',
-    summary: 'City That Never Sleeps',
-    transportation: 'Taxi'
-  },
-  {
-    img: barcelonaImg,
-    name: 'Barcelona',
-    slug: 'barcelona',
-    flight: 'IB234',
-    summary: 'Beaches & Gaudí',
-    transportation: 'Bus'
-  },
-  {
-    img: romeImg,
-    name: 'Rome',
-    slug: 'rome',
-    flight: 'AZ567',
-    summary: 'History & Pasta',
-    transportation: 'Metro'
-  },
-  {
-    img: londonImg,
-    name: 'London',
-    slug: 'london',
-    flight: 'BA890',
-    summary: 'Royalty & Culture',
-    transportation: 'Underground'
-  },
-  {
-    img: bangkokImg,
-    name: 'Bangkok',
-    slug: 'bangkok',
-    flight: 'TG321',
-    summary: 'Temples & Street Food',
-    transportation: 'Tuk-Tuk'
-  },
-  {
-    img: dubaiImg,
-    name: 'Dubai',
-    slug: 'dubai',
-    flight: 'EK654',
-    summary: 'Luxury & Desert',
-    transportation: 'Car'
-  }
+  { img: parisImg, name: "Paris", slug: "paris", flight: "AF123", summary: "Art & Romance", transportation: "Public Transport" },
+  { img: tokyoImg, name: "Tokyo", slug: "tokyo", flight: "JL456", summary: "Neon & Tradition", transportation: "Train" },
+  { img: newYorkImg, name: "New York", slug: "new-york", flight: "DL789", summary: "City That Never Sleeps", transportation: "Taxi" },
+  { img: barcelonaImg, name: "Barcelona", slug: "barcelona", flight: "IB234", summary: "Beaches & Gaudí", transportation: "Bus" },
+  { img: romeImg, name: "Rome", slug: "rome", flight: "AZ567", summary: "History & Pasta", transportation: "Metro" },
+  { img: londonImg, name: "London", slug: "london", flight: "BA890", summary: "Royalty & Culture", transportation: "Underground" },
+  { img: bangkokImg, name: "Bangkok", slug: "bangkok", flight: "TG321", summary: "Temples & Street Food", transportation: "Tuk-Tuk" },
+  { img: dubaiImg, name: "Dubai", slug: "dubai", flight: "EK654", summary: "Luxury & Desert", transportation: "Car" },
 ];
 
-// Helper function to get price per city
+// Price helper
 const getPriceByCity = (cityName) => {
-  switch(cityName) {
-    case 'Paris': return 1800;
-    case 'Tokyo': return 2200;
-    case 'New York': return 2000;
-    case 'Barcelona': return 1700;
-    case 'Rome': return 1600;
-    case 'London': return 1900;
-    case 'Bangkok': return 1500;
-    case 'Dubai': return 2100;
+  switch (cityName) {
+    case "Paris": return 1800;
+    case "Tokyo": return 2200;
+    case "New York": return 2000;
+    case "Barcelona": return 1700;
+    case "Rome": return 1600;
+    case "London": return 1900;
+    case "Bangkok": return 1500;
+    case "Dubai": return 2100;
     default: return 2000;
   }
 };
 
-// Payment Modal component (unchanged)
+// ------- Payment Modal -------
 const PaymentModal = ({ isOpen, onClose, totalAmount, onPaymentSuccess }) => {
   const [fullName, setFullName] = useState("");
   const [paymentDetails, setPaymentDetails] = useState("");
@@ -115,7 +59,7 @@ const PaymentModal = ({ isOpen, onClose, totalAmount, onPaymentSuccess }) => {
   const maxYear = currentYear + 10;
 
   const handlePayment = () => {
-    let errors = [];
+    const errors = [];
 
     if (!fullName.trim() || fullName.trim().length < 3) {
       errors.push("⚠ Invalid Full Name. Enter at least 3 characters.");
@@ -124,19 +68,19 @@ const PaymentModal = ({ isOpen, onClose, totalAmount, onPaymentSuccess }) => {
       errors.push("⚠ Invalid Payment Number. Must be 16 digits.");
     }
     const expiryMatch = expiryDate.match(/^(0[1-9]|1[0-2])\/(\d{4})$/);
-    if (!expiryMatch || parseInt(expiryMatch[2]) < currentYear || parseInt(expiryMatch[2]) > maxYear) {
+    if (!expiryMatch || parseInt(expiryMatch[2], 10) < currentYear || parseInt(expiryMatch[2], 10) > maxYear) {
       errors.push(`⚠ Invalid Expiry Date. Must be MM/YYYY between ${currentYear}-${maxYear}.`);
     }
     if (!/^\d{3}$/.test(cvv)) {
       errors.push("⚠ Invalid CVV. Must be exactly 3 digits.");
     }
-    if (errors.length > 0) {
+    if (errors.length) {
       setError(errors.join("\n"));
       return;
     }
 
-    setPaymentSuccess(true);
     setError("");
+    setPaymentSuccess(true);
 
     setTimeout(() => {
       setPaymentSuccess(false);
@@ -165,11 +109,20 @@ const PaymentModal = ({ isOpen, onClose, totalAmount, onPaymentSuccess }) => {
           <>
             <h2>Payment</h2>
             <p><strong>Total Amount: ${totalAmount}</strong></p>
-            {error && <p className="error-message" style={{whiteSpace: "pre-line"}}>{error}</p>}
+            {error && <p className="error-message" style={{ whiteSpace: "pre-line" }}>{error}</p>}
+
             <label>Full Name</label>
             <input type="text" placeholder="John Doe" value={fullName} onChange={(e) => setFullName(e.target.value)} />
+
             <label>Payment Number</label>
-            <input type="text" placeholder="1234 5678 9012 3456" maxLength="16" value={paymentDetails} onChange={(e) => setPaymentDetails(e.target.value.replace(/\D/g, ""))} />
+            <input
+              type="text"
+              placeholder="1234 5678 9012 3456"
+              maxLength="16"
+              value={paymentDetails}
+              onChange={(e) => setPaymentDetails(e.target.value.replace(/\D/g, ""))}
+            />
+
             <div className="expiry-cvv">
               <div>
                 <label>Expiry Date</label>
@@ -180,6 +133,7 @@ const PaymentModal = ({ isOpen, onClose, totalAmount, onPaymentSuccess }) => {
                 <input type="text" placeholder="123" maxLength="3" value={cvv} onChange={(e) => setCvv(e.target.value.replace(/\D/g, ""))} />
               </div>
             </div>
+
             <button className="btn btn-primary modal-btn" onClick={handlePayment} disabled={paymentSuccess}>
               {paymentSuccess ? "Processing..." : `Pay $${totalAmount}`}
             </button>
@@ -191,16 +145,28 @@ const PaymentModal = ({ isOpen, onClose, totalAmount, onPaymentSuccess }) => {
   );
 };
 
+// ------- Main Page -------
 const Main = () => {
   const navigate = useNavigate();
-  const [carouselIdx, setCarouselIdx] = useState(0);
+
   const [selectedCity, setSelectedCity] = useState(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [paymentCompleted, setPaymentCompleted] = useState(false);
   const [showIntroPopup, setShowIntroPopup] = useState(false);
 
-  const visibleCities = cities;
   const rowRef = useRef(null);
+  const savingRef = useRef(false);
+  const [hasSaved, setHasSaved] = useState(false);
+
+  // stable random key per page mount
+  const idemKey = useMemo(
+    () =>
+      (globalThis.crypto?.randomUUID
+        ? globalThis.crypto.randomUUID()
+        : String(Date.now()) + Math.random()),
+    []
+  );
+
   const CARD_WIDTH = 240;
   const GAP = 24;
 
@@ -210,7 +176,7 @@ const Main = () => {
 
   const scrollByCards = (n) => {
     if (!rowRef.current) return;
-    rowRef.current.scrollBy({ left: (CARD_WIDTH + GAP) * n, behavior: 'smooth' });
+    rowRef.current.scrollBy({ left: (CARD_WIDTH + GAP) * n, behavior: "smooth" });
   };
 
   return (
@@ -239,14 +205,21 @@ const Main = () => {
       <section className="popular-trips">
         <h2>Traveler-Favorite Destinations</h2>
         <div className="city-scroll-wrapper">
-          <button className="scroll-btn left" aria-label="Scroll left" onClick={() => scrollByCards(-1)}><FiChevronLeft /></button>
+          <button className="scroll-btn left" aria-label="Scroll left" onClick={() => scrollByCards(-1)}>
+            <FiChevronLeft />
+          </button>
+
           <div className="city-row" ref={rowRef}>
-            {visibleCities.map((city, i) => (
+            {cities.map((city, i) => (
               <div
                 className="city-card"
                 key={i}
                 onClick={() => {
+                  // allow one save per city selection
                   sessionStorage.removeItem("mainOrders2Saved");
+                  setHasSaved(false);
+                  savingRef.current = false;
+
                   setSelectedCity(city);
                   setPaymentCompleted(false);
                   setShowPaymentModal(false);
@@ -261,7 +234,10 @@ const Main = () => {
               </div>
             ))}
           </div>
-          <button className="scroll-btn right" aria-label="Scroll right" onClick={() => scrollByCards(1)}><FiChevronRight /></button>
+
+          <button className="scroll-btn right" aria-label="Scroll right" onClick={() => scrollByCards(1)}>
+            <FiChevronRight />
+          </button>
         </div>
       </section>
 
@@ -269,12 +245,26 @@ const Main = () => {
       {selectedCity && showIntroPopup && (
         <div className="modal-overlay" onClick={() => setShowIntroPopup(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <button className="modal-close-x" onClick={() => { setShowIntroPopup(false); setSelectedCity(null); }} aria-label="Close">&#10005;</button>
+            <button
+              className="modal-close-x"
+              onClick={() => {
+                setShowIntroPopup(false);
+                setSelectedCity(null);
+              }}
+              aria-label="Close"
+            >
+              &#10005;
+            </button>
             <h2>You've Selected {selectedCity.name}!</h2>
-            <p>✈️ Awesome! You're about to see your trip details to <strong>{selectedCity.name}</strong>.<br/>This includes flight number, departure info, and trip dates.</p>
+            <p>
+              ✈️ Awesome! You're about to see your trip details to <strong>{selectedCity.name}</strong>.<br />
+              This includes flight number, departure info, and trip dates.
+            </p>
             <p>Click <strong>Continue</strong> to review and proceed to payment.</p>
             <p><strong>Price per person*</strong></p>
-            <button className="btn btn-primary modal-btn" onClick={() => setShowIntroPopup(false)}>Continue</button>
+            <button className="btn btn-primary modal-btn" onClick={() => setShowIntroPopup(false)}>
+              Continue
+            </button>
           </div>
         </div>
       )}
@@ -282,10 +272,14 @@ const Main = () => {
       {/* Trip Details Modal */}
       {selectedCity && !paymentCompleted && !showPaymentModal && !showIntroPopup && (
         <div className="modal-overlay" onClick={() => setSelectedCity(null)}>
-          <div className="modal-content" onClick={e => e.stopPropagation()}>
-            <button className="modal-close-x" onClick={() => setSelectedCity(null)} aria-label="Close">&#10005;</button>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <button className="modal-close-x" onClick={() => setSelectedCity(null)} aria-label="Close">
+              &#10005;
+            </button>
             <h2>Your Trip is Ready!</h2>
-            <div className="modal-image-wrapper"><img src={selectedCity.img} alt={selectedCity.name} className="modal-city-image" /></div>
+            <div className="modal-image-wrapper">
+              <img src={selectedCity.img} alt={selectedCity.name} className="modal-city-image" />
+            </div>
             <p><strong>Destination:</strong> {selectedCity.name}</p>
             <p><strong>Departure:</strong> Tel Aviv (Ben-Gurion Airport)</p>
             <p><strong>Flight Number:</strong> {selectedCity.flight}</p>
@@ -293,7 +287,9 @@ const Main = () => {
             <p><strong>Return Date:</strong> {returnDate}</p>
             <p><strong>Total Price:</strong> ${totalPrice}</p>
             <div className="modal-btns">
-              <button className="btn btn-primary modal-btn" onClick={() => setShowPaymentModal(true)}>Pay Now</button>
+              <button className="btn btn-primary modal-btn" onClick={() => setShowPaymentModal(true)}>
+                Pay Now
+              </button>
             </div>
           </div>
         </div>
@@ -306,53 +302,63 @@ const Main = () => {
           onClose={() => setShowPaymentModal(false)}
           totalAmount={totalPrice}
           onPaymentSuccess={async () => {
-            if (sessionStorage.getItem("mainOrders2Saved") === "1") {
+            // 🔒 Strong client guard to avoid duplicate POSTs
+            if (hasSaved || savingRef.current || sessionStorage.getItem("mainOrders2Saved") === "1") {
+              console.log("🔒 Blocked duplicate save");
               return;
             }
-            
+            savingRef.current = true;
+            sessionStorage.setItem("mainOrders2Saved", "1");
+
             setPaymentCompleted(true);
             setShowPaymentModal(false);
 
-            const token = localStorage.getItem("token") || 
-                          localStorage.getItem("authToken") || 
-                          localStorage.getItem("jwt") || 
-                          localStorage.getItem("access_token") || 
-                          localStorage.getItem("userToken");
+            const token =
+              localStorage.getItem("token") ||
+              localStorage.getItem("authToken") ||
+              localStorage.getItem("jwt") ||
+              localStorage.getItem("access_token") ||
+              localStorage.getItem("userToken");
 
             if (!token) {
               alert("Please log in to complete your purchase");
-              navigate('/login');
+              savingRef.current = false;
+              sessionStorage.removeItem("mainOrders2Saved");
+              navigate("/login");
               return;
             }
 
-            const isTokenExpired = (token) => {
+            // simple token expiry check
+            const isTokenExpired = (tok) => {
               try {
-                const payload = JSON.parse(atob(token.split('.')[1]));
+                const payload = JSON.parse(atob(tok.split(".")[1]));
                 return payload.exp * 1000 < Date.now();
               } catch {
                 return true;
               }
             };
-
             if (isTokenExpired(token)) {
               alert("Your session has expired. Please log in again.");
               localStorage.removeItem("token");
-              navigate('/login');
+              savingRef.current = false;
+              sessionStorage.removeItem("mainOrders2Saved");
+              navigate("/login");
               return;
             }
 
             try {
-              // FIXED: Create order with minimal, clean data - no hardcoded IDs
+              if (!selectedCity) throw new Error("No city selected");
+
               const response = await axios.post(
                 `${API_BASE}/api/orders2`,
                 {
-                  // ✅ Use display names only - no hardcoded IDs that might be wrong
+                  // Display fields only (no DB IDs)
                   departureCityName: "Tel Aviv",
                   destinationCityName: selectedCity.name,
                   flightName: selectedCity.flight,
                   hotelName: `${selectedCity.name} Hotel`,
-                  
-                  // Legacy summary fields for UI display
+
+                  // Legacy display fields used by UI
                   cityName: selectedCity.name,
                   citySlug: selectedCity.slug,
                   flightNumber: selectedCity.flight,
@@ -361,41 +367,39 @@ const Main = () => {
                   summary: selectedCity.summary,
                   cityImage: selectedCity.img,
 
-                  // Basic trip data
+                  // Trip data
                   transportation: selectedCity.transportation,
                   paymentMethod: "Credit Card",
                   totalPrice,
                   tripDate,
                   returnDate,
-                  
-                  // ✅ Leave IDs null - let backend handle ID resolution if needed
+
+                  // Keep canonical IDs empty (backend can resolve/enrich)
                   departure_city_id: null,
                   destination_city_id: null,
                   flight_id: null,
                   hotel_id: null,
                   attractions: [],
-                  attractionNames: []
+                  attractionNames: [],
                 },
                 {
-                  headers: { 
-                    Authorization: `Bearer ${token}`, 
-                    "Content-Type": "application/json" 
-                  }
+                  headers: {
+                    Authorization: `Bearer ${token}`,
+                    "Content-Type": "application/json",
+                    "Idempotency-Key": idemKey,
+                    "X-Source-Component": "Main.jsx",
+                  },
                 }
               );
 
               console.log("✅ Order created successfully:", response.data);
-              sessionStorage.setItem("mainOrders2Saved", "1");
-
+              setHasSaved(true);
             } catch (error) {
               console.error("❌ Order creation error:", error.response?.data || error.message);
-              if (error.response?.status === 401) {
-                alert("Your session has expired. Please log in again.");
-                localStorage.removeItem("token");
-                navigate('/login');
-              } else {
-                alert("Failed to save order. Please try again.");
-              }
+              // allow retry on failure only
+              sessionStorage.removeItem("mainOrders2Saved");
+            } finally {
+              savingRef.current = false;
             }
           }}
         />
