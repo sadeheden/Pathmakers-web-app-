@@ -127,7 +127,7 @@ const destination =
     [];
 
   // robust date handling
- const createdRaw = o.created_at ?? o.createdAt ?? o.bookingDate ?? o.tripDate ?? null;
+const createdRaw = o.bookingDate ?? o.created_at ?? o.createdAt ?? o.tripDate ?? null;
   let { ts: createdAtTs, iso: createdAtISO } = parseAnyDate(createdRaw);
 
   // ⬇️ NEW: fallback from ObjectId timestamp
@@ -146,6 +146,11 @@ function tsFromObjectId(id) {
   if (Number.isNaN(secs)) return null;
   return secs * 1000;
 }
+const ts = tsFromObjectId(idForTs);
+   if (typeof ts === "number" && Number.isFinite(ts)) {
+     createdAtTs = ts;
+     createdAtISO = new Date(ts).toISOString();
+   }
   }
 
   const totalPrice = Number(o.total_price ?? o.totalPrice ?? 0);
@@ -242,10 +247,10 @@ const tsFromObjectId = (id) => {
 const getOrderCreatedTs = (o) => {
   // Prefer stored fields from your two backends
   const t =
-    toTs(o?.created_at) ||          // legacy /api/order (server)
-    toTs(o?.createdAt)  ||          // orders2 model wrote this for some docs
-    toTs(o?.bookingDate) ||         // orders2 controller may set this
-    toTs(o?.tripDate);              // last-resort stored date
+   toTs(o?.bookingDate) ||   // 👈 first
+   toTs(o?.created_at)  ||   // then legacy
+   toTs(o?.createdAt)   ||   // then new field
+   toTs(o?.tripDate);        // last resortort stored date
 
   if (Number.isFinite(t)) return t;
 
@@ -615,16 +620,8 @@ for (const o of normalized) {
 
 setOrders(Array.from(byId.values()));
     // optional: de-dupe by a stable key
-    const makeKey = (o) =>
-      `${o.source || "order"}:${o.id || o.raw?.orderNumber || o.createdAt || Math.random()}`;
+setOrders(Array.from(byId.values()));
 
-    const map = new Map();
-    for (const o of normalized) {
-      const k = makeKey(o);
-      if (!map.has(k)) map.set(k, o);
-    }
-
-    setOrders(Array.from(map.values()));
   } catch (e) {
     console.error("orders fetch error", e);
     setApiError("Failed to load your orders.");
@@ -871,8 +868,7 @@ useEffect(() => {
                 {/* Wrap details in a grid for nicer layout */}
                 <div className="order-detail-grid">
                   <p><strong>Order ID:</strong> {selectedOrder.id}</p>
-                  <p><strong>Created At:</strong> {selectedOrder.createdAt ? new Date(selectedOrder.createdAt).toLocaleString() : "—"}</p>
-                  <p><strong>Departure City:</strong> {selectedOrder.departure}</p>
+             <p><strong>Created At:</strong> {Number.isFinite(selectedOrder.createdAtTs) ? new Date(selectedOrder.createdAtTs).toLocaleString() : "—"}</p>
                   <p><strong>Destination City:</strong> {selectedOrder.destination}</p>
                   <p><strong>Flight:</strong> {selectedOrder.flight}</p>
                   <p><strong>Hotel:</strong> {selectedOrder.hotel}</p>
@@ -1003,7 +999,8 @@ useEffect(() => {
               <ul className="orders-grid">
                 {currentPageOrders.map((o, index) => (
                   <li
-                    key={`${o.source || 'order'}:${o.id || o.raw?.orderNumber || o.createdAt || index}`}
+key={o.id || (o.raw?._id?.$oid) || (o.raw?._id) || String(index)}
+
                     className="order-card">
                           <div className="top">
                             <div className="route">
@@ -1013,7 +1010,7 @@ useEffect(() => {
                           </div>
 
                           <div className="meta">
-                            <div><span className="lbl">Date</span>{o.createdAt ? new Date(o.createdAt).toLocaleDateString() : "—"}</div>
+                            <div><span className="lbl">Date</span>{Number.isFinite(o.createdAtTs) ? new Date(o.createdAtTs).toLocaleDateString() : "—"}</div>
                             <div><span className="lbl">Payment</span>{o.paymentMethod || "—"}</div>
                             <div><span className="lbl">Flight</span>{o.flight}</div>
                             <div><span className="lbl">Hotel</span>{o.hotel}</div>

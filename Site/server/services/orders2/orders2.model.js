@@ -17,6 +17,7 @@ export default class Order2Model {
     orderData.bookingDate = orderData.bookingDate || new Date();
     orderData.createdAt = new Date();
     orderData.updatedAt = new Date();
+    orderData.bookingDate = orderData.bookingDate || new Date();
 
     const result = await this.collection.insertOne(orderData);
     return await this.collection.findOne({ _id: result.insertedId });

@@ -373,6 +373,7 @@ const Main = () => {
                   totalPrice,
                   tripDate,
                   returnDate,
+                  bookingDate: new Date().toISOString(),
 
                   // Keep canonical IDs empty (backend can resolve/enrich)
                   departure_city_id: null,
@@ -386,8 +387,11 @@ const Main = () => {
                   headers: {
                     Authorization: `Bearer ${token}`,
                     "Content-Type": "application/json",
-                    "Idempotency-Key": idemKey,
-                    "X-Source-Component": "Main.jsx",
+             "Idempotency-Key": (globalThis.crypto?.randomUUID?.()
+   ?? `${Date.now()}-${Math.random()}`),
+ "X-Request-ID": (globalThis.crypto?.randomUUID?.()
+   ?? `${Date.now()}-${Math.random()}`),
+ "X-Source-Component": "Main.jsx",
                   },
                 }
               );
