@@ -460,11 +460,10 @@ const attractionNames =
                   headers: {
                     Authorization: `Bearer ${token}`,
                     "Content-Type": "application/json",
-             "Idempotency-Key": (globalThis.crypto?.randomUUID?.()
-   ?? `${Date.now()}-${Math.random()}`),
- "X-Request-ID": (globalThis.crypto?.randomUUID?.()
-   ?? `${Date.now()}-${Math.random()}`),
- "X-Source-Component": "Main.jsx",
+                            "Idempotency-Key": idemKey,
+                    "X-Request-ID": (globalThis.crypto?.randomUUID?.()
+                      ?? `${Date.now()}-${Math.random()}`),
+                    "X-Source-Component": "Main.jsx",
                   },
                 }
               );
