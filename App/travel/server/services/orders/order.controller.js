@@ -179,3 +179,209 @@ export async function getDynamicData(req, res) {
     res.status(500).json({ message: 'Internal server error' });
   }
 }
+export async function getUserOrders(req, res) {
+  if (!req.user?.id && !req.user?.userId) {
+    return res.status(401).json({ message: 'Unauthorized' });
+  }
+
+  try {
+    const userId = req.user.id || req.user.userId;
+    const userObjectId = toObjectId(userId);
+    if (!userObjectId) {
+      return res.status(400).json({ message: 'Invalid user ID' });
+    }
+
+    const db = await connectDB();
+
+    const orders = await db.collection('orders').aggregate([
+      { $match: { user_id: userObjectId } },
+
+      // ---- DEPARTURE CITY ----
+      {
+        $lookup: {
+          from: 'city',
+          let: { lid: '$departure_city_id' },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $or: [
+                    // cities._id is ObjectId
+                    { $eq: ['$_id', '$$lid'] },
+                    // cities._id is string of that ObjectId
+                    { $eq: ['$_id', { $toString: '$$lid' }] },
+                    // cities._id is string convertible to ObjectId
+                    {
+                      $and: [
+                        { $eq: [{ $type: '$_id' }, 'string'] },
+                        { $eq: [{ $toObjectId: '$_id' }, '$$lid'] }
+                      ]
+                    }
+                  ]
+                }
+              }
+            },
+            { $project: { name: 1, city: 1 } }
+          ],
+          as: 'departureCity'
+        }
+      },
+      { $unwind: { path: '$departureCity', preserveNullAndEmptyArrays: true } },
+
+      // ---- DESTINATION CITY ----
+      {
+        $lookup: {
+          from: 'city',
+          let: { lid: '$destination_city_id' },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $or: [
+                    { $eq: ['$_id', '$$lid'] },
+                    { $eq: ['$_id', { $toString: '$$lid' }] },
+                    {
+                      $and: [
+                        { $eq: [{ $type: '$_id' }, 'string'] },
+                        { $eq: [{ $toObjectId: '$_id' }, '$$lid'] }
+                      ]
+                    }
+                  ]
+                }
+              }
+            },
+            { $project: { name: 1, city: 1 } }
+          ],
+          as: 'destinationCity'
+        }
+      },
+      { $unwind: { path: '$destinationCity', preserveNullAndEmptyArrays: true } },
+
+      // ---- FLIGHT ----
+      {
+        $lookup: {
+          from: 'flights',
+          let: { lid: '$flight_id' },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $or: [
+                    { $eq: ['$_id', '$$lid'] },
+                    { $eq: ['$_id', { $toString: '$$lid' }] },
+                    {
+                      $and: [
+                        { $eq: [{ $type: '$_id' }, 'string'] },
+                        { $eq: [{ $toObjectId: '$_id' }, '$$lid'] }
+                      ]
+                    }
+                  ]
+                }
+              }
+            },
+            { $project: { name: 1, flight_number: 1, flightNumber: 1, airline: 1 } }
+          ],
+          as: 'flight'
+        }
+      },
+      { $unwind: { path: '$flight', preserveNullAndEmptyArrays: true } },
+
+      // ---- HOTEL ----
+      {
+        $lookup: {
+          from: 'hotels',
+          let: { lid: '$hotel_id' },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $or: [
+                    { $eq: ['$_id', '$$lid'] },
+                    { $eq: ['$_id', { $toString: '$$lid' }] },
+                    {
+                      $and: [
+                        { $eq: [{ $type: '$_id' }, 'string'] },
+                        { $eq: [{ $toObjectId: '$_id' }, '$$lid'] }
+                      ]
+                    }
+                  ]
+                }
+              }
+            },
+            { $project: { name: 1, hotel_name: 1, hotelName: 1 } }
+          ],
+          as: 'hotel'
+        }
+      },
+      { $unwind: { path: '$hotel', preserveNullAndEmptyArrays: true } },
+
+      // ---- PROJECTION WITH NICE FALLBACKS ----
+      {
+        $project: {
+          _id: 1,
+          user_id: 1,
+          departure_city_id: 1,
+          destination_city_id: 1,
+          flight_id: 1,
+          hotel_id: 1,
+          attractions: 1,
+          transportation: 1,
+          payment_method: 1,
+          total_price: 1,
+          created_at: 1,
+
+          departure_city_name: {
+            $ifNull: [
+              '$departureCity.name',
+              { $ifNull: ['$departureCity.city', { $toString: '$departure_city_id' }] }
+            ]
+          },
+          destination_city_name: {
+            $ifNull: [
+              '$destinationCity.name',
+              { $ifNull: ['$destinationCity.city', { $toString: '$destination_city_id' }] }
+            ]
+          },
+          flight_name: {
+            $ifNull: [
+              '$flight.flight_number',
+              {
+                $ifNull: [
+                  '$flight.name',
+                  {
+                    $ifNull: [
+                      '$flight.flightNumber',
+                      {
+                        $cond: [
+                          { $gt: [{ $type: '$flight.airline' }, 'missing'] },
+                          { $concat: ['$flight.airline', ' ', { $ifNull: ['$flight.flight_number', '$flight.flightNumber'] }] },
+                          { $toString: '$flight_id' }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          hotel_name: {
+            $ifNull: [
+              '$hotel.name',
+              { $ifNull: ['$hotel.hotel_name', { $ifNull: ['$hotel.hotelName', { $toString: '$hotel_id' }] }] }
+            ]
+          }
+        }
+      },
+
+      { $sort: { created_at: -1 } }
+    ]).toArray();
+
+    return res.status(200).json({ success: true, orders });
+  } catch (err) {
+    console.error('❌ Get orders error:', err);
+    return res.status(500).json({
+      message: 'Internal Server Error',
+      error: process.env.NODE_ENV === 'development' ? err.message : undefined
+    });
+  }
+}
