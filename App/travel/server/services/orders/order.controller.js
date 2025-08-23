@@ -6,37 +6,55 @@ import { connectDB } from '../auth/auth.db.js';
 const toObjectId = (v) => (ObjectId.isValid(String(v)) ? new ObjectId(String(v)) : null);
 export async function getDynamicData(req, res) {
   try {
-    const { type, ids } = req.body || {};
-    if (!type || !Array.isArray(ids) || ids.length === 0) {
-      return res.status(400).json({ message: 'type and ids[] are required' });
+    const { type, ids = [] } = req.body || {};
+    const validTypes = { cities: 'cities', flights: 'flights', hotels: 'hotels' };
+    if (!validTypes[type]) {
+      return res.status(400).json({ message: 'Invalid type' });
     }
-
-    const collection =
-      type === 'cities'  ? 'cities'  :
-      type === 'flights' ? 'flights' :
-      type === 'hotels'  ? 'hotels'  : null;
-
-    if (!collection) {
-      return res.status(400).json({ message: 'type must be one of: cities, flights, hotels' });
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.json({ success: true, data: {} });
     }
-
-    const toObjId = (v) => { try { return new ObjectId(String(v)); } catch { return null; } };
-    const objIds = ids.map(toObjId).filter(Boolean);
-    if (objIds.length === 0) return res.status(400).json({ message: 'No valid ids provided' });
 
     const db = await connectDB();
-    const docs = await db.collection(collection)
-      .find({ _id: { $in: objIds } })
-      // keep payload light; include common name fields
-      .project({ name: 1, city: 1, cityName: 1, hotel_name: 1, flight_number: 1, flightNumber: 1, airline: 1 })
-      .toArray();
+    const col = db.collection(validTypes[type]);
 
+    // Split incoming ids into ObjectIds and strings so we can match both schemas
+    const asObjectIds = [];
+    const asStrings = [];
+    for (const id of ids) {
+      const s = String(id);
+      if (/^[0-9a-f]{24}$/i.test(s)) {
+        try { asObjectIds.push(new ObjectId(s)); } catch {}
+      }
+      asStrings.push(s);
+    }
+
+    const docs = await col.find({
+      $or: [
+        { _id: { $in: asObjectIds } },       // collections that use ObjectId _id
+        { _id: { $in: asStrings } },         // collections that use string _id
+      ],
+    }).toArray();
+
+    // Normalize a friendly name per type
     const data = {};
-    for (const d of docs) data[String(d._id)] = d;
+    for (const d of docs) {
+      const key = String(d._id);
+      let name = null;
+      if (type === 'cities') {
+        name = d.name || d.city || d.cityName || d.city_name || null;
+      } else if (type === 'flights') {
+        name = d.flight_number || d.name || d.flightNumber || d.flight_name
+             || (d.airline ? `${d.airline} ${d.flight_number || d.flightNumber || ''}`.trim() : null);
+      } else if (type === 'hotels') {
+        name = d.name || d.hotel_name || d.hotelName || null;
+      }
+      data[key] = { ...d, __resolvedName: name };
+    }
 
-    return res.status(200).json({ success: true, data });
+    return res.json({ success: true, data });
   } catch (err) {
-    console.error('❌ dynamic-data error:', err);
+    console.error('getDynamicData error:', err);
     return res.status(500).json({ message: 'Internal Server Error' });
   }
 }
