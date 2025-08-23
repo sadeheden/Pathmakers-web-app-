@@ -4,7 +4,42 @@ import { connectDB } from '../auth/auth.db.js';
 
 /** Small helper */
 const toObjectId = (v) => (ObjectId.isValid(String(v)) ? new ObjectId(String(v)) : null);
+export async function getDynamicData(req, res) {
+  try {
+    const { type, ids } = req.body || {};
+    if (!type || !Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ message: 'type and ids[] are required' });
+    }
 
+    const collection =
+      type === 'cities'  ? 'cities'  :
+      type === 'flights' ? 'flights' :
+      type === 'hotels'  ? 'hotels'  : null;
+
+    if (!collection) {
+      return res.status(400).json({ message: 'type must be one of: cities, flights, hotels' });
+    }
+
+    const toObjId = (v) => { try { return new ObjectId(String(v)); } catch { return null; } };
+    const objIds = ids.map(toObjId).filter(Boolean);
+    if (objIds.length === 0) return res.status(400).json({ message: 'No valid ids provided' });
+
+    const db = await connectDB();
+    const docs = await db.collection(collection)
+      .find({ _id: { $in: objIds } })
+      // keep payload light; include common name fields
+      .project({ name: 1, city: 1, cityName: 1, hotel_name: 1, flight_number: 1, flightNumber: 1, airline: 1 })
+      .toArray();
+
+    const data = {};
+    for (const d of docs) data[String(d._id)] = d;
+
+    return res.status(200).json({ success: true, data });
+  } catch (err) {
+    console.error('❌ dynamic-data error:', err);
+    return res.status(500).json({ message: 'Internal Server Error' });
+  }
+}
 /** Orders for Profile.jsx (clean, no attraction formatting) */
 export async function getOrdersForProfile(req, res) {
   try {
