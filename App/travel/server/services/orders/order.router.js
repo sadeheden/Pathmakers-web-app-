@@ -1,5 +1,5 @@
 import express from 'express';
-import { createOrder, getUserOrders, getDynamicData,getOrdersForProfile  } from './order.controller.js'; // ⬅ add getDynamicData
+import { createOrder, getDynamicData, getOrdersForProfile } from './order.controller.js';
 import authenticateUser from '../middlewares/authenticateUser.js';
 
 const router = express.Router();
@@ -9,7 +9,6 @@ router.get('/test', (req, res) => {
 });
 
 router.post('/', authenticateUser, createOrder);
-router.get('/', authenticateUser, getUserOrders);
 router.get('/profile', authenticateUser, getOrdersForProfile);
 // ⬇️ NEW: dynamic resolver used by your Profile screen
 router.post('/dynamic-data', authenticateUser, getDynamicData);
