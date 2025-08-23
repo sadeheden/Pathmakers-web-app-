@@ -4,6 +4,20 @@ import orders2DB from './orders2.db.js';
 import { ObjectId } from 'mongodb';
 
 class Orders2Controller {
+   static async getUserOrders(req, res) {
+    try {
+      if (!req.user?.id) {
+        return res.status(401).json({ message: 'Unauthorized' });
+      }
+
+      // שליפת כל ההזמנות של המשתמש מה־DB
+      const orders = await orders2DB.getOrdersByUserId(req.user.id);
+      res.status(200).json(orders);
+    } catch (err) {
+      console.error("❌ Error fetching user orders:", err);
+      res.status(500).json({ message: "Failed to fetch orders" });
+    }
+  }
   static async createOrder(req, res) {
     try {
       if (!req.user?.id) {
