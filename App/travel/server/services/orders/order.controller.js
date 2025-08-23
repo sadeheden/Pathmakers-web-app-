@@ -34,7 +34,7 @@ export async function createOrder(req, res) {
     const {
       departureCityId,
       destinationCityId,
-      flightId,
+      flightId,              // may be missing
       hotelId,
       attractions,
       transportation,
@@ -42,51 +42,52 @@ export async function createOrder(req, res) {
       totalPrice,
     } = req.body;
 
-    // Validation with detailed logging
+    // First pass validation (everything except flightId, which we may resolve)
     const missing = [];
     if (!departureCityId) missing.push('departureCityId');
     if (!destinationCityId) missing.push('destinationCityId');
-    if (!flightId) missing.push('flightId');
     if (!hotelId) missing.push('hotelId');
     if (!paymentMethod) missing.push('paymentMethod');
     if (totalPrice === undefined || totalPrice === null || totalPrice === '') {
       missing.push('totalPrice');
     }
-
     if (missing.length) {
       console.log('❌ Missing fields:', missing);
-      return res.status(400).json({ 
+      return res.status(400).json({
         message: `Missing required fields: ${missing.join(', ')}`,
         received: req.body
       });
     }
 
+    // 🔎 If flightId is absent, try to resolve it from DB by destination
+    const { finalFlightId } = await resolveFlightIdIfMissing({ flightId, destinationCityId });
+    if (!finalFlightId) {
+      return res.status(400).json({
+        message: 'Missing required fields: flightId',
+        received: req.body
+      });
+    }
+
     // Convert and validate ObjectIds
+    const cleanId = (id) => {
+      try { return id ? new ObjectId(String(id)) : null; } catch { return null; }
+    };
+
     const userId = cleanId(req.user.id || req.user.userId);
     const departureCityObjectId = cleanId(departureCityId);
     const destinationCityObjectId = cleanId(destinationCityId);
-    const flightObjectId = cleanId(flightId);
+    const flightObjectId = cleanId(finalFlightId);
     const hotelObjectId = cleanId(hotelId);
 
-    if (!userId) {
-      return res.status(400).json({ message: 'Invalid user ID' });
-    }
-    if (!departureCityObjectId) {
-      return res.status(400).json({ message: 'Invalid departure city ID' });
-    }
-    if (!destinationCityObjectId) {
-      return res.status(400).json({ message: 'Invalid destination city ID' });
-    }
-    if (!flightObjectId) {
-      return res.status(400).json({ message: 'Invalid flight ID' });
-    }
-    if (!hotelObjectId) {
-      return res.status(400).json({ message: 'Invalid hotel ID' });
-    }
+    if (!userId) return res.status(400).json({ message: 'Invalid user ID' });
+    if (!departureCityObjectId) return res.status(400).json({ message: 'Invalid departure city ID' });
+    if (!destinationCityObjectId) return res.status(400).json({ message: 'Invalid destination city ID' });
+    if (!flightObjectId) return res.status(400).json({ message: 'Invalid flight ID' });
+    if (!hotelObjectId) return res.status(400).json({ message: 'Invalid hotel ID' });
 
     // Process attractions
-    const attractionIds = Array.isArray(attractions) 
-      ? attractions.map(cleanId).filter(Boolean) 
+    const attractionIds = Array.isArray(attractions)
+      ? attractions.map(cleanId).filter(Boolean)
       : [];
 
     // Parse total price
@@ -123,20 +124,57 @@ export async function createOrder(req, res) {
 
     const newOrder = new Order(orderData);
     const savedOrder = await newOrder.save();
-    
+
     console.log('✅ Order saved successfully:', savedOrder._id);
-    res.status(201).json(savedOrder);
-    
+    return res.status(201).json(savedOrder);
+
   } catch (err) {
     console.error('❌ Create order error:', err);
     console.error('Stack trace:', err.stack);
-    res.status(500).json({ 
+    return res.status(500).json({
       message: 'Internal Server Error',
       error: process.env.NODE_ENV === 'development' ? err.message : undefined
     });
   }
 }
+
 // תיקון פונקציית getUserOrders ב order.controller.js
+// Try to find a flight if client didn't send one
+async function resolveFlightIdIfMissing({ flightId, destinationCityId }) {
+  if (flightId) return { finalFlightId: flightId, flightNameFromDb: null };
+
+  const db = await connectDB();
+  const toId = (v) => {
+    try { return v ? new ObjectId(String(v)) : null; } catch { return null; }
+  };
+  const destId = toId(destinationCityId) || destinationCityId || null;
+
+  let flightDoc = null;
+  if (destId) {
+    flightDoc = await db.collection('flights').findOne({
+      $or: [
+        { destination_city_id: destId },
+        { destination: destId },
+        { 'route.to': destId },
+      ],
+    });
+  }
+  if (!flightDoc) {
+    // fallback: any flight so the order can save
+    flightDoc = await db.collection('flights').findOne({});
+  }
+  if (!flightDoc?._id) {
+    return { finalFlightId: null, flightNameFromDb: null };
+  }
+  const name =
+    flightDoc.name ||
+    flightDoc.title ||
+    flightDoc.flight_number ||
+    flightDoc.flightNumber ||
+    flightDoc.airline ||
+    '';
+  return { finalFlightId: String(flightDoc._id), flightNameFromDb: name };
+}
 
 export async function getUserOrders(req, res) {
   if (!req.user?.id && !req.user?.userId) {
