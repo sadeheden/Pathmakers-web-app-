@@ -42,22 +42,38 @@
   gap: 8px;
   margin-top: 14px;
 }
+
+/* Inactive: light blue pill */
 .tab-buttons button {
   appearance: none;
-  background: #e5f0ff;
-  color: #0b2447;
-  border: 0;
+  background: #f1f5f9;                 /* neutral light gray (matches cards/bg) */
+  color: var(--muted);                 /* muted text */
+  border: 1px solid #e2e8f0;           /* subtle border */
   padding: 10px 14px;
   border-radius: 999px;
-  font-weight: 700;
+  font-weight: 600;
   cursor: pointer;
-  transition: transform .15s ease, background .2s ease;
+  transition: transform .15s ease, background .2s ease, color .2s ease, border-color .2s ease;
 }
+
+.tab-buttons button:hover {
+  background: #e2e8f0;                 /* slightly darker gray on hover */
+  color: var(--text);
+}
+
 .tab-buttons button.active {
-  background: linear-gradient(90deg, var(--brand), var(--brand-2));
-  color: #fff;
+  background: linear-gradient(90deg, #225ea8, #0b3a74ef); /* your brand gradient */
+  color: #fff;                        /* white text */
+  border: none;
+  box-shadow: 0 4px 10px rgba(2, 6, 23, 0.12);
 }
-.tab-buttons button:hover { transform: translateY(-1px); }
+
+/* Keyboard focus ring for accessibility */
+.tab-buttons button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.35);
+}
+
 
 /* Section headings */
 .heading {
