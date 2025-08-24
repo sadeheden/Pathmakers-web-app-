@@ -10,13 +10,56 @@ const reqUserId = (req) => req.user?.id || req.user?.userId || req.user?._id || 
  * Expects camelCase fields from RN and stores snake_case in Mongo.
  * Path: POST /api/orders
  */
+// --- Helper: fetch all attraction ObjectIds for a destination city ---
+async function fetchAttractionIdsForCity(db, destinationCityId, destinationCityName) {
+  const ids = [];
+  const destIdObj = toObjectId(destinationCityId);
+
+  // 1) If attractions are embedded on the city doc as ObjectIds: city.attractions = [ObjectId,...]
+  const cityDoc = destIdObj
+    ? await db.collection('city').findOne({ _id: destIdObj })
+    : null;
+
+  if (cityDoc?.attractions && Array.isArray(cityDoc.attractions) && cityDoc.attractions.length) {
+    for (const a of cityDoc.attractions) {
+      // keep as ObjectId if already, else coerce
+      ids.push(a instanceof ObjectId ? a : (toObjectId(a) ?? null));
+    }
+  }
+
+  // 2) If you store each attraction as its own document in "attractions"
+  // Try multiple possible keys so it works with different schemas.
+  if (ids.length === 0) {
+    const name = (cityDoc?.name || cityDoc?.city || cityDoc?.cityName || destinationCityName || '').trim();
+    const nameRegex = name ? new RegExp(`^${name}$`, 'i') : null;
+
+    const orClauses = [];
+    if (destIdObj) orClauses.push({ city_id: destIdObj });
+    if (nameRegex) {
+      orClauses.push({ city: nameRegex }, { cityName: nameRegex }, { city_slug: name.toLowerCase() });
+    }
+
+    if (orClauses.length) {
+      const cursor = db.collection('attractions').find(
+        { $or: orClauses },
+        { projection: { _id: 1 } }
+      );
+      const rows = await cursor.toArray();
+      for (const r of rows) ids.push(r._id);
+    }
+  }
+
+  // Filter out nulls/dupes
+  return [...new Set(ids.filter(Boolean).map(x => (x instanceof ObjectId ? x : toObjectId(x)).toString()))]
+         .map(s => new ObjectId(s));
+}
+
 export async function createOrder(req, res) {
   try {
     const uid = reqUserId(req);
     const userObjectId = toObjectId(uid);
     if (!userObjectId) return res.status(401).json({ message: 'Unauthorized (invalid user id in token)' });
 
-    // Required (from your app)
     const {
       departureCityId,
       departureCityName,
@@ -26,63 +69,49 @@ export async function createOrder(req, res) {
       flightName = '',
       hotelId = '',
       hotelName = '',
-      attractions = [],
+      attractions = [],          // from client (may be empty)
       transportation = '',
       paymentMethod = '',
       totalPrice,
     } = req.body || {};
 
-    // Basic validation
-    const missing = [];
-    if (!departureCityId) missing.push('departureCityId');
-    if (!departureCityName) missing.push('departureCityName');
-    if (!destinationCityId) missing.push('destinationCityId');
-    if (!destinationCityName) missing.push('destinationCityName');
-    if (!flightId) missing.push('flightId');
-    if (totalPrice === undefined || totalPrice === null) missing.push('totalPrice');
-    if (missing.length) {
-      return res.status(400).json({ message: `Missing required field(s): ${missing.join(', ')}` });
-    }
+    // ... your existing required-field checks ...
 
-    // Convert to your DB schema (snake_case)
-    // NOTE: your lookups expect ObjectId in *_id fields (city, flights, hotels)
+    const db = await connectDB();
+
+    // ✅ If no attractions provided, auto-fill from DB using destinationCityId
+    const effectiveAttractions = (Array.isArray(attractions) && attractions.length > 0)
+      ? attractions
+      : await fetchAttractionIdsForCity(db, destinationCityId, destinationCityName);
+
     const doc = {
       user_id: userObjectId,
-
-      departure_city_id: toObjectId(departureCityId) ?? departureCityId, // prefer ObjectId, fallback string
+      departure_city_id: toObjectId(departureCityId) ?? departureCityId,
       departure_city_name: String(departureCityName),
-
       destination_city_id: toObjectId(destinationCityId) ?? destinationCityId,
       destination_city_name: String(destinationCityName),
-
       flight_id: toObjectId(flightId) ?? flightId,
       flight_name: String(flightName || ''),
-
       hotel_id: hotelId ? (toObjectId(hotelId) ?? hotelId) : null,
       hotel_name: String(hotelName || ''),
 
-      attractions: Array.isArray(attractions)
-        ? attractions.map((a) => toObjectId(a) ?? String(a))
+      // 👇 use the enriched list
+      attractions: Array.isArray(effectiveAttractions)
+        ? effectiveAttractions.map(a => toObjectId(a) ?? String(a))
         : [],
 
       transportation: String(transportation || ''),
       payment_method: String(paymentMethod || ''),
-
       total_price: Number(totalPrice) || 0,
-
       status: 'confirmed',
       created_at: new Date(),
       updated_at: new Date(),
     };
 
-    const db = await connectDB();
     const result = await db.collection('orders').insertOne(doc);
-
-    // Return flat doc (RN expects _id at root)
     return res.status(201).json({
       _id: result.insertedId,
       ...doc,
-      // stringified ids for RN convenience
       _id_str: result.insertedId?.toString(),
       user_id_str: doc.user_id?.toString?.(),
       departure_city_id_str: doc.departure_city_id?.toString?.(),
@@ -95,6 +124,7 @@ export async function createOrder(req, res) {
     return res.status(500).json({ message: 'Failed to create order' });
   }
 }
+
 
 /** ========= PROFILE ORDERS (yours, unchanged) =========
  * Orders for Profile.jsx (clean, no attraction formatting)
