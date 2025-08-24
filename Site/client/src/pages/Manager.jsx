@@ -487,7 +487,9 @@ const styles = {
 
 const Manager = () => {
   const [activeItem, setActiveItem] = useState("Dashboard");
-  const [successMessage, setSuccessMessage] = useState("");
+  const [statusMessage, setStatusMessage] = useState(null);
+
+  
   
   const [dashboardData, setDashboardData] = useState({
     totalOrders: 0,
@@ -619,19 +621,20 @@ const sendSupportEmail = async (message) => {
         subject: emailSubject.trim(),
         text: emailBody.trim(),
         html: `<p style="white-space:pre-line">${emailBody.trim()}</p>`,
-        markResolved: false, // set true if you want auto-resolve
+        markResolved: false,
       }),
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data?.error || 'Failed to send');
 
-    // UX: close popup, toast
     setEmailModalOpen(false);
     setEmailBody('');
-    alert('Email sent successfully.');
+    setStatusMessage({ text: '✅ Email sent successfully', type: 'success' });
+    setTimeout(() => setStatusMessage(null), 3000);
   } catch (e) {
     console.error(e);
-    alert(e.message);
+    setStatusMessage({ text: `❌ ${e.message}`, type: 'error' });
+    setTimeout(() => setStatusMessage(null), 3000);
   } finally {
     setSendingReply(false);
   }
@@ -1736,7 +1739,7 @@ if (!res.ok) {
         </div>
       );
     }
-    
+
     if (activeItem === "Trips") {
       const tripsData = dashboardData.topDestinations || [];
       return (
@@ -1806,6 +1809,25 @@ if (!res.ok) {
                 }
               }}
             >
+              {statusMessage && (
+  <div
+    style={{
+      position: 'fixed',
+      bottom: 20,
+      left: '50%',
+      transform: 'translateX(-50%)',
+      background: statusMessage.type === 'success' ? '#10b981' : '#ef4444',
+      color: '#fff',
+      padding: '10px 20px',
+      borderRadius: '8px',
+      fontWeight: 'bold',
+      zIndex: 10000
+    }}
+  >
+    {statusMessage.text}
+  </div>
+)}
+
               <p style={{
                 fontSize: '16px',
                 fontWeight: activeItem === item ? 'bold' : 'normal',

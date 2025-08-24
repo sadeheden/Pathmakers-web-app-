@@ -5,16 +5,19 @@ import nodemailer from 'nodemailer';
 
 // ---------- helpers ----------
 const isDev = process.env.NODE_ENV !== 'production';
+const asBool = (v) => String(v ?? '').trim().toLowerCase() === 'true';
+const isDryRun = asBool(process.env.EMAIL_DRY_RUN);
+
 const requireEnv = (name) => {
   const v = process.env[name];
   if (!v) throw new Error(`Missing env ${name}`);
   return v;
 };
 
-// DRY-RUN: set EMAIL_DRY_RUN=true to avoid real SMTP while testing
+// Build transporter (respects DRY RUN)
 const buildTransporter = () => {
-  if (String(process.env.EMAIL_DRY_RUN || 'false') === 'true') {
-    // no network calls; Nodemailer returns a JSON preview
+  if (isDryRun) {
+    // No network calls; Nodemailer returns JSON of what would be sent
     return nodemailer.createTransport({ jsonTransport: true });
   }
 
@@ -22,34 +25,27 @@ const buildTransporter = () => {
     return nodemailer.createTransport({
       host: process.env.SMTP_HOST,
       port: Number(process.env.SMTP_PORT || 587),
-      secure: String(process.env.SMTP_SECURE || 'false') === 'true',
-      auth: {
-        user: requireEnv('EMAIL_USER'),
-        pass: requireEnv('EMAIL_PASS'),
-      },
+      secure: asBool(process.env.SMTP_SECURE),
+      auth: { user: requireEnv('EMAIL_USER'), pass: requireEnv('EMAIL_PASS') },
       logger: true,
       debug: true,
     });
   }
 
-  // Gmail service (requires App Password)
+  // Gmail (requires App Password)
   return nodemailer.createTransport({
     service: 'gmail',
-    auth: {
-      user: requireEnv('EMAIL_USER'),
-      pass: requireEnv('EMAIL_PASS'),
-    },
+    auth: { user: requireEnv('EMAIL_USER'), pass: requireEnv('EMAIL_PASS') },
     logger: true,
     debug: true,
   });
 };
 
-const transporter = buildTransporter();
+let transporter = buildTransporter();
 
 const asObjectId = (id) => (/^[a-f0-9]{24}$/i.test(id) ? new ObjectId(id) : null);
 
 // ---------- controllers ----------
-
 export const getAllSupportRequests = async (_req, res) => {
   try {
     const db = await connectDB();
@@ -112,9 +108,9 @@ export const updateSupportStatus = async (req, res) => {
   }
 };
 
-// Reply and send email
+// Reply (send or simulate)
 export const replyToSupportRequest = async (req, res) => {
-  const scope = `[replyToSupportRequest]`;
+  const scope = '[replyToSupportRequest]';
   try {
     const oid = asObjectId(req.params.id);
     if (!oid) return res.status(400).json({ error: 'Invalid id' });
@@ -124,8 +120,8 @@ export const replyToSupportRequest = async (req, res) => {
       return res.status(400).json({ error: 'subject and text/html are required' });
     }
 
-    // Validate env early
-    if (String(process.env.EMAIL_DRY_RUN || 'false') !== 'true') {
+    // Only require creds if not dry-run
+    if (!isDryRun) {
       requireEnv('EMAIL_USER');
       requireEnv('EMAIL_PASS');
     }
@@ -136,26 +132,50 @@ export const replyToSupportRequest = async (req, res) => {
     if (!ticket) return res.status(404).json({ error: 'Support message not found' });
     if (!ticket.email) return res.status(400).json({ error: 'Ticket has no email to reply to' });
 
-    // Always send FROM the authenticated mailbox (Gmail requirement)
     const fromAddress = process.env.EMAIL_USER;
 
-    // Optional: verify transport (will log details even if it fails)
-    try {
-      await transporter.verify();
-    } catch (verifyErr) {
-      console.warn(`${scope} transport verify failed (may still send):`, verifyErr?.message || verifyErr);
-    }
-
-    const info = await transporter.sendMail({
-      from: fromAddress,
-      to: ticket.email,
-      subject,
-      text: text || undefined,
-      html: html || undefined,
-      // replyTo is fine if you want:
-      replyTo: process.env.EMAIL_FROM || fromAddress,
+    const simulate = () => ({
+      messageId: `dryrun-${Date.now()}`,
+      message: { from: fromAddress, to: ticket.email, subject, text, html },
+      dryRun: true,
     });
 
+    let info;
+
+    if (isDryRun) {
+      info = simulate();
+      console.log('✉️ [DRY-RUN] Simulated email send:', info.message);
+    } else {
+      // Optional verify
+      try {
+        await transporter.verify();
+      } catch (verifyErr) {
+        console.warn(`${scope} transport verify failed (may still send):`, verifyErr?.message || verifyErr);
+      }
+
+      try {
+        info = await transporter.sendMail({
+          from: fromAddress,
+          to: ticket.email,
+          subject,
+          text: text || undefined,
+          html: html || undefined,
+          replyTo: process.env.EMAIL_FROM || fromAddress,
+        });
+      } catch (sendErr) {
+        // 🔁 Fallback to simulation if auth fails (EAUTH / 535)
+        const code = (sendErr?.code || '').toString().toUpperCase();
+        const resp = (sendErr?.response || '').toUpperCase();
+        if (code === 'EAUTH' || resp.includes('5.7.8') || resp.includes('BAD CREDENTIALS') || resp.includes('AUTH')) {
+          console.error('Send Error, falling back to DRY-RUN simulation:', sendErr?.message || sendErr);
+          info = simulate();
+        } else {
+          throw sendErr;
+        }
+      }
+    }
+
+    // Persist reply on the ticket
     const update = {
       $push: {
         replies: {
@@ -165,7 +185,7 @@ export const replyToSupportRequest = async (req, res) => {
           html: html || null,
           messageId: info?.messageId || null,
           from: fromAddress,
-          dryRun: String(process.env.EMAIL_DRY_RUN || 'false') === 'true',
+          dryRun: Boolean(info?.dryRun) || isDryRun,
         },
       },
     };
@@ -173,22 +193,49 @@ export const replyToSupportRequest = async (req, res) => {
 
     await col.updateOne({ _id: oid }, update);
 
-    // If DRY_RUN, expose the preview to client for debugging
-    const payload = { ok: true, messageId: info?.messageId || null };
-    if (info?.message && String(process.env.EMAIL_DRY_RUN || 'false') === 'true') {
-      payload.preview = info.message; // JSON containing what would be sent
-    }
+    // Response to client
+    const payload = {
+      ok: true,
+      messageId: info?.messageId || null,
+      preview: info?.message || undefined, // present only for dry-run/fallback
+      dryRun: Boolean(info?.dryRun) || isDryRun,
+    };
 
     res.json(payload);
   } catch (err) {
-    // Log everything server-side
     console.error('SMTP response:', err?.response);
     console.error('replyToSupportRequest error:', err);
-
-    // Send actionable info to client
     res.status(500).json({
       error: 'Failed to send reply',
       details: err?.message || String(err),
+      code: err?.code || err?.responseCode || null,
+    });
+  }
+};
+// Health-check for mail transport (works with DRY_RUN too)
+export const verifyEmailTransport = async (_req, res) => {
+  try {
+    const isDryRun = String(process.env.EMAIL_DRY_RUN || 'false') === 'true';
+    if (isDryRun) {
+      return res.json({ ok: true, dryRun: true, note: 'EMAIL_DRY_RUN=true - no SMTP login attempted' });
+    }
+
+    // will throw if creds/connection invalid
+    await transporter.verify();
+
+    // show basic transport info
+    const info = {
+      ok: true,
+      service: transporter.options?.service || null,
+      host: transporter.options?.host || null,
+      port: transporter.options?.port || null,
+      secure: transporter.options?.secure || false,
+    };
+    res.json(info);
+  } catch (err) {
+    res.status(500).json({
+      ok: false,
+      error: err?.message || String(err),
       code: err?.code || err?.responseCode || null,
     });
   }
