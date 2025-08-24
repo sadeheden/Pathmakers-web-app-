@@ -100,11 +100,10 @@ useEffect(() => {
     return (
         <header className="header">
             {/* Logo and Navbar */}
-            <div className="logo">
-                <Link to={isDisabledPage ? "#" : "/main"} className={isDisabledPage ? "disabled-link" : ""}>
-                    <img src={logo} alt="Logo" />
-                </Link>
-            </div>
+          <div className="logo" onClick={() => navigate(user ? "/main" : "/login")}>
+  <img src={logo} alt="Logo" style={{ cursor: "pointer" }} />
+</div>
+
 
             {!isDisabledPage && user && (
                 <nav className={`navbar ${isMenuOpen ? "show" : ""}`}>

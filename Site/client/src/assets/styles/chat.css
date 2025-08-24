@@ -81,11 +81,13 @@ h1::after {
 }
 .wizard-step.active .wizard-icon {
   border-color: #bfc7d6;
-  background: #f4f6fb;
+  background: #3e77ac;
+    color: #fff;
 }
 .wizard-step.done .wizard-icon {
   border-color: #d9e0f1;
-  background: #849dca59; /* hint of green for completed like the pic */
+  color: #fff;
+  background: #1b6ed4a9; /* hint of green for completed like the pic */
 }
 .wizard-label {
   font-size: 0.9rem;
@@ -181,7 +183,7 @@ select:focus {
 .custom-btn,
 .custom-btn1,
 .custom-btn2 {
-  background-color: var(--button-bg);
+  background-color: #3e77ac;   /* wizard active blue */
   color: #fff;
   font-size: 0.95rem;
   padding: 10px 18px;
@@ -189,23 +191,30 @@ select:focus {
   border-radius: 10px;
   cursor: pointer;
   font-weight: 600;
-  transition: background 0.18s ease-in-out, transform 0.03s ease-in-out;
+  transition: background 0.18s ease-in-out, transform 0.03s ease-in-out, box-shadow 0.15s ease;
+  box-shadow: 0 4px 12px rgba(62, 119, 172, 0.25);
 }
+
 .custom-btn:hover,
 .custom-btn1:hover,
 .custom-btn2:hover {
-  background-color: var(--button-hover-bg);
+  background-color: #3e77acd2;   /* darker hover blue */
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(62, 119, 172, 0.35);
 }
+
 .custom-btn:active,
 .custom-btn1:active,
 .custom-btn2:active {
   transform: translateY(1px);
 }
+
 .custom-btn:disabled,
 .custom-btn1:disabled,
 .custom-btn2:disabled {
-  background-color: #cfd3e0;
+  background-color: #a6bdd4;   /* soft muted blue */
   cursor: not-allowed;
+  box-shadow: none;
 }
 
 .navigation-buttons {
@@ -334,8 +343,8 @@ select:focus {
   cursor: pointer;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   box-shadow:
-    0 8px 24px rgba(102,126,234,.30),
-    0 2px 6px rgba(102,126,234,.20),
+    0 8px 24px rgba(38, 58, 146, 0.849),
+    0 2px 6px #0b3a7493(102,126,234,.20),
     inset 0 1px 0 rgba(255,255,255,.30);
   transition: transform .15s ease, box-shadow .15s ease, filter .15s ease;
 }
