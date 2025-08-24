@@ -10,14 +10,13 @@ import {
   ActivityIndicator,
   ScrollView,
   Dimensions,
-  RefreshControl,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient'
 import { Ionicons } from '@expo/vector-icons';
 import { LogOut } from 'lucide-react-native';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
 
 const { width } = Dimensions.get('window');
 
@@ -36,7 +35,6 @@ export default function Profile() {
   const [user, setUser] = useState(null);
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
   const [expandedOrderId, setExpandedOrderId] = useState(null);
   const [dynamicData, setDynamicData] = useState({
     cities: {},
@@ -66,7 +64,7 @@ export default function Profile() {
       '68075f88dc218773e065223d': 'KL202 - KLM Royal Dutch'
     },
     hotels: {
-      '68022f445f7300b11f986837': 'Grand Resort & Spa',
+      '68022f445f7300b11f986837': 'Phuket Grand Resort & Spa',
       '68022f445f7300b11f986838': 'Hotel Parisienne Palace', 
       '68022f445f7300b11f986839': 'Dubai Luxury Suites & Marina',
       '68022f445f7300b11f98683a': 'The London Palace Hotel',
@@ -125,8 +123,8 @@ export default function Profile() {
         return null;
     }
   };
-
   const isHex24 = (s) => typeof s === 'string' && /^[0-9a-f]{24}$/i.test(s);
+
 
   // Bulk fetch missing data when orders load
   const fetchMissingData = useCallback(async (orders) => {
@@ -156,19 +154,19 @@ export default function Profile() {
                                  order.departure_city_name.match(/^[0-9a-f]{24}$/i)) && 
                                 order.departure_city_id && 
                                 !staticMappings.cities[order.departure_city_id];
-      if (needsDepartureCity && isHex24(order.departure_city_id)) {
+    if (needsDepartureCity && isHex24(order.departure_city_id)) {
         console.log(`🏙️ Need to fetch departure city: ${order.departure_city_id}`);
         missingIds.cities.add(order.departure_city_id);
-      } else if (needsDepartureCity) {
-        console.log('⛔ Skipping bad departure_city_id:', order.departure_city_id);
       }
-
+ else if (needsDepartureCity) {
+   console.log('⛔ Skipping bad departure_city_id:', order.departure_city_id);
+  }
       // Check destination cities
       const needsDestinationCity = (!order.destination_city_name || 
                                    order.destination_city_name.match(/^[0-9a-f]{24}$/i)) && 
                                   order.destination_city_id && 
                                   !staticMappings.cities[order.destination_city_id];
-      if (needsDestinationCity && isHex24(order.destination_city_id)) {
+      if (needsDestinationCity) {
         console.log(`🏙️ Need to fetch destination city: ${order.destination_city_id}`);
         missingIds.cities.add(order.destination_city_id);
       }
@@ -178,7 +176,7 @@ export default function Profile() {
                           order.flight_name.match(/^[0-9a-f]{24}$/i)) && 
                          order.flight_id && 
                          !staticMappings.flights[order.flight_id];
-      if (needsFlight && isHex24(order.flight_id)) {
+      if (needsFlight) {
         console.log(`✈️ Need to fetch flight: ${order.flight_id}`);
         missingIds.flights.add(order.flight_id);
       }
@@ -188,12 +186,11 @@ export default function Profile() {
                          order.hotel_name.match(/^[0-9a-f]{24}$/i)) && 
                         order.hotel_id && 
                         !staticMappings.hotels[order.hotel_id];
-      if (needsHotel && isHex24(order.hotel_id)) {
+      if (needsHotel) {
         console.log(`🏨 Need to fetch hotel: ${order.hotel_id}`);
         missingIds.hotels.add(order.hotel_id);
       }
     });
-
     console.log('📊 Summary of missing IDs:', {
       cities: Array.from(missingIds.cities),
       flights: Array.from(missingIds.flights),
@@ -211,114 +208,85 @@ export default function Profile() {
       }
       return { type, data: {} };
     });
-
     const results = await Promise.all(fetchPromises);
     
     // Update dynamic data state
-    const newDynamicData = { cities: {}, flights: {}, hotels: {} };
+    const newDynamicData = { ...dynamicData };
     results.forEach(({ type, data }) => {
       newDynamicData[type] = { ...newDynamicData[type], ...data };
     });
     
     console.log('🎯 Updated dynamic data:', newDynamicData);
     setDynamicData(newDynamicData);
-  }, []);
+  }, [dynamicData]);
 
-  // Main data loading function
-  const loadData = useCallback(async (isRefresh = false) => {
-    console.log(`📥 ${isRefresh ? 'Refreshing' : 'Loading'} data...`);
-    try {
-      // READ & CLEAN TOKEN
-      const raw = await AsyncStorage.getItem('token');
-      const token = raw?.replace(/^"|"$/g, '') || null;
-      console.log('🔑 Clean token:', token);
+  useEffect(() => {
+    const loadData = async () => {
+      console.log('📥 Start loading data...');
+      try {
+        // READ & CLEAN YOUR TOKEN
+        const raw = await AsyncStorage.getItem('token');
+        const token = raw?.replace(/^"|"$/g, '') || null;
+        console.log('🔑 Clean token:', token);
 
-      if (!token) {
-        console.log('🚪 No token found, redirecting to login');
-        router.replace('/login');
-        return;
-      }
+        if (!token) {
+          console.log('🚪 No token found, redirecting to login');
+          router.replace('/login');
+          return;
+        }
 
-      // LOAD CACHED USER DATA (only if not refreshing)
-      if (!isRefresh) {
+        // LOAD CACHED USER DATA
         const userDataJson = await AsyncStorage.getItem('userData');
         if (userDataJson) {
           console.log('🗃️ Cached user data:', userDataJson);
           setUser(JSON.parse(userDataJson));
         }
-      }
 
-      // FETCH ORDERS WITH THE CLEAN TOKEN
-      console.log('🌐 Fetching orders from server...');
-      const response = await fetchWithTimeout(
-        'https://pathmakers-web-app-app-travel.onrender.com/api/orders',
-        {
-          headers: { Authorization: `Bearer ${token}` },
-          timeout: 10000,
+        // FETCH ORDERS WITH THE CLEAN TOKEN
+        console.log('🌐 Fetching orders from server...');
+        const response = await fetchWithTimeout(
+          'https://pathmakers-web-app-app-travel.onrender.com/api/orders',
+          {
+            headers: { Authorization: `Bearer ${token}` },
+            timeout: 10000,
+          }
+        );
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => null);
+          console.log('❌ Response error body:', errorData);
+          throw new Error(errorData?.message || 'Failed to load orders');
         }
-      );
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => null);
-        console.log('❌ Response error body:', errorData);
-        throw new Error(errorData?.message || 'Failed to load orders');
-      }
+        const data = await response.json();
+        console.log('📦 Orders received:', data);
 
-      const data = await response.json();
-      console.log('📦 Orders received:', data);
+        if (!data.success) {
+          throw new Error(data.message || 'Failed to load orders');
+        }
 
-      if (!data.success) {
-        throw new Error(data.message || 'Failed to load orders');
-      }
-
-      const ordersData = data.orders || [];
-      const sortedOrders = [...ordersData].sort(
+        const ordersData = data.orders || [];
+        const sortedOrders = [...ordersData].sort(
         (a, b) => new Date(b.created_at) - new Date(a.created_at)
-      );
-      setOrders(sortedOrders);
-              
-      // Always fetch missing dynamic data
-      if (ordersData.length > 0) {
-        await fetchMissingData(ordersData);
+        );
+        setOrders(sortedOrders);
+                
+        // Fetch missing dynamic data
+        if (ordersData.length > 0) {
+          await fetchMissingData(ordersData);
+        }
+
+      } catch (err) {
+        console.error('🔥 Load data error:', err);
+        Alert.alert('Error', err.message || 'Failed to load data');
+      } finally {
+        setLoading(false);
+        console.log('✅ Finished loading data. Loading state set to false.');
       }
+    };
 
-      // Update user data from server if available
-      if (data.user) {
-        setUser(data.user);
-        await AsyncStorage.setItem('userData', JSON.stringify(data.user));
-      }
-
-    } catch (err) {
-      console.error('🔥 Load data error:', err);
-      Alert.alert('Error', err.message || 'Failed to load data');
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-      console.log('✅ Finished loading data.');
-    }
-  }, [fetchMissingData, router]);
-
-  // Handle pull to refresh
-  const onRefresh = useCallback(() => {
-    setRefreshing(true);
-    loadData(true);
-  }, [loadData]);
-
-  // Initial load
-  useEffect(() => {
     loadData();
   }, []);
-
-  // עדכון כשחוזרים למסך (זה הפתרון העיקרי!)
-  useFocusEffect(
-    useCallback(() => {
-      console.log('🎯 Screen focused - refreshing data...');
-      // רק אם הנתונים כבר נטענו פעם אחת
-      if (!loading) {
-        loadData(true);
-      }
-    }, [loadData, loading])
-  );
 
   const handleLogout = async () => {
     await AsyncStorage.clear();
@@ -543,36 +511,27 @@ export default function Profile() {
 
   return (
     <View style={styles.container}>
-      {/* Fixed buttons */}
-      <View style={styles.logoutIconContainer}>
-        <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
-          <LogOut size={24} color="#495057" />
-        </TouchableOpacity>
-      </View>
-
-      <View style={styles.supportIconContainer}>
-        <TouchableOpacity
-          onPress={() => navigation.navigate('Support')}
-          style={styles.supportButton}
-        >
-          <Ionicons name="help-circle-outline" size={24} color="#495057" />
-        </TouchableOpacity>
-      </View>
-
-      {/* Scrollable content with pull-to-refresh */}
       <FlatList
         nestedScrollEnabled
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor="#6c757d"
-            title="מעדכן נתונים..."
-            titleColor="#6c757d"
-          />
-        }
         ListHeaderComponent={
           <>
+            {/* Top-right Support Icon */}
+            <View style={styles.supportIconContainer}>
+              <TouchableOpacity
+                onPress={() => navigation.navigate('Support')} // or navigation.navigate('Support')
+                style={styles.supportButton}
+              >
+                <Ionicons name="help-circle-outline" size={24} color="#495057" />
+              </TouchableOpacity>
+            </View>
+
+            {/* Top-left Logout Icon */}
+            <View style={styles.logoutIconContainer}>
+              <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
+                <LogOut size={24} color="#495057" />
+              </TouchableOpacity>
+            </View>
+
             {/* Profile section */}
             <View style={styles.profileSection}>
               <View style={styles.avatarContainer}>
@@ -596,9 +555,11 @@ export default function Profile() {
             </View>
           </>
         }
+
         data={orders}
         keyExtractor={(item) => item._id.toString()}
         renderItem={renderOrder}
+
         ListEmptyComponent={
           <LinearGradient colors={['#f8f9fa', '#e9ecef']} style={styles.noTripsContainer}>
             <Text style={styles.noTripsEmoji}>✈️</Text>
@@ -606,6 +567,7 @@ export default function Profile() {
             <Text style={styles.noTripsText}>Start exploring the world!</Text>
           </LinearGradient>
         }
+
         contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 30 }}
         showsVerticalScrollIndicator={false}
         initialNumToRender={10}
@@ -851,9 +813,9 @@ const styles = StyleSheet.create({
   },
   logoutIconContainer: {
     position: 'absolute',
-    top: 50, // adjust for safe area
+    top: 50, // adjust for your SafeArea
     left: 20,
-    zIndex: 100,
+    zIndex: 10,
   },
   logoutButton: {
     backgroundColor: '#f1f3f5',
@@ -865,12 +827,11 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 3,
   },
-
   supportIconContainer: {
     position: 'absolute',
-    top: 50,
+    top: 50, // adjust for your SafeArea
     right: 20,
-    zIndex: 100,
+    zIndex: 10,
   },
   supportButton: {
     backgroundColor: '#f1f3f5',
