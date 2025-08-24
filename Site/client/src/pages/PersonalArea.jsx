@@ -141,25 +141,24 @@ const flight =
 const hotel =
   o.hotelName ||
   o.hotel_name ||
-  (typeof o.hotel_id === "string" ? o.hotel_id : null) ||
+  toIdString(o.hotel_id) || // 👈 show the id (and allows future resolver, if you add one)
   "—";
 
 
+
   // Normalize attractions:
-  // - names come from attraction_names / attractionNames
-  // - ids may be strings or {$oid} or {_id:{ $oid }} → convert to hex strings
-  const attractionNames =
+const attractionNames =
   (Array.isArray(o.attraction_names) ? o.attraction_names : null) ??
   (Array.isArray(o.attractionNames) ? o.attractionNames : null) ??
   [];
 
 const attractionIdStrings = Array.isArray(o.attractions)
   ? o.attractions
-      .map(toIdString)
-      .filter((s) => typeof s === "string" && /^[0-9a-fA-F]{24}$/.test(s))
+      .map(toIdString)                           // 👈 converts {$oid} / {_id:{ $oid }} to hex
+      .filter(s => typeof s === "string" && /^[0-9a-fA-F]{24}$/.test(s))
   : [];
 
-// ⬇️ names first, then IDs (so it resolves only if names are missing)
+// names first; otherwise provide hex ids so the useEffect resolver fires
 const attractions = attractionNames.length ? attractionNames : attractionIdStrings;
 
   // robust date handling (allow reassign on fallback)
@@ -375,7 +374,7 @@ merged.sort((a, b) => getOrderCreatedTs(b) - getOrderCreatedTs(a));
 
 
 // Page Loading Overlay Component
-const PageLoadingOverlay = ({ message = "טוען נתונים..." }) => {
+const PageLoadingOverlay = ({ message = "Loading data..." }) => {
   return (
     <div 
       style={{
@@ -546,7 +545,7 @@ const SuccessPopup = ({ isVisible, onClose, message }) => {
             e.target.style.transform = "translateY(0)";
           }}
         >
-          סגור
+         Close
         </button>
       </div>
       
@@ -878,8 +877,9 @@ useEffect(() => {
           <>
             <h2 className="heading">User Details</h2>
             <div className="profileInfo">
-              {isUserLoading ? (
-                <LoadingSpinner size="medium" message="טוען פרטי משתמש..." />
+{isUserLoading ? (
+  <LoadingSpinner size="medium" message="Loading user details..." />
+
               ) : user ? (
                 <>
                   <p>
