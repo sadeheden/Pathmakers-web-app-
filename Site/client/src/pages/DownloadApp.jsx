@@ -7,7 +7,8 @@ import mockupImage from '../assets/images/mockup.png';
 const DownloadApp = () => {
   const navigate = useNavigate();
 
-  const iosLink = 'https://www.apple.com/store';
+  const iosLink = 'https://apps.apple.com/app/pathmakers/id123456789'; // החלף עם הקישור האמיתי
+  const androidLink = 'https://play.google.com/store/apps/details?id=com.pathmakers.app'; // החלף עם הקישור האמיתי
 
   const handleDownload = (url) => {
     window.open(url, '_blank');
@@ -15,20 +16,34 @@ const DownloadApp = () => {
 
   return (
     <div className="phone-landing-container-app">
-      {/* Right: Mockup with QR */}
+      {/* Right: Mockup with QR Codes */}
       <div className="phone-mockup-app">
         <img src={mockupImage} alt="App Mockup" className="mockup-image-app" />
 
+        {/* iOS QR Code */}
         <div
-          className="qr-inside-mockup"
+          className="qr-inside-mockup qr-ios"
           onClick={() => handleDownload(iosLink)}
           role="button"
           tabIndex={0}
           onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') handleDownload(iosLink) }}
-          aria-label="Download app"
+          aria-label="Download app for iOS"
         >
-          <QRCode value={iosLink} size={90} bgColor="#fff" fgColor="#000" />
-          <p className="qr-label-inside">Scan to download</p>
+          <QRCode value={iosLink} size={80} bgColor="#fff" fgColor="#000" />
+          <p className="qr-label-inside">📱 iOS</p>
+        </div>
+
+        {/* Android QR Code */}
+        <div
+          className="qr-inside-mockup qr-android"
+          onClick={() => handleDownload(androidLink)}
+          role="button"
+          tabIndex={0}
+          onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') handleDownload(androidLink) }}
+          aria-label="Download app for Android"
+        >
+          <QRCode value={androidLink} size={80} bgColor="#fff" fgColor="#000" />
+          <p className="qr-label-inside">🤖 Android</p>
         </div>
       </div>
 
@@ -49,13 +64,12 @@ const DownloadApp = () => {
         </ul>
       </div>
 
-    <button 
-  className="floating-support-btn"
-  onClick={() => navigate('/support')}
->
-  ❔
-</button>
-
+      <button 
+        className="floating-support-btn"
+        onClick={() => navigate('/support')}
+      >
+        ❔
+      </button>
     </div>
   );
 };

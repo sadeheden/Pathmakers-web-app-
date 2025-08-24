@@ -157,6 +157,98 @@
   transform: translateY(-2px) scale(1.05);
 }
 
+.qr-ios {
+  top: 10px;
+  right: 10px;
+  bottom: auto;
+}
+
+/* QR code positioning - Android (bottom right) */
+.qr-android {
+  bottom: 10px;
+  right: 10px;
+  top: auto;
+}
+
+/* אפשר גם להציב אותם זה ליד זה בתחתית */
+.qr-side-by-side .qr-ios {
+  bottom: 10px;
+  right: 110px; /* רוחב של QR + רווח */
+  top: auto;
+}
+
+.qr-side-by-side .qr-android {
+  bottom: 10px;
+  right: 10px;
+  top: auto;
+}
+
+/* Hover effects for different platforms */
+.qr-ios:hover {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(240, 240, 240, 0.95));
+  border: 1px solid rgba(0, 122, 255, 0.2);
+}
+
+.qr-android:hover {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(240, 240, 240, 0.95));
+  border: 1px solid rgba(76, 175, 80, 0.2);
+}
+
+/* רספונסיבי לניידים */
+@media (max-width: 768px) {
+  .qr-ios {
+    top: 20px;
+    right: 20px;
+    transform: scale(0.8);
+  }
+  
+  .qr-android {
+    bottom: 20px;
+    right: 20px;
+    transform: scale(0.8);
+  }
+  
+  /* אופציה לסידור זה ליד זה במובייל */
+  .qr-side-by-side .qr-ios {
+    bottom: 20px;
+    right: 100px;
+    top: auto;
+    transform: scale(0.75);
+  }
+  
+  .qr-side-by-side .qr-android {
+    bottom: 20px;
+    right: 20px;
+    transform: scale(0.75);
+  }
+}
+
+@media (max-width: 480px) {
+  .qr-ios {
+    top: 16px;
+    right: 16px;
+    transform: scale(0.7);
+  }
+  
+  .qr-android {
+    bottom: 16px;
+    right: 16px;
+    transform: scale(0.7);
+  }
+  
+  .qr-side-by-side .qr-ios {
+    bottom: 16px;
+    right: 85px;
+    top: auto;
+    transform: scale(0.65);
+  }
+  
+  .qr-side-by-side .qr-android {
+    bottom: 16px;
+    right: 16px;
+    transform: scale(0.65);
+  }
+}
 /* Media Queries */
 @media (max-width: 1200px) {
   .phone-landing-container-app {
