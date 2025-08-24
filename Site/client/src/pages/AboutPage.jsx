@@ -8,18 +8,18 @@ const AboutPage = () => {
 
   return (
     <div>
-      {/* Hero Section */}
-      <div className="hero-section">
-        <div className="hero-overlay"></div>
-        <div className="hero-content">
-          <div className="agency-label">ONLINE TRAVEL AGENCY</div>
-          <h1 className="hero-title">We help travelers</h1>
-        </div>
+      {/* Page Header */}
+      <div className="header-section">
+        <h1 className="header-title">About Us</h1>
+        <p className="header-sub">
+          Discover our mission, values, and commitment to creating seamless travel experiences.
+        </p>
       </div>
 
       {/* Cards Section */}
-      <div className="cards-section">
+      <div className="cards-section no-hero">
         <div className="cards-container">
+          {/* Card 1 */}
           <div className="card">
             <div className="card-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -28,11 +28,11 @@ const AboutPage = () => {
             </div>
             <h3 className="card-title">Travel</h3>
             <p className="card-text">
-                          We are a team of creative and innovative individuals dedicated to providing smart and advanced solutions to every challenge.
-
+              We are a team of creative and innovative individuals dedicated to providing smart and advanced solutions to every challenge.
             </p>
           </div>
 
+          {/* Card 2 */}
           <div className="card">
             <div className="card-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -44,11 +44,11 @@ const AboutPage = () => {
             </div>
             <h3 className="card-title">Benefits</h3>
             <p className="card-text">
-                         Our platform offers everything you need to plan your trip, including flights, attractions, and hotels. We focus on cutting-edge technology, stunning design, and premium customer service to ensure a seamless experience.
-
+              Our platform offers everything you need to plan your trip, including flights, attractions, and hotels. We focus on cutting-edge technology, stunning design, and premium customer service to ensure a seamless experience.
             </p>
           </div>
 
+          {/* Card 3 */}
           <div className="card">
             <div className="card-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -58,11 +58,11 @@ const AboutPage = () => {
             </div>
             <h3 className="card-title">About Us</h3>
             <p className="card-text">
-                         Committed to enhancing the user experience and offering personalized solutions to each client. Join us on a journey of innovation, creativity, and professionalism.
-
+              Committed to enhancing the user experience and offering personalized solutions to each client. Join us on a journey of innovation, creativity, and professionalism.
             </p>
           </div>
 
+          {/* Card 4 */}
           <div className="card">
             <div className="card-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -72,7 +72,7 @@ const AboutPage = () => {
             </div>
             <h3 className="card-title">Awards</h3>
             <p className="card-text">
-            Recognized globally for outstanding travel experiences and service excellence.
+              Recognized globally for outstanding travel experiences and service excellence.
             </p>
           </div>
         </div>
@@ -81,8 +81,7 @@ const AboutPage = () => {
       {/* Bottom Section */}
       <div className="bottom-section">
         <a href="#" className="image-credit">
-                  Book your next adventure with us — we're the best at what we do!
-
+          Book your next adventure with us — we're the best at what we do!
         </a>
       </div>
 

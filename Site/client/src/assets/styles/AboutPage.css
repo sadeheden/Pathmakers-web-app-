@@ -6,66 +6,29 @@
   padding: 0;
   box-sizing: border-box;
 }
+.header-section {
+  background: #ffffff;
+  padding: 40px 20px 40px;
+  text-align: center;
+  border-bottom: 1px solid #eee;
 
-body {
-  font-family: 'Arial', sans-serif;
-  margin: 0;
-  padding: 0;
-  background: #f5f5f5;
-}
-
-.hero-section {
-  background: url('https://images.unsplash.com/photo-1506905925346-21bda4d32df4?ixlib=rb-4.0.3&auto=format&fit=crop&w=2000&q=80') center/cover no-repeat;
-  height: 100vh;
-  position: relative;
+  /* 👇 this ensures content stays centered */
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
 }
-
-.hero-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.3);
+body {
+  font-family: 'Arial', sans-serif;
+  background: #f5f5f5;
 }
 
-.hero-content {
-  position: relative;
-  z-index: 2;
-  text-align: left;
-  color: white;
-  max-width: 1200px;
-  width: 100%;
-  padding: 0 20px;
-}
-
-.agency-label {
-  font-size: 12px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 3px;
-  margin-bottom: 20px;
-  opacity: 0.9;
-}
-
-.hero-title {
-  font-size: 72px;
-  font-weight: 700;
-  line-height: 1.1;
-  margin-bottom: 60px;
-  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
-}
-
-/* Cards Section */
-.cards-section {
+/* Cards Section (no hero now) */
+.cards-section.no-hero {
   background: #f8f8f8;
-  padding: 0;
+  padding: 30px 20px;
   position: relative;
-  margin-top: -200px;
-  z-index: 3;
+  margin-top: 0; /* reset since no hero */
 }
 
 .cards-container {
@@ -76,6 +39,8 @@ body {
   gap: 0;
   background: white;
   box-shadow: 0 10px 50px rgba(0, 0, 0, 0.1);
+  border-radius: 16px;
+  overflow: hidden;
 }
 
 .card {
@@ -141,9 +106,10 @@ body {
 }
 
 .image-credit {
-  font-size: 12px;
-  color: #999;
+  font-size: 14px;
+  color: #555;
   text-decoration: none;
+  font-weight: 500;
 }
 
 .image-credit:hover {
@@ -182,83 +148,35 @@ body {
     grid-template-columns: repeat(2, 1fr);
     max-width: 800px;
   }
-  
-  .card {
-    border-right: 1px solid #e0e0e0;
-    border-bottom: 1px solid #e0e0e0;
-  }
-  
-  .card:nth-child(2n) {
-    border-right: none;
-  }
-  
-  .card:nth-child(3),
-  .card:nth-child(4) {
-    border-bottom: none;
-  }
-  
-  .hero-title {
-    font-size: 56px;
-  }
 }
 
 @media (max-width: 768px) {
-  .hero-title {
-    font-size: 42px;
-  }
-  
   .cards-container {
     grid-template-columns: 1fr;
     margin: 0 20px;
   }
-  
-  .card {
-    border-right: none;
-    border-bottom: 1px solid #e0e0e0;
-    padding: 40px 30px;
-  }
-  
-  .card:last-child {
-    border-bottom: none;
-  }
-  
-  .cards-section {
-    margin-top: -150px;
-  }
+
+/* Header Section */
+.header-section {
+  background: #ffffff;
+  padding: 80px 40px 40px;
+  text-align: center;
+  border-bottom: 1px solid #eee;
+
+  /* 👇 this ensures content stays centered */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
 }
 
-@media (max-width: 480px) {
-  .hero-content {
-    padding: 0 15px;
-  }
-  
-  .hero-title {
-    font-size: 36px;
-  }
-  
-  .agency-label {
-    font-size: 11px;
-  }
-  
-  .card {
-    padding: 35px 20px;
-  }
-  
-  .card-icon {
-    width: 70px;
-    height: 70px;
-  }
-  
-  .card-icon svg {
-    width: 30px;
-    height: 30px;
-  }
-  
-  .floating-support-btn {
-    width: 50px;
-    height: 50px;
-    font-size: 20px;
-    bottom: 20px;
-    right: 20px;
-  }
+.header-title {
+  font-size: 40px;
+  font-weight: 700;
+  color: #222;
+  text-align: center;
+}
+
+
+
 }
