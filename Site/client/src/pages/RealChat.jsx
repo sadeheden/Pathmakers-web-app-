@@ -61,7 +61,7 @@ export default function RealChat() {
     <div className="real-chat">
       <div className="ai-triper-header-real-chat">Real Chat</div>
       <div className="subtitle-real-chat">
-        AI TRIPER — your travel sidekick that plans your trip, suggests cool spots, and answers all your questions.
+        AI PathMakers — your travel sidekick that plans your trip, suggests cool spots, and answers all your questions.
       </div>
 
       <div className="chat-box-real-chat">
