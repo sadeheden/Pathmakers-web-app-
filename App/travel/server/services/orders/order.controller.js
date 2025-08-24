@@ -10,6 +10,49 @@ const reqUserId = (req) => req.user?.id || req.user?.userId || req.user?._id || 
  * Expects camelCase fields from RN and stores snake_case in Mongo.
  * Path: POST /api/orders
  */
+// --- Helper: fetch all attraction ObjectIds for a destination city ---
+async function fetchAttractionIdsForCity(db, destinationCityId, destinationCityName) {
+  const ids = [];
+  const destIdObj = toObjectId(destinationCityId);
+
+  // 1) If attractions are embedded on the city doc as ObjectIds: city.attractions = [ObjectId,...]
+  const cityDoc = destIdObj
+    ? await db.collection('city').findOne({ _id: destIdObj })
+    : null;
+
+  if (cityDoc?.attractions && Array.isArray(cityDoc.attractions) && cityDoc.attractions.length) {
+    for (const a of cityDoc.attractions) {
+      // keep as ObjectId if already, else coerce
+      ids.push(a instanceof ObjectId ? a : (toObjectId(a) ?? null));
+    }
+  }
+
+  // 2) If you store each attraction as its own document in "attractions"
+  // Try multiple possible keys so it works with different schemas.
+  if (ids.length === 0) {
+    const name = (cityDoc?.name || cityDoc?.city || cityDoc?.cityName || destinationCityName || '').trim();
+    const nameRegex = name ? new RegExp(`^${name}$`, 'i') : null;
+
+    const orClauses = [];
+    if (destIdObj) orClauses.push({ city_id: destIdObj });
+    if (nameRegex) {
+      orClauses.push({ city: nameRegex }, { cityName: nameRegex }, { city_slug: name.toLowerCase() });
+    }
+
+    if (orClauses.length) {
+      const cursor = db.collection('attractions').find(
+        { $or: orClauses },
+        { projection: { _id: 1 } }
+      );
+      const rows = await cursor.toArray();
+      for (const r of rows) ids.push(r._id);
+    }
+  }
+
+  // Filter out nulls/dupes
+  return [...new Set(ids.filter(Boolean).map(x => (x instanceof ObjectId ? x : toObjectId(x)).toString()))]
+         .map(s => new ObjectId(s));
+}
 
 export async function createOrder(req, res) {
   try {
