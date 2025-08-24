@@ -89,6 +89,17 @@ const parseAnyDate = (v) => {
   return { ts: null, iso: null };
 };
 
+// put this helper near the other helpers
+const toIdString = (v) => {
+  if (!v) return null;
+  if (typeof v === "string") return v;
+  if (typeof v === "object") {
+    if (typeof v.$oid === "string") return v.$oid;            // { $oid: "..." }
+    if (typeof v._id === "string") return v._id;              // { _id: "..." }
+    if (v._id && typeof v._id.$oid === "string") return v._id.$oid; // { _id: { $oid: "..." } }
+  }
+  try { return String(v); } catch { return null; }
+};
 
 const normalizeOrder = (o) => {
   // id (handles ObjectId, {$oid}, strings)
@@ -102,35 +113,68 @@ const normalizeOrder = (o) => {
     return String(raw);
   })();
 
-  const departure =
-    o.departureCityName || o.departure_city_name || o.departure || o.departure_city_id || "—";
+  // Friendly names for route
+  // route names — prefer raw strings first
+const departure =
+  (typeof o.departure === "string" && o.departure) ||
+  o.departureCityName ||
+  o.departure_city_name ||
+  (typeof o.cityName === "string" && o.cityName) ||
+  (looksLikeId(o?.departure_city_id) ? o.departure_city_id : null) ||
+  "—";
 
 const destination =
-  o.destinationCityName ??
-  o.destination_city_name ??
-  (typeof o.destination === "string" ? o.destination : null) ??
-  (typeof o.cityName === "string" ? o.cityName : "—"); // last resort for legacy
+  (typeof o.destination === "string" && o.destination) ||
+  o.destinationCityName ||
+  o.destination_city_name ||
+  (typeof o.cityName === "string" && o.cityName) ||
+  (looksLikeId(o?.destination_city_id) ? o.destination_city_id : null) ||
+  "—";
+
+// flight/hotel — prefer your raw fields first
+const flight =
+  (typeof o.flightNumber === "string" && o.flightNumber) ||
+  o.flightName ||
+  o.flight_name ||
+  "—";
+
+const hotel =
+  o.hotelName ||
+  o.hotel_name ||
+  (typeof o.hotel_id === "string" ? o.hotel_id : null) ||
+  "—";
 
 
+  // Normalize attractions:
+  // - names come from attraction_names / attractionNames
+  // - ids may be strings or {$oid} or {_id:{ $oid }} → convert to hex strings
+  const attractionNames =
+  (Array.isArray(o.attraction_names) ? o.attraction_names : null) ??
+  (Array.isArray(o.attractionNames) ? o.attractionNames : null) ??
+  [];
 
-  const flight = o.flightName || o.flight_name || o.flightNumber || "—";
+const attractionIdStrings = Array.isArray(o.attractions)
+  ? o.attractions
+      .map(toIdString)
+      .filter((s) => typeof s === "string" && /^[0-9a-fA-F]{24}$/.test(s))
+  : [];
 
- const hotel =
-  o.hotelName ??
-  o.hotel_name ??
-  (typeof o.hotel_id === "string" ? o.hotel_id : "—");
+// ⬇️ names first, then IDs (so it resolves only if names are missing)
+const attractions = attractionNames.length ? attractionNames : attractionIdStrings;
 
-  const attractions =
-    (Array.isArray(o.attraction_names) && o.attraction_names) ||
-    (Array.isArray(o.attractionNames) && o.attractionNames) ||
-    (Array.isArray(o.attractions) && o.attractions) ||
-    [];
+  // robust date handling (allow reassign on fallback)
+  const createdRaw =
+    o.bookingDate ??
+    o.booking_date ??
+    o.created_at ??
+    o.createdAt ??
+    o.tripDate ??
+    null;
 
-  // robust date handling
-const createdRaw = o.bookingDate ?? o.created_at ?? o.createdAt ?? o.tripDate ?? null;
-  let { ts: createdAtTs, iso: createdAtISO } = parseAnyDate(createdRaw);
+  let { ts: tmpTs, iso: tmpIso } = parseAnyDate(createdRaw);
+  let createdAtTs = tmpTs;
+  let createdAtISO = tmpIso;
 
-  // ⬇️ NEW: fallback from ObjectId timestamp
   if (!Number.isFinite(createdAtTs)) {
     const idForTs =
       (typeof o?._id === "object" && o?._id?.$oid) ? o._id.$oid :
@@ -138,19 +182,17 @@ const createdRaw = o.bookingDate ?? o.created_at ?? o.createdAt ?? o.tripDate ??
       (typeof o?.id === "string") ? o.id :
       null;
 
- // Extract creation time from a Mongo ObjectId (as ms since epoch)
-function tsFromObjectId(id) {
-  if (!id || typeof id !== "string" || id.length < 8) return null;
-  const hex = id.slice(0, 8);
-  const secs = parseInt(hex, 16);
-  if (Number.isNaN(secs)) return null;
-  return secs * 1000;
-}
-const ts = tsFromObjectId(idForTs);
-   if (typeof ts === "number" && Number.isFinite(ts)) {
-     createdAtTs = ts;
-     createdAtISO = new Date(ts).toISOString();
-   }
+    const tsFromObjectId = (idStr) => {
+      if (!idStr || typeof idStr !== "string" || idStr.length < 8) return null;
+      const secs = parseInt(idStr.slice(0, 8), 16);
+      return Number.isFinite(secs) ? secs * 1000 : null;
+    };
+
+    const ts = tsFromObjectId(idForTs);
+    if (typeof ts === "number" && Number.isFinite(ts)) {
+      createdAtTs = ts;
+      createdAtISO = new Date(ts).toISOString();
+    }
   }
 
   const totalPrice = Number(o.total_price ?? o.totalPrice ?? 0);
@@ -162,7 +204,11 @@ const ts = tsFromObjectId(idForTs);
     destination,
     flight,
     hotel,
+    // IMPORTANT:
+    // put only string ObjectIds here so your useEffect resolver runs
     attractions,
+    // (chips will still prefer selectedOrder.attractionNamesResolved,
+    // then raw.attraction_names, then this array)
     transportation: o.transportation || "—",
     paymentMethod: o.payment_method || o.paymentMethod || "—",
     totalPrice,
@@ -171,6 +217,7 @@ const ts = tsFromObjectId(idForTs);
     source: o.cityName ? "orders2" : "order",
   };
 };
+
 
 const LoadingSpinner = ({ size = "large", message = "Loading..." }) => {
   const spinnerSize = size === "small" ? "40px" : size === "medium" ? "60px" : "80px";
@@ -248,6 +295,7 @@ const getOrderCreatedTs = (o) => {
   // Prefer stored fields from your two backends
   const t =
    toTs(o?.bookingDate) ||   // 👈 first
+    toTs(o?.booking_date) ||
    toTs(o?.created_at)  ||   // then legacy
    toTs(o?.createdAt)   ||   // then new field
    toTs(o?.tripDate);        // last resortort stored date
@@ -284,22 +332,28 @@ const getOrderCreatedTs = (o) => {
       byId.set(id, o);
       continue;
     }
+    const dedupe = (arr) => Array.from(new Set((arr || []).filter(Boolean).map(String)));
 
     // Merge: enriched fields take precedence; keep anything missing
     byId.set(id, {
       ...existing,
       ...o, // overwrite with enriched values
       // ensure denormalized names stick if present in either
-      flight_name: o.flight_name ?? existing.flight_name ?? null,
-      hotel_name: o.hotel_name ?? existing.hotel_name ?? null,
-      departure_city_name: o.departure_city_name ?? existing.departure_city_name ?? null,
-      destination_city_name: o.destination_city_name ?? existing.destination_city_name ?? null,
-      attraction_names:
-        Array.isArray(o.attraction_names) && o.attraction_names.length
-          ? o.attraction_names
-          : Array.isArray(existing.attraction_names)
-          ? existing.attraction_names
-          : [],
+    flight_name: o.flight_name ?? o.flightName ?? existing.flight_name ?? existing.flightName ?? null,
+   hotel_name:  o.hotel_name  ?? o.hotelName  ?? existing.hotel_name  ?? existing.hotelName  ?? null,
+   departure_city_name:
+     o.departure_city_name ?? o.departureCityName ??
+     existing.departure_city_name ?? existing.departureCityName ??
+     o.departure ?? existing.departure ?? null,
+   destination_city_name:
+     o.destination_city_name ?? o.destinationCityName ??
+     existing.destination_city_name ?? existing.destinationCityName ??
+     o.destination ?? existing.destination ?? o.cityName ?? existing.cityName ?? null,
+   attraction_names: dedupe(
+     (Array.isArray(o.attraction_names) ? o.attraction_names : o.attractionNames) ||
+     (Array.isArray(existing.attraction_names) ? existing.attraction_names : existing.attractionNames) ||
+     []
+   ),
     });
   }
 
