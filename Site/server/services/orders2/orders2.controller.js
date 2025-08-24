@@ -1,86 +1,104 @@
-// orders2.controller.js
-
-import orders2DB from './orders2.db.js';
-import { ObjectId } from 'mongodb';
+import orders2DB from './orders2.db.js'; // ✅ ייבוא ה-instance המוכן
+import { ObjectId } from "mongodb";
 
 class Orders2Controller {
-   static async getUserOrders(req, res) {
-    try {
-      if (!req.user?.id) {
-        return res.status(401).json({ message: 'Unauthorized' });
-      }
-
-      // שליפת כל ההזמנות של המשתמש מה־DB
-      const orders = await orders2DB.getOrdersByUserId(req.user.id);
-      res.status(200).json(orders);
-    } catch (err) {
-      console.error("❌ Error fetching user orders:", err);
-      res.status(500).json({ message: "Failed to fetch orders" });
-    }
-  }
   static async createOrder(req, res) {
     try {
-      if (!req.user?.id) {
-        return res.status(401).json({ message: 'Unauthorized' });
-      }
+      console.log('📝 Creating new order for user:', req.user?.id);
+      console.log('📦 Order data received:', req.body);
 
       const {
-        departureCityId,
-        destinationCityId,
-        flightId,
-        hotelId,
-        attractions,
-        transportation,
-        paymentMethod,
-        totalPrice,
-        flightName,
-        hotelName,
-        attractionNames,
-        departureCityName,
-        destinationCityName,
+        cityName, citySlug, flightNumber, departure, destination,
+        tripDate, returnDate, totalPrice, paymentMethod, status,
+        bookingDate, summary, cityImage, departure_city_id, destination_city_id,
+        flight_id, hotel_id, attractions, transportation
       } = req.body;
 
-      // validation (mirror order.controller.js)
-      if (!departureCityId || !destinationCityId || !flightId || !hotelId) {
-        return res.status(400).json({ message: 'Missing required IDs' });
-      }
-      if (!paymentMethod) {
-        return res.status(400).json({ message: 'Missing paymentMethod' });
-      }
-      if (!totalPrice || Number(totalPrice) <= 0) {
-        return res.status(400).json({ message: 'totalPrice must be positive' });
+      if ((!cityName && !departure_city_id) || (!flightNumber && !flight_id) || !tripDate || !totalPrice) {
+        return res.status(400).json({
+          success: false,
+          message: 'Missing required fields',
+          required: ['cityName or departure_city_id', 'flightNumber or flight_id', 'tripDate', 'totalPrice'],
+          received: Object.keys(req.body)
+        });
       }
 
-      const orderData = {
-        user_id: ObjectId.isValid(req.user.id) ? new ObjectId(req.user.id) : String(req.user.id),
+      if (!req.user?.id) return res.status(401).json({ success: false, message: 'User authentication required' });
+      if (isNaN(totalPrice) || totalPrice <= 0) return res.status(400).json({ success: false, message: 'Total price must be a positive number' });
 
-        // canonical ids (compound allowed)
-        departure_city_id: departureCityId,
-        destination_city_id: destinationCityId,
-        flight_id: flightId,
-        hotel_id: hotelId,
+      const tripDateObj = new Date(tripDate);
+      if (isNaN(tripDateObj.getTime())) return res.status(400).json({ success: false, message: 'Invalid trip date format' });
 
-        // extras
-        attractions: Array.isArray(attractions) ? attractions : [],
-        transportation,
-        payment_method: paymentMethod,
-        total_price: Number(totalPrice),
-        created_at: new Date(),
+   const orderData = {
+  user_id: new ObjectId(req.user.id),
+  cityName: cityName?.trim() || null,
+  citySlug: citySlug ? citySlug.trim() : cityName?.toLowerCase().replace(/\s+/g, '-') || null,
+  flightNumber: flightNumber?.trim() || null,
+  departure: departure?.trim() || null,
+  destination: destination?.trim() || null,
+  tripDate: tripDateObj,
+  returnDate: returnDate ? new Date(returnDate) : null,
+  total_price: Number(totalPrice),
+  payment_method: paymentMethod || "Credit Card",
+  status: status || "confirmed",
+  booking_date: bookingDate ? new Date(bookingDate) : new Date(),
+  summary: summary?.trim() || null,
+  cityImage: cityImage?.trim() || null,
+  departure_city_id: departure_city_id || null,
+  destination_city_id: destination_city_id || null,
+  flight_id: flight_id || null,
+  hotel_id: hotel_id || null,
+  transportation: transportation || null
+};
 
-        // denormalized fields (names)
-        flight_name: flightName || null,
-        hotel_name: hotelName || null,
-        attraction_names: Array.isArray(attractionNames) ? attractionNames : [],
-        departure_city_name: departureCityName || null,
-        destination_city_name: destinationCityName || null,
+
+      if (orderData.returnDate && orderData.returnDate <= orderData.tripDate) {
+        return res.status(400).json({ success: false, message: 'Return date must be after trip date' });
+      }
+
+      // ✅ שימוש ב-instance המיובא
+      const savedOrder = await orders2DB.createOrder(orderData);
+
+      res.status(201).json({
+        success: true,
+        message: 'Order created successfully',
+        order: savedOrder,
+        orderId: savedOrder._id,
+        orderNumber: savedOrder.orderNumber || null
+      });
+
+    } catch (error) {
+      console.error('❌ Error in createOrder controller:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to create order',
+        error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
+      });
+    }
+  }
+
+  static async getUserOrders(req, res) {
+    try {
+      if (!req.user?.id) return res.status(401).json({ success: false, message: 'User authentication required' });
+
+      const options = {
+        page: parseInt(req.query.page) || 1,
+        limit: parseInt(req.query.limit) || 10,
+        status: req.query.status || null,
+        sortBy: req.query.sortBy || 'createdAt',
+        sortOrder: req.query.sortOrder === 'asc' ? 1 : -1
       };
 
-      const savedOrder = await orders2DB.createOrder(orderData);
-      return res.status(201).json(savedOrder);
+      const result = await orders2DB.getUserOrders(req.user.id, options);
 
-    } catch (err) {
-      console.error("❌ Error creating order2:", err);
-      res.status(500).json({ message: "Failed to create order2" });
+      res.json({ success: true, message: `Found ${result.totalOrders} orders`, data: result });
+    } catch (error) {
+      console.error('❌ Error in getUserOrders controller:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to fetch orders',
+        error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
+      });
     }
   }
 }
