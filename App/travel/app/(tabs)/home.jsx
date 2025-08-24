@@ -722,7 +722,7 @@ const handlePaymentSuccess = async () => {
         accessibilityLabel="Open currency calculator"
       >
         <LinearGradient
-          colors={['#FFD700', '#FFA500']}
+          colors={['#28a745', '#7cec96ff']}
           style={styles.floatingCalcGradient}
         >
           <FontAwesome name="dollar" size={25} color="#fff" />
