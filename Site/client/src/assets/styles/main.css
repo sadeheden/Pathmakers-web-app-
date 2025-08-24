@@ -53,12 +53,13 @@ footer, .footer {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;   /* instead of center */
+  padding-top: 75px;             /* push text downward a bit */
   text-align: center;
   color: #fff;
-  padding: 0 20px;
-    filter: grayscale(50%) brightness(0.95);
+  filter: grayscale(50%) brightness(0.95);
 }
+
 .hero-content h1 {
   font-size: clamp(28px, 5vw, 48px);
   margin-bottom: 10px;
@@ -85,12 +86,20 @@ footer, .footer {
 }
 .btn-primary:hover { background: var(--brand-hover); }
 
-.btn-light {
-  background: #fff;
-  color: var(--text);
-  border: 1px solid rgba(0,0,0,0.15);
+/* Light variant that beats the base .btn background */
+.btn.btn-light {
+  background: linear-gradient(135deg, #172eb1d3 0%, #172eb1ce) !important;
+  color: #ffffff !important;                 /* white text */
+  border: none;
+  box-shadow: 0 6px 16px rgba(0,0,0,0.15);   /* subtle depth like support button */
 }
-.btn-light:hover { background: #f3f4f6; }
+
+.btn.btn-light:hover {
+  background: linear-gradient(135deg, #357fc9 20%, #1a7fe4) !important;
+  color: #ffffff !important;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+}
+
 
 /* ===========================
    Icons row (optional section)

@@ -1,7 +1,7 @@
 /* ===== Root Tokens (one source of truth) ===== */
 :root {
-  --brand: #004e75;
-  --brand-hover: #003b5c;
+  --brand: linear-gradient(135deg, #1772ce 0%, #1772ce 100%);
+  --brand-hover: linear-gradient(135deg, #172eb1d3 20%, #172eb1d3 100%);
   --text: #0f172a;
   --muted: rgba(51, 65, 85, 0.9);
   --radius-pill: 10px;
@@ -64,14 +64,16 @@ h1, .title, .title-app {
   padding: var(--btn-pad-y) var(--btn-pad-x);
   font-size: var(--btn-font-size);
   color: #fff;
-  background: var(--brand);
+  background: var(--brand); /* gradient now */
   box-shadow: var(--shadow-sm);
-  transition: background-color .2s ease, transform .2s ease;
+  transition: background .2s ease, transform .2s ease;
 }
+
 .btn:hover {
-  background: var(--brand-hover);
+  background: var(--brand-hover); /* darker gradient */
   transform: translateY(-2px);
 }
+
 
 /* Tablet down */
 @media (max-width: 1024px) {
