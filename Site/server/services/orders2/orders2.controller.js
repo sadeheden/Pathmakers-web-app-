@@ -1,5 +1,7 @@
 import orders2DB from './orders2.db.js'; // ✅ ייבוא ה-instance המוכן
 import { ObjectId } from "mongodb";
+const looksLikeId = (v) => typeof v === "string" && /^[0-9a-fA-F]{24}$/.test(v);
+const toOid = (v) => (looksLikeId(v) ? new ObjectId(v) : v ?? null);
 
 class Orders2Controller {
   static async createOrder(req, res) {
@@ -7,12 +9,16 @@ class Orders2Controller {
       console.log('📝 Creating new order for user:', req.user?.id);
       console.log('📦 Order data received:', req.body);
 
-      const {
-        cityName, citySlug, flightNumber, departure, destination,
-        tripDate, returnDate, totalPrice, paymentMethod, status,
-        bookingDate, summary, cityImage, departure_city_id, destination_city_id,
-        flight_id, hotel_id, attractions, transportation
-      } = req.body;
+     const {
+       cityName, citySlug, flightNumber, departure, destination,
+       tripDate, returnDate, totalPrice, paymentMethod, status,
+       bookingDate, summary, cityImage, departure_city_id, destination_city_id,
+       flight_id, hotel_id, attractions, transportation,
+       // 👇 names coming from Main.jsx payload
+       departureCityName, destinationCityName, flightName, hotelName,
+       // allow both spellings for attractions names
+       attraction_names, attractionNames
+     } = req.body;
 
       if ((!cityName && !departure_city_id) || (!flightNumber && !flight_id) || !tripDate || !totalPrice) {
         return res.status(400).json({
@@ -28,28 +34,65 @@ class Orders2Controller {
 
       const tripDateObj = new Date(tripDate);
       if (isNaN(tripDateObj.getTime())) return res.status(400).json({ success: false, message: 'Invalid trip date format' });
+let finalAttractionNames =
+  Array.isArray(attraction_names) ? attraction_names :
+  Array.isArray(attractionNames) ? attractionNames : [];
+finalAttractionNames = [...new Set(finalAttractionNames.map(String).filter(Boolean))];
 
-   const orderData = {
+let finalAttractionIds =
+  Array.isArray(attractions) ? attractions.filter(looksLikeId).map((id) => new ObjectId(id)) : [];
+
+const orderData = {
   user_id: new ObjectId(req.user.id),
+
+  // legacy display fields you already had
   cityName: cityName?.trim() || null,
   citySlug: citySlug ? citySlug.trim() : cityName?.toLowerCase().replace(/\s+/g, '-') || null,
   flightNumber: flightNumber?.trim() || null,
   departure: departure?.trim() || null,
   destination: destination?.trim() || null,
-  tripDate: tripDateObj,
+
+  tripDate: new Date(tripDate),
   returnDate: returnDate ? new Date(returnDate) : null,
+
+  // 👇 use camelCase so PersonalArea sees it
+  bookingDate: bookingDate ? new Date(bookingDate) : new Date(),
+
   total_price: Number(totalPrice),
   payment_method: paymentMethod || "Credit Card",
   status: status || "confirmed",
-  booking_date: bookingDate ? new Date(bookingDate) : new Date(),
   summary: summary?.trim() || null,
   cityImage: cityImage?.trim() || null,
-  departure_city_id: departure_city_id || null,
-  destination_city_id: destination_city_id || null,
-  flight_id: flight_id || null,
-  hotel_id: hotel_id || null,
-  transportation: transportation || null
+
+  // IDs (normalize to ObjectId when possible)
+  departure_city_id: toOid(departure_city_id),
+  destination_city_id: toOid(destination_city_id),
+  flight_id: flight_id ?? null,
+  hotel_id: hotel_id ?? null,
+
+  transportation: transportation || null,
+
+  // ✅ denormalized names (both snake & camel for compatibility)
+// ✅ names for display in PersonalArea
+ departure_city_name:   departureCityName   || departure   || null,
+ destination_city_name: destinationCityName || destination || null,
+
+flight_name: flightName || flightNumber || null,
+hotel_name: hotelName || null,
+
+flightName: flightName || flightNumber || null,
+hotelName: hotelName || null,
+
+// ✅ attractions
+ attractions: finalAttractionIds,
+ attraction_names: finalAttractionNames,
+
+
+// ✅ camelCase booking date (PersonalArea prefers this)
+bookingDate: bookingDate ? new Date(bookingDate) : new Date(),
+
 };
+
 
 
       if (orderData.returnDate && orderData.returnDate <= orderData.tripDate) {
