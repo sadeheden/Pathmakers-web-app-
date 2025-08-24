@@ -29,6 +29,27 @@ const styles = {
     boxShadow: "0 6px 22px rgba(0,0,0,0.08)",
     marginTop: "16px",
   },
+  // add anywhere inside styles:
+messageBodyBox: {
+  marginTop: 12,
+  backgroundColor: '#fff',
+  border: '1px solid #e5e7eb',
+  borderRadius: '8px',
+  padding: '14px',
+  maxHeight: '40vh',
+  overflow: 'auto',
+  whiteSpace: 'pre-wrap',
+  lineHeight: 1.6,
+  fontSize: 14,
+  color: '#374151'
+},
+messageLabel: {
+  marginTop: 16,
+  fontWeight: 700,
+  fontSize: 14,
+  color: '#1f2937'
+}
+,
   header: { marginBottom: "20px", display: "flex", gap: "16px", alignItems: "center" },
   label: { fontWeight: 700, minWidth: 160, fontSize: 16 },
   select: { padding: "14px", borderRadius: "12px", border: "1px solid #d1d5db", width: "100%", fontSize: 16 },
@@ -1626,7 +1647,12 @@ if (!res.ok) {
                       {selectedMessage.status}
                     </span>
                   </p>
-                  
+                  {selectedMessage.subject && (
+    <p><strong>Subject:</strong> {selectedMessage.subject}</p>
+  )} <div style={styles.messageLabel}>Message</div>
+  <div style={styles.messageBodyBox}>
+    {selectedMessage.message || selectedMessage.text || '(No content)'}
+  </div>
                 <div style={{ marginTop: 30, display: 'flex', gap: 10 }}>
   {renderActionButtons(selectedMessage)}
   <button
