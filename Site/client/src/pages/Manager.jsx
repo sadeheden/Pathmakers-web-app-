@@ -960,16 +960,23 @@ const sendSupportEmail = async (message) => {
 
         console.log("Sending payload:", payload);
         
-        const res = await fetch(url, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
+    const res = await fetch(`http://localhost:4000/api/support/${message._id}/reply`, {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    subject: emailSubject.trim(),
+    text: emailBody.trim(),
+    html: `<p style="white-space:pre-line">${emailBody.trim()}</p>`,
+    markResolved: false,
+  }),
+});
 
-        const data = await res.json();
-        console.log("Server response:", data);
-        
-        if (!res.ok) throw new Error(data?.message || data?.error || "Failed to save");
+let data = null;
+try { data = await res.json(); } catch {}
+if (!res.ok) {
+  const msg = (data && (data.error || data.details || data.code)) || `HTTP ${res.status}`;
+  throw new Error(msg);
+}
 
         setSaved(true);
         setSaving(false);
@@ -977,10 +984,18 @@ const sendSupportEmail = async (message) => {
           setSaved(false);
           handleBack();
         }, 1400);
-      } catch (err) {
-        setSaving(false);
-        alert(err.message);
-      }
+     } catch (err) {
+  // helpful logs
+  if (err?.response) console.error('SMTP response:', err.response);
+  console.error('replyToSupportRequest error:', err);
+
+  res.status(500).json({
+    error: 'Failed to send reply',
+    details: err?.message || String(err),
+    code: err?.code || err?.responseCode || null,
+  });
+}
+
     };
 
     if (step === "choose") {

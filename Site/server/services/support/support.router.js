@@ -1,16 +1,17 @@
-import express from 'express';
+// services/support/support.routes.js
+import { Router } from 'express';
 import {
   getAllSupportRequests,
   createSupportRequest,
   updateSupportStatus,
-  replyToSupportRequest 
+  replyToSupportRequest,
 } from './support.controller.js';
 
-const router = express.Router();
+const router = Router();
 
-router.get('/', getAllSupportRequests); // קבלת כל הפניות
-router.post('/', createSupportRequest); // יצירת פנייה חדשה
-router.patch('/:id', updateSupportStatus); // עדכון סטטוס
+router.get('/', getAllSupportRequests);
+router.post('/', createSupportRequest);
+router.patch('/:id', updateSupportStatus);
 router.post('/:id/reply', replyToSupportRequest);
 
 export default router;
