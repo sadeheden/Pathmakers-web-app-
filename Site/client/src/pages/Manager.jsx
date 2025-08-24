@@ -595,6 +595,48 @@ const Manager = () => {
       alert('Error deleting user');
     }
   };
+// Email reply popup state (put with the other useState calls)
+const [emailModalOpen, setEmailModalOpen] = useState(false);
+const [emailSubject, setEmailSubject] = useState('Re: Your PathMakers support ticket');
+const [emailBody, setEmailBody] = useState('');
+const [sendingReply, setSendingReply] = useState(false);  // <-- ADD THIS
+
+const openEmailModal = (msg) => {
+  setEmailSubject(`Re: ${msg?.subject || 'Your PathMakers support request'}`);
+  setEmailBody(`Hi ${msg?.name || ''},
+
+Thanks for reaching out!`); // starter text
+  setEmailModalOpen(true);
+};
+
+const sendSupportEmail = async (message) => {
+  try {
+    setSendingReply(true);
+    const res = await fetch(`http://localhost:4000/api/support/${message._id}/reply`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        subject: emailSubject.trim(),
+        text: emailBody.trim(),
+        html: `<p style="white-space:pre-line">${emailBody.trim()}</p>`,
+        markResolved: false, // set true if you want auto-resolve
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data?.error || 'Failed to send');
+
+    // UX: close popup, toast
+    setEmailModalOpen(false);
+    setEmailBody('');
+    alert('Email sent successfully.');
+  } catch (e) {
+    console.error(e);
+    alert(e.message);
+  } finally {
+    setSendingReply(false);
+  }
+};
+
 
   // Messages Management Functions (existing code)
   const fetchMessages = async () => {
@@ -1567,26 +1609,115 @@ const Manager = () => {
                     </span>
                   </p>
                   
-                  <div style={{ marginTop: '20px' }}>
-                    <strong>Message:</strong>
-                    <div style={{
-                      marginTop: '10px',
-                      padding: '15px',
-                      backgroundColor: '#f9fafb',
-                      borderRadius: '8px',
-                      lineHeight: '1.6'
-                    }}>
-                      {selectedMessage.message}
-                    </div>
-                  </div>
+                <div style={{ marginTop: 30, display: 'flex', gap: 10 }}>
+  {renderActionButtons(selectedMessage)}
+  <button
+    style={{
+      padding: '10px 14px',
+      borderRadius: 8,
+      background: '#3b82f6',
+      color: '#fff',
+      border: 0,
+      cursor: 'pointer'
+    }}
+    onClick={(e) => {
+      e.stopPropagation();
+      openEmailModal(selectedMessage);
+    }}
+  >
+    Send Email
+  </button>
+</div>
 
-                  <div style={{ marginTop: '30px', display: 'flex', gap: '10px' }}>
-                    {renderActionButtons(selectedMessage)}
-                  </div>
                 </div>
               </div>
             </div>
           )}
+          {emailModalOpen && selectedMessage && (
+  <div
+    style={{
+      position: 'fixed',
+      inset: 0,
+      background: 'rgba(0,0,0,0.35)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: 9999
+    }}
+    onClick={() => setEmailModalOpen(false)}
+  >
+    <div
+      style={{
+        background: '#fff',
+        borderRadius: 12,
+        padding: 20,
+        width: 520,
+        maxWidth: '92%',
+        boxShadow: '0 10px 24px rgba(0,0,0,0.12)'
+      }}
+      onClick={(e) => e.stopPropagation()}
+    >
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+        <h3 style={{ margin: 0 }}>Responding to user {selectedMessage.name}</h3>
+        <button
+          onClick={() => setEmailModalOpen(false)}
+          style={{ background: 'transparent', border: 0, fontSize: 22, cursor: 'pointer', lineHeight: 1 }}
+        >
+          ×
+        </button>
+      </div>
+
+      <div style={{ marginBottom: 8 }}><strong>To:</strong> {selectedMessage.email}</div>
+
+      <input
+        type="text"
+        placeholder="Subject"
+        value={emailSubject}
+        onChange={(e) => setEmailSubject(e.target.value)}
+        style={{
+          width: '100%', padding: 10, borderRadius: 8,
+          border: '1px solid #e5e7eb', marginBottom: 10, outline: 'none'
+        }}
+      />
+
+      <textarea
+        placeholder="Write your message…"
+        value={emailBody}
+        onChange={(e) => setEmailBody(e.target.value)}
+        style={{
+          width: '100%', minHeight: 140, padding: 10, borderRadius: 8,
+          border: '1px solid #e5e7eb', outline: 'none', resize: 'vertical'
+        }}
+      />
+
+      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 12 }}>
+        <button
+          onClick={() => setEmailModalOpen(false)}
+          style={{ padding: '10px 14px', borderRadius: 8, background: '#6b7280', color: '#fff', border: 0, cursor: 'pointer' }}
+        >
+          Cancel
+        </button>
+       <button
+  disabled={!emailBody.trim() || sendingReply}
+  onClick={() => sendSupportEmail(selectedMessage)}
+  style={{
+    padding: '10px 14px',
+    borderRadius: 8,
+    background: '#3b82f6',
+    color: '#fff',
+    border: 0,
+    cursor: 'pointer',
+    opacity: (!emailBody.trim() || sendingReply) ? 0.6 : 1
+  }}
+>
+  {sendingReply ? 'Sending…' : 'Send'}
+</button>
+
+      </div>
+    </div>
+  </div>
+)}
+
         </div>
       );
     }
