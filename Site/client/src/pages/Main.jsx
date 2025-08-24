@@ -480,6 +480,12 @@ const attractionNames =
           }}
         />
       )}
+        <button 
+  className="floating-support-btn"
+  onClick={() => navigate('/support')}
+>
+  ❔
+</button>
     </div>
   );
 };
