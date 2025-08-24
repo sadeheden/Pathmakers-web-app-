@@ -59,20 +59,21 @@ function describe(code) {
 // Get light neutral gradient colors based on weather
 function getWeatherGradient(weatherCode, temp) {
   if (weatherCode === 0) { // Clear
-    return ['#d1d5db', '#9ca3af', '#6b7280'];
+    return ['#8bc4f0ff', '#2c8fdaff', '#8bc4f0ff']; // תורכיז בהיר
   }
   if ([61,63,65,80,81,82].includes(weatherCode)) { // Rain
-    return ['#9ca3af', '#6b7280', '#4b5563'];
+    return ['#76c7ea', '#47b8e0', '#2aa0d6']; // גווני תורכיז עמוקים יותר
   }
   if ([71,73,75,85,86].includes(weatherCode)) { // Snow
-    return ['#f3f4f6', '#d1d5db', '#9ca3af'];
+    return ['#c0f0f8', '#88e0ed', '#50c7de'];
   }
   if ([95,96,97].includes(weatherCode)) { // Thunder
-    return ['#6b7280', '#4b5563', '#374151'];
+    return ['#3bb8d4', '#289fc4', '#1c7aa8'];
   }
   // Default cloudy
-  return ['#d1d5db', '#9ca3af', '#6b7280'];
+  return ['#a0e9f0', '#5fdde5', '#2acfd6'];
 }
+
 
 const WeatherApp = () => {
   const [city, setCity] = useState('Tel Aviv, Israel');

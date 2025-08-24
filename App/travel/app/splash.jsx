@@ -20,7 +20,12 @@ export default function IntroScreen() {
   return (
     <TouchableOpacity style={styles.container} onPress={handleTap} activeOpacity={1}>
       <Image source={require('../assets/images/logo.png')} style={styles.logo} />
-      <Text style={styles.title}>Welcome to PathMakers</Text>
+
+      <View style={styles.titleContainer}>
+        <Text style={styles.welcomeText}>Welcome to</Text>
+        <Text style={styles.appNameText}>PathMakers</Text>
+      </View>
+
       <Text style={styles.subtitle}>Your journey starts here</Text>
 
       <View style={styles.tapHintContainer}>
@@ -44,10 +49,19 @@ const styles = StyleSheet.create({
     resizeMode: 'contain',
     marginBottom: 30,
   },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
+  titleContainer: {
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  welcomeText: {
+    fontSize: 24,
+    fontWeight: '400',
     color: '#333',
+  },
+  appNameText: {
+    fontSize: 32,
+    fontWeight: '700',
+    color: '#000',
   },
   subtitle: {
     fontSize: 16,

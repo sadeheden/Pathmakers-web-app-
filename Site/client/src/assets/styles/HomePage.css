@@ -94,12 +94,12 @@
 
 /* 🔴 Sign Up Button */
 .signup-button {
-  background-color: #e05454;
+  background-color: #46a1e6;
   color: white;
 }
 
 .signup-button:hover {
-  background-color: #a51919;
+  background-color: #085b9a;
 }
 
 /* 📱 Responsive Adjustments */

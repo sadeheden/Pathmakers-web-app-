@@ -13,8 +13,12 @@ export default function IntroScreen() {
       <Text style={styles.appName}>PathMakers</Text>
 
       <Text style={styles.description}>
-        A smart travel companion to guide you from planning to arrival — with realtime updates, maps, weather, and more.
+        A smart travel companion to guide you from planning to arrival — with realtime updates, maps, weather, and more.  
       </Text>
+  <Text style={styles.description}>
+  Don’t have an account yet? 
+  No worries! Please sign up on our website first — here, you can just log in and start your Journey!
+</Text>
 
       <TouchableOpacity style={styles.button} onPress={() => router.push('/login')}>
         <Text style={styles.buttonText}>Start Your Journey</Text>
