@@ -45,8 +45,6 @@
 /* QR code positioning inside mockup */
 .qr-inside-mockup {
   position: absolute;
-  bottom: 10px;
-  right: 10px;
   background: rgba(255, 255, 255, 0.95);
   -webkit-backdrop-filter: blur(10px);
   backdrop-filter: blur(10px);
@@ -157,10 +155,12 @@
   transform: translateY(-2px) scale(1.05);
 }
 
+/* QR code positioning - iOS (bottom left) */
 .qr-ios {
-  top: 10px;
-  right: 10px;
-  bottom: auto;
+  bottom: 10px;
+  left: 10px;
+  top: auto;
+  right: auto;
 }
 
 /* QR code positioning - Android (bottom right) */
@@ -168,19 +168,7 @@
   bottom: 10px;
   right: 10px;
   top: auto;
-}
-
-/* אפשר גם להציב אותם זה ליד זה בתחתית */
-.qr-side-by-side .qr-ios {
-  bottom: 10px;
-  right: 110px; /* רוחב של QR + רווח */
-  top: auto;
-}
-
-.qr-side-by-side .qr-android {
-  bottom: 10px;
-  right: 10px;
-  top: auto;
+  left: auto;
 }
 
 /* Hover effects for different platforms */
@@ -194,61 +182,6 @@
   border: 1px solid rgba(76, 175, 80, 0.2);
 }
 
-/* רספונסיבי לניידים */
-@media (max-width: 768px) {
-  .qr-ios {
-    top: 20px;
-    right: 20px;
-    transform: scale(0.8);
-  }
-  
-  .qr-android {
-    bottom: 20px;
-    right: 20px;
-    transform: scale(0.8);
-  }
-  
-  /* אופציה לסידור זה ליד זה במובייל */
-  .qr-side-by-side .qr-ios {
-    bottom: 20px;
-    right: 100px;
-    top: auto;
-    transform: scale(0.75);
-  }
-  
-  .qr-side-by-side .qr-android {
-    bottom: 20px;
-    right: 20px;
-    transform: scale(0.75);
-  }
-}
-
-@media (max-width: 480px) {
-  .qr-ios {
-    top: 16px;
-    right: 16px;
-    transform: scale(0.7);
-  }
-  
-  .qr-android {
-    bottom: 16px;
-    right: 16px;
-    transform: scale(0.7);
-  }
-  
-  .qr-side-by-side .qr-ios {
-    bottom: 16px;
-    right: 85px;
-    top: auto;
-    transform: scale(0.65);
-  }
-  
-  .qr-side-by-side .qr-android {
-    bottom: 16px;
-    right: 16px;
-    transform: scale(0.65);
-  }
-}
 /* Media Queries */
 @media (max-width: 1200px) {
   .phone-landing-container-app {
@@ -301,9 +234,20 @@
   }
   
   .qr-inside-mockup {
+    padding: 12px 16px;
+  }
+  
+  /* רספונסיבי לניידים - QR positioning */
+  .qr-ios {
+    bottom: 20px;
+    left: 20px;
+    transform: scale(0.8);
+  }
+  
+  .qr-android {
     bottom: 20px;
     right: 20px;
-    padding: 12px 16px;
+    transform: scale(0.8);
   }
   
   .floating-support-btn {
@@ -332,10 +276,21 @@
   }
   
   .qr-inside-mockup {
-    bottom: 16px;
-    right: 16px;
     padding: 10px 14px;
     border-radius: 20px;
+  }
+  
+  /* QR positioning for mobile */
+  .qr-ios {
+    bottom: 16px;
+    left: 16px;
+    transform: scale(0.7);
+  }
+  
+  .qr-android {
+    bottom: 16px;
+    right: 16px;
+    transform: scale(0.7);
   }
   
   .floating-support-btn {
