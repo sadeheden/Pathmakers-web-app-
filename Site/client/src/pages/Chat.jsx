@@ -301,7 +301,48 @@ onPaymentSuccess={async ({ attractionIds, attractionNames } = {}) => {
 
     // ---------- helpers (declare BEFORE use) ----------
    const looksLikeObjectId = (v) => typeof v === "string" && /^[0-9a-fA-F]{24}$/.test(v);
-const getCityIdFromAny = (city) => {
+// --- attractions: build IDs + names (prefer PaymentModal → fall back to chat) ---
+let finalAttractionIds = Array.isArray(attractionIds)
+  ? attractionIds.filter(looksLikeObjectId)
+  : [];
+
+let finalAttractionNames = Array.isArray(attractionNames)
+  ? attractionNames.filter((n) => typeof n === "string" && n.trim())
+  : [];
+
+// Fallback: read from the chat step “Select attractions to visit”
+if (!finalAttractionIds.length) {
+  const picked = userResponses?.["Select attractions to visit"];
+  const selected = Array.isArray(picked) ? picked.flat(Infinity) : (picked ? [picked] : []);
+  const pool = Array.isArray(loadedAttractions) ? loadedAttractions : [];
+
+  for (const a of selected) {
+    if (typeof a === "string") {
+      if (looksLikeObjectId(a)) {
+        finalAttractionIds.push(a);
+      } else {
+        // try match by name against loadedAttractions
+        const hit = pool.find((x) =>
+          [x?.name, x?.title, x?.label]
+            .map((s) => (s || "").trim().toLowerCase())
+            .includes(a.trim().toLowerCase())
+        );
+        const id = String(hit?._id || hit?.id || "");
+        if (looksLikeObjectId(id)) finalAttractionIds.push(id);
+        else finalAttractionNames.push(a);
+      }
+    } else if (a && typeof a === "object") {
+      const id = String(a._id || a.id || "").trim();
+      if (looksLikeObjectId(id)) finalAttractionIds.push(id);
+      else if (a.name) finalAttractionNames.push(a.name);
+    }
+  }
+}
+
+// de-dupe
+finalAttractionIds = [...new Set(finalAttractionIds)];
+finalAttractionNames = [...new Set(finalAttractionNames)];
+   const getCityIdFromAny = (city) => {
   if (!city) return null;
   if (typeof city === "string") return looksLikeObjectId(city) ? city : null;
   const s = String(city._id || city.id || "").trim();
@@ -466,9 +507,11 @@ const fetchCityIdByName = async (name, headers) => {
       hotelId: ids.hotelId,
 
       // include all destination attractions server-side
-      selectAllCityAttractions: true,
-      attractionNames: [],
-      attractions: [],
+// NEW
+selectAllCityAttractions: finalAttractionIds.length === 0,
+attractionNames: finalAttractionNames,
+attractions: finalAttractionIds,
+
 
       flightName: getDisplayName(flt) || null,
       hotelName: getDisplayName(htl) || null,
