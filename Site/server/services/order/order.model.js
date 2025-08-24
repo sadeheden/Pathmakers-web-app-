@@ -14,6 +14,9 @@ function toObjectIdOrString(id) {
   }
   return id; // Return as string if not a valid ObjectId
 }
+const toOid = (v) =>
+  typeof v === "string" && ObjectId.isValid(v) ? new ObjectId(v) : null;
+
 
 export default class Order {
   constructor(data = {}) {
@@ -126,7 +129,9 @@ export default class Order {
       destination_city_id: this.destination_city_id,
       flight_id: this.flight_id,  // Store as string to preserve compound format
       hotel_id: this.hotel_id,    // Store as string to preserve compound format
-      attractions: this.attractions,
+    attractions: Array.isArray(this.attractions)
+    ? this.attractions.map(toOid).filter(Boolean)
+    : [],
       transportation: this.transportation,
       payment_method: this.payment_method,
       total_price: this.total_price,
