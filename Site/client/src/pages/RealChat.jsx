@@ -2,20 +2,23 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import Markdown from "react-markdown";
 import "../assets/styles/realChat.css";
 
+// Read base URL from env, fallback to localhost
+const API_BASE = (import.meta?.env?.VITE_API_BASE || "http://localhost:4000").replace(/\/$/, "");
+
 export default function RealChat() {
   // state
-  let [text, setText] = useState("");
-  let [messages, setMessages] = useState([
+  const [text, setText] = useState("");
+  const [messages, setMessages] = useState([
     { role: "system", content: "Act as a travel agent. Answer questions with full explanations and step-by-step thinking." },
   ]);
-  let [isTyping, setIsTyping] = useState(false);
+  const [isTyping, setIsTyping] = useState(false);
 
   // ui helpers
-  let quickReplies = ["Flights", "Hotels", "Tours", "Packing tips", "Visa info"];
+  const quickReplies = ["Flights", "Hotels", "Tours", "Packing tips", "Visa info"];
 
   // refs for scroll control
-  let chatRef = useRef(null);
-  let didInitialPaint = useRef(false);
+  const chatRef = useRef(null);
+  const didInitialPaint = useRef(false);
 
   // prevent browser restoring scroll + force top
   useEffect(() => {
@@ -27,35 +30,55 @@ export default function RealChat() {
 
   // allow auto-scroll only after first paint
   useEffect(() => {
-    let id = requestAnimationFrame(() => { didInitialPaint.current = true; });
+    const id = requestAnimationFrame(() => {
+      didInitialPaint.current = true;
+    });
     return () => cancelAnimationFrame(id);
   }, []);
 
   function scrollChatToBottom(behavior = "auto") {
     if (!chatRef.current || !didInitialPaint.current) return;
-    try { chatRef.current.scrollTop = chatRef.current.scrollHeight; } catch (e) {}
+    try {
+      chatRef.current.scrollTop = chatRef.current.scrollHeight;
+    } catch (e) {}
     // or smooth:
     // chatRef.current.scrollTo({ top: chatRef.current.scrollHeight, behavior });
   }
 
   // call backend
-  let askAI = useCallback(async () => {
+  const askAI = useCallback(async () => {
     try {
       setIsTyping(true);
-      let response = await fetch("http://localhost:4000/api/chat", {
+
+      // Optional: send all messages (server sanitizes), or filter out system here:
+      const outbound = messages.filter(m => m.role !== "system"); // or: messages.filter(m => m.role !== "system")
+
+      const resp = await fetch(`${API_BASE}/api/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages }),
+        body: JSON.stringify({ messages: outbound }),
       });
-      let data = await response.json();
-      if (data.choices && data.choices.length > 0) {
-        setMessages(prev => [...prev, data.choices[0].message]);
+
+      if (!resp.ok) {
+        const errJson = await resp.json().catch(() => ({}));
+        const msg = errJson?.error || `HTTP ${resp.status}`;
+        throw new Error(msg);
+      }
+
+      const data = await resp.json();
+
+      if (data?.choices?.length) {
+        setMessages((prev) => [...prev, data.choices[0].message]);
       } else {
-        throw new Error("No valid response from AI");
+        const msg = data?.error || "No valid response from AI";
+        throw new Error(msg);
       }
     } catch (error) {
       console.error("Error calling AI:", error);
-      setMessages(prev => [...prev, { role: "assistant", content: "Sorry, an error occurred. Please try again." }]);
+      setMessages((prev) => [
+        ...prev,
+        { role: "assistant", content: `Sorry, an error occurred: ${error.message}` },
+      ]);
     } finally {
       setIsTyping(false);
     }
@@ -77,7 +100,7 @@ export default function RealChat() {
   // handlers
   function handleSend() {
     if (text.trim() !== "") {
-      setMessages(prev => [...prev, { role: "user", content: text }]);
+      setMessages((prev) => [...prev, { role: "user", content: text }]);
       setText("");
     }
   }
@@ -90,7 +113,7 @@ export default function RealChat() {
   }
 
   function handleQuickReply(reply) {
-    setMessages(prev => [...prev, { role: "user", content: reply }]);
+    setMessages((prev) => [...prev, { role: "user", content: reply }]);
   }
 
   return (
@@ -103,24 +126,28 @@ export default function RealChat() {
       {/* QUICK REPLIES — moved ABOVE chat */}
       <div className="quick-replies-real-chat quick-replies-top">
         {quickReplies.map((reply, i) => (
-          <button key={i} onClick={() => handleQuickReply(reply)}>{reply}</button>
+          <button key={i} onClick={() => handleQuickReply(reply)}>
+            {reply}
+          </button>
         ))}
       </div>
 
       {/* CHAT */}
       <div className="chat-box-real-chat" ref={chatRef}>
-        {messages.filter(m => m.role !== "system").map((message, index) => (
-          <div
-            key={index}
-            className={`message-container-real-chat ${
-              message.role === "user" ? "message-user-real-chat" : "message-bot-real-chat"
-            }`}
-          >
-            <div className="markdown-content-real-chat">
-              <Markdown>{message.content}</Markdown>
+        {messages
+          .filter((m) => m.role !== "system")
+          .map((message, index) => (
+            <div
+              key={index}
+              className={`message-container-real-chat ${
+                message.role === "user" ? "message-user-real-chat" : "message-bot-real-chat"
+              }`}
+            >
+              <div className="markdown-content-real-chat">
+                <Markdown>{message.content}</Markdown>
+              </div>
             </div>
-          </div>
-        ))}
+          ))}
 
         {isTyping && (
           <div className="message-container-real-chat message-bot-real-chat">
