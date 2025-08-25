@@ -30,7 +30,7 @@
 }
 
 .title {
-    font-size: 2.3rem;
+    font-size: 2rem;
     font-weight: bold;
     color: #1E88E5; /* Modern blue */
     margin-bottom: 15px;
@@ -115,7 +115,7 @@
     }
 
     .title {
-        font-size: 1.5rem; /* Smaller font for very small screens */
+        font-size: 1.2rem; /* Smaller font for very small screens */
     }
 
     .description {
