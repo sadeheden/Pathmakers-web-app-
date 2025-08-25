@@ -78,9 +78,14 @@ export default function Profile() {
     try {
       const token = (await AsyncStorage.getItem('token'))?.replace(/^"|"$/g, '') || null;
       if (!token) return {};
-
+const typeForApi = type === 'cities' ? 'city' : type;
       console.log(`🔍 Fetching ${type} data for IDs:`, ids);
-
+const validIds = (ids || []).filter(isHex24);
+   if (validIds.length === 0) {
+     console.log(`⏭️ No valid ${type} ids to fetch`);
+     return {};
+     
+   }
       const response = await fetchWithTimeout(
         'https://pathmakers-web-app-app-travel.onrender.com/api/orders/dynamic-data',
         {
@@ -89,7 +94,7 @@ export default function Profile() {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ type, ids }),
+          body: JSON.stringify({ type: typeForApi, ids: validIds }),
           timeout: 10000,
         }
       );
@@ -166,7 +171,7 @@ export default function Profile() {
                                    order.destination_city_name.match(/^[0-9a-f]{24}$/i)) && 
                                   order.destination_city_id && 
                                   !staticMappings.cities[order.destination_city_id];
-      if (needsDestinationCity) {
+      if (needsDestinationCity && isHex24(order.destination_city_id)) {
         console.log(`🏙️ Need to fetch destination city: ${order.destination_city_id}`);
         missingIds.cities.add(order.destination_city_id);
       }
@@ -176,7 +181,7 @@ export default function Profile() {
                           order.flight_name.match(/^[0-9a-f]{24}$/i)) && 
                          order.flight_id && 
                          !staticMappings.flights[order.flight_id];
-      if (needsFlight) {
+     if (needsFlight && isHex24(order.flight_id)) {
         console.log(`✈️ Need to fetch flight: ${order.flight_id}`);
         missingIds.flights.add(order.flight_id);
       }
@@ -186,7 +191,7 @@ export default function Profile() {
                          order.hotel_name.match(/^[0-9a-f]{24}$/i)) && 
                         order.hotel_id && 
                         !staticMappings.hotels[order.hotel_id];
-      if (needsHotel) {
+   if (needsHotel && isHex24(order.hotel_id)) {
         console.log(`🏨 Need to fetch hotel: ${order.hotel_id}`);
         missingIds.hotels.add(order.hotel_id);
       }
@@ -267,7 +272,7 @@ export default function Profile() {
 
         const ordersData = data.orders || [];
         const sortedOrders = [...ordersData].sort(
-        (a, b) => new Date(b.created_at) - new Date(a.created_at)
+        (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
         );
         setOrders(sortedOrders);
                 
@@ -420,7 +425,7 @@ export default function Profile() {
           </View>
           
           <Text style={styles.tripDate}>
-            📅 {new Date(item.created_at).toLocaleDateString()}
+            📅 {new Date(item.createdAt).toLocaleDateString()}
           </Text>
           
           {isExpanded && (
