@@ -8,7 +8,17 @@ import cors from 'cors';
 
 // ⚡ Load environment variables FIRST
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+dotenv.config({ path: path.join(__dirname, '.env') });
+dotenv.config({ path: path.join(__dirname, '.env.local') });
 const envPath = path.resolve(__dirname, '.env.local');
+console.log('🔎 Expo server env:',
+  JSON.stringify({
+    loadedFrom: __dirname,
+    PORT: process.env.PORT,
+    HF_TOKEN_present: Boolean(process.env.HF_TOKEN),
+    HF_MODEL: process.env.HF_MODEL || '(not set)',
+  }, null, 2)
+);
 if (!fs.existsSync(envPath)) {
   console.warn(`⚠️ .env.local file not found at ${envPath}`);
 }

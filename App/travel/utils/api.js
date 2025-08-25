@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const base_url = "https://pathmakers-web-app-app-travel.onrender.com/api";
 
+export const API_BASE = (process.env.EXPO_PUBLIC_API_BASE || 'http://10.0.2.2:3001').replace(/\/$/, '');
 
 export async function get(endpoint) {
   try {
