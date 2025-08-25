@@ -223,16 +223,18 @@ export async function getOrdersForProfile(req, res) {
     ]).toArray();
 
     // stringify IDs for RN
-    const safe = orders.map(o => ({
-      ...o,
-      _id: o._id?.toString(),
-      user_id: o.user_id?.toString(),
-      departure_city_id: o.departure_city_id?.toString(),
-      destination_city_id: o.destination_city_id?.toString(),
-      flight_id: o.flight_id?.toString(),
-      hotel_id: o.hotel_id?.toString(),
-      attractions: Array.isArray(o.attractions) ? o.attractions.map(a => a?.toString?.() || a) : []
-    }));
+const safe = orders.map(o => ({
+  _id: o._id?.toString(),
+  user_id: o.user_id?.toString(),
+  departure_city_id: o.departure_city_id?.toString() || null,
+  destination_city_id: o.destination_city_id?.toString() || null,
+  flight_id: o.flight_id?.toString() || null,
+  hotel_id: o.hotel_id?.toString() || null,
+  attractions: Array.isArray(o.attractions) ? o.attractions.map(a => a?.toString?.() || a) : [],
+  createdAt: o.createdAt || o.created_at,   // ✅ unify
+  ...o
+}));
+
 
     return res.status(200).json({ success: true, orders: safe });
   } catch (err) {

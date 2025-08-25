@@ -271,9 +271,9 @@ const validIds = (ids || []).filter(isHex24);
         }
 
         const ordersData = data.orders || [];
-        const sortedOrders = [...ordersData].sort(
-        (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
-        );
+  const sortedOrders = [...ordersData].sort(
+   (a, b) => new Date(b.created_at || b.createdAt) - new Date(a.created_at || a.createdAt)
+ );
         setOrders(sortedOrders);
                 
         // Fetch missing dynamic data
@@ -425,7 +425,7 @@ const validIds = (ids || []).filter(isHex24);
           </View>
           
           <Text style={styles.tripDate}>
-            📅 {new Date(item.createdAt).toLocaleDateString()}
+            📅 {new Date(item.created_at || item.createdAt).toLocaleDateString()}
           </Text>
           
           {isExpanded && (
