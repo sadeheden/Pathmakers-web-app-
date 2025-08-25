@@ -58,6 +58,13 @@ const styles = {
     gap: "14px",
     gridTemplateColumns: "1fr 1fr 1fr",
   },
+  hintText: {
+  fontSize: '12px',
+  color: '#9ca3af', // gray
+  marginTop: '6px',
+  fontStyle: 'italic'
+},
+
   input: {
     padding: "14px",
     borderRadius: "12px",
@@ -65,6 +72,11 @@ const styles = {
     width: "100%",
     fontSize: 16,
   },
+  viewButton: {
+  backgroundColor: '#3b82f6',
+  color: '#fff'
+},
+
   textarea: {
     padding: "14px",
     borderRadius: "12px",
@@ -639,6 +651,25 @@ const Manager = () => {
   const [emailSubject, setEmailSubject] = useState('Re: Your PathMakers support ticket');
   const [emailBody, setEmailBody] = useState('');
   const [sendingReply, setSendingReply] = useState(false);
+  const [expandedId, setExpandedId] = useState(null);
+
+// normalize fields coming from different sources
+const getCreated = (m) =>
+  m?.createdAt || m?.created_at || m?.timestamp || m?.date || null;
+
+const getStatus = (m) => {
+  const s = (m?.status || '').toLowerCase();
+  return ['pending', 'resolved', 'closed'].includes(s) ? s : 'pending';
+};
+
+// safe formatter (returns '—' if no/invalid date)
+const safeFormatDate = (value) => {
+  if (!value) return '—';
+  const d = new Date(value);
+  return isNaN(d.getTime()) ? '—' : d.toLocaleDateString('he-IL', {
+    year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+  });
+};
 
   useEffect(() => {
     if (activeItem === "Dashboard") {
@@ -946,76 +977,63 @@ Thanks for reaching out!`);
     }
   };
 
-  const renderActionButtons = (message) => {
-    const buttons = [];
+const renderActionButtons = (message) => {
+  const s = getStatus(message);
+  const buttons = [];
 
-    if (message.status === 'pending') {
-      buttons.push(
-        <button
-          key="resolve"
-          style={{ ...styles.actionButton, ...styles.resolveButton }}
-          onClick={(e) => {
-            e.stopPropagation();
-            updateMessageStatus(message._id, 'resolved');
-          }}
-        >
-          Mark Resolved
-        </button>
-      );
-      buttons.push(
-        <button
-          key="close"
-          style={{ ...styles.actionButton, ...styles.closeButton }}
-          onClick={(e) => {
-            e.stopPropagation();
-            updateMessageStatus(message._id, 'closed');
-          }}
-        >
-          Close
-        </button>
-      );
-    } else if (message.status === 'resolved') {
-      buttons.push(
-        <button
-          key="close"
-          style={{ ...styles.actionButton, ...styles.closeButton }}
-          onClick={(e) => {
-            e.stopPropagation();
-            updateMessageStatus(message._id, 'closed');
-          }}
-        >
-          Close
-        </button>
-      );
-      buttons.push(
-        <button
-          key="reopen"
-          style={{ ...styles.actionButton, ...styles.reopenButton }}
-          onClick={(e) => {
-            e.stopPropagation();
-            updateMessageStatus(message._id, 'pending');
-          }}
-        >
-          Reopen
-        </button>
-      );
-    } else if (message.status === 'closed') {
-      buttons.push(
-        <button
-          key="reopen"
-          style={{ ...styles.actionButton, ...styles.reopenButton }}
-          onClick={(e) => {
-            e.stopPropagation();
-            updateMessageStatus(message._id, 'pending');
-          }}
-        >
-          Reopen
-        </button>
-      );
-    }
+  if (s === 'pending') {
+    buttons.push(
+      <button
+        key="resolve"
+        style={{ ...styles.actionButton, ...styles.resolveButton }}
+        onClick={(e) => { e.stopPropagation(); updateMessageStatus(message._id, 'resolved'); }}
+      >
+        Mark Resolved
+      </button>
+    );
+    buttons.push(
+      <button
+        key="close"
+        style={{ ...styles.actionButton, ...styles.closeButton }}
+        onClick={(e) => { e.stopPropagation(); updateMessageStatus(message._id, 'closed'); }}
+      >
+        Close
+      </button>
+    );
+  } else if (s === 'resolved') {
+    // 👇 NEW: open the message modal
+    buttons.push(
+      <button
+        key="open"
+        style={{ ...styles.actionButton, ...styles.viewButton }}
+        onClick={(e) => { e.stopPropagation(); setSelectedMessage(message); }}
+      >
+        Open
+      </button>
+    );
+    buttons.push(
+      <button
+        key="reopen"
+        style={{ ...styles.actionButton, ...styles.reopenButton }}
+        onClick={(e) => { e.stopPropagation(); updateMessageStatus(message._id, 'pending'); }}
+      >
+        Reopen
+      </button>
+    );
+  } else if (s === 'closed') {
+    buttons.push(
+      <button
+        key="reopen"
+        style={{ ...styles.actionButton, ...styles.reopenButton }}
+        onClick={(e) => { e.stopPropagation(); updateMessageStatus(message._id, 'pending'); }}
+      >
+        Reopen
+      </button>
+    );
+  }
 
-    return buttons;
-  };
+  return buttons;
+};
 
   // ManageDataUpdateBox Component
   function ManageDataUpdateBox() {
@@ -1956,7 +1974,7 @@ Thanks for reaching out!`);
                         {formatDate(message.createdAt)}
                       </p>
                     </div>
-                    <div style={getStatusStyle(message.status)}>
+                   <div style={getStatusStyle(getStatus(message))}>
                       {message.status}
                     </div>
                   </div>
@@ -1971,6 +1989,7 @@ Thanks for reaching out!`);
                   <div style={styles.messageActions}>
                     {renderActionButtons(message)}
                   </div>
+                  <p style={styles.hintText}>Click to interact</p>
                 </div>
               ))}
             </div>
