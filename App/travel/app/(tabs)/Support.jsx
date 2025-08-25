@@ -88,8 +88,9 @@ const SupportScreen = () => {
 
     try {
       console.log('📤 Sending support message:', { name, email, message: message.substring(0, 50) + '...' });
+      console.log('🌐 Full URL will be:', 'https://pathmakers-web-app-app-travel.onrender.com/api/support');
       
-      const response = await post('support', { 
+      const response = await post('support', { // 👈 הסרתי / בתחילת הנתיב
         name: name.trim(),
         email: email.trim(), 
         message: message.trim()
