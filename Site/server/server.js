@@ -24,7 +24,7 @@ app.post('/api/chat', async (req, res) => {
   try {
     const { messages } = req.body;
     const response = await hf.chatCompletion({
-      model: 'meta-llama/Meta-Llama-3.1-8B-Instruct',
+      model: 'meta-llama/Llama-3.1-8B-Instruct',
       messages,
       temperature: 0.5,
       max_tokens: 2048,
