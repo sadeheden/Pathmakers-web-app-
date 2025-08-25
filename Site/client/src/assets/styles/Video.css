@@ -94,7 +94,7 @@
     }
 
     .title {
-        font-size: 1.8rem; /* Reduce title size for smaller screens */
+        font-size: 1.2rem; color: #000000; /* Reduce title size for smaller screens */
     }
 
     .description {
