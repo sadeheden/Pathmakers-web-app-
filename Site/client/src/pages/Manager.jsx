@@ -805,7 +805,7 @@ const Manager = () => {
 Thanks for reaching out!`);
     setEmailModalOpen(true);
   };
-
+//support email function
   const sendSupportEmail = async (message) => {
     try {
       setSendingReply(true);
