@@ -30,7 +30,7 @@
 }
 
 .title {
-    font-size: 2.3rem;
+    font-size: 2rem;
     font-weight: bold;
     color: #1E88E5; /* Modern blue */
     margin-bottom: 15px;
@@ -49,7 +49,7 @@
 }
 
 .nextButton {
-    background-color: #4a90e2; /* Light Blue */
+    background-color: #289fd2; /* Light Blue */
     color: white;
     border: none;
     padding: 10px 15px;
@@ -66,7 +66,7 @@
 
 /* Hover effect */
 .nextButton:hover {
-    background-color: #1565C0; /* Darker blue */
+    background-color: #115277; /* Darker blue */
     transform: translateY(-3px);
     box-shadow: 0 8px 25px rgba(0, 0, 0, 0.25);
 }
@@ -94,7 +94,7 @@
     }
 
     .title {
-        font-size: 1.8rem; /* Reduce title size for smaller screens */
+        font-size: 1.2rem; color: #000000; /* Reduce title size for smaller screens */
     }
 
     .description {
@@ -115,7 +115,7 @@
     }
 
     .title {
-        font-size: 1.5rem; /* Smaller font for very small screens */
+        font-size: 1.2rem; /* Smaller font for very small screens */
     }
 
     .description {

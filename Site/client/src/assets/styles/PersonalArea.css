@@ -20,6 +20,7 @@
   text-align: center;
   font-size: 2rem;
   font-weight: 800;
+  padding: 20px;
   color: var(--brand);
   margin: 18px 0 8px;
 }
@@ -415,3 +416,4 @@ small { color: var(--muted); }
 }
 
 .popup-close:hover { background: #f1f5f9; }
+
