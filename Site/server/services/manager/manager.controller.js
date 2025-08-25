@@ -657,3 +657,18 @@ export const upsertAttractionsByCity = async (req, res) => {
     res.status(500).json({ message: "Internal error" });
   }
 };
+export const getLoginLogs = async (req, res) => {
+  try {
+    const db = await connectDB();
+    const logs = await db.collection("LoginLogs")
+      .find({})
+      .sort({ created_at: -1 })
+      .limit(100) // מגבלה כדי שלא יחזיר אלפי רשומות
+      .toArray();
+
+    res.status(200).json(logs);
+  } catch (err) {
+    console.error("❌ Error fetching login logs:", err);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
