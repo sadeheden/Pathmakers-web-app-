@@ -1944,56 +1944,58 @@ const renderActionButtons = (message) => {
             </div>
           </div>
 
-          {/* Messages List */}
-          {filteredMessages.length === 0 ? (
-            <div style={styles.emptyState}>
-              <div style={styles.emptyIcon}>📭</div>
-              <div style={styles.emptyTitle}>No messages found</div>
-              <div>No support messages match the current filter.</div>
+       {/* Messages List */}
+{filteredMessages.length === 0 ? (
+  <div style={styles.emptyState}>
+    <div style={styles.emptyIcon}>📭</div>
+    <div style={styles.emptyTitle}>No messages found</div>
+    <div>No support messages match the current filter.</div>
+  </div>
+) : (
+  <div style={styles.messagesGrid}>
+    {[...filteredMessages]
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)) // 🔑 חדש למעלה
+      .map((message) => (
+        <div
+          key={message._id}
+          style={styles.messageCard}
+          onClick={() => setSelectedMessage(message)}
+          onMouseEnter={(e) => {
+            Object.assign(e.currentTarget.style, styles.messageCardHover);
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = '';
+            e.currentTarget.style.boxShadow = styles.messageCard.boxShadow;
+          }}
+        >
+          <div style={styles.messageHeader}>
+            <div style={styles.messageInfo}>
+              <h3 style={styles.messageName}>{message.name}</h3>
+              <p style={styles.messageEmail}>{message.email}</p>
+              <p style={styles.messageDate}>
+                {formatDate(message.createdAt)}
+              </p>
             </div>
-          ) : (
-            <div style={styles.messagesGrid}>
-              {filteredMessages.map((message) => (
-                <div
-                  key={message._id}
-                  style={styles.messageCard}
-                  onClick={() => setSelectedMessage(message)}
-                  onMouseEnter={(e) => {
-                    Object.assign(e.currentTarget.style, styles.messageCardHover);
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.transform = '';
-                    e.currentTarget.style.boxShadow = styles.messageCard.boxShadow;
-                  }}
-                >
-                  <div style={styles.messageHeader}>
-                    <div style={styles.messageInfo}>
-                      <h3 style={styles.messageName}>{message.name}</h3>
-                      <p style={styles.messageEmail}>{message.email}</p>
-                      <p style={styles.messageDate}>
-                        {formatDate(message.createdAt)}
-                      </p>
-                    </div>
-                   <div style={getStatusStyle(getStatus(message))}>
-                      {message.status}
-                    </div>
-                  </div>
-                  
-                  <div style={styles.messageContent}>
-                    {message.message.length > 150 
-                      ? `${message.message.substring(0, 150)}...` 
-                      : message.message
-                    }
-                  </div>
+            <div style={getStatusStyle(getStatus(message))}>
+              {message.status}
+            </div>
+          </div>
+          
+          <div style={styles.messageContent}>
+            {message.message.length > 150 
+              ? `${message.message.substring(0, 150)}...` 
+              : message.message
+            }
+          </div>
 
-                  <div style={styles.messageActions}>
-                    {renderActionButtons(message)}
-                  </div>
-                  <p style={styles.hintText}>Click to interact</p>
-                </div>
-              ))}
-            </div>
-          )}
+          <div style={styles.messageActions}>
+            {renderActionButtons(message)}
+          </div>
+          <p style={styles.hintText}>Click to interact</p>
+        </div>
+      ))}
+  </div>
+)}
 
           {/* Modal for viewing full message */}
           {selectedMessage && (
