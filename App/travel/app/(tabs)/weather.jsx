@@ -11,123 +11,181 @@ import {
   Sunrise, Sunset, CloudDrizzle, CloudLightning
 } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { OPENWEATHER_API_KEY } from '@env';
+
+console.log('OPENWEATHER_API_KEY:', OPENWEATHER_API_KEY);
 
 // Enhanced weather icons
 const weatherIcons = {
-  '01d': Sun,
-  '01n': Sun,
-  '02d': Cloud,
-  '02n': Cloud,
-  '03d': Cloud,
-  '03n': Cloud,
+  '01d': Sun, '01n': Sun,
+  '02d': Cloud, '02n': Cloud,
+  '03d': Cloud, '03n': Cloud,
   '04d': Cloud,
-  '09d': CloudDrizzle,
-  '10d': CloudRain,
-  '11d': CloudLightning,
-  '13d': CloudSnow
+  '09d': CloudDrizzle, '09n': CloudDrizzle,
+  '10d': CloudRain, '10n': CloudRain,
+  '11d': CloudLightning, '11n': CloudLightning,
+  '13d': CloudSnow, '13n': CloudSnow
 };
 
-// Map WMO weather codes to icon keys
-function mapWmoToIcon(code, isDay = true) {
-  if (code === 0) return isDay ? '01d' : '01n';
-  if ([1,2,3].includes(code)) return isDay ? '02d' : '02n';
-  if ([45,48].includes(code)) return '04d';
-  if ([51,53,55,56,57].includes(code)) return '09d';
-  if ([61,63,65,66,67,80,81,82].includes(code)) return '10d';
-  if ([71,73,75,77,85,86].includes(code)) return '13d';
-  if ([95,96,97,98,99].includes(code)) return '11d';
-  return '04d';
-}
-
-function describe(code) {
-  const map = {
-    0: 'Clear sky',
-    1: 'Mainly clear', 2: 'Partly cloudy', 3: 'Overcast',
-    45: 'Fog', 48: 'Depositing rime fog',
-    51: 'Light drizzle', 53: 'Drizzle', 55: 'Heavy drizzle',
-    56: 'Freezing drizzle', 57: 'Freezing drizzle',
-    61: 'Light rain', 63: 'Rain', 65: 'Heavy rain',
-    66: 'Freezing rain', 67: 'Heavy freezing rain',
-    71: 'Light snow', 73: 'Snow', 75: 'Heavy snow', 77: 'Snow grains',
-    80: 'Light showers', 81: 'Showers', 82: 'Heavy showers',
-    85: 'Snow showers', 86: 'Heavy snow showers',
-    95: 'Thunderstorm', 96: 'Thunderstorm w/ hail', 99: 'Severe thunderstorm'
-  };
-  return map[code] || 'Cloudy';
-}
-
-// Get light neutral gradient colors based on weather
-function getWeatherGradient(weatherCode, temp) {
-  if (weatherCode === 0) { // Clear
-    return ['#8bc4f0ff', '#2c8fdaff', '#8bc4f0ff']; // תורכיז בהיר
-  }
-  if ([61,63,65,80,81,82].includes(weatherCode)) { // Rain
-    return ['#76c7ea', '#47b8e0', '#2aa0d6']; // גווני תורכיז עמוקים יותר
-  }
-  if ([71,73,75,85,86].includes(weatherCode)) { // Snow
-    return ['#c0f0f8', '#88e0ed', '#50c7de'];
-  }
-  if ([95,96,97].includes(weatherCode)) { // Thunder
-    return ['#3bb8d4', '#289fc4', '#1c7aa8'];
-  }
-  // Default cloudy
+// Gradient based on weather
+function getWeatherGradient(weatherCode) {
+  if (weatherCode === '01d') return ['#8bc4f0ff', '#2c8fdaff', '#8bc4f0ff'];
+  if (['10d', '09d'].includes(weatherCode)) return ['#76c7ea', '#47b8e0', '#2c8fdaff'];
+  if (['13d'].includes(weatherCode)) return ['#c0f0f8', '#32a1b3ff', '#50c7de'];
+  if (['11d'].includes(weatherCode)) return ['#086175ff', '#289fc4', '#1c7aa8'];
   return ['#a0e9f0', '#5fdde5', '#2acfd6'];
 }
 
-
 const WeatherApp = () => {
-  const [city, setCity] = useState('Tel Aviv, Israel');
+  const [city, setCity] = useState('Loading...');
   const [currentWeather, setCurrentWeather] = useState(null);
   const [weeklyForecast, setWeeklyForecast] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [currentTime, setCurrentTime] = useState(new Date());
 
-  // Mock weather data for demo
-  useEffect(() => {
-    const mockCurrentWeather = {
-      temp: 28,
-      icon: '01d',
-      description: 'Sunny',
-      humidity: 45,
-      windSpeed: 12,
-      visibility: 10,
-      uvIndex: 8,
-      feelsLike: 32,
-      pressure: 1013,
-      sunrise: '06:24',
-      sunset: '19:45'
-    };
+  // Fetch current weather using free API
+  const fetchCurrentWeather = async (lat, lon) => {
+    const response = await fetch(
+      `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&units=metric&appid=${OPENWEATHER_API_KEY}`
+    );
+    
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(`Current weather API error: ${response.status} - ${text}`);
+    }
+    
+    return await response.json();
+  };
 
-    const mockForecast = [
-      { day: 'Today', date: 'Aug 10', minTemp: 22, maxTemp: 28, icon: '01d', description: 'Sunny', precipitationChance: 0 },
-      { day: 'Mon', date: 'Aug 11', minTemp: 24, maxTemp: 30, icon: '02d', description: 'Partly cloudy', precipitationChance: 10 },
-      { day: 'Tue', date: 'Aug 12', minTemp: 23, maxTemp: 27, icon: '10d', description: 'Light rain', precipitationChance: 85 },
-      { day: 'Wed', date: 'Aug 13', minTemp: 21, maxTemp: 25, icon: '10d', description: 'Rain', precipitationChance: 90 },
-      { day: 'Thu', date: 'Aug 14', minTemp: 22, maxTemp: 26, icon: '02d', description: 'Partly cloudy', precipitationChance: 20 },
-      { day: 'Fri', date: 'Aug 15', minTemp: 24, maxTemp: 29, icon: '01d', description: 'Sunny', precipitationChance: 5 },
-      { day: 'Sat', date: 'Aug 16', minTemp: 25, maxTemp: 31, icon: '01d', description: 'Sunny', precipitationChance: 0 }
-    ];
+  // Fetch 5-day forecast using free API
+  const fetchForecast = async (lat, lon) => {
+    const response = await fetch(
+      `https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&units=metric&appid=${OPENWEATHER_API_KEY}`
+    );
+    
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(`Forecast API error: ${response.status} - ${text}`);
+    }
+    
+    return await response.json();
+  };
 
-    setTimeout(() => {
-      setCurrentWeather(mockCurrentWeather);
-      setWeeklyForecast(mockForecast);
+  // Process forecast data to get daily forecasts
+  const processForecastData = (forecastData) => {
+    const dailyForecasts = {};
+    
+    forecastData.list.forEach(item => {
+      const date = new Date(item.dt * 1000).toDateString();
+      if (!dailyForecasts[date]) {
+        dailyForecasts[date] = {
+          date: item.dt,
+          temps: [],
+          weather: item.weather[0],
+          humidity: item.main.humidity,
+          wind: item.wind.speed,
+          pop: item.pop || 0
+        };
+      }
+      dailyForecasts[date].temps.push(item.main.temp);
+    });
+
+    return Object.values(dailyForecasts).slice(0, 7).map((day, index) => ({
+      day: index === 0 ? 'Today' : new Date(day.date * 1000).toLocaleDateString('en-US', { weekday: 'short' }),
+      date: new Date(day.date * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+      minTemp: Math.min(...day.temps),
+      maxTemp: Math.max(...day.temps),
+      icon: day.weather.icon,
+      description: day.weather.description,
+      precipitationChance: day.pop * 100
+    }));
+  };
+
+  // Fetch weather data
+  const fetchWeather = async (lat, lon) => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Fetch both current weather and forecast
+      const [currentData, forecastData] = await Promise.all([
+        fetchCurrentWeather(lat, lon),
+        fetchForecast(lat, lon)
+      ]);
+
+      // Set city name
+      setCity(`${currentData.name}, ${currentData.sys.country}`);
+
+      // Set current weather
+      setCurrentWeather({
+        temp: currentData.main.temp,
+        icon: currentData.weather[0].icon,
+        description: currentData.weather[0].description,
+        humidity: currentData.main.humidity,
+        windSpeed: currentData.wind.speed,
+        visibility: currentData.visibility / 1000,
+        pressure: currentData.main.pressure,
+        feelsLike: currentData.main.feels_like,
+        sunrise: new Date(currentData.sys.sunrise * 1000).toLocaleTimeString('en-US', {
+          hour: '2-digit',
+          minute: '2-digit'
+        }),
+        sunset: new Date(currentData.sys.sunset * 1000).toLocaleTimeString('en-US', {
+          hour: '2-digit',
+          minute: '2-digit'
+        }),
+      });
+
+      // Process and set weekly forecast
+      setWeeklyForecast(processForecastData(forecastData));
       setLoading(false);
-    }, 1500);
+      
+    } catch (err) {
+      console.log('Weather fetch error:', err);
+      setError(`Failed to fetch weather data: ${err.message}`);
+      setLoading(false);
+    }
+  };
 
-    const timer = setInterval(() => setCurrentTime(new Date()), 60000);
-    return () => clearInterval(timer);
+  useEffect(() => {
+    (async () => {
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== 'granted') {
+          setError('Location permission denied. Please enable location access.');
+          setLoading(false);
+          return;
+        }
+        
+        const location = await Location.getCurrentPositionAsync({});
+        console.log('Location obtained:', location.coords);
+        await fetchWeather(location.coords.latitude, location.coords.longitude);
+
+        // Update time every minute
+        const timer = setInterval(() => setCurrentTime(new Date()), 60000);
+        return () => clearInterval(timer);
+      } catch (err) {
+        console.log('Location error:', err);
+        setError(`Location error: ${err.message}`);
+        setLoading(false);
+      }
+    })();
   }, []);
 
-  const refreshWeather = () => {
-    setLoading(true);
-    setTimeout(() => {
-      setCurrentWeather(prev => ({
-        ...prev,
-        temp: prev.temp + (Math.random() - 0.5) * 4
-      }));
+  const refreshWeather = async () => {
+    try {
+      setCurrentWeather(null);
+      setWeeklyForecast(null);
+      setLoading(true);
+      
+      const location = await Location.getCurrentPositionAsync({});
+      await fetchWeather(location.coords.latitude, location.coords.longitude);
+    } catch (err) {
+      console.log('Refresh error:', err);
+      setError(`Refresh failed: ${err.message}`);
       setLoading(false);
-    }, 1000);
+    }
   };
 
   if (loading) {
@@ -136,9 +194,7 @@ const WeatherApp = () => {
         <SafeAreaView style={styles.container}>
           <StatusBar barStyle="light-content" />
           <View style={styles.centered}>
-            <View style={styles.loadingIcon}>
-              <RefreshCw size={64} color="white" style={{ transform: [{ rotate: '45deg' }] }} />
-            </View>
+            <RefreshCw size={64} color="white" style={{ transform: [{ rotate: '45deg' }] }} />
             <Text style={styles.loadingTitle}>Getting Your Weather</Text>
             <Text style={styles.loadingSubtitle}>Fetching current location and forecast...</Text>
           </View>
@@ -153,10 +209,8 @@ const WeatherApp = () => {
         <SafeAreaView style={styles.container}>
           <StatusBar barStyle="light-content" />
           <View style={[styles.centered, { paddingHorizontal: 16 }]}>
-            <View style={styles.errorIcon}>
-              <MapPin size={40} color="white" />
-            </View>
-            <Text style={styles.errorTitle}>Location Error</Text>
+            <MapPin size={40} color="white" />
+            <Text style={styles.errorTitle}>Weather Error</Text>
             <Text style={styles.errorSubtitle}>{error}</Text>
             <TouchableOpacity onPress={refreshWeather} style={styles.retryButton}>
               <Text style={styles.retryButtonText}>Try Again</Text>
@@ -168,18 +222,13 @@ const WeatherApp = () => {
   }
 
   const WeatherIcon = weatherIcons[currentWeather?.icon] || Cloud;
-  const gradientColors = getWeatherGradient(0, currentWeather?.temp || 25);
+  const gradientColors = getWeatherGradient(currentWeather?.icon);
 
   return (
     <LinearGradient colors={gradientColors} style={styles.container}>
       <SafeAreaView style={styles.container}>
         <StatusBar barStyle="light-content" />
-        <ScrollView 
-          style={styles.scrollView}
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-        >
-          
+        <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
           {/* Header */}
           <View style={styles.header}>
             <View style={styles.locationRow}>
@@ -202,15 +251,9 @@ const WeatherApp = () => {
                   <WeatherIcon size={56} color="white" />
                 </View>
                 <View style={styles.tempContainer}>
-                  <Text style={styles.temperature}>
-                    {Math.round(currentWeather?.temp)}°
-                  </Text>
-                  <Text style={styles.description}>
-                    {currentWeather?.description}
-                  </Text>
-                  <Text style={styles.feelsLike}>
-                    Feels like {currentWeather?.feelsLike}°
-                  </Text>
+                  <Text style={styles.temperature}>{Math.round(currentWeather?.temp)}°</Text>
+                  <Text style={styles.description}>{currentWeather?.description}</Text>
+                  <Text style={styles.feelsLike}>Feels like {Math.round(currentWeather?.feelsLike)}°</Text>
                 </View>
               </View>
               <TouchableOpacity onPress={refreshWeather} style={styles.refreshButton}>
@@ -221,15 +264,13 @@ const WeatherApp = () => {
             {/* Weather Details Grid */}
             <View style={styles.detailsGrid}>
               {[
-                { icon: Wind, label: 'Wind Speed', value: `${currentWeather?.windSpeed} km/h` },
+                { icon: Wind, label: 'Wind Speed', value: `${Math.round(currentWeather?.windSpeed * 3.6)} km/h` },
                 { icon: Droplets, label: 'Humidity', value: `${currentWeather?.humidity}%` },
-                { icon: Eye, label: 'Visibility', value: `${currentWeather?.visibility} km` },
+                { icon: Eye, label: 'Visibility', value: `${Math.round(currentWeather?.visibility)} km` },
                 { icon: Navigation, label: 'Pressure', value: `${currentWeather?.pressure} hPa` },
               ].map(({ icon: Icon, label, value }, i) => (
                 <View key={i} style={styles.detailCard}>
-                  <View style={styles.detailIcon}>
-                    <Icon size={24} color="white" />
-                  </View>
+                  <Icon size={24} color="white" />
                   <Text style={styles.detailLabel}>{label}</Text>
                   <Text style={styles.detailValue}>{value}</Text>
                 </View>
@@ -259,7 +300,7 @@ const WeatherApp = () => {
           <View style={styles.forecastCard}>
             <View style={styles.forecastHeader}>
               <Calendar size={22} color="rgba(255,255,255,0.9)" />
-              <Text style={styles.forecastTitle}>7-Day Forecast</Text>
+              <Text style={styles.forecastTitle}>5-Day Forecast</Text>
             </View>
 
             <View style={styles.forecastList}>
@@ -267,33 +308,22 @@ const WeatherApp = () => {
                 const DayIcon = weatherIcons[day.icon] || Cloud;
                 const isToday = index === 0;
                 return (
-                  <View
-                    key={index}
-                    style={[
-                      styles.forecastItem,
-                      isToday && styles.todayForecast
-                    ]}
-                  >
+                  <View key={index} style={[styles.forecastItem, isToday && styles.todayForecast]}>
                     <View style={styles.forecastLeft}>
                       <View style={styles.dayContainer}>
                         <Text style={styles.dayName}>{day.day}</Text>
                         <Text style={styles.dayDate}>{day.date}</Text>
                       </View>
-                      
                       <View style={styles.forecastIconRow}>
                         <View style={styles.forecastIconContainer}>
                           <DayIcon size={20} color="white" />
                         </View>
                         <View style={styles.forecastDescription}>
-                          <Text style={styles.forecastDescriptionText}>
-                            {day.description}
-                          </Text>
+                          <Text style={styles.forecastDescriptionText}>{day.description}</Text>
                           {day.precipitationChance > 20 && (
                             <View style={styles.precipitationRow}>
                               <Droplets size={12} color="#d1d5db" />
-                              <Text style={styles.precipitationText}>
-                                {day.precipitationChance}%
-                              </Text>
+                              <Text style={styles.precipitationText}>{Math.round(day.precipitationChance)}%</Text>
                             </View>
                           )}
                         </View>
@@ -302,12 +332,8 @@ const WeatherApp = () => {
 
                     <View style={styles.forecastRight}>
                       <View style={styles.tempRow}>
-                        <Text style={styles.maxTemp}>
-                          {day.maxTemp}°
-                        </Text>
-                        <Text style={styles.minTemp}>
-                          {day.minTemp}°
-                        </Text>
+                        <Text style={styles.maxTemp}>{Math.round(day.maxTemp)}°</Text>
+                        <Text style={styles.minTemp}>{Math.round(day.minTemp)}°</Text>
                       </View>
                     </View>
                   </View>
@@ -318,17 +344,11 @@ const WeatherApp = () => {
 
           {/* Footer */}
           <View style={styles.footer}>
-            <Text style={styles.footerText}>
-              Weather data powered by Open-Meteo
-            </Text>
+            <Text style={styles.footerText}>Weather data powered by OpenWeather</Text>
             <Text style={styles.footerSubtext}>
-              Last updated: {currentTime.toLocaleTimeString('en-US', { 
-                hour: '2-digit', 
-                minute: '2-digit' 
-              })}
+              Last updated: {currentTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
             </Text>
           </View>
-
         </ScrollView>
       </SafeAreaView>
     </LinearGradient>
