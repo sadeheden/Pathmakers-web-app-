@@ -101,7 +101,7 @@ const isBetween = (date, start, end) => {
       if (!orders.length) return;
 
       // normalize every order -> { start, end, label }
-      const palette = ['#456992ff', '#8ac0fdff', '#9bd1bcff', '#f9d36aff', '#f5a7a7ff'];
+      const palette = ['#46b3daff', '#8ac0fdff', '#9bd1bcff', '#f9d36aff', '#f5a7a7ff'];
       let colorIdx = 0;
 
       const toTrip = (o) => {
@@ -190,7 +190,7 @@ const saveNote = () => {
         ...(markedDates[selectedDate] || {}),
         note: trimmed,
         marked: true,
-        textColor: '#0c203bff', // ← date number color
+        textColor: '#568fdaff', // ← date number color
       },
     };
     setMarkedDates(updated);
@@ -374,7 +374,7 @@ const saveNote = () => {
 
                 {/* Action Buttons */}
                 <View style={styles.buttonContainer}>
-                  <TouchableOpacity
+                 <TouchableOpacity
                     onPress={saveNote}
                     style={[styles.actionButton, styles.saveButton]}
                   >
@@ -382,11 +382,9 @@ const saveNote = () => {
                       colors={['#6366f1', '#4f46e5']}
                       style={styles.buttonGradient}
                     >
-                      <Save size={18} color="#181717ff" />
                       <Text style={styles.saveButtonText}>Save Note</Text>
                     </LinearGradient>
                   </TouchableOpacity>
-
                   {selectedDate && markedDates[selectedDate]?.note && (
                     <TouchableOpacity
                       onPress={deleteNote}
