@@ -26,7 +26,7 @@ if (!process.env.DB_NAME) console.warn("⚠️ DB_NAME is not set");
 import authRoutes from "./services/auth/auth.router.js";
 import orderRoutes from "./services/orders/order.router.js";
 import attRoutes from "./services/attractions/att.router.js";
-import supportRoutes from "./services/support/support.router.js"; // <-- fixed
+import supportRoutes from "./services/support/support.routes.js"; 
 
 const app = express();
 // On Render, prefer the provided PORT. Locally you can fall back.
