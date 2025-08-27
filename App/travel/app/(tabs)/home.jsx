@@ -12,11 +12,14 @@ import {
   FlatList,
   Dimensions,
   Modal,
+  Platform,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { FontAwesome } from '@expo/vector-icons';
+import DateTimePicker from '@react-native-community/datetimepicker';
+
 const screenWidth = Dimensions.get('window').width;
 
 // Enhanced cities array with more details
@@ -39,8 +42,152 @@ const userReviews = [
   { id: '4', name: 'Tal Bar', likes: 4, dislikes: 0, tripText: 'London has my heart! Cozy pubs, fascinating history, and friendly locals. The rainy weather just added to the authentic British experience.' },
 ];
 
+// Date Selection Component
+const DateSelectionModal = ({ visible, onClose, onConfirm, selectedCity }) => {
+  const [departureDate, setDepartureDate] = useState(new Date());
+  const [returnDate, setReturnDate] = useState(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)); // 7 days later
+  const [showDeparturePicker, setShowDeparturePicker] = useState(false);
+  const [showReturnPicker, setShowReturnPicker] = useState(false);
+  const [error, setError] = useState('');
+
+  const formatDate = (date) => {
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+  };
+
+  const handleDepartureDateChange = (event, selectedDate) => {
+    setShowDeparturePicker(Platform.OS === 'ios');
+    if (selectedDate) {
+      setDepartureDate(selectedDate);
+      setError('');
+      // Auto-adjust return date if it's before departure
+      if (selectedDate >= returnDate) {
+        const newReturnDate = new Date(selectedDate);
+        newReturnDate.setDate(newReturnDate.getDate() + 3); // Minimum 3 days trip
+        setReturnDate(newReturnDate);
+      }
+    }
+  };
+
+  const handleReturnDateChange = (event, selectedDate) => {
+    setShowReturnPicker(Platform.OS === 'ios');
+    if (selectedDate) {
+      if (selectedDate <= departureDate) {
+        setError('Return date must be after departure date');
+        return;
+      }
+      setReturnDate(selectedDate);
+      setError('');
+    }
+  };
+
+  const handleConfirm = () => {
+    if (returnDate <= departureDate) {
+      setError('Return date must be after departure date');
+      return;
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (departureDate < today) {
+      setError('Departure date cannot be in the past');
+      return;
+    }
+
+    const tripDuration = Math.ceil((returnDate - departureDate) / (1000 * 60 * 60 * 24));
+    onConfirm({ departureDate, returnDate, tripDuration });
+  };
+
+  if (!visible) return null;
+
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <View style={styles.modalContainer}>
+        <View style={styles.dateModalContent}>
+          <TouchableOpacity style={styles.modalCloseX} onPress={onClose}>
+            <Text style={styles.modalCloseXText}>✕</Text>
+          </TouchableOpacity>
+          
+          <Text style={styles.dateModalTitle}>Choose Your Travel Dates</Text>
+          <Text style={styles.dateModalSubtitle}>{selectedCity?.name} Trip</Text>
+          
+          {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
+          {/* Departure Date */}
+          <View style={styles.dateContainer}>
+            <Text style={styles.dateLabel}>Departure Date</Text>
+            <TouchableOpacity 
+              style={styles.dateButton}
+              onPress={() => setShowDeparturePicker(true)}
+            >
+              <Text style={styles.dateButtonText}>{formatDate(departureDate)}</Text>
+              <FontAwesome name="calendar" size={20} color="#007AFF" />
+            </TouchableOpacity>
+          </View>
+
+          {/* Return Date */}
+          <View style={styles.dateContainer}>
+            <Text style={styles.dateLabel}>Return Date</Text>
+            <TouchableOpacity 
+              style={styles.dateButton}
+              onPress={() => setShowReturnPicker(true)}
+            >
+              <Text style={styles.dateButtonText}>{formatDate(returnDate)}</Text>
+              <FontAwesome name="calendar" size={20} color="#007AFF" />
+            </TouchableOpacity>
+          </View>
+
+          {/* Trip Summary */}
+          <View style={styles.tripSummary}>
+            <Text style={styles.tripSummaryTitle}>Trip Summary</Text>
+            <Text style={styles.tripSummaryText}>
+              Duration: {Math.ceil((returnDate - departureDate) / (1000 * 60 * 60 * 24))} days
+            </Text>
+            <Text style={styles.tripSummaryText}>
+              From {formatDate(departureDate)} to {formatDate(returnDate)}
+            </Text>
+          </View>
+
+          {/* Confirm Button */}
+          <TouchableOpacity style={styles.confirmDateButton} onPress={handleConfirm}>
+            <LinearGradient colors={['#007AFF', '#764ba2']} style={styles.confirmDateGradient}>
+              <Text style={styles.confirmDateText}>Confirm Dates</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+
+          {/* Date Pickers */}
+          {showDeparturePicker && (
+            <DateTimePicker
+              value={departureDate}
+              mode="date"
+              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+              onChange={handleDepartureDateChange}
+              minimumDate={new Date()}
+              maximumDate={new Date(Date.now() + 365 * 24 * 60 * 60 * 1000)} // 1 year from now
+            />
+          )}
+
+          {showReturnPicker && (
+            <DateTimePicker
+              value={returnDate}
+              mode="date"
+              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+              onChange={handleReturnDateChange}
+              minimumDate={new Date(departureDate.getTime() + 24 * 60 * 60 * 1000)} // Next day after departure
+              maximumDate={new Date(Date.now() + 365 * 24 * 60 * 60 * 1000)} // 1 year from now
+            />
+          )}
+        </View>
+      </View>
+    </Modal>
+  );
+};
+
 // Payment Modal Component
-const PaymentModal = ({ visible, onClose, selectedCity, onPaymentSuccess }) => {
+const PaymentModal = ({ visible, onClose, selectedCity, tripDates, onPaymentSuccess }) => {
   const [fullName, setFullName] = useState('');
   const [cardNumber, setCardNumber] = useState('');
   const [expiryDate, setExpiryDate] = useState('');
@@ -91,6 +238,14 @@ const PaymentModal = ({ visible, onClose, selectedCity, onPaymentSuccess }) => {
     return cleaned;
   };
 
+  const formatDate = (date) => {
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    });
+  };
+
   if (!visible) return null;
 
   return (
@@ -105,78 +260,101 @@ const PaymentModal = ({ visible, onClose, selectedCity, onPaymentSuccess }) => {
                 Your payment of ${selectedCity?.price} has been processed.
               </Text>
               <Text style={styles.successSubtext}>✅ Your trip is now confirmed!</Text>
+              {tripDates && (
+                <Text style={styles.successDates}>
+                  {formatDate(tripDates.departureDate)} - {formatDate(tripDates.returnDate)}
+                </Text>
+              )}
             </View>
           ) : (
             <>
+              <TouchableOpacity style={styles.modalCloseX} onPress={onClose}>
+                <Text style={styles.modalCloseXText}>✕</Text>
+              </TouchableOpacity>
+              
               <Text style={styles.paymentTitle}>Complete Your Booking</Text>
               <Text style={styles.paymentSubtitle}>
                 {selectedCity?.name} - ${selectedCity?.price}
               </Text>
+              
+              {tripDates && (
+                <View style={styles.tripDetailsInPayment}>
+                  <Text style={styles.tripDatesText}>
+                    📅 {formatDate(tripDates.departureDate)} - {formatDate(tripDates.returnDate)}
+                  </Text>
+                  <Text style={styles.tripDurationText}>
+                    Duration: {tripDates.tripDuration} days
+                  </Text>
+                </View>
+              )}
+              
               {error ? <Text style={styles.errorText}>{error}</Text> : null}
-<View style={styles.inputContainer}>
-  <Text style={styles.inputLabel}>Full Name</Text>
-  <TextInput
-    value={fullName}
-    onChangeText={setFullName}
-    placeholder="John Doe"
-    style={styles.textInput}
-    autoCapitalize="words"
-    returnKeyType="done"
-  />
-</View>
 
-<View style={styles.inputContainer}>
-  <Text style={styles.inputLabel}>Card Number</Text>
-  <TextInput
-    value={cardNumber}
-    onChangeText={(t) => setCardNumber(formatCardNumber(t))}
-    placeholder="1234 5678 9012 3456"
-    style={styles.textInput}
-    keyboardType="number-pad"
-    maxLength={19}
-    returnKeyType="done"
-  />
-</View>
+              <View style={styles.inputContainer}>
+                <Text style={styles.inputLabel}>Full Name</Text>
+                <TextInput
+                  value={fullName}
+                  onChangeText={setFullName}
+                  placeholder="John Doe"
+                  style={styles.textInput}
+                  autoCapitalize="words"
+                  returnKeyType="done"
+                />
+              </View>
 
-<View style={styles.rowContainer}>
-  <View style={[styles.inputContainer, { flex: 1, marginRight: 10 }]}>
-    <Text style={styles.inputLabel}>Expiry</Text>
-    <TextInput
-      value={expiryDate}
-      onChangeText={(t) => {
-        // Allow MM/YY or MM/YYYY
-        const digits = t.replace(/[^\d]/g, '');
-        const mm = digits.slice(0, 2);
-        const year = digits.length > 4 ? digits.slice(2, 6) : digits.slice(2, 4);
-        setExpiryDate(year ? `${mm}/${year}` : mm);
-      }}
-      placeholder="MM/YY or MM/YYYY"
-      style={styles.textInput}
-      keyboardType="number-pad"
-      maxLength={7}
-      returnKeyType="done"
-    />
-  </View>
+              <View style={styles.inputContainer}>
+                <Text style={styles.inputLabel}>Card Number</Text>
+                <TextInput
+                  value={cardNumber}
+                  onChangeText={(t) => setCardNumber(formatCardNumber(t))}
+                  placeholder="1234 5678 9012 3456"
+                  style={styles.textInput}
+                  keyboardType="number-pad"
+                  maxLength={19}
+                  returnKeyType="done"
+                />
+              </View>
 
-  <View style={[styles.inputContainer, { flex: 1, marginLeft: 10 }]}>
-    <Text style={styles.inputLabel}>CVV</Text>
-    <TextInput
-      value={cvv}
-      onChangeText={setCvv}
-      placeholder="123"
-      style={styles.textInput}
-      keyboardType="number-pad"
-      maxLength={3}
-      secureTextEntry
-      returnKeyType="done"
-    />
-  </View>
-</View>
+              <View style={styles.rowContainer}>
+                <View style={[styles.inputContainer, { flex: 1, marginRight: 10 }]}>
+                  <Text style={styles.inputLabel}>Expiry</Text>
+                  <TextInput
+                    value={expiryDate}
+                    onChangeText={(t) => {
+                      const digits = t.replace(/[^\d]/g, '');
+                      const mm = digits.slice(0, 2);
+                      const year = digits.length > 4 ? digits.slice(2, 6) : digits.slice(2, 4);
+                      setExpiryDate(year ? `${mm}/${year}` : mm);
+                    }}
+                    placeholder="MM/YY or MM/YYYY"
+                    style={styles.textInput}
+                    keyboardType="number-pad"
+                    maxLength={7}
+                    returnKeyType="done"
+                  />
+                </View>
+
+                <View style={[styles.inputContainer, { flex: 1, marginLeft: 10 }]}>
+                  <Text style={styles.inputLabel}>CVV</Text>
+                  <TextInput
+                    value={cvv}
+                    onChangeText={setCvv}
+                    placeholder="123"
+                    style={styles.textInput}
+                    keyboardType="number-pad"
+                    maxLength={3}
+                    secureTextEntry
+                    returnKeyType="done"
+                  />
+                </View>
+              </View>
+              
               <TouchableOpacity style={styles.payButton} onPress={handlePayment} activeOpacity={0.8}>
                <LinearGradient colors={['#007AFF', '#764ba2']} style={styles.payButtonGradient}>
                   <Text style={styles.payButtonText}>Pay ${selectedCity?.price}</Text>
                 </LinearGradient>
               </TouchableOpacity>
+              
               <TouchableOpacity style={styles.cancelButton} onPress={onClose} activeOpacity={0.8}>
                 <Text style={styles.cancelButtonText}>Cancel</Text>
               </TouchableOpacity>
@@ -194,98 +372,66 @@ export default function HomeScreen() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [selectedDestination, setSelectedDestination] = useState(null);
-  const [selectedReview, setSelectedReview] = useState(null);
+  const [showDateSelector, setShowDateSelector] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showIntroPopup, setShowIntroPopup] = useState(false);
+  const [showTripDetails, setShowTripDetails] = useState(false);
+  const [selectedTripDates, setSelectedTripDates] = useState(null);
   const [paymentCompleted, setPaymentCompleted] = useState(false);
   const [carouselIndex, setCarouselIndex] = useState(0);
   const [currentWeather, setCurrentWeather] = useState({ temp: 28 });
-const [reviews, setReviews] = useState(userReviews); // local, mutable list
-const [userVotes, setUserVotes] = useState({});      // { [reviewId]: 'like' | 'dislike' }
-const [bookingOpen, setBookingOpen] = useState(false);
+  const [reviews, setReviews] = useState(userReviews);
+  const [userVotes, setUserVotes] = useState({});
 
-  // *** משתני State חדשים לנתוני ההזמנה ***
-  const [departureCity, setDepartureCity] = useState('68022f445f7300b11f986829'); // ברירת מחדל - תל אביב
-  const [selectedAttractions, setSelectedAttractions] = useState(['6807610adc218773e065223d']); // רשימת אטרקציות
-  const [selectedTransportation, setSelectedTransportation] = useState('Public Transport'); // תחבורה ציבורית
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('PayPal'); // אמצעי תשלום
+  // Booking state variables
+  const [departureCity, setDepartureCity] = useState('68022f445f7300b11f986829');
+  const [selectedAttractions, setSelectedAttractions] = useState(['6807610adc218773e065223d']);
+  const [selectedTransportation, setSelectedTransportation] = useState('Public Transport');
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('PayPal');
 
   const flatListRef = useRef();
-// *** פונקציה לקבלת מזהה עיר יציאה בהתבסס על העיר הנבחרת ***
-const getDepartureCityId = (destinationCity) => {
-  const cityMappings = {
-    'phuket': '68022f445f7300b11f986829',
-    'paris': '68022f445f7300b11f986829',
-    'dubai': '68022f445f7300b11f986829',
-    'london': '68022f445f7300b11f986829',
-    'turkey': '68022f445f7300b11f986829',
-    'amsterdam': '68022f445f7300b11f986829',
-    'rome': '68022f445f7300b11f986829',
-    'barcelona': '68022f445f7300b11f986829',
-    'berlin': '68022f445f7300b11f986829',
-    'tokyo': '68022f445f7300b11f986829',
-    'new york': '68022f445f7300b11f986829',
-    'los angeles': '68022f445f7300b11f986829',
-    'san francisco': '68022f445f7300b11f986829',
-    'madrid': '68022f445f7300b11f986829',
-    'seoul': '68022f445f7300b11f986829'
+
+  // City ID mapping functions
+  const getDepartureCityId = (destinationCity) => {
+    const cityMappings = {
+      'phuket': '68022f445f7300b11f986829',
+      'paris': '68022f445f7300b11f986829',
+      'dubai': '68022f445f7300b11f986829',
+      'london': '68022f445f7300b11f986829',
+      'turkey': '68022f445f7300b11f986829',
+      'amsterdam': '68022f445f7300b11f986829',
+    };
+    const citySlug = destinationCity?.slug || destinationCity?.name?.toLowerCase();
+    return cityMappings[citySlug] || '68022f445f7300b11f986829';
   };
 
-  const citySlug = destinationCity?.slug || destinationCity?.name?.toLowerCase();
-  return cityMappings[citySlug] || '68022f445f7300b11f986829';
-};
-
-// *** פונקציה לקבלת מזהה יעד בהתבסס על העיר הנבחרת ***
-const getDestinationCityId = (destinationCity) => {
-  const cityMappings = {
-    'phuket': '68022f445f7300b11f986837',
-    'paris': '68075dd4f110a359e23cd001',
-    'london': '68075dd4f110a359e23cd002',
-    'amsterdam': '68075dd4f110a359e23cd003',
-    'rome': '68075dd4f110a359e23cd004',
-    'barcelona': '68075dd4f110a359e23cd005',
-    'berlin': '68075dd4f110a359e23cd006',
-    'tokyo': '68075dd4f110a359e23cd007',
-    'dubai': '686cd9cd523d724c4a6db66f',
-    'new york': '686cdae6523d724c4a6db672',
-    'los angeles': '686cdb31523d724c4a6db675',
-    'san francisco': '686cdbe3523d724c4a6db676',
-    'madrid': '686cdc13523d724c4a6db677',
-    'seoul': '686cdc4a523d724c4a6db67a',
-    'turkey': '6891f49ef511eb0daf23b8f8'
+  const getDestinationCityId = (destinationCity) => {
+    const cityMappings = {
+      'phuket': '68022f445f7300b11f986837',
+      'paris': '68075dd4f110a359e23cd001',
+      'london': '68075dd4f110a359e23cd002',
+      'amsterdam': '68075dd4f110a359e23cd003',
+      'dubai': '686cd9cd523d724c4a6db66f',
+      'turkey': '6891f49ef511eb0daf23b8f8'
+    };
+    const citySlug = destinationCity?.slug || destinationCity?.name?.toLowerCase();
+    return cityMappings[citySlug] || '68022f445f7300b11f986837';
   };
 
-  const citySlug = destinationCity?.slug || destinationCity?.name?.toLowerCase();
-  return cityMappings[citySlug] || '68022f445f7300b11f986837';
-};
-
-// *** פונקציה לקבלת מזהה טיסה בהתבסס על העיר ***
-const getFlightId = (destinationCity) => {
-  const flightMappings = {
-    'phuket': '68075f88dc218773e0652238',      // לאמסטרדם בטעות? אם יש מזהה אמיתי לפוקט שימי אותו כאן
-    'paris': '68075f88dc218773e0652231',
-    'london': '68075f88dc218773e0652230',
-    'amsterdam': '68075f88dc218773e0652238',
-    'rome': '68075f88dc218773e0652233',
-    'barcelona': '68075f88dc218773e0652236',
-    'berlin': '68075f88dc218773e0652235',
-    'tokyo': '68075f88dc218773e0652232',
-    'dubai': '68075f88dc218773e0652237',
-    'new york': '68075f88dc218773e0652231',
-    'los angeles': '68075f88dc218773e0652234',
-    'san francisco': '68075f88dc218773e0652239',
-    'madrid': '68075f88dc218773e065223a',
-    'seoul': '68075f88dc218773e065223b',
-    'turkey': '6891f45cf511eb0daf23b8f5'
+  const getFlightId = (destinationCity) => {
+    const flightMappings = {
+      'phuket': '68075f88dc218773e0652238',
+      'paris': '68075f88dc218773e0652231',
+      'london': '68075f88dc218773e0652230',
+      'amsterdam': '68075f88dc218773e0652238',
+      'dubai': '68075f88dc218773e0652237',
+      'turkey': '6891f45cf511eb0daf23b8f5'
+    };
+    const citySlug = destinationCity?.slug || destinationCity?.name?.toLowerCase();
+    return flightMappings[citySlug] || '68075f88dc218773e0652238';
   };
 
-  const citySlug = destinationCity?.slug || destinationCity?.name?.toLowerCase();
-  return flightMappings[citySlug] || '68075f88dc218773e0652238';
-};
-
-  // *** פונקציה לקבלת מזהה מלון בהתבסס על העיר ***
   const getHotelId = (destinationCity) => {
-    // שימוש באותו מזהה של העיר כמזהה מלון (כפי שמוצג בדוגמה שלך)
     return getDestinationCityId(destinationCity);
   };
 
@@ -315,38 +461,26 @@ const getFlightId = (destinationCity) => {
     return () => clearInterval(interval);
   }, []);
 
-const handleWeatherPress = () => {
-  try {
-    console.log('Weather button pressed');
- navigation.navigate('Weather');
-  } catch (error) {
-    console.error('Navigation error:', error);
-    Alert.alert('Navigation Error', 'Could not navigate to weather screen.');
-  }
-};
+  const handleWeatherPress = () => {
+    try {
+      navigation.navigate('Weather');
+    } catch (error) {
+      console.error('Navigation error:', error);
+      Alert.alert('Navigation Error', 'Could not navigate to weather screen.');
+    }
+  };
+
   const handleDiaryPress = () => {
     try {
-      console.log('Diary button pressed');
       navigation.navigate('RealChat');
     } catch (error) {
       console.error('Navigation error:', error);
       Alert.alert('Navigation Error', 'Could not navigate to diary screen.');
     }
   };
-  const handleRealChatPress = () => {
-    try {
-      console.log('RealChat button pressed');
-      navigation.navigate('RealChat');
-    } catch (error) {
-      console.error('Navigation error:', error);
-      Alert.alert('Navigation Error', 'Could not navigate to RealChat screen.');
-    }
-  };
 
-  // הפונקציה החדשה לטיפול בלחיצה על אייקון המטבע
   const handleCurrencyPress = () => {
     try {
-      console.log('Currency converter pressed');
       navigation.navigate('calculator');
     } catch (error) {
       console.error('Navigation error:', error);
@@ -354,85 +488,77 @@ const handleWeatherPress = () => {
     }
   };
 
-const handleCityPress = (city) => {
-   setSelectedDestination(city);
-     setShowIntroPopup(true); 
-  navigation.navigate('Pay', { city });
-};
-
-  const handleLike = (id) => {
-  // if already voted, block further changes
-  if (userVotes[id]) return;
-
-  setReviews((prev) =>
-    prev.map((r) => (r.id === id ? { ...r, likes: r.likes + 1 } : r))
-  );
-  setUserVotes((prev) => ({ ...prev, [id]: 'like' }));
-};
-
-const handleDislike = (id) => {
-  if (userVotes[id]) return;
-
-  setReviews((prev) =>
-    prev.map((r) => (r.id === id ? { ...r, dislikes: r.dislikes + 1 } : r))
-  );
-  setUserVotes((prev) => ({ ...prev, [id]: 'dislike' }));
-};
-
-
-  // *** הפונקציה המשופרת לטיפול בתשלום מוצלח ***
-const handlePaymentSuccess = async () => {
-  setPaymentCompleted(true);
-  setShowPaymentModal(false);
-
-  // 🔐 make sure we have a destination
-  if (!selectedDestination) {
-    Alert.alert('Missing data', 'Please pick a destination again.');
-    return;
-  }
-
-  // 🛫 resolve flight id and verify it’s truthy
-  const resolvedFlightId = getFlightId(selectedDestination);
-  if (!resolvedFlightId) {
-    Alert.alert('Missing flight', 'Could not resolve a flight for this destination.');
-    return;
-  }
-
-  // (optional) also verify destination id resolution
-  const destId = getDestinationCityId(selectedDestination);
-  if (!destId) {
-    Alert.alert('Missing destination', 'Could not resolve destination city ID.');
-    return;
-  }
-
-  // If you don’t really have hotels for now, don’t send empty string — send null/omit
-  const selectedHotel = Array.isArray(global?.hotelsList)
-    ? global.hotelsList.find(h => h._id === getHotelId(selectedDestination))
-    : null;
-
-  const orderData = {
-    departureCityId: getDepartureCityId(selectedDestination),
-    departureCityName: selectedDestination?.name || selectedDestination?.slug || '',
-
-    destinationCityId: destId,
-    destinationCityName: selectedDestination?.name || selectedDestination?.slug || '',
-
-    flightId: resolvedFlightId,                               // ✅ guaranteed non-empty
-    flightName: selectedDestination?.name ? `${selectedDestination.name} Flight` : '',
-
-    // Don’t send '' — send null or omit if unknown
-    hotelId: selectedHotel?._id ?? null,
-    hotelName: selectedHotel?.name ?? '',
-
-    attractions: selectedAttractions || [],
-    transportation: selectedTransportation,
-    paymentMethod: selectedPaymentMethod,
-    totalPrice: parseInt(selectedDestination?.price) || 0,
+  const handleCityPress = (city) => {
+    setSelectedDestination(city);
+    setShowTripDetails(true);
   };
 
+  const handleDateSelection = (dateInfo) => {
+    setSelectedTripDates(dateInfo);
+    setShowDateSelector(false);
+    setShowPaymentModal(true);
+  };
 
-    console.log('📋 Order data prepared:', JSON.stringify(orderData, null, 2));
-    console.log('💰 Price selected by user:', orderData.totalPrice);
+  const handleLike = (id) => {
+    if (userVotes[id]) return;
+    setReviews((prev) =>
+      prev.map((r) => (r.id === id ? { ...r, likes: r.likes + 1 } : r))
+    );
+    setUserVotes((prev) => ({ ...prev, [id]: 'like' }));
+  };
+
+  const handleDislike = (id) => {
+    if (userVotes[id]) return;
+    setReviews((prev) =>
+      prev.map((r) => (r.id === id ? { ...r, dislikes: r.dislikes + 1 } : r))
+    );
+    setUserVotes((prev) => ({ ...prev, [id]: 'dislike' }));
+  };
+
+  const handlePaymentSuccess = async () => {
+    setPaymentCompleted(true);
+    setShowPaymentModal(false);
+
+    if (!selectedDestination || !selectedTripDates) {
+      Alert.alert('Missing data', 'Please select destination and dates again.');
+      return;
+    }
+
+    const resolvedFlightId = getFlightId(selectedDestination);
+    if (!resolvedFlightId) {
+      Alert.alert('Missing flight', 'Could not resolve a flight for this destination.');
+      return;
+    }
+
+    const destId = getDestinationCityId(selectedDestination);
+    if (!destId) {
+      Alert.alert('Missing destination', 'Could not resolve destination city ID.');
+      return;
+    }
+
+    const selectedHotel = Array.isArray(global?.hotelsList)
+      ? global.hotelsList.find(h => h._id === getHotelId(selectedDestination))
+      : null;
+
+    const orderData = {
+      departureCityId: getDepartureCityId(selectedDestination),
+      departureCityName: selectedDestination?.name || selectedDestination?.slug || '',
+      destinationCityId: destId,
+      destinationCityName: selectedDestination?.name || selectedDestination?.slug || '',
+      flightId: resolvedFlightId,
+      flightName: selectedDestination?.name ? `${selectedDestination.name} Flight` : '',
+      hotelId: selectedHotel?._id ?? null,
+      hotelName: selectedHotel?.name ?? '',
+      attractions: selectedAttractions || [],
+      transportation: selectedTransportation,
+      paymentMethod: selectedPaymentMethod,
+      totalPrice: parseInt(selectedDestination?.price) || 0,
+      departureDate: selectedTripDates.departureDate.toISOString(),
+      returnDate: selectedTripDates.returnDate.toISOString(),
+      tripDuration: selectedTripDates.tripDuration,
+    };
+
+    console.log('Order data prepared:', JSON.stringify(orderData, null, 2));
 
     try {
       const token = await AsyncStorage.getItem('token');
@@ -440,8 +566,6 @@ const handlePaymentSuccess = async () => {
       if (!token) {
         throw new Error('No authentication token found');
       }
-
-      console.log('🔐 Token found, sending request...');
 
       const response = await fetch('https://pathmakers-web-app-app-travel.onrender.com/api/orders', {
         method: 'POST',
@@ -451,19 +575,19 @@ const handlePaymentSuccess = async () => {
         },
         body: JSON.stringify(orderData),
       });
-      console.log('📡 Response status:', response.status);
+
       if (!response.ok) {
         const errorData = await response.json().catch(() => null);
-        console.error('❌ Server error:', errorData);
+        console.error('Server error:', errorData);
         throw new Error(errorData?.message || `Server error: ${response.status}`);
       }
 
       const responseData = await response.json();
-      console.log('✅ Order saved on server:', responseData);
+      console.log('Order saved on server:', responseData);
       
       Alert.alert(
-        '🎉 Success!', 
-        `Your trip to ${selectedDestination.name} has been booked successfully!\n\nOrder ID: ${responseData._id}`,
+        'Success!', 
+        `Your trip to ${selectedDestination.name} has been booked successfully!\n\nTrip dates: ${selectedTripDates.departureDate.toLocaleDateString()} - ${selectedTripDates.returnDate.toLocaleDateString()}\nOrder ID: ${responseData._id}`,
         [ 
           {
             text: 'View My Orders',
@@ -477,16 +601,15 @@ const handlePaymentSuccess = async () => {
       );
       
     } catch (error) {
-      console.error('❌ Error saving order:', error);
-      console.error('📍 Error stack:', error.stack);
+      console.error('Error saving order:', error);
       
       Alert.alert(
-        '⚠️ Warning', 
+        'Warning', 
         `Trip booked locally but failed to save to server.\nError: ${error.message}`,
         [
           {
             text: 'Retry',
-            onPress: () => handlePaymentSuccess() // נסה שוב
+            onPress: () => handlePaymentSuccess()
           },
           {
             text: 'Continue Anyway',
@@ -506,7 +629,6 @@ const handlePaymentSuccess = async () => {
     );
   }
 
-  // Get visible cities for carousel
   const visibleCities = [...cities, ...cities.slice(0, CARDS_PER_PAGE)].slice(carouselIndex, carouselIndex + CARDS_PER_PAGE);
 
   return (
@@ -518,7 +640,6 @@ const handlePaymentSuccess = async () => {
             <Image source={require('../../assets/images/logo.png')} style={styles.logoSmall} />
           </View>
           
-          {/* Weather Icon/Button */}
           <TouchableOpacity onPress={handleWeatherPress} style={styles.weatherPreview} activeOpacity={0.8}>
             <View style={styles.weatherContent}>
               <Text style={styles.weatherIcon}>☀️</Text>
@@ -526,7 +647,6 @@ const handlePaymentSuccess = async () => {
             </View>
           </TouchableOpacity>
         </View>
-
 
         {/* Welcome Section */}
         <View style={styles.welcomeSection}>
@@ -540,14 +660,14 @@ const handlePaymentSuccess = async () => {
 
         {/* CTA Button */}
         <TouchableOpacity style={styles.ctaButton} onPress={handleDiaryPress} activeOpacity={0.8}>
-          <Text style={styles.ctaButtonText}> Start Your Journey</Text>
+          <Text style={styles.ctaButtonText}>Start Your Journey</Text>
         </TouchableOpacity>
 
         {/* Enhanced Destinations Section */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}> Book Your Next Trip</Text>
-            <Text style={styles.sectionSubtitle}>Handpicked destinations with instant booking</Text>
+            <Text style={styles.sectionTitle}>Book Your Next Trip</Text>
+            <Text style={styles.sectionSubtitle}>Choose dates and book instantly</Text>
           </View>
           <FlatList
             ref={flatListRef}
@@ -573,60 +693,134 @@ const handlePaymentSuccess = async () => {
         {/* Reviews Section */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}> Traveler Stories</Text>
+            <Text style={styles.sectionTitle}>Traveler Stories</Text>
             <Text style={styles.sectionSubtitle}>Real experiences from real travelers</Text>
           </View>
-        {reviews.map((review) => {
-  const voted = userVotes[review.id]; // undefined | 'like' | 'dislike'
-  const likeDisabled = !!voted;
-  const dislikeDisabled = !!voted;
+          {reviews.map((review) => {
+            const voted = userVotes[review.id];
+            const likeDisabled = !!voted;
+            const dislikeDisabled = !!voted;
 
-  return (
-    <View key={review.id} style={styles.reviewCard}>
-      <View style={styles.reviewHeader}>
-        <Image source={{ uri: `https://i.pravatar.cc/150?u=${review.id}` }} style={styles.avatar} />
-        <View style={styles.reviewerInfo}>
-          <Text style={styles.reviewerName}>{review.name}</Text>
-          <Text style={styles.reviewDate}>2 days ago</Text>
+            return (
+              <View key={review.id} style={styles.reviewCard}>
+                <View style={styles.reviewHeader}>
+                  <Image source={{ uri: `https://i.pravatar.cc/150?u=${review.id}` }} style={styles.avatar} />
+                  <View style={styles.reviewerInfo}>
+                    <Text style={styles.reviewerName}>{review.name}</Text>
+                    <Text style={styles.reviewDate}>2 days ago</Text>
+                  </View>
+                </View>
+
+                <Text style={styles.tripText}>{review.tripText}</Text>
+
+                <View style={styles.reviewActions}>
+                  <TouchableOpacity
+                    onPress={() => handleLike(review.id)}
+                    style={[
+                      styles.actionButton,
+                      voted === 'like' && { opacity: 1 },
+                      voted && voted !== 'like' && { opacity: 0.4 },
+                    ]}
+                    activeOpacity={voted ? 1 : 0.7}
+                    disabled={likeDisabled}
+                  >
+                    <Text style={styles.actionIcon}>👍</Text>
+                    <Text style={styles.actionCount}>{review.likes}</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    onPress={() => handleDislike(review.id)}
+                    style={[
+                      styles.actionButton,
+                      voted === 'dislike' && { opacity: 1 },
+                      voted && voted !== 'dislike' && { opacity: 0.4 },
+                    ]}
+                    activeOpacity={voted ? 1 : 0.7}
+                    disabled={dislikeDisabled}
+                  >
+                    <Text style={styles.actionIcon}>👎</Text>
+                    <Text style={styles.actionCount}>{review.dislikes}</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            );
+          })}
         </View>
-      </View>
 
-      <Text style={styles.tripText}>{review.tripText}</Text>
+        {/* Trip Details Modal */}
+        {selectedDestination && showTripDetails && (
+          <Modal visible={showTripDetails} transparent animationType="slide" onRequestClose={() => {
+            setShowTripDetails(false);
+            setSelectedDestination(null);
+          }}>
+            <View style={styles.modalContainer}>
+              <View style={styles.modalContent}>
+                <TouchableOpacity
+                  style={styles.modalCloseX}
+                  onPress={() => {
+                    setShowTripDetails(false);
+                    setSelectedDestination(null);
+                  }}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.modalCloseXText}>✕</Text>
+                </TouchableOpacity>
 
-      <View style={styles.reviewActions}>
-        <TouchableOpacity
-          onPress={() => handleLike(review.id)}
-          style={[
-            styles.actionButton,
-            voted === 'like' && { opacity: 1 },
-            voted && voted !== 'like' && { opacity: 0.4 },
-          ]}
-          activeOpacity={voted ? 1 : 0.7}
-          disabled={likeDisabled}
-        >
-          <Text style={styles.actionIcon}>👍</Text>
-          <Text style={styles.actionCount}>{review.likes}</Text>
-        </TouchableOpacity>
+                <Text style={styles.modalTitle}>{selectedDestination.name} - Trip Details</Text>
 
-        <TouchableOpacity
-          onPress={() => handleDislike(review.id)}
-          style={[
-            styles.actionButton,
-            voted === 'dislike' && { opacity: 1 },
-            voted && voted !== 'dislike' && { opacity: 0.4 },
-          ]}
-          activeOpacity={voted ? 1 : 0.7}
-          disabled={dislikeDisabled}
-        >
-          <Text style={styles.actionIcon}>👎</Text>
-          <Text style={styles.actionCount}>{review.dislikes}</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
-  );
-})}
-        </View>
+                <View style={styles.tripDetailsContainer}>
+                  <View style={styles.tripDetailItem}>
+                    <Text style={styles.tripDetailLabel}>✈️ Flight:</Text>
+                    <Text style={styles.tripDetailValue}>{selectedDestination.flight}</Text>
+                  </View>
 
+                  <View style={styles.tripDetailItem}>
+                    <Text style={styles.tripDetailLabel}>🛫 Departure Time:</Text>
+                    <Text style={styles.tripDetailValue}>06:00 AM</Text>
+                  </View>
+
+                  <View style={styles.tripDetailItem}>
+                    <Text style={styles.tripDetailLabel}>🛬 Return Time:</Text>
+                    <Text style={styles.tripDetailValue}>05:00 PM</Text>
+                  </View>
+
+                  <View style={styles.tripDetailItem}>
+                    <Text style={styles.tripDetailLabel}>📅 Available Dates:</Text>
+                    <Text style={styles.tripDetailValue}>March 13 - March 18</Text>
+                  </View>
+
+                  <View style={styles.tripDetailItem}>
+                    <Text style={styles.tripDetailLabel}>🏨 Hotel:</Text>
+                    <Text style={styles.tripDetailValue}>{selectedDestination.hotel}</Text>
+                  </View>
+
+                  <View style={styles.tripDetailItem}>
+                    <Text style={styles.tripDetailLabel}>💰 Price:</Text>
+                    <Text style={styles.tripDetailPriceValue}>${selectedDestination.price}</Text>
+                  </View>
+
+                  <View style={styles.tripDetailItem}>
+                    <Text style={styles.tripDetailLabel}>📝 Description:</Text>
+                    <Text style={styles.tripDetailDescription}>{selectedDestination.description}</Text>
+                  </View>
+                </View>
+
+                <TouchableOpacity 
+                  style={styles.bookButton} 
+                  onPress={() => {
+                    setShowTripDetails(false);
+                    setShowDateSelector(true);
+                  }} 
+                  activeOpacity={0.8}
+                >
+                  <LinearGradient colors={['#007AFF', '#764ba2']} style={styles.bookButtonGradient}>
+                    <Text style={styles.bookButtonText}>Book Now</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </Modal>
+        )}
 
         {/* Intro Popup Modal */}
         {selectedDestination && showIntroPopup && (
@@ -643,13 +837,20 @@ const handlePaymentSuccess = async () => {
                 >
                   <Text style={styles.modalCloseXText}>✕</Text>
                 </TouchableOpacity>
-                <Text style={styles.modalTitle}>🎯 You've Selected {selectedDestination.name}!</Text>
+                <Text style={styles.modalTitle}>You've Selected {selectedDestination.name}!</Text>
                 <Text style={styles.modalDescription}>
-                  ✈️ Awesome! You're about to see your trip details to {selectedDestination.name}. This includes flight number, departure info, and trip dates.
+                  Awesome! You're about to plan your trip to {selectedDestination.name}. Choose your travel dates and we'll handle the rest.
                 </Text>
-                <Text style={styles.modalDescription}>Click Continue to review and proceed to payment.</Text>
+                <Text style={styles.modalDescription}>Click Continue to select your dates.</Text>
                 <Text style={styles.priceHighlight}>Price: ${selectedDestination.price} per person</Text>
-                <TouchableOpacity style={styles.continueButton} onPress={() => setShowIntroPopup(false)} activeOpacity={0.8}>
+                <TouchableOpacity 
+                  style={styles.continueButton} 
+                  onPress={() => {
+                    setShowIntroPopup(false);
+                    setShowDateSelector(true);
+                  }} 
+                  activeOpacity={0.8}
+                >
                   <LinearGradient colors={['#667eea', '#764ba2']} style={styles.continueButtonGradient}>
                     <Text style={styles.continueButtonText}>Continue</Text>
                   </LinearGradient>
@@ -659,61 +860,32 @@ const handlePaymentSuccess = async () => {
           </Modal>
         )}
 
-     {/* Trip Details Modal */}
-{selectedDestination && !paymentCompleted && !showPaymentModal && !showIntroPopup && (
-  <Modal visible={!!selectedDestination} transparent animationType="slide" onRequestClose={() => setSelectedDestination(null)}>
-    <View style={styles.modalContainer}>
-      <View style={styles.modalContent}>
-        <TouchableOpacity
-          style={styles.modalCloseX}
-          onPress={() => setSelectedDestination(null)}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.modalCloseXText}>✕</Text>
-        </TouchableOpacity>
-
-        <Text style={styles.modalTitle}>{selectedDestination.name} - Trip Details</Text>
-
-        <Text style={styles.modalDescription}>Flight: {selectedDestination.flight}</Text>
-
-        {/* כאן נוסיף שעת טיסה הלוך וחזור קבועה */}
-        <Text style={styles.modalDescription}>Departure Time: 06:00 AM</Text>
-        <Text style={styles.modalDescription}>Return Time: 05:00 PM</Text>
-
-        {/* תאריכים קבועים */}
-        <Text style={styles.modalDescription}>Dates: 13/3 - 18/3</Text>
-
-        {/* הצגת שם המלון */}
-        <Text style={styles.modalDescription}>Hotel: {selectedDestination.hotel}</Text>
-
-        <Text style={styles.modalDescription}>Price: ${selectedDestination.price}</Text>
-
-        <Text style={styles.modalDescription}>
-          Description: {selectedDestination.description}
-        </Text>
-
-        <TouchableOpacity style={styles.bookButton} onPress={() => setShowPaymentModal(true)} activeOpacity={0.8}>
-          <LinearGradient colors={['#007AFF', '#007AFF']} style={styles.bookButtonGradient}>
-            <Text style={styles.bookButtonText}>Book Now</Text>
-          </LinearGradient>
-        </TouchableOpacity>
-      </View>
-    </View>
-  </Modal>
-)}
+        {/* Date Selection Modal */}
+        <DateSelectionModal
+          visible={showDateSelector}
+          onClose={() => {
+            setShowDateSelector(false);
+            setSelectedDestination(null);
+          }}
+          onConfirm={handleDateSelection}
+          selectedCity={selectedDestination}
+        />
 
         {/* Payment Modal */}
         <PaymentModal
           visible={showPaymentModal}
-          onClose={() => setShowPaymentModal(false)}
+          onClose={() => {
+            setShowPaymentModal(false);
+            setSelectedDestination(null);
+            setSelectedTripDates(null);
+          }}
           selectedCity={selectedDestination}
+          tripDates={selectedTripDates}
           onPaymentSuccess={handlePaymentSuccess}
         />
+      </ScrollView>
 
-       
-          </ScrollView>
-
-      {/* Floating Calculator Button (bottom-left, above tab bar) */}
+      {/* Floating Calculator Button */}
       <TouchableOpacity
         onPress={handleCurrencyPress}
         activeOpacity={0.9}
@@ -726,349 +898,11 @@ const handlePaymentSuccess = async () => {
           style={styles.floatingCalcGradient}
         >
           <FontAwesome name="dollar" size={25} color="#fff" />
-
         </LinearGradient>
       </TouchableOpacity>
-
     </View>
   );
 }
-// ===== Bottom Sheet Booking Flow =====
-const BookingSheet = ({
-  visible,
-  city,
-  price,
-  onClose,
-  onConfirm, // async -> returns {ok:boolean, message?:string, orderId?:string}
-}) => {
- const [step, setStep] = useState('details');
-  const [fullName, setFullName] = useState('');
-  const [cardNumber, setCardNumber] = useState('');
-  const [expiryDate, setExpiryDate] = useState('');
-  const [cvv, setCvv] = useState('');
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState('');
-  const translateY = useRef(new Animated.Value(600)).current; // slide up
-
-  useEffect(() => {
-    if (visible) {
-      setStep('details');
-      setError('');
-      setFullName('');
-      setCardNumber('');
-      setExpiryDate('');
-      setCvv('');
-      Animated.timing(translateY, {
-        toValue: 0,
-        duration: 260,
-        useNativeDriver: true,
-      }).start();
-    } else {
-      Animated.timing(translateY, {
-        toValue: 600,
-        duration: 200,
-        useNativeDriver: true,
-      }).start();
-    }
-  }, [visible]);
-
-  const formatCard = (text) => {
-    const cleaned = text.replace(/\s/g, '').replace(/\D/g, '');
-    const parts = cleaned.match(/.{1,4}/g) || [];
-    return parts.join(' ').slice(0, 19);
-  };
-
-  const validatePayment = () => {
-    if (!fullName.trim() || fullName.trim().length < 3) return 'Enter your full name (min 3 chars).';
-    if (cardNumber.replace(/\s/g, '').length !== 16) return 'Card number must be 16 digits.';
-   if (!/^(0[1-9]|1[0-2])\/(\d{2}|\d{4})$/.test(expiryDate)) return 'Expiry must be MM/YY or MM/YYYY.';
-    if (cvv.length !== 3 || !/^\d{3}$/.test(cvv)) return 'CVV must be 3 digits.';
-    return '';
-  };
-
-  const handlePay = async () => {
-    const v = validatePayment();
-    if (v) { setError(v); return; }
-    setError('');
-    setSubmitting(true);
-    try {
-      const res = await onConfirm({
-        fullName,
-        cardNumber: cardNumber.replace(/\s/g, ''),
-        expiryDate,
-        cvv,
-      });
-      if (res?.ok) {
-        setStep('success');
-      } else {
-        setError(res?.message || 'Payment failed. Please try again.');
-      }
-    } catch (e) {
-      setError(e?.message || 'Something went wrong.');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  if (!visible) return null;
-
-  return (
-    <View style={sheetStyles.backdrop}>
-      {/* tap outside to close */}
-      <TouchableOpacity style={sheetStyles.backdropTap} activeOpacity={1} onPress={onClose} />
-      <Animated.View style={[sheetStyles.sheet, { transform: [{ translateY }] }]}>
-        {/* Grabber */}
-        <View style={sheetStyles.grabber} />
-
-        {/* Header */}
-        <View style={sheetStyles.headerRow}>
-          <Text style={sheetStyles.sheetTitle}>
-            {step === 'details' && `Your trip to ${city?.name}`}
-            {step === 'payment' && 'Payment'}
-            {step === 'success' && 'All set!'}
-          </Text>
-          <TouchableOpacity onPress={onClose} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
-            <Text style={sheetStyles.closeX}>✕</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Step: Details */}
-        {step === 'details' && (
-          <ScrollView
-            style={{ maxHeight: 420 }}
-            contentContainerStyle={{ paddingBottom: 16 }}
-            showsVerticalScrollIndicator={false}
-          >
-            {/* Banner */}
-            <View style={sheetStyles.banner}>
-              <Image source={city?.image} style={sheetStyles.bannerImg} />
-              <LinearGradient colors={['transparent', 'rgba(0,0,0,0.6)']} style={sheetStyles.bannerOverlay} />
-              <View style={sheetStyles.bannerTextWrap}>
-                <Text style={sheetStyles.bannerTitle}>{city?.name}</Text>
-                <Text style={sheetStyles.bannerSubtitle}>From ${price}</Text>
-              </View>
-            </View>
-
-            {/* Details grid */}
-            <View style={sheetStyles.grid}>
-              <View style={sheetStyles.gridItem}>
-                <Text style={sheetStyles.gridLabel}>Flight</Text>
-                <Text style={sheetStyles.gridValue}>✈️ {city?.flight}</Text>
-              </View>
-              <View style={sheetStyles.gridItem}>
-                <Text style={sheetStyles.gridLabel}>Dates</Text>
-                <Text style={sheetStyles.gridValue}>13/3 – 18/3</Text>
-              </View>
-              <View style={sheetStyles.gridItem}>
-                <Text style={sheetStyles.gridLabel}>Departure</Text>
-                <Text style={sheetStyles.gridValue}>06:00 AM</Text>
-              </View>
-              <View style={sheetStyles.gridItem}>
-                <Text style={sheetStyles.gridLabel}>Return</Text>
-                <Text style={sheetStyles.gridValue}>05:00 PM</Text>
-              </View>
-              <View style={sheetStyles.gridItemWide}>
-                <Text style={sheetStyles.gridLabel}>Hotel</Text>
-                <Text style={sheetStyles.gridValue}>{city?.hotel}</Text>
-              </View>
-              <View style={sheetStyles.gridItemWide}>
-                <Text style={sheetStyles.gridLabel}>About</Text>
-                <Text style={sheetStyles.gridValue}>{city?.description}</Text>
-              </View>
-            </View>
-
-            {/* CTA */}
-            <TouchableOpacity onPress={() => setStep('payment')} activeOpacity={0.85} style={{ borderRadius: 16, overflow: 'hidden', marginTop: 8 }}>
-              <LinearGradient colors={['#667eea', '#764ba2']} style={sheetStyles.primaryBtn}>
-                <Text style={sheetStyles.primaryBtnText}>Continue to Payment</Text>
-              </LinearGradient>
-            </TouchableOpacity>
-          </ScrollView>
-        )}
-
-        {/* Step: Payment */}
-        {step === 'payment' && (
-          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-            <ScrollView style={{ maxHeight: 420 }} showsVerticalScrollIndicator={false}>
-              <Text style={sheetStyles.totalText}>Total: <Text style={{ fontWeight: '700' }}>${price}</Text></Text>
-
-              {!!error && <Text style={sheetStyles.errorBox}>{error}</Text>}
-
-              <View style={sheetStyles.inputWrap}>
-                <Text style={sheetStyles.inputLabel}>Full Name</Text>
-                <TextInput
-                  value={fullName}
-                  onChangeText={setFullName}
-                  placeholder="John Doe"
-                  style={sheetStyles.input}
-                  autoCapitalize="words"
-                />
-              </View>
-
-              <View style={sheetStyles.inputWrap}>
-                <Text style={sheetStyles.inputLabel}>Card Number</Text>
-                <TextInput
-                  value={cardNumber}
-                  onChangeText={(t) => setCardNumber(formatCard(t))}
-                  placeholder="1234 5678 9012 3456"
-                  keyboardType="number-pad"
-                  style={sheetStyles.input}
-                  maxLength={19}
-                />
-              </View>
-
-              <View style={sheetStyles.row}>
-                <View style={[sheetStyles.inputWrap, sheetStyles.col]}>
-                  <Text style={sheetStyles.inputLabel}>Expiry (MM/YY)</Text>
-                  <TextInput
-                    value={expiryDate}
-                    onChangeText={setExpiryDate}
-                    placeholder="08/27"
-                    style={sheetStyles.input}
-                    maxLength={5}
-                    keyboardType="number-pad"
-                  />
-                </View>
-                <View style={[sheetStyles.inputWrap, sheetStyles.col]}>
-                  <Text style={sheetStyles.inputLabel}>CVV</Text>
-                  <TextInput
-                    value={cvv}
-                    onChangeText={setCvv}
-                    placeholder="123"
-                    style={sheetStyles.input}
-                    keyboardType="number-pad"
-                    maxLength={3}
-                    secureTextEntry
-                  />
-                </View>
-              </View>
-
-              <TouchableOpacity onPress={handlePay} disabled={submitting} activeOpacity={0.85} style={{ borderRadius: 16, overflow: 'hidden', marginTop: 6 }}>
-                <LinearGradient colors={['##007AFF', '#764ba2']} style={sheetStyles.primaryBtn}>
-                  {submitting
-                    ? <ActivityIndicator size="small" color="#fff" />
-                    : <Text style={sheetStyles.primaryBtnText}>Pay ${price}</Text>}
-                </LinearGradient>
-              </TouchableOpacity>
-
-              <TouchableOpacity onPress={() => setStep('details')} style={sheetStyles.secondaryBtn}>
-                <Text style={sheetStyles.secondaryBtnText}>Back</Text>
-              </TouchableOpacity>
-            </ScrollView>
-          </KeyboardAvoidingView>
-        )}
-
-        {/* Step: Success */}
-        {step === 'success' && (
-          <View style={{ alignItems: 'center', paddingBottom: 8 }}>
-            <Text style={{ fontSize: 56, marginBottom: 12 }}>🎉</Text>
-            <Text style={sheetStyles.successTitle}>Payment Successful</Text>
-            <Text style={sheetStyles.successSub}>Your trip to {city?.name} is confirmed.</Text>
-            <TouchableOpacity onPress={onClose} activeOpacity={0.85} style={{ borderRadius: 16, overflow: 'hidden', marginTop: 16, width: '100%' }}>
-              <LinearGradient colors={['#667eea', '#764ba2']} style={sheetStyles.primaryBtn}>
-                <Text style={sheetStyles.primaryBtnText}>Done</Text>
-              </LinearGradient>
-            </TouchableOpacity>
-          </View>
-        )}
-      </Animated.View>
-    </View>
-  );
-};
-
-const sheetStyles = StyleSheet.create({
-  backdrop: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0,0,0,0.45)',
-  },
-  backdropTap: {
-    flex: 1,
-  },
-  sheet: {
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    padding: 16,
-    paddingBottom: 24,
-    maxHeight: '86%',
-  },
-  grabber: {
-    alignSelf: 'center',
-    width: 46,
-    height: 5,
-    borderRadius: 3,
-    backgroundColor: '#e2e8f0',
-    marginBottom: 10,
-  },
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 6,
-  },
-  sheetTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#2d3748',
-  },
-  closeX: { fontSize: 20, color: '#6b7280' },
-
-  banner: { borderRadius: 16, overflow: 'hidden', marginTop: 8, marginBottom: 14 },
-  bannerImg: { width: '100%', height: 150, resizeMode: 'cover' },
-  bannerOverlay: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 70 },
-  bannerTextWrap: { position: 'absolute', left: 12, bottom: 10 },
-  bannerTitle: { fontSize: 20, fontWeight: '800', color: '#fff' },
-  bannerSubtitle: { fontSize: 14, fontWeight: '600', color: '#fff', opacity: 0.95 },
-
-  grid: { gap: 10, marginTop: 8 },
-  gridItem: {
-    backgroundColor: '#f8fafc',
-    padding: 12,
-    borderRadius: 12,
-  },
-  gridItemWide: {
-    backgroundColor: '#f8fafc',
-    padding: 12,
-    borderRadius: 12,
-  },
-  gridLabel: { fontSize: 12, color: '#64748b', marginBottom: 2, fontWeight: '600' },
-  gridValue: { fontSize: 15, color: '#0f172a' },
-
-  primaryBtn: { paddingVertical: 14, alignItems: 'center', borderRadius: 16 },
-  primaryBtnText: { color: '#fff', fontSize: 16, fontWeight: '800' },
-  secondaryBtn: { paddingVertical: 12, alignItems: 'center' },
-  secondaryBtnText: { color: '#007AFF', fontSize: 15, fontWeight: '700' },
-
-  inputWrap: { marginBottom: 14 },
-  inputLabel: { fontSize: 13, fontWeight: '700', color: '#334155', marginBottom: 6 },
-  input: {
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    backgroundColor: '#f8fafc',
-    fontSize: 15,
-    color: '#0f172a',
-  },
-  row: { flexDirection: 'row', gap: 12 },
-  col: { flex: 1 },
-  totalText: { fontSize: 16, marginBottom: 10, color: '#1f2937' },
-  errorBox: {
-    backgroundColor: '#fee2e2',
-    color: '#b91c1c',
-    borderWidth: 1,
-    borderColor: '#fecaca',
-    padding: 10,
-    borderRadius: 10,
-    marginBottom: 10,
-    textAlign: 'center',
-  },
-  successTitle: { fontSize: 22, fontWeight: '800', color: '#16a34a', marginBottom: 6 },
-  successSub: { fontSize: 15, color: '#334155', textAlign: 'center' },
-});
-
 
 const styles = StyleSheet.create({
   gradientBackground: {
@@ -1092,7 +926,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 100,
   },
-
   appBackground: {
     flex: 1,
     backgroundColor: '#ffffff',
@@ -1113,29 +946,6 @@ const styles = StyleSheet.create({
     width: 50,
     height: 50,
     resizeMode: 'contain',
-  },
-  // עיצוב אייקון המטבע החדש
-  currencyIcon: {
-    borderRadius: 25,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  currencyIconGradient: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  currencySymbol: {
-    fontSize: 22,
-    textShadowColor: 'rgba(0, 0, 0, 0.3)',
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 2,
   },
   weatherPreview: {
     backgroundColor: 'rgba(255,255,255,0.25)',
@@ -1348,6 +1158,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 20,
     elevation: 15,
+    maxHeight: '80%',
   },
   modalCloseX: {
     position: 'absolute',
@@ -1388,20 +1199,43 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     textAlign: 'center',
   },
-  continueButton: {
-    borderRadius: 20,
-    overflow: 'hidden',
+  tripDetailsContainer: {
     width: '100%',
+    marginBottom: 20,
   },
-  continueButtonGradient: {
-    paddingVertical: 15,
-    paddingHorizontal: 30,
-    alignItems: 'center',
+  tripDetailItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
   },
-  continueButtonText: {
-    color: '#ffffff',
-    fontSize: 18,
+  tripDetailLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#4a5568',
+    flex: 1,
+  },
+  tripDetailValue: {
+    fontSize: 14,
+    color: '#2d3748',
+    flex: 1,
+    textAlign: 'right',
+  },
+  tripDetailPriceValue: {
+    fontSize: 16,
     fontWeight: 'bold',
+    color: '#28a745',
+    flex: 1,
+    textAlign: 'right',
+  },
+  tripDetailDescription: {
+    fontSize: 14,
+    color: '#2d3748',
+    flex: 1,
+    textAlign: 'right',
+    lineHeight: 18,
   },
   bookButton: {
     borderRadius: 20,
@@ -1417,6 +1251,117 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: 18,
     fontWeight: 'bold',
+  },
+  continueButton: {
+    borderRadius: 20,
+    overflow: 'hidden',
+    width: '100%',
+  },
+  continueButtonGradient: {
+    paddingVertical: 15,
+    paddingHorizontal: 30,
+    alignItems: 'center',
+  },
+  continueButtonText: {
+    color: '#ffffff',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  // Date Selection Modal Styles
+  dateModalContent: {
+    backgroundColor: 'white',
+    padding: 30,
+    borderRadius: 25,
+    width: '100%',
+    maxWidth: 400,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.3,
+    shadowRadius: 20,
+    elevation: 15,
+  },
+  dateModalTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 10,
+    color: '#2d3748',
+    textAlign: 'center',
+    marginTop: 20,
+  },
+  dateModalSubtitle: {
+    fontSize: 18,
+    color: '#667eea',
+    marginBottom: 25,
+    textAlign: 'center',
+    fontWeight: '600',
+  },
+  dateContainer: {
+    marginBottom: 20,
+  },
+  dateLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#2d3748',
+    marginBottom: 8,
+  },
+  dateButton: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderRadius: 12,
+    paddingHorizontal: 15,
+    paddingVertical: 12,
+    backgroundColor: '#f7fafc',
+  },
+  dateButtonText: {
+    fontSize: 16,
+    color: '#2d3748',
+    fontWeight: '600',
+  },
+  tripSummary: {
+    backgroundColor: '#f0f4ff',
+    padding: 15,
+    borderRadius: 12,
+    marginBottom: 25,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  tripSummaryTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#2d3748',
+    marginBottom: 8,
+  },
+  tripSummaryText: {
+    fontSize: 14,
+    color: '#4a5568',
+    marginBottom: 4,
+  },
+  confirmDateButton: {
+    borderRadius: 20,
+    overflow: 'hidden',
+    width: '100%',
+  },
+  confirmDateGradient: {
+    paddingVertical: 15,
+    paddingHorizontal: 30,
+    alignItems: 'center',
+  },
+  confirmDateText: {
+    color: '#ffffff',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  errorText: {
+    color: '#e53e3e',
+    fontSize: 14,
+    marginBottom: 15,
+    textAlign: 'center',
+    backgroundColor: '#fed7d7',
+    padding: 10,
+    borderRadius: 8,
   },
   // Payment Modal Styles
   paymentModalContent: {
@@ -1441,18 +1386,29 @@ const styles = StyleSheet.create({
   paymentSubtitle: {
     fontSize: 18,
     color: '#5b76edff',
-    marginBottom: 20,
+    marginBottom: 15,
     textAlign: 'center',
     fontWeight: '600',
   },
-  errorText: {
-    color: '#e53e3e',
+  tripDetailsInPayment: {
+    backgroundColor: '#f0f4ff',
+    padding: 12,
+    borderRadius: 10,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  tripDatesText: {
     fontSize: 14,
-    marginBottom: 15,
+    color: '#2d3748',
+    fontWeight: '600',
     textAlign: 'center',
-    backgroundColor: '#fed7d7',
-    padding: 10,
-    borderRadius: 8,
+    marginBottom: 4,
+  },
+  tripDurationText: {
+    fontSize: 12,
+    color: '#718096',
+    textAlign: 'center',
   },
   inputContainer: {
     marginBottom: 20,
@@ -1532,12 +1488,18 @@ const styles = StyleSheet.create({
     color: '#28a745',
     textAlign: 'center',
     fontWeight: '600',
+    marginBottom: 10,
   },
-    // Floating calculator button
+  successDates: {
+    fontSize: 14,
+    color: '#718096',
+    textAlign: 'center',
+    fontStyle: 'italic',
+  },
+  // Floating calculator button
   floatingCalcButton: {
     position: 'absolute',
     right: 26,
-    // keep it above the tab bar; adjust as needed depending on device
     bottom: 18, 
     borderRadius: 28,
     overflow: 'hidden',
@@ -1554,10 +1516,4 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
   },
-  floatingCalcText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '700',
-  },
-
 });
