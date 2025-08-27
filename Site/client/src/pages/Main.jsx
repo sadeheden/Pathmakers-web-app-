@@ -1,4 +1,4 @@
-// Main.jsx - fixed, copy-paste ready
+// Main.jsx - עם בחירת תאריכים
 
 import React, { useState, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
@@ -31,12 +31,14 @@ const cities = [
   { img: bangkokImg, name: "Bangkok", slug: "bangkok", flight: "TG321", summary: "Temples & Street Food", transportation: "Tuk-Tuk" },
   { img: dubaiImg, name: "Dubai", slug: "dubai", flight: "EK654", summary: "Luxury & Desert", transportation: "Car" },
 ];
+
 function slugifyCity(name) {
   return String(name || "")
     .trim()
     .toLowerCase()
     .replace(/\s+/g, "-");
 }
+
 // ---- helpers for attractions (doc-per-city -> array of objects) ----
 async function fetchCityAttractionNames(API_BASE, cityName, token) {
   const headers = token ? { Authorization: `Bearer ${token}` } : {};
@@ -49,6 +51,7 @@ async function fetchCityAttractionNames(API_BASE, cityName, token) {
       return null;
     }
   };
+
 const candidates = [
     // your current route
     `${API_BASE}/api/attractions/city/${encodeURIComponent(cityName)}`,
@@ -114,6 +117,26 @@ const getPriceByCity = (cityName) => {
     case "Dubai": return 2100;
     default: return 2000;
   }
+};
+
+// Helper function לפורמט תאריך ל YYYY-MM-DD
+const formatDateForInput = (date) => {
+  if (!date) return '';
+  return new Date(date).toISOString().split('T')[0];
+};
+
+// Helper function לחישוב מינימום תאריך (מחר)
+const getMinDate = () => {
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  return formatDateForInput(tomorrow);
+};
+
+// Helper function לחישוב מקסימום תאריך (שנה מהיום)
+const getMaxDate = () => {
+  const nextYear = new Date();
+  nextYear.setFullYear(nextYear.getFullYear() + 1);
+  return formatDateForInput(nextYear);
 };
 
 // ------- Payment Modal -------
@@ -222,6 +245,11 @@ const Main = () => {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [paymentCompleted, setPaymentCompleted] = useState(false);
   const [showIntroPopup, setShowIntroPopup] = useState(false);
+  
+  // תאריכי טיול - מתחילים עם תאריכים ברירת מחדל
+  const [tripDate, setTripDate] = useState("2026-03-15");
+  const [returnDate, setReturnDate] = useState("2026-03-22");
+  const [dateError, setDateError] = useState("");
 
   const rowRef = useRef(null);
   const savingRef = useRef(false);
@@ -239,13 +267,53 @@ const Main = () => {
   const CARD_WIDTH = 240;
   const GAP = 24;
 
-  const tripDate = "2026-03-15";
-  const returnDate = "2026-03-22";
   const totalPrice = selectedCity ? getPriceByCity(selectedCity.name) : 0;
 
   const scrollByCards = (n) => {
     if (!rowRef.current) return;
     rowRef.current.scrollBy({ left: (CARD_WIDTH + GAP) * n, behavior: "smooth" });
+  };
+
+  // פונקציה לבדיקת תקינות תאריכים
+  const validateDates = (departure, returnD) => {
+    const depDate = new Date(departure);
+    const retDate = new Date(returnD);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    if (depDate <= today) {
+      return "תאריך יציאה חייב להיות לפחות מחר";
+    }
+    if (retDate <= depDate) {
+      return "תאריך חזרה חייב להיות אחרי תאריך היציאה";
+    }
+    const diffDays = (retDate - depDate) / (1000 * 60 * 60 * 24);
+    if (diffDays < 1) {
+      return "הטיול חייב להיות לפחות יום אחד";
+    }
+    if (diffDays > 365) {
+      return "הטיול לא יכול להיות יותר משנה";
+    }
+    return "";
+  };
+
+  // טיפול בשינוי תאריך יציאה
+  const handleTripDateChange = (newDate) => {
+    setTripDate(newDate);
+    setDateError("");
+    
+    // אם תאריך החזרה קטן או שווה לתאריך היציאה החדש, עדכן אותו
+    if (returnDate <= newDate) {
+      const newReturnDate = new Date(newDate);
+      newReturnDate.setDate(newReturnDate.getDate() + 7); // ברירת מחדל של שבוע
+      setReturnDate(formatDateForInput(newReturnDate));
+    }
+  };
+
+  // טיפול בשינוי תאריך חזרה
+  const handleReturnDateChange = (newDate) => {
+    setReturnDate(newDate);
+    setDateError("");
   };
 
   return (
@@ -293,6 +361,7 @@ const Main = () => {
                   setPaymentCompleted(false);
                   setShowPaymentModal(false);
                   setShowIntroPopup(true);
+                  setDateError(""); // נקה שגיאות תאריכים
                 }}
               >
                 <img src={city.img} alt={city.name} />
@@ -327,10 +396,10 @@ const Main = () => {
             <h2>You've Selected {selectedCity.name}!</h2>
             <p>
               ✈️ Awesome! You're about to see your trip details to <strong>{selectedCity.name}</strong>.<br />
-              This includes flight number, departure info, and trip dates.
+              This includes flight number, departure info, and you can choose your preferred dates.
             </p>
-            <p>Click <strong>Continue</strong> to review and proceed to payment.</p>
-            <p><strong>Price per person*</strong></p>
+            <p>Click <strong>Continue</strong> to choose dates and proceed to payment.</p>
+            <p><strong>Price per person: ${getPriceByCity(selectedCity.name)}</strong></p>
             <button className="btn btn-primary modal-btn" onClick={() => setShowIntroPopup(false)}>
               Continue
             </button>
@@ -338,26 +407,119 @@ const Main = () => {
         </div>
       )}
 
-      {/* Trip Details Modal */}
+      {/* Trip Details Modal עם בחירת תאריכים */}
       {selectedCity && !paymentCompleted && !showPaymentModal && !showIntroPopup && (
         <div className="modal-overlay" onClick={() => setSelectedCity(null)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <button className="modal-close-x" onClick={() => setSelectedCity(null)} aria-label="Close">
               &#10005;
             </button>
-            <h2>Your Trip is Ready!</h2>
+            <h2>Plan Your Trip to {selectedCity.name}!</h2>
             <div className="modal-image-wrapper">
               <img src={selectedCity.img} alt={selectedCity.name} className="modal-city-image" />
             </div>
-            <p><strong>Destination:</strong> {selectedCity.name}</p>
-            <p><strong>Departure:</strong> Tel Aviv (Ben-Gurion Airport)</p>
-            <p><strong>Flight Number:</strong> {selectedCity.flight}</p>
-            <p><strong>Trip Date:</strong> {tripDate}</p>
-            <p><strong>Return Date:</strong> {returnDate}</p>
-            <p><strong>Total Price:</strong> ${totalPrice}</p>
+            
+            <div style={{ textAlign: 'left', marginBottom: '20px' }}>
+              <p><strong>Destination:</strong> {selectedCity.name}</p>
+              <p><strong>Departure:</strong> Tel Aviv (Ben-Gurion Airport)</p>
+              <p><strong>Flight Number:</strong> {selectedCity.flight}</p>
+              <p><strong>Transportation:</strong> {selectedCity.transportation}</p>
+            </div>
+
+            {/* בחירת תאריכים */}
+            <div style={{ marginBottom: '20px', padding: '15px', backgroundColor: '#f8f9fa', borderRadius: '8px' }}>
+              <h3 style={{ marginBottom: '15px', color: '#333' }}>📅 Choose Your Travel Dates</h3>
+              
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '10px' }}>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>
+                    Departure Date:
+                  </label>
+                  <input
+                    type="date"
+                    value={tripDate}
+                    min={getMinDate()}
+                    max={getMaxDate()}
+                    onChange={(e) => handleTripDateChange(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '8px',
+                      border: '1px solid #ddd',
+                      borderRadius: '4px',
+                      fontSize: '14px'
+                    }}
+                  />
+                </div>
+                
+               <div>
+              <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>
+                Return Date:
+              </label>
+              <input
+                type="date"
+                value={returnDate}
+                min={
+                  tripDate
+                    ? new Date(new Date(tripDate).getTime() + 24 * 60 * 60 * 1000)
+                        .toISOString()
+                        .split('T')[0] // תמיד יום אחרי tripDate
+                    : getMinDate()
+                }
+                max={getMaxDate()}
+                onChange={(e) => {
+                  const selectedDate = e.target.value;
+                  if (tripDate && new Date(selectedDate) <= new Date(tripDate)) {
+                    alert("תאריך החזרה חייב להיות אחרי תאריך היציאה 🚫");
+                    return;
+                  }
+                  handleReturnDateChange(selectedDate);
+                }}
+                style={{
+                  width: '100%',
+                  padding: '8px',
+                  border: '1px solid #ddd',
+                  borderRadius: '4px',
+                  fontSize: '14px'
+                }}
+              />
+            </div>
+
+                          </div>
+
+              {dateError && (
+                <div style={{ color: '#dc3545', fontSize: '14px', marginTop: '5px' }}>
+                  ⚠️ {dateError}
+                </div>
+              )}
+
+              {tripDate && returnDate && !dateError && (
+                <div style={{ marginTop: '10px', padding: '10px', backgroundColor: '#e8f5e8', borderRadius: '4px', fontSize: '14px' }}>
+                  ✅ Trip Duration: {Math.ceil((new Date(returnDate) - new Date(tripDate)) / (1000 * 60 * 60 * 24))} days
+                </div>
+              )}
+            </div>
+
+            <div style={{ textAlign: 'center', marginBottom: '15px' }}>
+              <p style={{ fontSize: '18px', fontWeight: 'bold', color: '#0066cc' }}>
+                Total Price: ${totalPrice}
+              </p>
+            </div>
+
             <div className="modal-btns">
-              <button className="btn btn-primary modal-btn" onClick={() => setShowPaymentModal(true)}>
-                Pay Now
+              <button 
+                className="btn btn-primary modal-btn" 
+                onClick={() => {
+                  const validationError = validateDates(tripDate, returnDate);
+                  if (validationError) {
+                    setDateError(validationError);
+                    return;
+                  }
+                  setDateError("");
+                  setShowPaymentModal(true);
+                }}
+                disabled={!tripDate || !returnDate}
+              >
+                Continue to Payment
               </button>
             </div>
           </div>
@@ -417,9 +579,9 @@ const Main = () => {
 
             try {
               if (!selectedCity) throw new Error("No city selected");
-// 🔎 fetch attractions for the selected city
-const attractionNames =
-  await fetchCityAttractionNames(API_BASE, selectedCity.name, token);
+              // 🔎 fetch attractions for the selected city
+              const attractionNames =
+                await fetchCityAttractionNames(API_BASE, selectedCity.name, token);
 
               const response = await axios.post(
                 `${API_BASE}/api/orders2`,
@@ -439,7 +601,7 @@ const attractionNames =
                   summary: selectedCity.summary,
                   cityImage: selectedCity.img,
 
-                  // Trip data
+                  // Trip data עם התאריכים שנבחרו
                   transportation: selectedCity.transportation,
                   paymentMethod: "Credit Card",
                   totalPrice,
@@ -454,13 +616,13 @@ const attractionNames =
                   hotel_id: null,
                   attractions: [],
                   attraction_names: attractionNames,
-               attractionNames: attractionNames,
+                  attractionNames: attractionNames,
                 },
                 {
                   headers: {
                     Authorization: `Bearer ${token}`,
                     "Content-Type": "application/json",
-                            "Idempotency-Key": idemKey,
+                    "Idempotency-Key": idemKey,
                     "X-Request-ID": (globalThis.crypto?.randomUUID?.()
                       ?? `${Date.now()}-${Math.random()}`),
                     "X-Source-Component": "Main.jsx",
@@ -480,12 +642,13 @@ const attractionNames =
           }}
         />
       )}
-        <button 
-  className="floating-support-btn"
-  onClick={() => navigate('/support')}
->
-  ❔
-</button>
+      
+      <button 
+        className="floating-support-btn"
+        onClick={() => navigate('/support')}
+      >
+        ❔
+      </button>
     </div>
   );
 };
