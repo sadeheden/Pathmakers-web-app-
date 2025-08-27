@@ -394,13 +394,22 @@ export default function HomeScreen() {
   // City ID mapping functions
   const getDepartureCityId = (destinationCity) => {
     const cityMappings = {
-      'phuket': '68022f445f7300b11f986829',
-      'paris': '68022f445f7300b11f986829',
-      'dubai': '68022f445f7300b11f986829',
-      'london': '68022f445f7300b11f986829',
-      'turkey': '68022f445f7300b11f986829',
-      'amsterdam': '68022f445f7300b11f986829',
-    };
+    'phuket': '68022f445f7300b11f986829',
+    'paris': '68022f445f7300b11f986829',
+    'dubai': '68022f445f7300b11f986829',
+    'london': '68022f445f7300b11f986829',
+    'turkey': '68022f445f7300b11f986829',
+    'amsterdam': '68022f445f7300b11f986829',
+    'rome': '68022f445f7300b11f986829',
+    'barcelona': '68022f445f7300b11f986829',
+    'berlin': '68022f445f7300b11f986829',
+    'tokyo': '68022f445f7300b11f986829',
+    'new york': '68022f445f7300b11f986829',
+    'los angeles': '68022f445f7300b11f986829',
+    'san francisco': '68022f445f7300b11f986829',
+    'madrid': '68022f445f7300b11f986829',
+    'seoul': '68022f445f7300b11f986829'
+  };
     const citySlug = destinationCity?.slug || destinationCity?.name?.toLowerCase();
     return cityMappings[citySlug] || '68022f445f7300b11f986829';
   };
@@ -408,11 +417,20 @@ export default function HomeScreen() {
   const getDestinationCityId = (destinationCity) => {
     const cityMappings = {
       'phuket': '68022f445f7300b11f986837',
-      'paris': '68075dd4f110a359e23cd001',
-      'london': '68075dd4f110a359e23cd002',
-      'amsterdam': '68075dd4f110a359e23cd003',
-      'dubai': '686cd9cd523d724c4a6db66f',
-      'turkey': '6891f49ef511eb0daf23b8f8'
+    'paris': '68075dd4f110a359e23cd001',
+    'london': '68075dd4f110a359e23cd002',
+    'amsterdam': '68075dd4f110a359e23cd003',
+    'rome': '68075dd4f110a359e23cd004',
+    'barcelona': '68075dd4f110a359e23cd005',
+    'berlin': '68075dd4f110a359e23cd006',
+    'tokyo': '68075dd4f110a359e23cd007',
+    'dubai': '686cd9cd523d724c4a6db66f',
+    'new york': '686cdae6523d724c4a6db672',
+    'los angeles': '686cdb31523d724c4a6db675',
+    'san francisco': '686cdbe3523d724c4a6db676',
+    'madrid': '686cdc13523d724c4a6db677',
+    'seoul': '686cdc4a523d724c4a6db67a',
+    'turkey': '6891f49ef511eb0daf23b8f8'
     };
     const citySlug = destinationCity?.slug || destinationCity?.name?.toLowerCase();
     return cityMappings[citySlug] || '68022f445f7300b11f986837';
@@ -420,12 +438,21 @@ export default function HomeScreen() {
 
   const getFlightId = (destinationCity) => {
     const flightMappings = {
-      'phuket': '68075f88dc218773e0652238',
-      'paris': '68075f88dc218773e0652231',
-      'london': '68075f88dc218773e0652230',
-      'amsterdam': '68075f88dc218773e0652238',
-      'dubai': '68075f88dc218773e0652237',
-      'turkey': '6891f45cf511eb0daf23b8f5'
+     'phuket': '6891f45cf511eb0daf23b8f6',   
+    'paris': '68075f88dc218773e0652231',
+    'london': '68075f88dc218773e0652230',
+    'amsterdam': '68075f88dc218773e0652238',
+    'rome': '68075f88dc218773e0652233',
+    'barcelona': '68075f88dc218773e0652236',
+    'berlin': '68075f88dc218773e0652235',
+    'tokyo': '68075f88dc218773e0652232',
+    'dubai': '68075f88dc218773e0652237',
+    'new york': '68075f88dc218773e0652231',
+    'los angeles': '68075f88dc218773e0652234',
+    'san francisco': '68075f88dc218773e0652239',
+    'madrid': '68075f88dc218773e065223a',
+    'seoul': '68075f88dc218773e065223b',
+    'turkey': '6891f45cf511eb0daf23b8f5'
     };
     const citySlug = destinationCity?.slug || destinationCity?.name?.toLowerCase();
     return flightMappings[citySlug] || '68075f88dc218773e0652238';
