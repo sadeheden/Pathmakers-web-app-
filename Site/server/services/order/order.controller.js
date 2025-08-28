@@ -377,6 +377,7 @@ export async function resolveOrderRefs(req, res) {
     return res.status(500).json({ message: "Internal Server Error", error: process.env.NODE_ENV === "development" ? err.message : undefined });
   }
 }
+
 // POST /api/order - Create new order - FIXED VERSION
 export async function createOrder(req, res) {
   if (!req.user?.id) return res.status(401).json({ message: "Unauthorized" });
@@ -422,6 +423,13 @@ export async function createOrder(req, res) {
     // Clean IDs (extract base ObjectId for cities; keep compound ids for flight/hotel)
     const depClean = cleanId(departureCityId);
     const dstClean = cleanId(destinationCityId);
+    // 🔎 Resolve city names at save time
+const depCityDoc = depClean ? await safeDbOperation(() => City.findById(depClean), null) : null;
+const dstCityDoc = dstClean ? await safeDbOperation(() => City.findById(dstClean), null) : null;
+
+const departureCityNameResolved = depCityDoc?.city || depCityDoc?.name || null;
+const destinationCityNameResolved = dstCityDoc?.city || dstCityDoc?.name || null;
+
     const fltClean = cleanId(flightId);
     const htlClean = cleanId(hotelId);
 
@@ -482,33 +490,60 @@ export async function createOrder(req, res) {
         .filter(Boolean);
       console.log(`🔗 Resolved ${finalAttractionNames.length} attraction names from IDs`);
     }
- const toDate = (v) => (v ? new Date(v) : null);
-   const startDt = toDate(tripStartDate || tripDate);
-   const endDt   = toDate(tripEndDate   || returnDate);
-    // Create new order; store full compound IDs for flight/hotel (string with index)
-    const userId = ObjectId.isValid(req.user.id) ? new ObjectId(req.user.id) : String(req.user.id);
-    const newOrder = new Order({
-      // choose ObjectId when possible so reads match queries
-      user_id: userId,
-      departure_city_id: depClean,
-      destination_city_id: dstClean,
-      flight_id: flightId,    // Keep as compound string (e.g., "<docId>_<idx>")
-      hotel_id: hotelId,      // Keep as compound string (e.g., "<docId>-<idx>")
-      attractions: cleanedAttractions,        // keep ids if provided (can be empty)
-      transportation,
-      payment_method: paymentMethod,
-      total_price: totalPrice,
-      created_at: new Date(),
 
-      // denormalized names
-      flight_name: flightName || null,
-      hotel_name: hotelName || null,
-      attraction_names: finalAttractionNames || [], // 👈 auto-filled when selectAllCityAttractions is true
-    trip_start_date: startDt,
-      trip_end_date:   endDt,});
+// --- inside createOrder ---
 
-    console.log("💾 Saving order...");
-    const savedOrder = await newOrder.save();
+// 1) tiny, safe parser (keeps calendar day stable in all timezones)
+function toDate(v) {
+  if (!v) return null;
+  const s = String(v).trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+    const [y, m, d] = s.split("-").map(Number);
+    return new Date(Date.UTC(y, m - 1, d, 12, 0, 0)); // UTC noon
+  }
+  const dte = new Date(s);
+  return isNaN(dte) ? null : dte;
+}
+
+// read whatever keys the client may send
+const startDt = toDate(tripStartDate ?? tripDate);
+const endDt   = toDate(tripEndDate   ?? returnDate);
+
+console.log("📅 Parsed trip dates:", { startDt, endDt });
+
+// 2) (optional) require dates
+// if (!startDt || !endDt) {
+//   return res.status(400).json({ message: "Trip dates are required" });
+// }
+
+// 3) include dates when creating the order
+const newOrder = new Order({
+  user_id: ObjectId.isValid(req.user.id) ? new ObjectId(req.user.id) : String(req.user.id),
+  departure_city_id: depClean,
+  destination_city_id: dstClean,
+  flight_id: flightId,
+  hotel_id: hotelId,
+  attractions: cleanedAttractions,
+  transportation,
+  payment_method: paymentMethod,
+  total_price: totalPrice,
+  created_at: new Date(),
+
+  flight_name: flightName || null,
+  hotel_name: hotelName || null,
+  attraction_names: finalAttractionNames || [],
+  departure_city_name: departureCityNameResolved || null,
+  destination_city_name: destinationCityNameResolved || null,
+
+  // 🔴 do not forget these:
+  trip_start_date: startDt,
+  trip_end_date:   endDt,
+});
+
+console.log("Saving order to database:", newOrder.toObject ? newOrder.toObject() : newOrder);
+
+const savedOrder = await newOrder.save();
+
     console.log("✅ Order saved with ID:", savedOrder._id);
 
     return res.status(201).json({
@@ -664,8 +699,6 @@ if (storedAttractions.length > 0) {
           transportation: asObj.transportation,
 
           // Human-readable
-          departure_city_name: departureCityName,
-          destination_city_name: destinationCityName,
           flight_name: flightName,
           hotel_name: hotelName,
           attraction_names: attractionNames,

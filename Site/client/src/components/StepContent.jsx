@@ -61,6 +61,25 @@ const StepContent = ({
     return <div style={{ color: "red" }}>Error: Step misconfigured or not found.</div>;
   }
 
+  const START_KEY = "Select trip start date";
+  const END_KEY   = "Select trip end date";
+  const todayISO  = new Date().toISOString().split("T")[0];
+
+  // --- NEW: required-fields gating per step ---
+  const REQUIRED = {
+    Destination: ["What is your departure city?", "What is your destination city?"],
+    Flight: [START_KEY, END_KEY, "Select your flight"],
+      Hotel: ["Select your hotel"],
+    Payment: ["Select payment method"],
+    // Add more if you want to force answers on those steps
+  };
+  const hasValue = (v) =>
+    typeof v === "object" ? Boolean(v?.id || v?.name) : Boolean(v);
+  const isStepComplete = (curStep, responses) => {
+    const req = REQUIRED[curStep.label] || [];
+    return req.every((key) => hasValue(responses[key]));
+  };
+
   return (
     <div className="step">
       <div className="step-header">
@@ -102,48 +121,29 @@ const StepContent = ({
             );
           }
 
-          // === Default input/select logic (your original) ===
+          // === Default input/select logic ===
           return (
             <div key={index}>
               <label>{q.prompt}</label>
 
               {q.type === "text" || q.type === "date" || q.type === "number" ? (
                 <>
-                  {/* departure date */}
-                  {q.prompt.includes("departure") && (
+                  {q.type === "date" ? (
                     <input
                       type="date"
-                      min={new Date().toISOString().split("T")[0]}
                       value={userResponses[q.prompt] || ""}
+                      min={q.prompt === END_KEY ? (userResponses[START_KEY] || todayISO) : todayISO}
                       onChange={(e) =>
-                        setUserResponses({ ...userResponses, [q.prompt]: e.target.value })
+                        setUserResponses((prev) => ({ ...prev, [q.prompt]: e.target.value }))
                       }
+                      disabled={q.prompt === END_KEY && !userResponses[START_KEY]}
                     />
-                  )}
-
-                  {/* return date */}
-                  {q.prompt.includes("return") && (
-                    <input
-                      type="date"
-                      min={
-                        userResponses["Travel dates (departure)?"] ||
-                        new Date().toISOString().split("T")[0]
-                      }
-                      value={userResponses[q.prompt] || ""}
-                      onChange={(e) =>
-                        setUserResponses({ ...userResponses, [q.prompt]: e.target.value })
-                      }
-                      disabled={!userResponses["Travel dates (departure)?"]}
-                    />
-                  )}
-
-                  {/* other text/number fields */}
-                  {!q.prompt.includes("departure") && !q.prompt.includes("return") && (
+                  ) : (
                     <input
                       type={q.type}
                       value={userResponses[q.prompt] || ""}
                       onChange={(e) =>
-                        setUserResponses({ ...userResponses, [q.prompt]: e.target.value })
+                        setUserResponses((prev) => ({ ...prev, [q.prompt]: e.target.value }))
                       }
                     />
                   )}
@@ -168,7 +168,6 @@ const StepContent = ({
                       [q.prompt]: selectedOption,
                     }));
 
-                    // Payment modal trigger (unchanged behavior)
                     const methodsRequiringModal = ["Credit Card", "PayPal", "Bank Transfer", "Crypto"];
                     if (q.prompt === "Select payment method") {
                       const chosen = selectedOption?.name || selectedOption;
@@ -185,16 +184,11 @@ const StepContent = ({
                   <option value="" disabled>
                     Select an option
                   </option>
-                  {q.options &&
-                    q.options.length > 0 &&
-                    q.options.map((option, i) => (
-                      <option
-                        key={i}
-                        value={typeof option === "string" ? option : option.id}
-                      >
-                        {typeof option === "string" ? option : option.name}
-                      </option>
-                    ))}
+                  {q.options?.map((option, i) => (
+                    <option key={i} value={typeof option === "string" ? option : option.id}>
+                      {typeof option === "string" ? option : option.name}
+                    </option>
+                  ))}
                 </select>
               )}
             </div>
@@ -210,14 +204,13 @@ const StepContent = ({
         >
           Back
         </button>
+
         <button
           onClick={() => {
             const cur = steps[currentStep];
             const isPaymentStep = cur.label === "Payment";
             const selectedMethod = userResponses["Select payment method"];
-            const requiresModal = ["Credit Card", "PayPal", "Bank Transfer", "Crypto"].includes(
-              selectedMethod
-            );
+            const requiresModal = ["Credit Card", "PayPal", "Bank Transfer", "Crypto"].includes(selectedMethod);
 
             if (isPaymentStep && requiresModal && !paymentCompleted) {
               setIsPaymentModalOpen(true);
@@ -225,21 +218,14 @@ const StepContent = ({
             }
             setCurrentStep((prev) => prev + 1);
           }}
+          className="custom-btn2"
           disabled={
             currentStep === steps.length - 1 ||
-            (
-              steps[currentStep]?.label !== "Hotel" &&   /* don't block on Hotel step */
-              steps[currentStep]?.questions?.length > 0 &&
-              !userResponses[steps[currentStep].questions[0]?.prompt]
-            ) ||
-            (steps[currentStep]?.label === "Flight" &&
-              (!userResponses["Travel dates (departure)?"] ||
-               !userResponses["Travel dates (return)?"])) ||
+            !isStepComplete(steps[currentStep], userResponses) ||
             (steps[currentStep]?.label === "Payment" && !paymentCompleted)
           }
-          className="custom-btn2"
         >
-          {currentStep === steps.length - 1 ? "Finish" : "Next"} 
+          {currentStep === steps.length - 1 ? "Finish" : "Next"}
         </button>
       </div>
     </div>

@@ -298,6 +298,12 @@ onPaymentSuccess={async ({ attractionIds, attractionNames } = {}) => {
     if (token) headers.Authorization = `Bearer ${token}`;
 
     const getVal = (prompt) => userResponses?.[prompt];
+const START_KEY = "Select trip start date";
+const END_KEY   = "Select trip end date";
+console.log("📅 Dates before save:", {
+  start: getVal(START_KEY),
+  end: getVal(END_KEY),
+});
 
     // ---------- helpers (declare BEFORE use) ----------
    const looksLikeObjectId = (v) => typeof v === "string" && /^[0-9a-fA-F]{24}$/.test(v);
@@ -513,13 +519,15 @@ attractionNames: finalAttractionNames,
 attractions: finalAttractionIds,
 
 
-      flightName: getDisplayName(flt) || null,
-      hotelName: getDisplayName(htl) || null,
+     flightName: getDisplayName(flt) || null,
+  hotelName: getDisplayName(htl) || null,
+
       transportation,
       paymentMethod,
       totalPrice,
+tripStartDate: getVal(START_KEY) || null,
+tripEndDate: getVal(END_KEY) || null,
     };
-
     // 5) create order
     const r2 = await fetch(`${API_BASE}/api/order`, {
       method: "POST",
