@@ -513,12 +513,14 @@ attractionNames: finalAttractionNames,
 attractions: finalAttractionIds,
 
 
-      flightName: getDisplayName(flt) || null,
-      hotelName: getDisplayName(htl) || null,
+     flightName: getDisplayName(flt) || null,
+  hotelName: getDisplayName(htl) || null,
+
       transportation,
       paymentMethod,
       totalPrice,
-    };
+  tripStartDate: getVal("Select trip start date") || null,
+ tripEndDate:   getVal("Select trip end date")   || null    };
 
     // 5) create order
     const r2 = await fetch(`${API_BASE}/api/order`, {

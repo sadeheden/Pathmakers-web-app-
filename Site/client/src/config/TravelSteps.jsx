@@ -116,8 +116,8 @@ export const createSteps = (
       label: "Flight",
       icon: Plane,
       questions: [
-        { prompt: "Travel dates (departure)?", type: "date" },
-        { prompt: "Travel dates (return)?", type: "date" },
+       { prompt: "Select trip start date", type: "date" },
+        { prompt: "Select trip end date", type: "date" },
         {
           prompt: "Select your flight",
           options: (() => {
@@ -136,6 +136,7 @@ export const createSteps = (
         { prompt: "Class preference", options: ["Economy", "Business", "First"] },
       ],
     },
+
     {
       label: "Hotel",
       icon: Hotel,

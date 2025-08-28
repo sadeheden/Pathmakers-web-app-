@@ -422,6 +422,13 @@ export async function createOrder(req, res) {
     // Clean IDs (extract base ObjectId for cities; keep compound ids for flight/hotel)
     const depClean = cleanId(departureCityId);
     const dstClean = cleanId(destinationCityId);
+    // 🔎 Resolve city names at save time
+const depCityDoc = depClean ? await safeDbOperation(() => City.findById(depClean), null) : null;
+const dstCityDoc = dstClean ? await safeDbOperation(() => City.findById(dstClean), null) : null;
+
+const departureCityNameResolved = depCityDoc?.city || depCityDoc?.name || null;
+const destinationCityNameResolved = dstCityDoc?.city || dstCityDoc?.name || null;
+
     const fltClean = cleanId(flightId);
     const htlClean = cleanId(hotelId);
 
@@ -504,7 +511,9 @@ export async function createOrder(req, res) {
       flight_name: flightName || null,
       hotel_name: hotelName || null,
       attraction_names: finalAttractionNames || [], // 👈 auto-filled when selectAllCityAttractions is true
-    trip_start_date: startDt,
+     departure_city_name: departureCityName || null,
+ destination_city_name: destinationCityName || null,
+      trip_start_date: startDt,
       trip_end_date:   endDt,});
 
     console.log("💾 Saving order...");
