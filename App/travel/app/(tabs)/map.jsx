@@ -9,10 +9,11 @@ import {
   FlatList,
   TextInput,
   Modal,
+  ScrollView,
 } from 'react-native';
 import * as Location from 'expo-location';
 import { Ionicons } from '@expo/vector-icons';
-import { post } from '../../utils/api'; // 👈 Using your API service
+import { post, get } from '../../utils/api'; // 👈 Using your API service
 
 const PAGE_LIMIT = 30;
 
@@ -58,6 +59,79 @@ const makeAvailability = (id) => {
   const count = 2 + Math.floor(rng() * 2); // 2 or 3
   const pool = [...base].sort(() => rng() - 0.5);
   return pool.slice(0, count);
+};
+
+/* =====================
+   Cart Modal Component
+   ===================== */
+const CartModal = ({ visible, purchasedItems, onClose, onRemoveItem }) => {
+  const totalValue = purchasedItems.reduce((sum, item) => sum + (item.price || 0), 0);
+
+  const renderPurchasedItem = ({ item, index }) => (
+    <View style={styles.cartItem}>
+      <View style={styles.cartItemInfo}>
+        <Text style={styles.cartItemName} numberOfLines={1}>{item.attractionName}</Text>
+        <Text style={styles.cartItemDetails}>{item.city} • {item.bookingSlot}</Text>
+        <Text style={styles.cartItemPrice}>${item.price}</Text>
+        <Text style={styles.cartItemDate}>Booked: {new Date(item.purchaseDate).toLocaleDateString()}</Text>
+      </View>
+      <TouchableOpacity
+        style={styles.removeButton}
+        onPress={() => onRemoveItem(item._id)}
+      >
+        <Ionicons name="trash-outline" size={16} color="#ff4444" />
+      </TouchableOpacity>
+    </View>
+  );
+
+  return (
+    <Modal
+      visible={visible}
+      animationType="slide"
+      transparent={true}
+      onRequestClose={onClose}
+    >
+      <View style={styles.modalOverlay}>
+        <View style={[styles.modalContent, { maxHeight: '85%' }]}>
+          <View style={styles.modalHeader}>
+            <View style={styles.cartHeaderInfo}>
+              <Text style={styles.modalTitle}>My Purchased Attractions</Text>
+              <Text style={styles.cartSubtitle}>
+                {purchasedItems.length} items • Total: ${totalValue}
+              </Text>
+            </View>
+            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+              <Ionicons name="close" size={24} color="#666" />
+            </TouchableOpacity>
+          </View>
+
+          {purchasedItems.length === 0 ? (
+            <View style={styles.emptyCart}>
+              <Ionicons name="bag-outline" size={48} color="#ccc" />
+              <Text style={styles.emptyCartTitle}>No Purchases Yet</Text>
+              <Text style={styles.emptyCartText}>Book some attractions to see them here!</Text>
+            </View>
+          ) : (
+            <>
+              <FlatList
+                data={purchasedItems}
+                keyExtractor={(item) => item._id}
+                renderItem={renderPurchasedItem}
+                style={{ flex: 1 }}
+                showsVerticalScrollIndicator={false}
+              />
+              
+              <View style={styles.cartFooter}>
+                <View style={styles.cartTotal}>
+                  <Text style={styles.cartTotalText}>Total Spent: ${totalValue}</Text>
+                </View>
+              </View>
+            </>
+          )}
+        </View>
+      </View>
+    </Modal>
+  );
 };
 
 /* =====================
@@ -217,8 +291,18 @@ export default function AttractionsScreen() {
   const [errorText, setErrorText] = useState('');
   const [paymentModal, setPaymentModal] = useState({ visible: false, item: null });
   const [paymentLoading, setPaymentLoading] = useState(false);
+  
+  // New cart-related state
+  const [cartModal, setCartModal] = useState(false);
+  const [purchasedItems, setPurchasedItems] = useState([]);
+  const [loadingCart, setLoadingCart] = useState(false);
 
   const fetchAbortRef = useRef(null);
+
+  // Load purchased attractions on component mount
+  useEffect(() => {
+    loadPurchasedAttractions();
+  }, []);
 
   useEffect(() => {
     (async () => {
@@ -248,6 +332,21 @@ export default function AttractionsScreen() {
       }
     })();
   }, []);
+
+  // Load purchased attractions from MongoDB
+  const loadPurchasedAttractions = async () => {
+    setLoadingCart(true);
+    try {
+      const response = await get('attractions/purchased');
+      if (response.success && Array.isArray(response.data)) {
+        setPurchasedItems(response.data);
+      }
+    } catch (error) {
+      console.log('Failed to load purchased attractions:', error.message);
+    } finally {
+      setLoadingCart(false);
+    }
+  };
 
   const fetchAttractionsByCity = useCallback(async (cityName) => {
     if (!cityName?.trim()) {
@@ -306,10 +405,21 @@ export default function AttractionsScreen() {
 
   const handleFreeBooking = async (item) => {
     try {
-      const bookingData = { slot: item.availability?.[0] ?? null, paymentType: 'free' };
-      const response = await post(`attractions/${item.id}/book`, bookingData);
+      const bookingData = { 
+        attractionId: item.id,
+        attractionName: item.name,
+        city: item.city,
+        slot: item.availability?.[0] ?? null, 
+        price: 0,
+        paymentType: 'free' 
+      };
+      const response = await post(`attractions/book`, bookingData);
       if (!response.success) throw new Error(response.message || 'Booking failed');
+      
       Alert.alert('Booked Successfully! 🎉', `Your booking for ${item.name} is confirmed (free!)`);
+      
+      // Reload purchased attractions to update the cart
+      await loadPurchasedAttractions();
     } catch (e) {
       Alert.alert('Booking Error', e.message || 'Cannot complete booking.');
     }
@@ -319,7 +429,11 @@ export default function AttractionsScreen() {
     setPaymentLoading(true);
     try {
       const bookingData = {
+        attractionId: paymentModal.item.id,
+        attractionName: paymentModal.item.name,
+        city: paymentModal.item.city,
         slot: paymentModal.item.availability?.[0] ?? null,
+        price: paymentData.amount,
         paymentType: 'paid',
         paymentDetails: {
           cardNumber: paymentData.cardNumber.replace(/\s/g, ''),
@@ -329,10 +443,14 @@ export default function AttractionsScreen() {
           amount: paymentData.amount
         }
       };
-      const response = await post(`attractions/${paymentModal.item.id}/book`, bookingData);
+      const response = await post(`attractions/book`, bookingData);
       if (!response.success) throw new Error(response.message || 'Payment failed');
+      
       Alert.alert('Payment Successful! 🎉', `Your payment of $${paymentData.amount} for ${paymentModal.item.name} is confirmed!`);
       setPaymentModal({ visible: false, item: null });
+      
+      // Reload purchased attractions to update the cart
+      await loadPurchasedAttractions();
     } catch (e) {
       Alert.alert('Payment Error', e.message || 'Cannot complete payment.');
     } finally {
@@ -340,16 +458,63 @@ export default function AttractionsScreen() {
     }
   };
 
+  const handleRemoveFromCart = async (purchaseId) => {
+    Alert.alert(
+      'Remove Purchase',
+      'Are you sure you want to remove this purchase from your cart?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Remove', 
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const response = await post(`attractions/remove-purchase`, { purchaseId });
+              if (response.success) {
+                await loadPurchasedAttractions();
+                Alert.alert('Success', 'Purchase removed from cart');
+              } else {
+                throw new Error(response.message || 'Failed to remove purchase');
+              }
+            } catch (error) {
+              Alert.alert('Error', error.message || 'Failed to remove purchase');
+            }
+          }
+        }
+      ]
+    );
+  };
+
   const handleSearch = () => {
     if (searchCity.trim()) fetchAttractionsByCity(searchCity);
   };
 
+  const CartButton = useMemo(() => (
+    <TouchableOpacity
+      style={styles.cartButton}
+      onPress={() => setCartModal(true)}
+    >
+      <Ionicons name="bag-outline" size={20} color="#fff" />
+      {purchasedItems.length > 0 && (
+        <View style={styles.cartBadge}>
+          <Text style={styles.cartBadgeText}>{purchasedItems.length}</Text>
+        </View>
+      )}
+      <Text style={styles.cartButtonText}>My Cart</Text>
+    </TouchableOpacity>
+  ), [purchasedItems.length]);
+
   const Header = useMemo(() => (
     <View style={styles.header}>
-      <Text style={styles.headerTitle}>🔍 Search Attractions by City</Text>
-      {currentCity ? <Text style={styles.headerSubtitle}>Current location: {currentCity}</Text> : null}
+      <View style={styles.headerTop}>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.headerTitle}>🔍 Search Attractions by City</Text>
+          {currentCity ? <Text style={styles.headerSubtitle}>Current location: {currentCity}</Text> : null}
+        </View>
+        {CartButton}
+      </View>
     </View>
-  ), [currentCity]);
+  ), [currentCity, CartButton]);
 
   const SearchControls = useMemo(() => (
     <View style={styles.controls}>
@@ -497,9 +662,17 @@ export default function AttractionsScreen() {
         onConfirm={handlePaymentConfirm}
         loading={paymentLoading}
       />
+
+      <CartModal
+        visible={cartModal}
+        purchasedItems={purchasedItems}
+        onClose={() => setCartModal(false)}
+        onRemoveItem={handleRemoveFromCart}
+      />
     </View>
   );
 }
+
 /* =====================
    Styles
    ===================== */
@@ -511,10 +684,127 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingBottom: 8,
     flexDirection: 'column',
+  },
+  headerTop: {
+    flexDirection: 'row',
     alignItems: 'flex-start',
+    justifyContent: 'space-between',
   },
   headerTitle: { fontSize: 18, fontWeight: '700', flexDirection: 'row', alignItems: 'center' },
   headerSubtitle: { fontSize: 12, color: '#666', marginTop: 4 },
+  
+  // Cart Button Styles
+  cartButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#2ea44f',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    position: 'relative',
+  },
+  cartButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+    marginLeft: 6,
+  },
+  cartBadge: {
+    position: 'absolute',
+    top: -6,
+    right: -6,
+    backgroundColor: '#ff4444',
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cartBadgeText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+
+  // Cart Modal Styles
+  cartHeaderInfo: {
+    flex: 1,
+  },
+  cartSubtitle: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 2,
+  },
+  emptyCart: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 40,
+  },
+  emptyCartTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginTop: 12,
+    marginBottom: 8,
+  },
+  emptyCartText: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+  },
+  cartItem: {
+    flexDirection: 'row',
+    backgroundColor: '#f9f9f9',
+    padding: 12,
+    marginBottom: 8,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  cartItemInfo: {
+    flex: 1,
+  },
+  cartItemName: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  cartItemDetails: {
+    fontSize: 12,
+    color: '#666',
+    marginBottom: 2,
+  },
+  cartItemPrice: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#2ea44f',
+    marginBottom: 2,
+  },
+  cartItemDate: {
+    fontSize: 11,
+    color: '#888',
+  },
+  removeButton: {
+    padding: 8,
+    marginLeft: 12,
+  },
+  cartFooter: {
+    borderTopWidth: 1,
+    borderTopColor: '#eee',
+    paddingTop: 16,
+    marginTop: 16,
+  },
+  cartTotal: {
+    alignItems: 'center',
+    backgroundColor: '#f0f8f0',
+    padding: 16,
+    borderRadius: 10,
+  },
+  cartTotalText: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#2ea44f',
+  },
+
   controls: { paddingHorizontal: 12, paddingBottom: 8 },
   row: { flexDirection: 'row', alignItems: 'center', marginTop: 8 },
   ml8: { marginLeft: 8 },
