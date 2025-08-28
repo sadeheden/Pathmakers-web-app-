@@ -519,8 +519,9 @@ attractions: finalAttractionIds,
       transportation,
       paymentMethod,
       totalPrice,
-  tripStartDate: getVal("Select trip start date") || null,
- tripEndDate:   getVal("Select trip end date")   || null    };
+tripStartDate: getVal("Select trip start date") || getVal("Trip Start Date") || null,
+ tripEndDate:   getVal("Select trip end date")   || getVal("Trip End Date")   || null,
+    };
 
     // 5) create order
     const r2 = await fetch(`${API_BASE}/api/order`, {

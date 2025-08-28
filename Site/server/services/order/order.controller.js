@@ -511,8 +511,8 @@ const destinationCityNameResolved = dstCityDoc?.city || dstCityDoc?.name || null
       flight_name: flightName || null,
       hotel_name: hotelName || null,
       attraction_names: finalAttractionNames || [], // 👈 auto-filled when selectAllCityAttractions is true
-     departure_city_name: departureCityName || null,
- destination_city_name: destinationCityName || null,
+   departure_city_name: departureCityNameResolved || null,
+ destination_city_name: destinationCityNameResolved || null,
       trip_start_date: startDt,
       trip_end_date:   endDt,});
 
@@ -673,8 +673,6 @@ if (storedAttractions.length > 0) {
           transportation: asObj.transportation,
 
           // Human-readable
-          departure_city_name: departureCityName,
-          destination_city_name: destinationCityName,
           flight_name: flightName,
           hotel_name: hotelName,
           attraction_names: attractionNames,
