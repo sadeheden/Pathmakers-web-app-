@@ -489,7 +489,14 @@ const destinationCityNameResolved = dstCityDoc?.city || dstCityDoc?.name || null
         .filter(Boolean);
       console.log(`🔗 Resolved ${finalAttractionNames.length} attraction names from IDs`);
     }
- const toDate = (v) => (v ? new Date(v) : null);
+ const toDate = (v) => {
+   if (!v) return null;
+   // normalize YYYY-MM-DD so timezones don’t shift it
+   const s = String(v).trim();
+   const iso = /^\d{4}-\d{2}-\d{2}$/.test(s) ? `${s}T00:00:00` : s;
+   const d = new Date(iso);
+   return Number.isNaN(d.getTime()) ? null : d;
+ };
    const startDt = toDate(tripStartDate || tripDate);
    const endDt   = toDate(tripEndDate   || returnDate);
     // Create new order; store full compound IDs for flight/hotel (string with index)
