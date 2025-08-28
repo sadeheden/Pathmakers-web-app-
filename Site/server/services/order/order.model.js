@@ -20,7 +20,24 @@ const toOid = (v) =>
 export default class Order {
   constructor(data = {}) {
     // local helper to coerce anything (ISO string / millis / Date) into Date or null
-    const toDate = (v) => (v ? new Date(v) : null);
+// Robust date coercion: keep calendar day stable across timezones
+const toDate = (v) => {
+  if (!v) return null;
+  if (v instanceof Date && !Number.isNaN(v.getTime())) return v;
+
+  const s = String(v).trim();
+  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (m) {
+    const [, Y, M, D] = m.map(Number);
+    // store as UTC noon to avoid off-by-one in any timezone
+    return new Date(Date.UTC(Y, M - 1, D, 12, 0, 0));
+  }
+
+  const d = new Date(s);
+  return Number.isNaN(d.getTime()) ? null : d;
+};
+
+
 
     this._id = data._id || null;
     this.user_id = data.user_id || null;

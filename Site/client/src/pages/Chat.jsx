@@ -298,8 +298,13 @@ onPaymentSuccess={async ({ attractionIds, attractionNames } = {}) => {
     if (token) headers.Authorization = `Bearer ${token}`;
 
     const getVal = (prompt) => userResponses?.[prompt];
- const LEGACY_START = "Travel dates (departure)?";
- const LEGACY_END   = "Travel dates (return)?";
+const START_KEY = "Select trip start date";
+const END_KEY   = "Select trip end date";
+console.log("📅 Dates before save:", {
+  start: getVal(START_KEY),
+  end: getVal(END_KEY),
+});
+
     // ---------- helpers (declare BEFORE use) ----------
    const looksLikeObjectId = (v) => typeof v === "string" && /^[0-9a-fA-F]{24}$/.test(v);
 // --- attractions: build IDs + names (prefer PaymentModal → fall back to chat) ---
@@ -520,14 +525,8 @@ attractions: finalAttractionIds,
       transportation,
       paymentMethod,
       totalPrice,
-tripStartDate:
-   getVal("Select trip start date") ||
-   getVal("Trip Start Date")        ||
-   getVal(LEGACY_START)             || null,
- tripEndDate:
-   getVal("Select trip end date")   ||
-   getVal("Trip End Date")          ||
-   getVal(LEGACY_END)               || null,
+tripStartDate: getVal(START_KEY) || null,
+tripEndDate: getVal(END_KEY) || null,
     };
     // 5) create order
     const r2 = await fetch(`${API_BASE}/api/order`, {
