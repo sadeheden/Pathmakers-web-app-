@@ -169,7 +169,12 @@ const attractions = attractionNames.length ? attractionNames : attractionIdStrin
     o.createdAt ??
     o.tripDate ??
     null;
-
+ const tripStartRaw =
+    o.trip_start_date ?? o.trip_date ?? o.tripDate ?? o.startDate ?? null;
+  const tripEndRaw =
+    o.trip_end_date ?? o.return_date ?? o.returnDate ?? o.endDate ?? null;
+  const { ts: tripStartTs, iso: tripStartISO } = parseAnyDate(tripStartRaw);
+  const { ts: tripEndTs,   iso: tripEndISO   } = parseAnyDate(tripEndRaw);
   let { ts: tmpTs, iso: tmpIso } = parseAnyDate(createdRaw);
   let createdAtTs = tmpTs;
   let createdAtISO = tmpIso;
@@ -213,6 +218,10 @@ const attractions = attractionNames.length ? attractionNames : attractionIdStrin
     totalPrice,
     createdAt: createdAtISO ?? null,
     createdAtTs: Number.isFinite(createdAtTs) ? createdAtTs : null,
+    tripStartISO: tripStartISO,
+    tripEndISO: tripEndISO,
+    tripStartTs: Number.isFinite(tripStartTs) ? tripStartTs : null,
+    tripEndTs:   Number.isFinite(tripEndTs)   ? tripEndTs   : null,
     source: o.cityName ? "orders2" : "order",
   };
 };
@@ -923,6 +932,8 @@ useEffect(() => {
                 <div className="order-detail-grid">
                   <p><strong>Order ID:</strong> {selectedOrder.id}</p>
              <p><strong>Created At:</strong> {Number.isFinite(selectedOrder.createdAtTs) ? new Date(selectedOrder.createdAtTs).toLocaleString() : "—"}</p>
+                 <p><strong>Trip Start:</strong> {Number.isFinite(selectedOrder.tripStartTs) ? new Date(selectedOrder.tripStartTs).toLocaleString() : "—"}</p>
+    <p><strong>Trip End:</strong> {Number.isFinite(selectedOrder.tripEndTs) ? new Date(selectedOrder.tripEndTs).toLocaleString() : "—"}</p>
                   <p><strong>Destination City:</strong> {selectedOrder.destination}</p>
                   <p><strong>Flight:</strong> {selectedOrder.flight}</p>
                   <p><strong>Hotel:</strong> {selectedOrder.hotel}</p>
@@ -1068,6 +1079,14 @@ key={o.id || (o.raw?._id?.$oid) || (o.raw?._id) || String(index)}
                             <div><span className="lbl">Payment</span>{o.paymentMethod || "—"}</div>
                             <div><span className="lbl">Flight</span>{o.flight}</div>
                             <div><span className="lbl">Hotel</span>{o.hotel}</div>
+                           <div>
+      <span className="lbl">Trip</span>
+      {o.tripStartTs
+        ? `${new Date(o.tripStartTs).toLocaleDateString()}${
+            o.tripEndTs ? ` – ${new Date(o.tripEndTs).toLocaleDateString()}` : ""
+          }`
+        : "—"}
+    </div>
                           </div>
 
                           <button className="view-details-button" onClick={() => handleViewOrderDetails(o)}>

@@ -399,8 +399,11 @@ export async function createOrder(req, res) {
 
       // NEW flags from chat:
       selectAllCityAttractions,      // boolean → auto-include ALL city attractions
-      destinationCityName            // optional helpful fallback (string)
-    } = req.body;
+      destinationCityName ,           // optional helpful fallback (string)
+    tripStartDate,
+    tripEndDate,
+    tripDate,
+    returnDate} = req.body;
 
     // Validate required fields
     const missing = [];
@@ -479,7 +482,9 @@ export async function createOrder(req, res) {
         .filter(Boolean);
       console.log(`🔗 Resolved ${finalAttractionNames.length} attraction names from IDs`);
     }
-
+ const toDate = (v) => (v ? new Date(v) : null);
+   const startDt = toDate(tripStartDate || tripDate);
+   const endDt   = toDate(tripEndDate   || returnDate);
     // Create new order; store full compound IDs for flight/hotel (string with index)
     const userId = ObjectId.isValid(req.user.id) ? new ObjectId(req.user.id) : String(req.user.id);
     const newOrder = new Order({
@@ -499,7 +504,8 @@ export async function createOrder(req, res) {
       flight_name: flightName || null,
       hotel_name: hotelName || null,
       attraction_names: finalAttractionNames || [], // 👈 auto-filled when selectAllCityAttractions is true
-    });
+    trip_start_date: startDt,
+      trip_end_date:   endDt,});
 
     console.log("💾 Saving order...");
     const savedOrder = await newOrder.save();
@@ -522,6 +528,8 @@ export async function createOrder(req, res) {
       flight_name: savedOrder.flight_name ?? null,
       hotel_name: savedOrder.hotel_name ?? null,
       attraction_names: savedOrder.attraction_names ?? [],
+         trip_start_date: savedOrder.trip_start_date ?? null,
+      trip_end_date:   savedOrder.trip_end_date   ?? null,
     });
 
   } catch (err) {
@@ -661,6 +669,8 @@ if (storedAttractions.length > 0) {
           flight_name: flightName,
           hotel_name: hotelName,
           attraction_names: attractionNames,
+             trip_start_date: asObj.trip_start_date ?? null,
+          trip_end_date:   asObj.trip_end_date   ?? null,
         };
       })
     );
@@ -685,8 +695,12 @@ export async function getOrderReceiptPdf(req, res) {
     }
 
     const db = await getDb();
-    const order = await db.collection("orders").findOne({ _id: new ObjectId(id) });
-    if (!order) return res.status(404).json({ message: "Order not found" });
+  const order = await db.collection("orders").findOne({ _id: new ObjectId(id) });
+if (!order) return res.status(404).json({ message: "Order not found" });
+
+// ✅ Normalize trip dates immediately after fetching the order
+order.trip_start_date = order.trip_start_date ? new Date(order.trip_start_date) : null;
+order.trip_end_date   = order.trip_end_date   ? new Date(order.trip_end_date)   : null;
 
     // ---------- Resolve display values to mirror .summary-details ----------
     // We reuse your helpers so IDs -> human names work.
@@ -841,7 +855,15 @@ export async function getOrderReceiptPdf(req, res) {
     yR = row("Attractions", attractionsList, MARGIN + colW + colGap + 16, yR, colW - 32);
     yR = row("Transportation", transportation, MARGIN + colW + colGap + 16, yR, colW - 32);
     yR = row("Payment", paymentMethod, MARGIN + colW + colGap + 16, yR, colW - 32);
+const tripStartDisp = order.trip_start_date
+  ? order.trip_start_date.toLocaleDateString()
+  : "—";
 
+const tripEndDisp = order.trip_end_date
+  ? order.trip_end_date.toLocaleDateString()
+  : "—";
+    yR = row("Trip Start", tripStartDisp, MARGIN + colW + colGap + 16, yR, colW - 32);
+    yR = row("Trip End",   tripEndDisp,   MARGIN + colW + colGap + 16, yR, colW - 32);
     // Bottom total strip in the same card
     const cardBottom = Math.max(yL, yR) + 8;
     hr(cardBottom);

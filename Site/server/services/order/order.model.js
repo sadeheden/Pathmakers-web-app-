@@ -17,9 +17,11 @@ function toObjectIdOrString(id) {
 const toOid = (v) =>
   typeof v === "string" && ObjectId.isValid(v) ? new ObjectId(v) : null;
 
-
 export default class Order {
   constructor(data = {}) {
+    // local helper to coerce anything (ISO string / millis / Date) into Date or null
+    const toDate = (v) => (v ? new Date(v) : null);
+
     this._id = data._id || null;
     this.user_id = data.user_id || null;
     this.departure_city_id = data.departure_city_id || null;
@@ -30,7 +32,7 @@ export default class Order {
     this.transportation = data.transportation || null;
     this.payment_method = data.payment_method || null;
     this.total_price = data.total_price || 0;
-    this.created_at = data.created_at || new Date();
+    this.created_at = toDate(data.created_at) || new Date();
     
     // Denormalized name fields - NEW
     this.flight_name = data.flight_name || null;
@@ -38,8 +40,12 @@ export default class Order {
     this.attraction_names = Array.isArray(data.attraction_names) ? data.attraction_names : [];
     this.departure_city_name = data.departure_city_name || null;
     this.destination_city_name = data.destination_city_name || null;
-  }
 
+    // Trip dates (support several aliases), coerced to Date
+    this.trip_start_date = toDate(data.trip_start_date || data.trip_date || data.tripDate || null);
+    this.trip_end_date   = toDate(data.trip_end_date   || data.return_date || data.returnDate || null);
+  }
+  
   static async findByUserId(userId) {
     try {
       const orders = await findOrdersByUserIdFromDb(userId);
@@ -83,7 +89,9 @@ export default class Order {
       hotel_name: this.hotel_name,
       attraction_names: this.attraction_names,
       departure_city_name: this.departure_city_name,
-      destination_city_name: this.destination_city_name
+      destination_city_name: this.destination_city_name,
+      trip_start_date: this.trip_start_date,
+      trip_end_date: this.trip_end_date,
     };
   }
 
@@ -129,9 +137,9 @@ export default class Order {
       destination_city_id: this.destination_city_id,
       flight_id: this.flight_id,  // Store as string to preserve compound format
       hotel_id: this.hotel_id,    // Store as string to preserve compound format
-    attractions: Array.isArray(this.attractions)
-    ? this.attractions.map(toOid).filter(Boolean)
-    : [],
+      attractions: Array.isArray(this.attractions)
+        ? this.attractions.map(toOid).filter(Boolean)
+        : [],
       transportation: this.transportation,
       payment_method: this.payment_method,
       total_price: this.total_price,
@@ -141,7 +149,9 @@ export default class Order {
       hotel_name: this.hotel_name,
       attraction_names: this.attraction_names,
       departure_city_name: this.departure_city_name,
-      destination_city_name: this.destination_city_name
+      destination_city_name: this.destination_city_name,
+      trip_start_date: this.trip_start_date,
+      trip_end_date: this.trip_end_date,
     };
 
     console.log(" Saving order to database:", orderDoc);
