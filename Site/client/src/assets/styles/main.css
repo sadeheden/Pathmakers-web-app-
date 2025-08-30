@@ -266,35 +266,23 @@ footer, .footer {
 .city-card-text h3 { font-size: 16px; margin: 0 0 4px; }
 .city-card-text .muted { font-size: 13px; }
 
-/* ===========================
-   Modal (single definition)
-   =========================== */
-/* ===== Pretty modal (glass + card header) ===== */
-.modal-overlay {
-  position: fixed; inset: 0;
-  display: grid; place-items: center;
-  background: radial-gradient(1200px 800px at 50% 30%, rgba(99,102,241,.22), rgba(0,0,0,.55) 60%, rgba(0,0,0,.65));
-  z-index: 1000;
-  -webkit-backdrop-filter: blur(6px);
-  backdrop-filter: blur(6px);
-  animation: overlayIn .18s ease-out;
-}
-@keyframes overlayIn { from { opacity: 0 } to { opacity: 1 } }
 
+.modal-overlay {
+  padding: max(env(safe-area-inset-top), 20px)
+           max(env(safe-area-inset-right), 16px)
+           max(env(safe-area-inset-bottom), 16px)
+           max(env(safe-area-inset-left), 16px);
+  /* Prevent background scroll + weird bounce on mobile */
+  overscroll-behavior: contain;
+}
+
+/* Make the modal itself never exceed the viewport height.
+   Use *dynamic* viewport units to handle mobile browser UI. */
 .modal-content {
-  --card-pad-x: clamp(1rem, 2vw, 1.5rem);
-  --card-pad-y: clamp(1rem, 2vw, 1.25rem);
-  position: relative;
-  width: min(520px, 92vw);
-  border-radius: calc(var(--radius-lg) * 1.25);
-  background:
-    linear-gradient(180deg, rgba(255,255,255,.85), rgba(255,255,255,.92)),
-    radial-gradient(1200px 800px at 50% -10%, rgba(79,172,254,.22), rgba(202,122,245,.12) 45%, transparent 70%);
-  box-shadow: 0 20px 60px rgba(0,0,0,.25), inset 0 1px 0 rgba(255,255,255,.4);
-  padding: 0 0 var(--card-pad-y);
-  overflow: hidden;
-  transform: translateY(6px) scale(.985);
-  animation: cardIn .24s cubic-bezier(.2,.8,.2,1) forwards;
+  max-height: 102svh;               /* fit within screen */
+  overflow: auto;                  /* scroll inside modal */
+  -webkit-overflow-scrolling: touch;
+  box-sizing: border-box;
 }
 @keyframes cardIn { to { transform: none; opacity: 1 } }
 
@@ -393,8 +381,8 @@ footer, .footer {
 
 .modal-city-image {
   width: 100%; 
-  max-width: 420px; 
-  height: 200px; 
+  max-width: 390px; 
+  height: 190px; 
   object-fit: cover;
   border-radius: 16px;
   border: 2px solid rgba(255, 255, 255, 0.8);
@@ -890,11 +878,11 @@ footer, .footer {
   /* Modal width adjustments */
   .modal-content {
     width: 90vw;
-    padding: 1rem;
+    padding: 3rem;
   }
 }
 /* ===== Tablet layout: iPad / small laptop (768–1180) ===== */
-@media (min-width: 768px) and (max-width: 1180px) {
+@media (min-width: 808px) and (max-width: 1180px) {
   .trips-page {
     max-width: 750px;
     padding: 0 12px;
@@ -946,7 +934,7 @@ footer, .footer {
     margin-top: 0.5rem;
   }
   /* Modals: keep them narrower on tablet */
-  .modal-content { width: 80vw; max-width: 520px; padding: 1rem; }
+  .modal-content { width: 90vw; max-width: 820px; padding: 3rem; }
 
     .city-row {
     padding: 0 50px;   /* leaves ~50px space left/right for buttons */
@@ -960,7 +948,7 @@ footer, .footer {
   /* Make the modal narrower and tighter on tablets */
   .modal-content {
     width: 68vw;          /* smaller than 80–92vw */
-    max-width: 420px;     /* tighter cap so it feels "card"-sized */
+    max-width: 620px;     /* tighter cap so it feels "card"-sized */
     padding: 0.75rem 0 1rem;
     border-radius: 16px;
   }
