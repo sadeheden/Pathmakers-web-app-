@@ -931,9 +931,9 @@ useEffect(() => {
                 {/* Wrap details in a grid for nicer layout */}
                 <div className="order-detail-grid">
                   <p><strong>Order ID:</strong> {selectedOrder.id}</p>
-             <p><strong>Created At:</strong> {Number.isFinite(selectedOrder.createdAtTs) ? new Date(selectedOrder.createdAtTs).toLocaleString() : "—"}</p>
-                 <p><strong>Trip Start:</strong> {Number.isFinite(selectedOrder.tripStartTs) ? new Date(selectedOrder.tripStartTs).toLocaleString() : "—"}</p>
-    <p><strong>Trip End:</strong> {Number.isFinite(selectedOrder.tripEndTs) ? new Date(selectedOrder.tripEndTs).toLocaleString() : "—"}</p>
+            <p><strong>Created At:</strong> {Number.isFinite(selectedOrder.createdAtTs) ? new Date(selectedOrder.createdAtTs).toLocaleDateString() : "—"}</p>
+ <p><strong>Trip Start:</strong> {Number.isFinite(selectedOrder.tripStartTs) ? new Date(selectedOrder.tripStartTs).toLocaleDateString() : "—"}</p>
+ <p><strong>Trip End:</strong> {Number.isFinite(selectedOrder.tripEndTs) ? new Date(selectedOrder.tripEndTs).toLocaleDateString() : "—"}</p>
                   <p><strong>Destination City:</strong> {selectedOrder.destination}</p>
                   <p><strong>Flight:</strong> {selectedOrder.flight}</p>
                   <p><strong>Hotel:</strong> {selectedOrder.hotel}</p>
