@@ -296,10 +296,43 @@ onPaymentSuccess={async ({ attractionIds, attractionNames } = {}) => {
 
     const headers = { "Content-Type": "application/json" };
     if (token) headers.Authorization = `Bearer ${token}`;
+const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+const toYMD = (v) => {
+  if (!v) return null;
+  const raw = (v && typeof v === "object" && v.$d instanceof Date) ? v.$d : v;
+  if (raw instanceof Date && !Number.isNaN(raw)) {
+    const y = raw.getUTCFullYear();
+    const m = String(raw.getUTCMonth() + 1).padStart(2, "0");
+    const d = String(raw.getUTCDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+  }
+  if (typeof raw === "string") {
+    if (ISO_DATE_RE.test(raw.trim())) return raw.trim();
+    const d = new Date(raw);
+    if (!Number.isNaN(+d)) return toYMD(d);
+  }
+  return null;
+};
+
+const pickDate = (preferredKeys = []) => {
+  for (const k of preferredKeys) {
+    const ymd = toYMD(getVal(k));
+    if (ymd) return ymd;
+  }
+  for (const v of Object.values(userResponses || {})) {
+    const ymd = toYMD(v);
+    if (ymd) return ymd;
+  }
+  return null;
+};
 
     const getVal = (prompt) => userResponses?.[prompt];
 const START_KEY = "Select trip start date";
 const END_KEY   = "Select trip end date";
+const tripStartYMD = pickDate([START_KEY, "Trip start date", "Start date", "From"]);
+const tripEndYMD   = pickDate([END_KEY,   "Trip end date",   "End date",   "To"]);
+
 console.log("📅 Dates before save:", {
   start: getVal(START_KEY),
   end: getVal(END_KEY),
@@ -525,8 +558,8 @@ attractions: finalAttractionIds,
       transportation,
       paymentMethod,
       totalPrice,
-tripStartDate: getVal(START_KEY) || null,
-tripEndDate: getVal(END_KEY) || null,
+tripStartDate: tripStartYMD,
+tripEndDate:   tripEndYMD,
     };
     // 5) create order
     const r2 = await fetch(`${API_BASE}/api/order`, {
