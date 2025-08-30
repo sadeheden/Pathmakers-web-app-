@@ -162,12 +162,18 @@ export const createSteps = (
       icon: Compass,
       questions: [
         {
-          prompt: "Select attractions to visit",
-          options: (attractionsList || []).map((attr, i) => ({
-            id: attr._id || `${attr.name || "Attraction"}-${i}`,
-            name: `${attr.name || "Attraction"} - $${toMoney(attr.price)}`,
-            ...attr,
-          })),
+   prompt: "Select attractions to visit",
+     type: "select",
+     multiple: true,
+     valueKey: "value",
+     labelKey: "label",
+     options: (attractionsList || []).map((attr, i) => ({
+       value: String(attr._id ?? `${i}`),                                    // what gets saved
+       label: `${attr.name || "Attraction"} - $${toMoney(attr.price)}`,      // what user sees
+       // keep originals in case you need them later
+       _id: attr._id, name: attr.name, price: attr.price, city: attr.city
+     })),
+      placeholder: "Pick attractions"
         },
         { prompt: "Budget for daily activities?", type: "text" },
         { prompt: "Interest areas?", options: ["History", "Food", "Nightlife", "Nature", "Culture"] },
