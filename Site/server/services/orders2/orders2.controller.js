@@ -32,8 +32,27 @@ class Orders2Controller {
       if (!req.user?.id) return res.status(401).json({ success: false, message: 'User authentication required' });
       if (isNaN(totalPrice) || totalPrice <= 0) return res.status(400).json({ success: false, message: 'Total price must be a positive number' });
 
-      const tripDateObj = new Date(tripDate);
-      if (isNaN(tripDateObj.getTime())) return res.status(400).json({ success: false, message: 'Invalid trip date format' });
+    const tripDateObj = new Date(tripDate);
+ if (isNaN(tripDateObj.getTime())) {
+   return res.status(400).json({ success: false, message: 'Invalid trip date format' });
+ }
+ // must be a future date (>= tomorrow)
+ const today = new Date();
+ today.setHours(0,0,0,0);
+ const tomorrow = new Date(today);
+ tomorrow.setDate(today.getDate() + 1);
+ if (tripDateObj < tomorrow) {
+   return res.status(400).json({ success: false, message: 'Trip date must be in the future (at least tomorrow)' });
+ }
+ let returnDateObj = req.body.returnDate ? new Date(req.body.returnDate) : null;
+ if (!returnDateObj || isNaN(returnDateObj.getTime())) {
+   // default to 7 days after tripDate
+   returnDateObj = new Date(tripDateObj);
+   returnDateObj.setDate(returnDateObj.getDate() + 7);
+ }
+ if (returnDateObj <= tripDateObj) {
+   return res.status(400).json({ success: false, message: 'Return date must be after trip date' });
+ }
 let finalAttractionNames =
   Array.isArray(attraction_names) ? attraction_names :
   Array.isArray(attractionNames) ? attractionNames : [];
@@ -54,6 +73,8 @@ const orderData = {
 
   tripDate: new Date(tripDate),
   returnDate: returnDate ? new Date(returnDate) : null,
+  tripDate: tripDateObj,
+  returnDate: returnDateObj,
 
   // 👇 use camelCase so PersonalArea sees it
   bookingDate: bookingDate ? new Date(bookingDate) : new Date(),

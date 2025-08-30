@@ -247,8 +247,8 @@ const Main = () => {
   const [showIntroPopup, setShowIntroPopup] = useState(false);
   
   // תאריכי טיול - מתחילים עם תאריכים ברירת מחדל
-  const [tripDate, setTripDate] = useState("2026-03-15");
-  const [returnDate, setReturnDate] = useState("2026-03-22");
+  const [tripDate, setTripDate] = useState("");
+ const [returnDate, setReturnDate] = useState("");
   const [dateError, setDateError] = useState("");
 
   const rowRef = useRef(null);
@@ -386,7 +386,14 @@ const Main = () => {
             <button
               className="modal-close-x"
               onClick={() => {
-                setShowIntroPopup(false);
+              setShowIntroPopup(false);
+  // default dates: tomorrow → +7 days
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const ret = new Date(tomorrow);
+  ret.setDate(ret.getDate() + 7);
+  setTripDate(tomorrow.toISOString().split('T')[0]);
+  setReturnDate(ret.toISOString().split('T')[0]);
                 setSelectedCity(null);
               }}
               aria-label="Close"
