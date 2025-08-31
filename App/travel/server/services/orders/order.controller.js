@@ -119,51 +119,96 @@ export async function createOrder(req, res) {
     };
 
     // Resolve attraction_names even if inbound values are compound strings
-    let attractionNames = [];
-    if (Array.isArray(attractions) && attractions.length) {
-      const pureIds = attractions
-        .map(extractPureId)
-        .filter(Boolean)
-        .map((id24) => new ObjectId(id24));
+   // In your createOrder function, replace the attractions handling section with this:
 
-      if (pureIds.length) {
-        const rows = await db.collection('attractions')
-          .find({ _id: { $in: pureIds } }, { projection: { name: 1 } })
-          .toArray();
-        attractionNames = rows.map(r => r?.name).filter(Boolean);
+    // Handle attractions - ensure we convert valid ObjectId strings to ObjectIds
+    let processedAttractions = [];
+    let attractionNames = [];
+
+    if (Array.isArray(attractions) && attractions.length > 0) {
+      // Extract pure 24-hex ObjectIds and convert to ObjectId instances
+      const validObjectIds = attractions
+        .map(attr => {
+          // Handle string ObjectIds
+          if (typeof attr === 'string' && /^[0-9a-fA-F]{24}$/.test(attr)) {
+            return toObjectId(attr);
+          }
+          // Handle objects with _id property
+          if (attr && typeof attr === 'object' && attr._id) {
+            const id = typeof attr._id === 'string' ? attr._id : attr._id.toString();
+            if (/^[0-9a-fA-F]{24}$/.test(id)) {
+              return toObjectId(id);
+            }
+          }
+          return null;
+        })
+        .filter(Boolean);
+
+      processedAttractions = validObjectIds;
+
+      // If we have valid attraction IDs, fetch their names from the database
+      if (validObjectIds.length > 0) {
+        try {
+          const attractionDocs = await db.collection('attractions')
+            .find({ _id: { $in: validObjectIds } }, { projection: { name: 1, title: 1, attraction_name: 1 } })
+            .toArray();
+          
+          attractionNames = attractionDocs.map(doc => 
+            doc.name || doc.title || doc.attraction_name || 'Unnamed Attraction'
+          ).filter(Boolean);
+        } catch (err) {
+          console.warn('Failed to fetch attraction names:', err);
+          attractionNames = [];
+        }
       }
     }
 
-    // ── IMPORTANT: Keep your incoming IDs AS STRING, to support compound IDs
-    // If you ALSO want city ids as pure ObjectIds, you can wrap those two only.
-    // Your "expected" example shows city ids as strings, so we keep them as strings too.
+    // If attractions array is empty but we have a destination city, try to fetch all attractions for that city
+    if (processedAttractions.length === 0 && destinationCityId) {
+      try {
+        const destObjectId = toObjectId(destinationCityId);
+        if (destObjectId) {
+          // Try multiple possible field names for city reference in attractions collection
+          const cityAttractions = await db.collection('attractions').find({
+            $or: [
+              { city_id: destObjectId },
+              { cityId: destObjectId },
+              { destination_city_id: destObjectId }
+            ]
+          }).toArray();
+          
+          if (cityAttractions.length > 0) {
+            processedAttractions = cityAttractions.map(attr => attr._id);
+            attractionNames = cityAttractions.map(attr => 
+              attr.name || attr.title || attr.attraction_name || 'Unnamed Attraction'
+            ).filter(Boolean);
+          }
+        }
+      } catch (err) {
+        console.warn('Failed to auto-fetch city attractions:', err);
+      }
+    }
+
     const doc = {
       user_id: userObjectId,
 
-      // store as strings (to match your example shape)
+      // Store city IDs as strings to match your expected format
       departure_city_id: String(departureCityId),
       departure_city_name: String(departureCityName),
 
       destination_city_id: String(destinationCityId),
       destination_city_name: String(destinationCityName),
 
-      flight_id: String(flightId),       // <-- keep compound id like "68075f..._0"
+      flight_id: String(flightId),
       flight_name: String(flightName || ''),
 
-      hotel_id: hotelId ? String(hotelId) : null, // <-- keep "68...-0" when present
+      hotel_id: hotelId ? String(hotelId) : null,
       hotel_name: String(hotelName || ''),
 
-      // If you want to SAVE NO attraction IDs (like your sample), keep this as []:
- // keep only real 24-hex ids and store as ObjectId[]
-attractions: Array.isArray(attractions)
-  ? attractions
-      .map(String)
-      .filter(id => /^[0-9a-fA-F]{24}$/.test(id))
-      .map(id => toObjectId(id))
-  : [],
+      // 🆕 NOW PROPERLY STORING ATTRACTIONS AS OBJECTIDS
+      attractions: processedAttractions, // Array of ObjectId instances
 
-
-      // denormalized names so profile can display without extra calls
+      // Store attraction names for easy display
       attraction_names: attractionNames,
 
       transportation: String(transportation || ''),
@@ -179,7 +224,6 @@ attractions: Array.isArray(attractions)
       created_at: new Date(),
       updated_at: new Date(),
     };
-
     const result = await db.collection('orders').insertOne(doc);
 
     return res.status(201).json({
@@ -195,7 +239,51 @@ attractions: Array.isArray(attractions)
   }
 }
 
+// Add this to your order.controller.js or create a separate attractions controller
 
+export async function getAttractionsByCity(req, res) {
+  try {
+    const { cityId } = req.params;
+    
+    if (!cityId || !ObjectId.isValid(cityId)) {
+      return res.status(400).json({ message: 'Invalid city ID' });
+    }
+
+    const db = await connectDB();
+    const cityObjectId = new ObjectId(cityId);
+
+    // Try multiple possible field names for city reference
+    const attractions = await db.collection('attractions').find({
+      $or: [
+        { city_id: cityObjectId },
+        { cityId: cityObjectId },
+        { destination_city_id: cityObjectId }
+      ]
+    }).toArray();
+
+    // Convert ObjectIds to strings for JSON serialization
+    const serializedAttractions = attractions.map(attr => ({
+      ...attr,
+      _id: attr._id.toString(),
+      city_id: attr.city_id?.toString(),
+      cityId: attr.cityId?.toString(),
+      destination_city_id: attr.destination_city_id?.toString()
+    }));
+
+    return res.status(200).json({ 
+      success: true, 
+      attractions: serializedAttractions,
+      count: serializedAttractions.length
+    });
+
+  } catch (error) {
+    console.error('getAttractionsByCity error:', error);
+    return res.status(500).json({ message: 'Failed to fetch attractions' });
+  }
+}
+
+// Add this route to your order.router.js
+// router.get('/attractions/city/:cityId', authenticateUser, getAttractionsByCity);
 /** ========= PROFILE ORDERS (yours, unchanged) =========
  * Orders for Profile.jsx (clean, no attraction formatting)
  */

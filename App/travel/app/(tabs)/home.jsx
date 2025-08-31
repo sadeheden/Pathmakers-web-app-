@@ -670,29 +670,43 @@ const handlePaymentSuccess = async () => {
     return;
   }
 
-  // ✅ Normalize attractions into clean 24-hex IDs and optional names
-  const normalizeAttractions = (arr) => {
-    const ids = [];
-    const names = [];
-    (Array.isArray(arr) ? arr : []).forEach((a) => {
-      const candidateId =
-        typeof a === 'string' ? a : (a?._id || a?.id || a?.value || '');
+  // 🆕 NEW: Fetch ALL attractions for the destination city
+  let allCityAttractions = [];
+  try {
+    const token = await AsyncStorage.getItem('token');
+    if (!token) throw new Error('No authentication token found');
 
-      if (typeof candidateId === 'string' && /^[0-9a-fA-F]{24}$/.test(candidateId)) {
-        ids.push(candidateId);
-      }
-
-      const nm =
-        typeof a === 'string'
-          ? (a.length === 24 ? null : a) // a plain name string (not an ObjectId)
-          : (a?.name || a?.label || null);
-      if (nm) names.push(nm);
+    const attractionsResponse = await fetch(`https://pathmakers-web-app-app-travel.onrender.com/api/attractions/city/${destId}`, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
     });
-    return { ids, names };
-  };
 
-  const { ids: attractionIds, names: attractionNames } =
-    normalizeAttractions(selectedAttractions);
+    if (attractionsResponse.ok) {
+      const attractionsData = await attractionsResponse.json();
+      allCityAttractions = Array.isArray(attractionsData.attractions) ? attractionsData.attractions : [];
+    } else {
+      console.warn('Could not fetch attractions for city, using empty array');
+    }
+  } catch (error) {
+    console.warn('Error fetching attractions:', error.message);
+  }
+
+  // Extract just the ObjectId strings from the fetched attractions
+  const attractionIds = allCityAttractions
+    .map(attraction => {
+      // Handle different possible structures
+      const id = attraction._id || attraction.id;
+      return typeof id === 'string' ? id : id?.toString?.();
+    })
+    .filter(id => id && /^[0-9a-fA-F]{24}$/.test(id));
+
+  // Extract attraction names for display
+  const attractionNames = allCityAttractions
+    .map(attraction => attraction.name || attraction.title || attraction.attraction_name)
+    .filter(name => name && typeof name === 'string');
 
   const selectedHotel = Array.isArray(global?.hotelsList)
     ? global.hotelsList.find((h) => h._id === getHotelId(selectedDestination))
@@ -716,9 +730,9 @@ const handlePaymentSuccess = async () => {
     hotelId: hotelIdForSave,
     hotelName: hotelNameForSave,
 
-    // 👇 now both are defined
-    attractions: attractionIds,
-    attraction_names: attractionNames.length ? attractionNames : undefined,
+    // 🆕 NOW USING ALL CITY ATTRACTIONS
+    attractions: attractionIds, // Array of ObjectId strings
+    attraction_names: attractionNames, // Array of attraction names
 
     transportation: selectedTransportation,
     paymentMethod: selectedPaymentMethod,
@@ -729,7 +743,7 @@ const handlePaymentSuccess = async () => {
     tripDuration: selectedTripDates.tripDuration,
   };
 
-  console.log('Order data prepared:', JSON.stringify(orderData, null, 2));
+  console.log('Order data prepared with attractions:', JSON.stringify(orderData, null, 2));
 
   try {
     const token = await AsyncStorage.getItem('token');
@@ -755,7 +769,7 @@ const handlePaymentSuccess = async () => {
 
     Alert.alert(
       'Success!',
-      `Your trip to ${selectedDestination.name} has been booked successfully!\n\nTrip dates: ${selectedTripDates.departureDate.toLocaleDateString()} - ${selectedTripDates.returnDate.toLocaleDateString()}\nOrder ID: ${responseData._id}`,
+      `Your trip to ${selectedDestination.name} has been booked successfully!\n\nTrip dates: ${selectedTripDates.departureDate.toLocaleDateString()} - ${selectedTripDates.returnDate.toLocaleDateString()}\nAttractions included: ${attractionNames.length}\nOrder ID: ${responseData._id}`,
       [
         { text: 'View My Orders', onPress: () => navigation.navigate('(tabs)', { screen: 'profile' }) },
         { text: 'OK', style: 'default' },
