@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Alert,
   ActivityIndicator,
+  KeyboardAvoidingView ,
    TextInput, 
   ScrollView,
   FlatList,
@@ -18,7 +19,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { FontAwesome } from '@expo/vector-icons';
-import DateTimePicker from '@react-native-community/datetimepicker';
+import { Calendar } from 'react-native-calendars';
+
 
 const screenWidth = Dimensions.get('window').width;
 
@@ -58,31 +60,33 @@ const DateSelectionModal = ({ visible, onClose, onConfirm, selectedCity }) => {
     });
   };
 
-  const handleDepartureDateChange = (event, selectedDate) => {
-    setShowDeparturePicker(Platform.OS === 'ios');
-    if (selectedDate) {
-      setDepartureDate(selectedDate);
-      setError('');
-      // Auto-adjust return date if it's before departure
-      if (selectedDate >= returnDate) {
-        const newReturnDate = new Date(selectedDate);
-        newReturnDate.setDate(newReturnDate.getDate() + 3); // Minimum 3 days trip
-        setReturnDate(newReturnDate);
-      }
-    }
-  };
+const handleDepartureDateChange = (event, d) => {
+  // Close Android picker after any action
+  if (Platform.OS === 'android') setShowDeparturePicker(false);
+  if (event?.type === 'dismissed' || !d) return;
 
-  const handleReturnDateChange = (event, selectedDate) => {
-    setShowReturnPicker(Platform.OS === 'ios');
-    if (selectedDate) {
-      if (selectedDate <= departureDate) {
-        setError('Return date must be after departure date');
-        return;
-      }
-      setReturnDate(selectedDate);
-      setError('');
-    }
-  };
+  setDepartureDate(d);
+  setError('');
+
+  // ensure return is at least next day
+  const minReturn = new Date(d);
+  minReturn.setDate(minReturn.getDate() + 1);
+  if (returnDate <= d) setReturnDate(minReturn);
+};
+
+const handleReturnDateChange = (event, d) => {
+  if (Platform.OS === 'android') setShowReturnPicker(false);
+  if (event?.type === 'dismissed' || !d) return;
+
+  if (d <= departureDate) {
+    setError('Return date must be after departure date');
+    return;
+  }
+  setReturnDate(d);
+  setError('');
+};
+
+
 
   const handleConfirm = () => {
     if (returnDate <= departureDate) {
@@ -103,9 +107,14 @@ const DateSelectionModal = ({ visible, onClose, onConfirm, selectedCity }) => {
 
   if (!visible) return null;
 
-  return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <View style={styles.modalContainer}>
+return (
+  <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+    <View style={styles.modalContainer}>
+      {/* 👇 Added wrapper here */}
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={{ width: '100%' }}
+      >
         <View style={styles.dateModalContent}>
           <TouchableOpacity style={styles.modalCloseX} onPress={onClose}>
             <Text style={styles.modalCloseXText}>✕</Text>
@@ -116,29 +125,60 @@ const DateSelectionModal = ({ visible, onClose, onConfirm, selectedCity }) => {
           
           {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
-          {/* Departure Date */}
-          <View style={styles.dateContainer}>
-            <Text style={styles.dateLabel}>Departure Date</Text>
-            <TouchableOpacity 
-              style={styles.dateButton}
-              onPress={() => setShowDeparturePicker(true)}
-            >
-              <Text style={styles.dateButtonText}>{formatDate(departureDate)}</Text>
-              <FontAwesome name="calendar" size={20} color="#007AFF" />
-            </TouchableOpacity>
-          </View>
+      
+         {/* Departure Date */}
+<View style={styles.dateContainer}>
+  <Text style={styles.dateLabel}>Departure Date</Text>
+  <TouchableOpacity
+    style={styles.dateButton}
+    onPress={() => {
+      if (Platform.OS === 'android') {
+        DateTimePickerAndroid.open({
+          value: departureDate,
+          mode: 'date',
+          onChange: handleDepartureDateChange,
+          minimumDate: new Date(),
+          maximumDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+        });
+      } else {
+        setShowDeparturePicker(true);
+      }
+    }}
+    activeOpacity={0.7}
+  >
+    <Text style={styles.dateButtonText}>{formatDate(departureDate)}</Text>
+    <FontAwesome name="calendar" size={20} color="#007AFF" />
+  </TouchableOpacity>
+</View>
 
-          {/* Return Date */}
-          <View style={styles.dateContainer}>
-            <Text style={styles.dateLabel}>Return Date</Text>
-            <TouchableOpacity 
-              style={styles.dateButton}
-              onPress={() => setShowReturnPicker(true)}
-            >
-              <Text style={styles.dateButtonText}>{formatDate(returnDate)}</Text>
-              <FontAwesome name="calendar" size={20} color="#007AFF" />
-            </TouchableOpacity>
-          </View>
+
+
+       {/* Return Date */}
+<View style={styles.dateContainer}>
+  <Text style={styles.dateLabel}>Return Date</Text>
+  <TouchableOpacity
+    style={styles.dateButton}
+    onPress={() => {
+      if (Platform.OS === 'android') {
+        const minReturn = new Date(departureDate.getTime() + 24 * 60 * 60 * 1000);
+        DateTimePickerAndroid.open({
+          value: returnDate,
+          mode: 'date',
+          onChange: handleReturnDateChange,
+          minimumDate: minReturn,
+          maximumDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+        });
+      } else {
+        setShowReturnPicker(true);
+      }
+    }}
+    activeOpacity={0.7}
+  >
+    <Text style={styles.dateButtonText}>{formatDate(returnDate)}</Text>
+    <FontAwesome name="calendar" size={20} color="#007AFF" />
+  </TouchableOpacity>
+</View>
+
 
           {/* Trip Summary */}
           <View style={styles.tripSummary}>
@@ -158,33 +198,93 @@ const DateSelectionModal = ({ visible, onClose, onConfirm, selectedCity }) => {
             </LinearGradient>
           </TouchableOpacity>
 
-          {/* Date Pickers */}
-          {showDeparturePicker && (
-            <DateTimePicker
-              value={departureDate}
-              mode="date"
-              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-              onChange={handleDepartureDateChange}
-              minimumDate={new Date()}
-              maximumDate={new Date(Date.now() + 365 * 24 * 60 * 60 * 1000)} // 1 year from now
-            />
-          )}
-
-          {showReturnPicker && (
-            <DateTimePicker
-              value={returnDate}
-              mode="date"
-              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-              onChange={handleReturnDateChange}
-              minimumDate={new Date(departureDate.getTime() + 24 * 60 * 60 * 1000)} // Next day after departure
-              maximumDate={new Date(Date.now() + 365 * 24 * 60 * 60 * 1000)} // 1 year from now
-            />
-          )}
+{/* iOS calendar popups using react-native-calendars */}
+{Platform.OS === 'ios' && showDeparturePicker && (
+  <Modal transparent animationType="fade" onRequestClose={() => setShowDeparturePicker(false)}>
+    <View style={styles.pickerBackdrop}>
+      <View style={styles.pickerSheet}>
+        <View style={styles.pickerHeader}>
+          <TouchableOpacity onPress={() => setShowDeparturePicker(false)}>
+            <Text style={styles.pickerHeaderBtn}>Cancel</Text>
+          </TouchableOpacity>
+          <Text style={styles.pickerTitle}>Select Departure Date</Text>
+          <TouchableOpacity onPress={() => setShowDeparturePicker(false)}>
+            <Text style={styles.pickerHeaderBtn}>Done</Text>
+          </TouchableOpacity>
         </View>
+
+        <Calendar
+          // disable past days
+          minDate={new Date().toISOString().split('T')[0]}
+          maxDate={new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}
+          onDayPress={(day) => {
+            // convert yyyy-mm-dd to Date
+            const d = new Date(day.dateString + 'T00:00:00');
+            handleDepartureDateChange({ type: 'set' }, d);
+          }}
+          markedDates={{
+            [new Date(departureDate).toISOString().split('T')[0]]: {
+              selected: true,
+              selectedColor: '#007AFF',
+            },
+            [new Date(returnDate).toISOString().split('T')[0]]: {
+              marked: true,
+              dotColor: '#764ba2',
+            },
+          }}
+          enableSwipeMonths
+        />
       </View>
-    </Modal>
-  );
-};
+    </View>
+  </Modal>
+)}
+
+{Platform.OS === 'ios' && showReturnPicker && (
+  <Modal transparent animationType="fade" onRequestClose={() => setShowReturnPicker(false)}>
+    <View style={styles.pickerBackdrop}>
+      <View style={styles.pickerSheet}>
+        <View style={styles.pickerHeader}>
+          <TouchableOpacity onPress={() => setShowReturnPicker(false)}>
+            <Text style={styles.pickerHeaderBtn}>Cancel</Text>
+          </TouchableOpacity>
+          <Text style={styles.pickerTitle}>Select Return Date</Text>
+          <TouchableOpacity onPress={() => setShowReturnPicker(false)}>
+            <Text style={styles.pickerHeaderBtn}>Done</Text>
+          </TouchableOpacity>
+        </View>
+
+        <Calendar
+          // can't return before departure (+1 day)
+          minDate={new Date(departureDate.getTime() + 24 * 60 * 60 * 1000).toISOString().split('T')[0]}
+          maxDate={new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}
+          onDayPress={(day) => {
+            const d = new Date(day.dateString + 'T00:00:00');
+            handleReturnDateChange({ type: 'set' }, d);
+          }}
+          markedDates={{
+            [new Date(departureDate).toISOString().split('T')[0]]: {
+              marked: true,
+              dotColor: '#007AFF',
+            },
+            [new Date(returnDate).toISOString().split('T')[0]]: {
+              selected: true,
+              selectedColor: '#764ba2',
+            },
+          }}
+          enableSwipeMonths
+        />
+      </View>
+    </View>
+  </Modal>
+)}
+
+
+        </View>
+      </KeyboardAvoidingView>
+    </View>
+  </Modal>
+);
+}
 
 // Payment Modal Component
 const PaymentModal = ({ visible, onClose, selectedCity, tripDates, onPaymentSuccess }) => {
@@ -479,14 +579,17 @@ export default function HomeScreen() {
     };
     loadUserData();
   }, []);
+// Auto-rotate carousel (pause when any modal is open)
+useEffect(() => {
+  if (showDateSelector || showPaymentModal || showTripDetails || showIntroPopup) return;
 
-  // Auto-rotate carousel
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCarouselIndex((prevIndex) => (prevIndex + CARDS_PER_PAGE) % cities.length);
-    }, AUTO_ROTATE_SECONDS * 1000);
-    return () => clearInterval(interval);
-  }, []);
+  const id = setInterval(() => {
+    setCarouselIndex((prevIndex) => (prevIndex + CARDS_PER_PAGE) % cities.length);
+  }, AUTO_ROTATE_SECONDS * 1000);
+
+  return () => clearInterval(id);
+}, [showDateSelector, showPaymentModal, showTripDetails, showIntroPopup]);
+
 
   const handleWeatherPress = () => {
     try {
@@ -993,6 +1096,40 @@ const styles = StyleSheet.create({
   weatherIcon: {
     fontSize: 20,
   },
+  pickerBackdrop: {
+  flex: 1,
+  backgroundColor: 'rgba(0,0,0,0.5)',
+  justifyContent: 'center',
+  alignItems: 'center',
+  padding: 20,
+},
+pickerSheet: {
+  width: '100%',
+  maxWidth: 420,
+  backgroundColor: '#fff',
+  borderRadius: 20,
+  overflow: 'hidden',
+},
+pickerHeader: {
+  paddingHorizontal: 16,
+  paddingVertical: 12,
+  borderBottomWidth: StyleSheet.hairlineWidth,
+  borderBottomColor: '#e5e7eb',
+  flexDirection: 'row',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+},
+pickerHeaderBtn: {
+  color: '#007AFF',
+  fontWeight: '600',
+  fontSize: 16,
+},
+pickerTitle: {
+  fontSize: 16,
+  fontWeight: '600',
+  color: '#111827',
+},
+
   weatherText: {
     color: '#7f8c8d',
     fontSize: 16,
