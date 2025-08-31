@@ -291,7 +291,7 @@
 /* Cancel button on order card */
 .cancel-order-btn {
   position: absolute;
-  top: 12px;
+  top: 170px;
   right: 12px;
   background: #ef4444;
   border: none;
