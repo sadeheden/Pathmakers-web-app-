@@ -29,41 +29,19 @@ const TripSummary = ({
 
   const textOrName = (v) => (typeof v === "string" ? v : v?.name);
 
- // TripSummary.jsx
-const handleDownloadReceipt = async () => {
-  const orderId = sessionStorage.getItem("lastOrderId");
-  if (!orderId) {
-    alert("No order id found. Please create an order first.");
-    return;
-  }
+  const handleDownloadReceipt = async () => {
+    const id24 = getLastOrderId();
+    if (!id24) {
+      alert("No order found. Please create an order first or open it from your Personal Area.");
+      return;
+    }
+    try {
+      await downloadReceipt(id24);
+    } catch (e) {
+      // already alerted inside downloadReceipt
+    }
+  };
 
-  const token =
-    localStorage.getItem("authToken") ||
-    localStorage.getItem("token") ||
-    localStorage.getItem("jwt");
-
-  try {
-    const resp = await fetch(`/api/order/${orderId}/receipt.pdf`, {
-      method: "GET",
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-    });
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-
-    const blob = await resp.blob();
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    const fileSlug = (textOrName(dst) || "trip").toString().toLowerCase().replace(/\s+/g, "-");
-    a.href = url;
-    a.download = `receipt-${fileSlug}.pdf`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    setTimeout(() => URL.revokeObjectURL(url), 0);
-  } catch (e) {
-    console.error("Receipt download failed:", e);
-    alert("Could not download the PDF receipt. Please try again.");
-  }
-};
   const handleGoToPersonalArea = () => {
     // Ensure this path exists in your <Routes>. Change personalAreaPath if needed.
     navigate(personalAreaPath, { replace: true });
@@ -71,6 +49,42 @@ const handleDownloadReceipt = async () => {
 
   return (
     <div className="summary-box">
+      {/* אייקון Download Receipt למעלה */}
+     <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '15px' }}>
+  <button
+    type="button"
+    onClick={handleDownloadReceipt}
+    aria-label="Download receipt"
+    title="Download receipt"
+    style={{
+      background: 'none',
+      border: 'none',
+      cursor: 'pointer',
+      padding: '14px', // הגדלתי padding
+      borderRadius: '50%',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      fontSize: '26px', // הגדלתי גודל אייקון
+      color: '#666',
+      transition: 'all 0.2s ease',
+      width: '50px',   // גודל אחיד
+      height: '50px'
+    }}
+    onMouseEnter={(e) => {
+      e.target.style.backgroundColor = '#f5f5f5';
+      e.target.style.color = '#333';
+    }}
+    onMouseLeave={(e) => {
+      e.target.style.backgroundColor = 'transparent';
+      e.target.style.color = '#666';
+    }}
+  >
+    📄
+  </button>
+</div>
+
+
       <div className="summary-details">
         <h3>Your Trip Summary</h3>
         <p><strong>From:</strong> {textOrName(dep) || "—"}</p>
@@ -97,27 +111,6 @@ const handleDownloadReceipt = async () => {
         >
           Go to Personal Area
         </button>
-
-      <button
-  type="button"
-  className="btn btn-light"
-  onClick={async () => {
-    const id24 = getLastOrderId();
-    if (!id24) {
-      alert("No order found. Please create an order first or open it from your Personal Area.");
-      return;
-    }
-    try {
-      await downloadReceipt(id24);
-    } catch (e) {
-      // already alerted inside downloadReceipt
-    }
-  }}
-  aria-label="Download receipt"
->
-  Download Receipt
-</button>
-
 
         <button
           type="button"
