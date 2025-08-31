@@ -78,6 +78,7 @@
   background: var(--card);
   border-radius: 22px;
   box-shadow: var(--shadow-sm);
+  
 }
 
 /* Tabs — pill group */
@@ -291,7 +292,7 @@
 /* Cancel button on order card */
 .cancel-order-btn {
   position: absolute;
-  top: 12px;
+  top: 185px;
   right: 12px;
   background: #ef4444;
   border: none;
@@ -361,6 +362,7 @@
   overflow: hidden;
   transform: translateY(4px) scale(.98);
   animation: popIn .18s ease-out forwards;
+  
 }
 
 .modal-header {

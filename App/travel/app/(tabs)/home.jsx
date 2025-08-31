@@ -575,7 +575,7 @@ export default function HomeScreen() {
       flightId: resolvedFlightId,
       flightName: selectedDestination?.name ? `${selectedDestination.name} Flight` : '',
       hotelId: selectedHotel?._id ?? null,
-      hotelName: selectedHotel?.name ?? '',
+    hotelName: selectedHotel?.name ?? (selectedDestination?.hotel || ''),
       attractions: selectedAttractions || [],
       transportation: selectedTransportation,
       paymentMethod: selectedPaymentMethod,

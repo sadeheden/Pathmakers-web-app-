@@ -815,3 +815,40 @@ select:focus {
 .modal-content.payment.success {
   border-radius: 12px;
 }
+/* === Popup spacing fix (more padding & nicer spacing) === */
+:root { --modal-pad: 24px; } /* tweak to 28px if you want extra space */
+
+.modal-content { 
+  padding: var(--modal-pad);           /* base padding for all popups */
+}
+
+.modal-content.payment { 
+  padding: var(--modal-pad) !important; /* override earlier tight padding */
+}
+
+.modal-content.success {
+  padding: calc(var(--modal-pad) + 4px) var(--modal-pad) !important;
+}
+
+/* headline + form spacing inside the popup */
+.modal-headline {
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.modal-form {
+  display: grid;
+  gap: 12px;             /* vertical rhythm between fields */
+}
+
+.field-row { 
+  gap: 12px;             /* space between columns */
+}
+
+/* optional: if you open dropdowns inside the popup */
+.mscd-panel { padding: 10px; }
+.mscd-list  { padding: 4px; }
+@media (max-width: 480px) {
+  :root { --modal-pad: 20px; } /* or keep 24px if it feels fine */
+}
