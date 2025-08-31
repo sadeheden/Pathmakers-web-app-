@@ -665,30 +665,47 @@ useEffect(() => {
       Alert.alert('Missing destination', 'Could not resolve destination city ID.');
       return;
     }
+    const attractionIds = Array.isArray(selectedAttractions)
+  ? selectedAttractions
+      .map(String)
+      .filter(s => /^[0-9a-fA-F]{24}$/.test(s)) // keep only pure 24-hex
+  : [];
 
     const selectedHotel = Array.isArray(global?.hotelsList)
       ? global.hotelsList.find(h => h._id === getHotelId(selectedDestination))
       : null;
-
-    const TEL_AVIV_ID = '68b470794a23cbf87338495f';
+const hotelIdForSave = selectedHotel?._id ?? `${destId}-0`;
+const hotelNameForSave = selectedHotel?.name ?? (selectedDestination?.hotel || '');
+  const TEL_AVIV_ID = '68b470794a23cbf87338495f';
 
 const orderData = {
   departureCityId: TEL_AVIV_ID,
   departureCityName: 'Tel Aviv',
-  destinationCityId: getDestinationCityId(selectedDestination),
+
+  destinationCityId: destId,
   destinationCityName: selectedDestination?.name || selectedDestination?.slug || '',
+
   flightId: getFlightId(selectedDestination),
   flightName: selectedDestination?.name ? `${selectedDestination.name} Flight` : '',
-  hotelId: selectedHotel?._id ?? null,
-  hotelName: selectedHotel?.name ?? (selectedDestination?.hotel || ''),
-  attractions: selectedAttractions || [],
+
+  hotelId: hotelIdForSave,
+  hotelName: hotelNameForSave,
+
+  // ✅ send clean ids; backend will resolve attraction_names
+ // keep incoming attraction IDs (strings or compound) as-is
+attractions: Array.isArray(attractions) ? attractions.map(String) : [],
+
+
   transportation: selectedTransportation,
   paymentMethod: selectedPaymentMethod,
   totalPrice: parseInt(selectedDestination?.price) || 0,
+
+  // your backend accepts ISO; this is fine
   departureDate: selectedTripDates.departureDate.toISOString(),
   returnDate: selectedTripDates.returnDate.toISOString(),
   tripDuration: selectedTripDates.tripDuration,
 };
+
 
     console.log('Order data prepared:', JSON.stringify(orderData, null, 2));
 
@@ -699,7 +716,7 @@ const orderData = {
         throw new Error('No authentication token found');
       }
 
-      const response = await fetch('https://pathmakers-web-app-app-travel.onrender.com/api/orders', {
+      const response = await fetch('https://pathmakers-web-app-app-travel.onrender.com/api/order', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
