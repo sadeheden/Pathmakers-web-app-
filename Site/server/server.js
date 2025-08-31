@@ -148,7 +148,7 @@ import supportRouter from './services/support/support.router.js';
 import ordersRouter from './services/order/order.router.js'; // רק זה נשאר
 import orders2Router from './services/orders2/orders2.router.js';
 import newsletterRouter from './services/newsletter/newsletter.router.js';
-
+import orderCancellationRoutes  from './services/orderCancellation/orderCancellation.routes.js';
 // ---------- API Endpoints ----------
 app.use('/api/cities', citiesRouter);
 app.use('/api/attractions', attractionRoutes);
@@ -166,6 +166,8 @@ app.use('/api/travel', travelRoutes);
 app.use('/api/order', ordersRouter);
 app.use('/api/orders2', orders2Router);
 app.use('/api/support', supportRouter);
+app.use('/api/order', orderCancellationRoutes);
+
 
 // 🛑 404
 app.use((req, res) => {
