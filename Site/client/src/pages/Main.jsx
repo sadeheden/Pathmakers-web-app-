@@ -386,15 +386,15 @@ const Main = () => {
             <button
               className="modal-close-x"
               onClick={() => {
-              setShowIntroPopup(false);
-  // default dates: tomorrow → +7 days
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  const ret = new Date(tomorrow);
-  ret.setDate(ret.getDate() + 7);
-  setTripDate(tomorrow.toISOString().split('T')[0]);
-  setReturnDate(ret.toISOString().split('T')[0]);
-                setSelectedCity(null);
+                setShowIntroPopup(false);
+    // default dates: tomorrow → +7 days
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      const ret = new Date(tomorrow);
+      ret.setDate(ret.getDate() + 7);
+      setTripDate(tomorrow.toISOString().split('T')[0]);
+      setReturnDate(ret.toISOString().split('T')[0]);
+                  setSelectedCity(null);
               }}
               aria-label="Close"
             >
