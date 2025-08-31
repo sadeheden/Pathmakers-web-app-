@@ -670,23 +670,25 @@ useEffect(() => {
       ? global.hotelsList.find(h => h._id === getHotelId(selectedDestination))
       : null;
 
-    const orderData = {
-      departureCityId: getDepartureCityId(selectedDestination),
-      departureCityName: selectedDestination?.name || selectedDestination?.slug || '',
-      destinationCityId: destId,
-      destinationCityName: selectedDestination?.name || selectedDestination?.slug || '',
-      flightId: resolvedFlightId,
-      flightName: selectedDestination?.name ? `${selectedDestination.name} Flight` : '',
-      hotelId: selectedHotel?._id ?? null,
-    hotelName: selectedHotel?.name ?? (selectedDestination?.hotel || ''),
-      attractions: selectedAttractions || [],
-      transportation: selectedTransportation,
-      paymentMethod: selectedPaymentMethod,
-      totalPrice: parseInt(selectedDestination?.price) || 0,
-      departureDate: selectedTripDates.departureDate.toISOString(),
-      returnDate: selectedTripDates.returnDate.toISOString(),
-      tripDuration: selectedTripDates.tripDuration,
-    };
+    const TEL_AVIV_ID = '68b470794a23cbf87338495f';
+
+const orderData = {
+  departureCityId: TEL_AVIV_ID,
+  departureCityName: 'Tel Aviv',
+  destinationCityId: getDestinationCityId(selectedDestination),
+  destinationCityName: selectedDestination?.name || selectedDestination?.slug || '',
+  flightId: getFlightId(selectedDestination),
+  flightName: selectedDestination?.name ? `${selectedDestination.name} Flight` : '',
+  hotelId: selectedHotel?._id ?? null,
+  hotelName: selectedHotel?.name ?? (selectedDestination?.hotel || ''),
+  attractions: selectedAttractions || [],
+  transportation: selectedTransportation,
+  paymentMethod: selectedPaymentMethod,
+  totalPrice: parseInt(selectedDestination?.price) || 0,
+  departureDate: selectedTripDates.departureDate.toISOString(),
+  returnDate: selectedTripDates.returnDate.toISOString(),
+  tripDuration: selectedTripDates.tripDuration,
+};
 
     console.log('Order data prepared:', JSON.stringify(orderData, null, 2));
 
