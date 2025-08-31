@@ -5,15 +5,15 @@ import {
   downloadReceipt,
   getLastOrderId
 } from "../utils/travelUtils.jsx";
-
+import { FaFilePdf } from "react-icons/fa"; // ✅ אייקון PDF
 
 const TripSummary = ({
   userResponses,
   setUserResponses,
   setCurrentStep,
   setPaymentCompleted,
-  onRestart = () => {},        // default so it never crashes if not passed
-  personalAreaPath = "/personal-area", // change if your route is different
+  onRestart = () => {},
+  personalAreaPath = "/personal-area",
 }) => {
   const navigate = useNavigate();
 
@@ -43,47 +43,45 @@ const TripSummary = ({
   };
 
   const handleGoToPersonalArea = () => {
-    // Ensure this path exists in your <Routes>. Change personalAreaPath if needed.
     navigate(personalAreaPath, { replace: true });
   };
 
   return (
     <div className="summary-box">
-      {/* אייקון Download Receipt למעלה */}
-     <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '15px' }}>
-  <button
-    type="button"
-    onClick={handleDownloadReceipt}
-    aria-label="Download receipt"
-    title="Download receipt"
-    style={{
-      background: 'none',
-      border: 'none',
-      cursor: 'pointer',
-      padding: '14px', // הגדלתי padding
-      borderRadius: '50%',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      fontSize: '26px', // הגדלתי גודל אייקון
-      color: '#666',
-      transition: 'all 0.2s ease',
-      width: '50px',   // גודל אחיד
-      height: '50px'
-    }}
-    onMouseEnter={(e) => {
-      e.target.style.backgroundColor = '#f5f5f5';
-      e.target.style.color = '#333';
-    }}
-    onMouseLeave={(e) => {
-      e.target.style.backgroundColor = 'transparent';
-      e.target.style.color = '#666';
-    }}
-  >
-    📄
-  </button>
-</div>
-
+      {/* כפתור הורדת קבלה */}
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '15px' }}>
+        <button
+          type="button"
+          onClick={handleDownloadReceipt}
+          aria-label="Download receipt"
+          title="Download PDF receipt"
+          style={{
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            padding: '14px',
+            borderRadius: '50%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '28px',
+            color: '#d32f2f', // אדום כמו PDF
+            transition: 'all 0.2s ease',
+            width: '52px',
+            height: '52px'
+          }}
+          onMouseEnter={(e) => {
+            e.target.style.backgroundColor = '#fbeaea';
+            e.target.style.color = '#b71c1c';
+          }}
+          onMouseLeave={(e) => {
+            e.target.style.backgroundColor = 'transparent';
+            e.target.style.color = '#d32f2f';
+          }}
+        >
+          <FaFilePdf />
+        </button>
+      </div>
 
       <div className="summary-details">
         <h3>Your Trip Summary</h3>
