@@ -7,15 +7,15 @@ const API_BASE =
   (import.meta?.env?.VITE_API_BASE && import.meta.env.VITE_API_BASE.replace(/\/$/, "")) ||
   "http://localhost:4000";
 
-/* ---------- helpers ---------- */
+/* ---------- Helper Functions ---------- */
 const looksLikeId = (v) => typeof v === "string" && /^[0-9a-fA-F]{24}$/.test(v);
+
 const toUsd = (n) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(
     Number(n ?? 0)
   );
 
-// Replace the normalizeOrder function in your PersonalArea.jsx with this:
-// convert many possible shapes into a real Date (or null)
+// Convert many possible shapes into a real Date (or null)
 const toDateObj = (v) => {
   if (!v) return null;
   if (v instanceof Date) return v;
@@ -41,10 +41,11 @@ const toDateObj = (v) => {
   }
   return null;
 };
+
 // Robust date parser for many Mongo/JS shapes → { ts:number|null, iso:string|null }
 const parseAnyDate = (v) => {
   const toISO = (d) => (Number.isNaN(+d) ? null : d.toISOString());
-  const toTS  = (d) => (Number.isNaN(+d) ? null : d.getTime());
+  const toTS = (d) => (Number.isNaN(+d) ? null : d.getTime());
 
   if (!v) return { ts: null, iso: null };
 
@@ -89,14 +90,13 @@ const parseAnyDate = (v) => {
   return { ts: null, iso: null };
 };
 
-// put this helper near the other helpers
 const toIdString = (v) => {
   if (!v) return null;
   if (typeof v === "string") return v;
   if (typeof v === "object") {
-    if (typeof v.$oid === "string") return v.$oid;            // { $oid: "..." }
-    if (typeof v._id === "string") return v._id;              // { _id: "..." }
-    if (v._id && typeof v._id.$oid === "string") return v._id.$oid; // { _id: { $oid: "..." } }
+    if (typeof v.$oid === "string") return v.$oid;
+    if (typeof v._id === "string") return v._id;
+    if (v._id && typeof v._id.$oid === "string") return v._id.$oid;
   }
   try { return String(v); } catch { return null; }
 };
@@ -114,54 +114,49 @@ const normalizeOrder = (o) => {
   })();
 
   // Friendly names for route
-  // route names — prefer raw strings first
-const departure =
-  (typeof o.departure === "string" && o.departure) ||
-  o.departureCityName ||
-  o.departure_city_name ||
-  (typeof o.cityName === "string" && o.cityName) ||
-  (looksLikeId(o?.departure_city_id) ? o.departure_city_id : null) ||
-  "—";
+  const departure =
+    (typeof o.departure === "string" && o.departure) ||
+    o.departureCityName ||
+    o.departure_city_name ||
+    (typeof o.cityName === "string" && o.cityName) ||
+    (looksLikeId(o?.departure_city_id) ? o.departure_city_id : null) ||
+    "—";
 
-const destination =
-  (typeof o.destination === "string" && o.destination) ||
-  o.destinationCityName ||
-  o.destination_city_name ||
-  (typeof o.cityName === "string" && o.cityName) ||
-  (looksLikeId(o?.destination_city_id) ? o.destination_city_id : null) ||
-  "—";
+  const destination =
+    (typeof o.destination === "string" && o.destination) ||
+    o.destinationCityName ||
+    o.destination_city_name ||
+    (typeof o.cityName === "string" && o.cityName) ||
+    (looksLikeId(o?.destination_city_id) ? o.destination_city_id : null) ||
+    "—";
 
-// flight/hotel — prefer your raw fields first
-const flight =
-  (typeof o.flightNumber === "string" && o.flightNumber) ||
-  o.flightName ||
-  o.flight_name ||
-  "—";
+  const flight =
+    (typeof o.flightNumber === "string" && o.flightNumber) ||
+    o.flightName ||
+    o.flight_name ||
+    "—";
 
-const hotel =
-  o.hotelName ||
-  o.hotel_name ||
-  toIdString(o.hotel_id) || // 👈 show the id (and allows future resolver, if you add one)
-  "—";
-
-
+  const hotel =
+    o.hotelName ||
+    o.hotel_name ||
+    toIdString(o.hotel_id) ||
+    "—";
 
   // Normalize attractions:
-const attractionNames =
-  (Array.isArray(o.attraction_names) ? o.attraction_names : null) ??
-  (Array.isArray(o.attractionNames) ? o.attractionNames : null) ??
-  [];
+  const attractionNames =
+    (Array.isArray(o.attraction_names) ? o.attraction_names : null) ??
+    (Array.isArray(o.attractionNames) ? o.attractionNames : null) ??
+    [];
 
-const attractionIdStrings = Array.isArray(o.attractions)
-  ? o.attractions
-      .map(toIdString)                           // 👈 converts {$oid} / {_id:{ $oid }} to hex
-      .filter(s => typeof s === "string" && /^[0-9a-fA-F]{24}$/.test(s))
-  : [];
+  const attractionIdStrings = Array.isArray(o.attractions)
+    ? o.attractions
+        .map(toIdString)
+        .filter(s => typeof s === "string" && /^[0-9a-fA-F]{24}$/.test(s))
+    : [];
 
-// names first; otherwise provide hex ids so the useEffect resolver fires
-const attractions = attractionNames.length ? attractionNames : attractionIdStrings;
+  const attractions = attractionNames.length ? attractionNames : attractionIdStrings;
 
-  // robust date handling (allow reassign on fallback)
+  // robust date handling
   const createdRaw =
     o.bookingDate ??
     o.booking_date ??
@@ -169,12 +164,12 @@ const attractions = attractionNames.length ? attractionNames : attractionIdStrin
     o.createdAt ??
     o.tripDate ??
     null;
- const tripStartRaw =
+  const tripStartRaw =
     o.trip_start_date ?? o.trip_date ?? o.tripDate ?? o.startDate ?? null;
   const tripEndRaw =
     o.trip_end_date ?? o.return_date ?? o.returnDate ?? o.endDate ?? null;
   const { ts: tripStartTs, iso: tripStartISO } = parseAnyDate(tripStartRaw);
-  const { ts: tripEndTs,   iso: tripEndISO   } = parseAnyDate(tripEndRaw);
+  const { ts: tripEndTs, iso: tripEndISO } = parseAnyDate(tripEndRaw);
   let { ts: tmpTs, iso: tmpIso } = parseAnyDate(createdRaw);
   let createdAtTs = tmpTs;
   let createdAtISO = tmpIso;
@@ -201,6 +196,10 @@ const attractions = attractionNames.length ? attractionNames : attractionIdStrin
 
   const totalPrice = Number(o.total_price ?? o.totalPrice ?? 0);
 
+  // Check if order can be cancelled (trip hasn't started yet)
+  const canCancel = tripStartTs ? tripStartTs > Date.now() : true;
+  const isCancelled = o.status === "cancelled" || o.cancelled === true;
+
   return {
     raw: o,
     id,
@@ -208,11 +207,7 @@ const attractions = attractionNames.length ? attractionNames : attractionIdStrin
     destination,
     flight,
     hotel,
-    // IMPORTANT:
-    // put only string ObjectIds here so your useEffect resolver runs
     attractions,
-    // (chips will still prefer selectedOrder.attractionNamesResolved,
-    // then raw.attraction_names, then this array)
     transportation: o.transportation || "—",
     paymentMethod: o.payment_method || o.paymentMethod || "—",
     totalPrice,
@@ -221,39 +216,14 @@ const attractions = attractionNames.length ? attractionNames : attractionIdStrin
     tripStartISO: tripStartISO,
     tripEndISO: tripEndISO,
     tripStartTs: Number.isFinite(tripStartTs) ? tripStartTs : null,
-    tripEndTs:   Number.isFinite(tripEndTs)   ? tripEndTs   : null,
+    tripEndTs: Number.isFinite(tripEndTs) ? tripEndTs : null,
     source: o.cityName ? "orders2" : "order",
+    canCancel,
+    isCancelled,
+    cancelledAt: o.cancelled_at ? new Date(o.cancelled_at).toISOString() : null,
   };
 };
 
-
-const LoadingSpinner = ({ size = "large", message = "Loading..." }) => {
-  const spinnerSize = size === "small" ? "40px" : size === "medium" ? "60px" : "80px";
-  return (
-    <div style={{
-      display: "flex", flexDirection: "column", alignItems: "center",
-      justifyContent: "center", padding: "40px 20px",
-      minHeight: size === "large" ? "300px" : "150px",
-    }}>
-      <div
-        style={{
-          width: spinnerSize, height: spinnerSize,
-          border: "4px solid #f3f4f6", borderTop: "4px solid #3b82f6",
-          borderRadius: "50%", animation: "spin 1s linear infinite",
-          marginBottom: "16px"
-        }}
-      />
-      <p style={{ color: "#6b7280", fontSize: 16, fontWeight: 500, margin: 0 }}>
-        {message}
-      </p>
-      <style>{`
-        @keyframes spin { 0% { transform: rotate(0deg) } 100% { transform: rotate(360deg) } }
-      `}</style>
-    </div>
-  );
-};
-
-// 2) Keep fetch purely for data
 // Fetch orders from BOTH collections and return one combined array
 async function fetchMyOrders(token) {
   const headers = token ? { Authorization: `Bearer ${token}` } : {};
@@ -271,11 +241,11 @@ async function fetchMyOrders(token) {
 
   // Fetch both in parallel
   const [orders1Res, orders2Res] = await Promise.allSettled([
-    tryFetch(`${API_BASE}/api/order?limit=100`, "order"),     // enriched
-    tryFetch(`${API_BASE}/api/orders2?limit=100`, "orders2"), // basic
+    tryFetch(`${API_BASE}/api/order?limit=100`, "order"),
+    tryFetch(`${API_BASE}/api/orders2?limit=100`, "orders2"),
   ]);
 
-  const ordersFromOrder   = orders1Res.status === "fulfilled" ? orders1Res.value : [];
+  const ordersFromOrder = orders1Res.status === "fulfilled" ? orders1Res.value : [];
   const ordersFromOrders2 = orders2Res.status === "fulfilled" ? orders2Res.value : [];
 
   // Helpers
@@ -285,40 +255,40 @@ async function fetchMyOrders(token) {
     (o && typeof o.id === "string" && o.id) ||
     null;
 
-// robust date handling for orders
-const toTs = (v) => {
-  if (!v) return NaN;
-  const t = new Date(v).getTime();
-  return Number.isFinite(t) ? t : NaN;
-};
+  // robust date handling for orders
+  const toTs = (v) => {
+    if (!v) return NaN;
+    const t = new Date(v).getTime();
+    return Number.isFinite(t) ? t : NaN;
+  };
 
-const tsFromObjectId = (id) => {
-  if (!id || typeof id !== "string" || id.length < 8) return NaN;
-  const secs = parseInt(id.slice(0, 8), 16);
-  return Number.isFinite(secs) ? secs * 1000 : NaN;
-};
+  const tsFromObjectId = (id) => {
+    if (!id || typeof id !== "string" || id.length < 8) return NaN;
+    const secs = parseInt(id.slice(0, 8), 16);
+    return Number.isFinite(secs) ? secs * 1000 : NaN;
+  };
 
-// returns a stable timestamp per order (ms since epoch)
-const getOrderCreatedTs = (o) => {
-  // Prefer stored fields from your two backends
-  const t =
-   toTs(o?.bookingDate) ||   // 👈 first
-    toTs(o?.booking_date) ||
-   toTs(o?.created_at)  ||   // then legacy
-   toTs(o?.createdAt)   ||   // then new field
-   toTs(o?.tripDate);        // last resortort stored date
+  // returns a stable timestamp per order (ms since epoch)
+  const getOrderCreatedTs = (o) => {
+    // Prefer stored fields from your two backends
+    const t =
+      toTs(o?.bookingDate) ||
+      toTs(o?.booking_date) ||
+      toTs(o?.created_at) ||
+      toTs(o?.createdAt) ||
+      toTs(o?.tripDate);
 
-  if (Number.isFinite(t)) return t;
+    if (Number.isFinite(t)) return t;
 
-  // FINAL fallback: derive from MongoDB ObjectId (stable, per-document)
-  const id =
-    (typeof o?._id === "string" && o._id) ||
-    (o?._id?.$oid) ||
-    (typeof o?.id === "string" && o.id) ||
-    null;
+    // FINAL fallback: derive from MongoDB ObjectId (stable, per-document)
+    const id =
+      (typeof o?._id === "string" && o._id) ||
+      (o?._id?.$oid) ||
+      (typeof o?.id === "string" && o.id) ||
+      null;
 
-  return tsFromObjectId(id) || 0;
-};
+    return tsFromObjectId(id) || 0;
+  };
 
   // Build a map by _id; prefer enriched fields from /api/order when both exist
   const byId = new Map();
@@ -346,29 +316,28 @@ const getOrderCreatedTs = (o) => {
     byId.set(id, {
       ...existing,
       ...o, // overwrite with enriched values
-      // ensure denormalized names stick if present in either
-    flight_name: o.flight_name ?? o.flightName ?? existing.flight_name ?? existing.flightName ?? null,
-   hotel_name:  o.hotel_name  ?? o.hotelName  ?? existing.hotel_name  ?? existing.hotelName  ?? null,
-   departure_city_name:
-     o.departure_city_name ?? o.departureCityName ??
-     existing.departure_city_name ?? existing.departureCityName ??
-     o.departure ?? existing.departure ?? null,
-   destination_city_name:
-     o.destination_city_name ?? o.destinationCityName ??
-     existing.destination_city_name ?? existing.destinationCityName ??
-     o.destination ?? existing.destination ?? o.cityName ?? existing.cityName ?? null,
-   attraction_names: dedupe(
-     (Array.isArray(o.attraction_names) ? o.attraction_names : o.attractionNames) ||
-     (Array.isArray(existing.attraction_names) ? existing.attraction_names : existing.attractionNames) ||
-     []
-   ),
+      flight_name: o.flight_name ?? o.flightName ?? existing.flight_name ?? existing.flightName ?? null,
+      hotel_name: o.hotel_name ?? o.hotelName ?? existing.hotel_name ?? existing.hotelName ?? null,
+      departure_city_name:
+        o.departure_city_name ?? o.departureCityName ??
+        existing.departure_city_name ?? existing.departureCityName ??
+        o.departure ?? existing.departure ?? null,
+      destination_city_name:
+        o.destination_city_name ?? o.destinationCityName ??
+        existing.destination_city_name ?? existing.destinationCityName ??
+        o.destination ?? existing.destination ?? o.cityName ?? existing.cityName ?? null,
+      attraction_names: dedupe(
+        (Array.isArray(o.attraction_names) ? o.attraction_names : o.attractionNames) ||
+        (Array.isArray(existing.attraction_names) ? existing.attraction_names : existing.attractionNames) ||
+        []
+      ),
     });
   }
 
   const merged = Array.from(byId.values());
 
   // Sort newest first (fallback to ObjectId timestamp if needed)
-merged.sort((a, b) => getOrderCreatedTs(b) - getOrderCreatedTs(a));
+  merged.sort((a, b) => getOrderCreatedTs(b) - getOrderCreatedTs(a));
 
   console.log("🔍 Fetched orders:", {
     fromOrder: ordersFromOrder.length,
@@ -380,120 +349,42 @@ merged.sort((a, b) => getOrderCreatedTs(b) - getOrderCreatedTs(a));
   return merged;
 }
 
+/* ---------- Components ---------- */
+const LoadingSpinner = ({ size = "large", message = "Loading..." }) => {
+  const sizeClass = size === "small" ? "loading-spinner--small" : 
+                   size === "medium" ? "loading-spinner--medium" : 
+                   "loading-spinner--large";
+  
+  const containerClass = size === "large" ? "loading-container--large" : 
+                        size === "medium" ? "loading-container--medium" : 
+                        "loading-container";
 
-
-// Page Loading Overlay Component
-const PageLoadingOverlay = ({ message = "Loading data..." }) => {
   return (
-    <div 
-      style={{
-        position: "fixed",
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        backgroundColor: "rgba(255, 255, 255, 0.9)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        zIndex: 9999,
-        animation: "fadeIn 0.3s ease-out"
-      }}
-    >
-      <div style={{
-        backgroundColor: "white",
-        borderRadius: "16px",
-        padding: "40px",
-        boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
-        textAlign: "center",
-        maxWidth: "300px",
-        width: "90%"
-      }}>
-        <div
-          style={{
-            width: "60px",
-            height: "60px",
-            border: "4px solid #f3f4f6",
-            borderTop: "4px solid #3b82f6",
-            borderRadius: "50%",
-            animation: "spin 1s linear infinite",
-            margin: "0 auto 20px"
-          }}
-        />
-        <p style={{
-          color: "#374151",
-          fontSize: "18px",
-          fontWeight: "500",
-          margin: 0
-        }}>
-          {message}
-        </p>
-      </div>
-      
-      <style >{`
-        @keyframes fadeIn {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
-        
-        @keyframes spin {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
-        }
-      `}</style>
+    <div className={`loading-container ${containerClass}`}>
+      <div className={`loading-spinner ${sizeClass}`} />
+      <p className="loading-message">{message}</p>
     </div>
   );
 };
 
-// Success Popup Component
+const PageLoadingOverlay = ({ message = "Loading data..." }) => {
+  return (
+    <div className="page-loading-overlay">
+      <div className="page-loading-content">
+        <div className="page-loading-spinner" />
+        <p className="page-loading-message">{message}</p>
+      </div>
+    </div>
+  );
+};
+
 const SuccessPopup = ({ isVisible, onClose, message }) => {
   if (!isVisible) return null;
 
   return (
-    <div 
-      className="success-popup-overlay"
-      onClick={onClose}
-      style={{
-        position: "fixed",
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        backgroundColor: "rgba(0, 0, 0, 0.5)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        zIndex: 1000,
-        animation: "fadeIn 0.3s ease-out"
-      }}
-    >
-      <div 
-        className="success-popup-content"
-        onClick={(e) => e.stopPropagation()}
-        style={{
-          backgroundColor: "white",
-          borderRadius: "16px",
-          padding: "32px",
-          maxWidth: "400px",
-          width: "90%",
-          boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
-          textAlign: "center",
-          position: "relative",
-          animation: "slideUp 0.3s ease-out"
-        }}
-      >
-        {/* Success Icon */}
-        <div style={{
-          width: "64px",
-          height: "64px",
-          backgroundColor: "#10b981",
-          borderRadius: "50%",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          margin: "0 auto 20px",
-          animation: "scaleIn 0.4s ease-out 0.1s both"
-        }}>
+    <div className="success-popup-overlay" onClick={onClose}>
+      <div className="success-popup-content" onClick={(e) => e.stopPropagation()}>
+        <div className="success-icon">
           <svg 
             width="32" 
             height="32" 
@@ -508,95 +399,95 @@ const SuccessPopup = ({ isVisible, onClose, message }) => {
           </svg>
         </div>
         
-        {/* Title */}
-        <h3 style={{
-          fontSize: "24px",
-          fontWeight: "600",
-          color: "#111827",
-          margin: "0 0 12px",
-          animation: "slideUp 0.4s ease-out 0.2s both"
-        }}>
-            Success! 🎉
-        </h3>
+        <h3 className="success-title">Success!</h3>
         
-        {/* Message */}
-        <p style={{
-          fontSize: "16px",
-          color: "#6b7280",
-          margin: "0 0 24px",
-          lineHeight: "1.5",
-          animation: "slideUp 0.4s ease-out 0.3s both"
-        }}>
-          {message}
-        </p>
+        <p className="success-message">{message}</p>
         
-        {/* Close Button */}
-        <button
-          onClick={onClose}
-          style={{
-            backgroundColor: "#10b981",
-            color: "white",
-            border: "none",
-            borderRadius: "8px",
-            padding: "12px 24px",
-            fontSize: "16px",
-            fontWeight: "500",
-            cursor: "pointer",
-            transition: "all 0.2s ease",
-            animation: "slideUp 0.4s ease-out 0.4s both"
-          }}
-          onMouseEnter={(e) => {
-            e.target.style.backgroundColor = "#059669";
-            e.target.style.transform = "translateY(-1px)";
-          }}
-          onMouseLeave={(e) => {
-            e.target.style.backgroundColor = "#10b981";
-            e.target.style.transform = "translateY(0)";
-          }}
-        >
-         Close
+        <button className="success-close-btn" onClick={onClose}>
+          Close
         </button>
       </div>
-      
-      <style>{`
-        @keyframes fadeIn {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
-        
-        @keyframes slideUp {
-          from { 
-            opacity: 0;
-            transform: translateY(20px);
-          }
-          to { 
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-        
-        @keyframes scaleIn {
-          from { 
-            opacity: 0;
-            transform: scale(0.5);
-          }
-          to { 
-            opacity: 1;
-            transform: scale(1);
-          }
-        }
-      `}</style>
     </div>
   );
 };
 
+const CancelConfirmationPopup = ({ isVisible, onClose, onConfirm, orderDetails, isLoading }) => {
+  if (!isVisible) return null;
+
+  return (
+    <div className="cancel-popup-overlay" onClick={onClose}>
+      <div className="cancel-popup-content" onClick={(e) => e.stopPropagation()}>
+        <div className="cancel-icon">
+          <svg 
+            width="32" 
+            height="32" 
+            viewBox="0 0 24 24" 
+            fill="none" 
+            stroke="white" 
+            strokeWidth="3"
+            strokeLinecap="round" 
+            strokeLinejoin="round"
+          >
+            <path d="M3 6h18l-2 13H5L3 6z"></path>
+            <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+          </svg>
+        </div>
+        
+        <h3 className="cancel-title">Cancel Order?</h3>
+        
+        {orderDetails && (
+          <div className="cancel-order-details">
+            <p><strong>Route:</strong> {orderDetails.departure} → {orderDetails.destination}</p>
+            <p><strong>Price:</strong> {toUsd(orderDetails.totalPrice)}</p>
+            <p><strong>Trip Date:</strong> {orderDetails.tripStartTs ? new Date(orderDetails.tripStartTs).toLocaleDateString() : "—"}</p>
+          </div>
+        )}
+        
+        <p className="cancel-message">
+          Are you sure you want to cancel this order?
+        </p>
+        
+        <p className="cancel-submessage">
+          The money will be refunded to you within a few days. If you need assistance, you can contact us.
+        </p>
+        
+        <div className="cancel-actions">
+          <button
+            className={`cancel-keep-btn ${isLoading ? 'cancel-keep-btn:disabled' : ''}`}
+            onClick={onClose}
+            disabled={isLoading}
+          >
+            Keep Order
+          </button>
+          
+          <button
+            className={`cancel-confirm-btn ${isLoading ? 'cancel-confirm-btn:disabled' : ''}`}
+            onClick={onConfirm}
+            disabled={isLoading}
+          >
+            {isLoading ? (
+              <>
+                <div className="cancel-loading-spinner" />
+                Cancelling...
+              </>
+            ) : (
+              "Cancel Order"
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/* ---------- Main Component ---------- */
 const PersonalArea = () => {
   const navigate = useNavigate();
   
+  // State variables
   const [activeTab, setActiveTab] = useState("userInfo");
   const [user, setUser] = useState(null);
   const [email, setEmail] = useState("");
-
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [loading, setLoading] = useState(false);
 
@@ -605,13 +496,13 @@ const PersonalArea = () => {
   const [isUserLoading, setIsUserLoading] = useState(false);
   const [isOrdersLoading, setIsOrdersLoading] = useState(false);
 
-  const [orders, setOrders] = useState([]); // normalized orders
+  const [orders, setOrders] = useState([]);
   const [apiError, setApiError] = useState("");
 
-  // date filter + sort
-  const [dateFrom, setDateFrom] = useState(""); // "YYYY-MM-DD"
-  const [dateTo, setDateTo] = useState("");     // "YYYY-MM-DD"
-  const [sortDir, setSortDir] = useState("desc"); // "desc" | "asc"
+  // Date filter + sort
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [sortDir, setSortDir] = useState("desc");
 
   const [isEditing, setIsEditing] = useState(false);
   const [editedUser, setEditedUser] = useState({ username: "", email: "" });
@@ -620,110 +511,102 @@ const PersonalArea = () => {
   const [showSuccessPopup, setShowSuccessPopup] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
 
-  /* ---------- user fetch ---------- */
-const fetchUser = async () => {
-  try {
-    setIsUserLoading(true);
+  // Cancel confirmation popup state
+  const [showCancelPopup, setShowCancelPopup] = useState(false);
+  const [orderToCancel, setOrderToCancel] = useState(null);
+  const [isCancelling, setIsCancelling] = useState(false);
 
-    const token =
-      localStorage.getItem("authToken") ||
-      localStorage.getItem("token") ||
-      localStorage.getItem("jwt");
-
-    if (!token) {
-      navigate("/login");
-      return null;
-    }
-
-    const res = await fetch(`${API_BASE}/api/auth/user`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    if (!res.ok) throw new Error(`Failed user fetch ${res.status}`);
-
-    const userData = await res.json();
-    // ✅ fixed: spread the fetched user object correctly
-    const formatted = { ...userData, id: userData._id };
-
-    setUser(formatted);
-    setEditedUser({
-      username: userData.username || "",
-      email: userData.email || "",
-    });
-
-    return formatted;
-  } catch (e) {
-    console.error("user fetch error", e);
-    return null;
-  } finally {
-    setIsUserLoading(false);
-  }
-};
-
-
-  /* ---------- orders fetch ---------- */
-const loadOrders = async () => {
-  try {
-    setIsOrdersLoading(true);
-    setApiError("");
-    const token = localStorage.getItem("authToken");
-    if (!token) return;
-
-    const rawOrders = await fetchMyOrders(token);
-
-    // normalize both kinds
-    const normalized = rawOrders.map(normalizeOrder);
-const byId = new Map();
-for (const o of normalized) {
-  const key = o.id || o.raw?._id?.$oid || o.raw?._id || null;
-  // skip if we somehow don't have an id
-  if (!key) continue;
-  if (!byId.has(key)) byId.set(key, o);
-}
-
-setOrders(Array.from(byId.values()));
-    // optional: de-dupe by a stable key
-setOrders(Array.from(byId.values()));
-
-  } catch (e) {
-    console.error("orders fetch error", e);
-    setApiError("Failed to load your orders.");
-    setOrders([]);
-  } finally {
-    setIsOrdersLoading(false);
-  }
-};
-
-
-
-// inside PersonalArea.jsx > when selectedOrder opens:
-// ✅ keep as-is, or drop the onlyIds check if you want to always resolve
-useEffect(() => {
-  if (!selectedOrder) return;
-  const ids = Array.isArray(selectedOrder.attractions) ? selectedOrder.attractions : [];
-  const onlyIds = ids.length > 0 && ids.every(v => /^[0-9a-fA-F]{24}$/.test(v));
-  if (!onlyIds) return;
-
-  let cancelled = false;
-  (async () => {
+  /* ---------- API Functions ---------- */
+  const fetchUser = async () => {
     try {
-      const token = localStorage.getItem("authToken");
-      const q = ids.join(",");
-      const r = await fetch(`${API_BASE}/api/attractions?ids=${encodeURIComponent(q)}`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {}
-      });
-      const { data = [] } = await r.json();
-      const names = data.map(a => a.name).filter(Boolean);
-      if (!cancelled) {
-        setSelectedOrder(prev => ({ ...prev, attractionNamesResolved: names }));
+      setIsUserLoading(true);
+
+      const token =
+        localStorage.getItem("authToken") ||
+        localStorage.getItem("token") ||
+        localStorage.getItem("jwt");
+
+      if (!token) {
+        navigate("/login");
+        return null;
       }
-    } catch {}
-  })();
-  return () => { cancelled = true; };
-}, [selectedOrder]);
 
-// and in the render, prefer selectedOrder.attractionNamesResolved || raw.attraction_names || …
+      const res = await fetch(`${API_BASE}/api/auth/user`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error(`Failed user fetch ${res.status}`);
 
-  /* ---------- init ---------- */
+      const userData = await res.json();
+      const formatted = { ...userData, id: userData._id };
+
+      setUser(formatted);
+      setEditedUser({
+        username: userData.username || "",
+        email: userData.email || "",
+      });
+
+      return formatted;
+    } catch (e) {
+      console.error("user fetch error", e);
+      return null;
+    } finally {
+      setIsUserLoading(false);
+    }
+  };
+
+  const loadOrders = async () => {
+    try {
+      setIsOrdersLoading(true);
+      setApiError("");
+      const token = localStorage.getItem("authToken");
+      if (!token) return;
+
+      const rawOrders = await fetchMyOrders(token);
+      const normalized = rawOrders.map(normalizeOrder);
+      const byId = new Map();
+      
+      for (const o of normalized) {
+        const key = o.id || o.raw?._id?.$oid || o.raw?._id || null;
+        if (!key) continue;
+        if (!byId.has(key)) byId.set(key, o);
+      }
+
+      setOrders(Array.from(byId.values()));
+    } catch (e) {
+      console.error("orders fetch error", e);
+      setApiError("Failed to load your orders.");
+      setOrders([]);
+    } finally {
+      setIsOrdersLoading(false);
+    }
+  };
+
+  // Resolve attraction IDs to names
+  useEffect(() => {
+    if (!selectedOrder) return;
+    const ids = Array.isArray(selectedOrder.attractions) ? selectedOrder.attractions : [];
+    const onlyIds = ids.length > 0 && ids.every(v => /^[0-9a-fA-F]{24}$/.test(v));
+    if (!onlyIds) return;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const token = localStorage.getItem("authToken");
+        const q = ids.join(",");
+        const r = await fetch(`${API_BASE}/api/attractions?ids=${encodeURIComponent(q)}`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {}
+        });
+        const { data = [] } = await r.json();
+        const names = data.map(a => a.name).filter(Boolean);
+        if (!cancelled) {
+          setSelectedOrder(prev => ({ ...prev, attractionNamesResolved: names }));
+        }
+      } catch {}
+    })();
+    return () => { cancelled = true; };
+  }, [selectedOrder]);
+
+  // Initialize component
   useEffect(() => {
     (async () => {
       setIsInitialLoading(true);
@@ -733,44 +616,42 @@ useEffect(() => {
       }
       setIsInitialLoading(false);
     })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  /* ---------- memo: date filter + sort ---------- */
+  /* ---------- Computed Values ---------- */
   const filteredOrders = useMemo(() => {
-  let list = [...orders];
+    let list = [...orders];
 
-  // date range bounds in local time (inclusive)
-  const fromTime = dateFrom ? new Date(`${dateFrom}T00:00:00`).getTime() : null;
-  const toTime   = dateTo   ? new Date(`${dateTo}T23:59:59.999`).getTime() : null;
+    // Date range bounds in local time (inclusive)
+    const fromTime = dateFrom ? new Date(`${dateFrom}T00:00:00`).getTime() : null;
+    const toTime = dateTo ? new Date(`${dateTo}T23:59:59.999`).getTime() : null;
 
-  if (fromTime !== null || toTime !== null) {
-    list = list.filter((o) => {
-      const t = typeof o.createdAtTs === "number" ? o.createdAtTs : null;
-      if (t === null) return false;
-      if (fromTime !== null && t < fromTime) return false;
-      if (toTime   !== null && t > toTime)   return false;
-      return true;
+    if (fromTime !== null || toTime !== null) {
+      list = list.filter((o) => {
+        const t = typeof o.createdAtTs === "number" ? o.createdAtTs : null;
+        if (t === null) return false;
+        if (fromTime !== null && t < fromTime) return false;
+        if (toTime !== null && t > toTime) return false;
+        return true;
+      });
+    }
+
+    list.sort((a, b) => {
+      const hasA = Number.isFinite(a.createdAtTs);
+      const hasB = Number.isFinite(b.createdAtTs);
+
+      // Always put items without a date at the end
+      if (hasA && !hasB) return -1;
+      if (!hasA && hasB) return 1;
+      if (!hasA && !hasB) return 0;
+
+      return sortDir === "asc"
+        ? a.createdAtTs - b.createdAtTs
+        : b.createdAtTs - a.createdAtTs;
     });
-  }
 
- list.sort((a, b) => {
-  const hasA = Number.isFinite(a.createdAtTs);
-  const hasB = Number.isFinite(b.createdAtTs);
-
-  // always put items without a date at the end
-  if (hasA && !hasB) return -1;
-  if (!hasA && hasB) return 1;
-  if (!hasA && !hasB) return 0;
-
-  return sortDir === "asc"
-    ? a.createdAtTs - b.createdAtTs
-    : b.createdAtTs - a.createdAtTs;
-});
-
-
-  return list;
-}, [orders, dateFrom, dateTo, sortDir]);
+    return list;
+  }, [orders, dateFrom, dateTo, sortDir]);
 
   const [page, setPage] = useState(1);
   const pageSize = 9;
@@ -789,7 +670,7 @@ useEffect(() => {
     setPage(1);
   }, [dateFrom, dateTo, sortDir, orders.length]);
 
-  /* ---------- actions ---------- */
+  /* ---------- Event Handlers ---------- */
   const handleViewOrderDetails = (order) => setSelectedOrder(order);
 
   const handleLogout = () => {
@@ -801,6 +682,55 @@ useEffect(() => {
   const showSuccessMessage = (message) => {
     setSuccessMessage(message);
     setShowSuccessPopup(true);
+  };
+
+  const handleCancelOrder = (order) => {
+    setOrderToCancel(order);
+    setShowCancelPopup(true);
+  };
+
+  const confirmCancelOrder = async () => {
+    if (!orderToCancel) return;
+
+    setIsCancelling(true);
+    try {
+      const token = localStorage.getItem("authToken");
+      if (!token) {
+        throw new Error("Authentication token not found");
+      }
+
+      const response = await fetch(`${API_BASE}/api/order/${orderToCancel.id}/cancel`, {
+        method: "PATCH",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json"
+        }
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `Failed to cancel order (${response.status})`);
+      }
+
+      // Update the orders list to reflect the cancellation
+      setOrders(prevOrders => 
+        prevOrders.map(order => 
+          order.id === orderToCancel.id 
+            ? { ...order, isCancelled: true, cancelledAt: new Date().toISOString(), raw: { ...order.raw, status: "cancelled", cancelled_at: new Date() } }
+            : order
+        )
+      );
+
+      setShowCancelPopup(false);
+      setOrderToCancel(null);
+      showSuccessMessage("Order cancelled successfully! Your refund will be processed within a few days.");
+
+    } catch (error) {
+      console.error("Cancel order error:", error);
+      alert(`Failed to cancel order: ${error.message}`);
+    } finally {
+      setIsCancelling(false);
+    }
   };
 
   const handleSubscribe = async () => {
@@ -821,7 +751,7 @@ useEffect(() => {
           throw new Error("Newsletter endpoint not found on the server. Add /api/newsletter route.");
         }
         if (res.status === 409) {
-          showSuccessMessage("You are already subscribed to the newsletter with this email! ✅");
+          showSuccessMessage("You are already subscribed to the newsletter with this email!");
           setEmail("");
           return;
         }
@@ -829,7 +759,7 @@ useEffect(() => {
         throw new Error(j.message || `HTTP ${res.status}`);
       }
 
-      showSuccessMessage("Successfully subscribed to the newsletter! 📧 Check your inbox.");
+      showSuccessMessage("Successfully subscribed to the newsletter! Check your inbox.");
       setEmail("");
     } catch (e) {
       alert(`Failed to subscribe: ${e.message}`);
@@ -846,10 +776,10 @@ useEffect(() => {
 
   // Show initial loading overlay
   if (isInitialLoading) {
-    return <PageLoadingOverlay message="Loading your Profile.." />;
+    return <PageLoadingOverlay message="Loading your Profile..." />;
   }
 
-  /* ---------- UI ---------- */
+  /* ---------- Render ---------- */
   return (
     <div>
       <h1 className="page-title">Personal Area</h1>
@@ -881,14 +811,13 @@ useEffect(() => {
       </div>
 
       <div className="containerPersonal">
-        {/* User Information */}
+        {/* User Information Tab */}
         {activeTab === "userInfo" && (
           <>
             <h2 className="heading">User Details</h2>
             <div className="profileInfo">
-{isUserLoading ? (
-  <LoadingSpinner size="medium" message="Loading user details..." />
-
+              {isUserLoading ? (
+                <LoadingSpinner size="medium" message="Loading user details..." />
               ) : user ? (
                 <>
                   <p>
@@ -905,7 +834,7 @@ useEffect(() => {
                 </>
               ) : (
                 <div>
-                  <p>no user data available</p>
+                  <p>No user data available</p>
                 </div>
               )}
             </div>
@@ -928,56 +857,67 @@ useEffect(() => {
               <button className="close-modal" onClick={() => setSelectedOrder(null)} aria-label="Close">×</button>
 
               <div className="modal-body">
-                {/* Wrap details in a grid for nicer layout */}
+                {/* Order Status */}
+                {selectedOrder.isCancelled && (
+                  <div className="order-status-cancelled">
+                    <p className="order-status-cancelled-title">
+                      ORDER CANCELLED
+                    </p>
+                    {selectedOrder.cancelledAt && (
+                      <p className="order-status-cancelled-date">
+                        Cancelled on: {new Date(selectedOrder.cancelledAt).toLocaleDateString()}
+                      </p>
+                    )}
+                  </div>
+                )}
+
                 <div className="order-detail-grid">
                   <p><strong>Order ID:</strong> {selectedOrder.id}</p>
-            <p><strong>Created At:</strong> {Number.isFinite(selectedOrder.createdAtTs) ? new Date(selectedOrder.createdAtTs).toLocaleDateString() : "—"}</p>
- <p><strong>Trip Start:</strong> {Number.isFinite(selectedOrder.tripStartTs) ? new Date(selectedOrder.tripStartTs).toLocaleDateString() : "—"}</p>
- <p><strong>Trip End:</strong> {Number.isFinite(selectedOrder.tripEndTs) ? new Date(selectedOrder.tripEndTs).toLocaleDateString() : "—"}</p>
+                  <p><strong>Created At:</strong> {Number.isFinite(selectedOrder.createdAtTs) ? new Date(selectedOrder.createdAtTs).toLocaleDateString() : "—"}</p>
+                  <p><strong>Trip Start:</strong> {Number.isFinite(selectedOrder.tripStartTs) ? new Date(selectedOrder.tripStartTs).toLocaleDateString() : "—"}</p>
+                  <p><strong>Trip End:</strong> {Number.isFinite(selectedOrder.tripEndTs) ? new Date(selectedOrder.tripEndTs).toLocaleDateString() : "—"}</p>
                   <p><strong>Destination City:</strong> {selectedOrder.destination}</p>
                   <p><strong>Flight:</strong> {selectedOrder.flight}</p>
                   <p><strong>Hotel:</strong> {selectedOrder.hotel}</p>
 
-                  {/* Attractions (chips) */}
-               <p style={{ gridColumn: "1 / -1" }}>
-  <strong>Attractions:</strong>{" "}
-  {(() => {
-    const rawNames = selectedOrder?.raw?.attraction_names;
-    const resolved = selectedOrder?.attractionNamesResolved;
-    const attrs = Array.isArray(selectedOrder?.attractions) ? selectedOrder.attractions : [];
+                  {/* Attractions */}
+                  <p className="full-width">
+                    <strong>Attractions:</strong>{" "}
+                    {(() => {
+                      const rawNames = selectedOrder?.raw?.attraction_names;
+                      const resolved = selectedOrder?.attractionNamesResolved;
+                      const attrs = Array.isArray(selectedOrder?.attractions) ? selectedOrder.attractions : [];
 
-    const ID_RE = /^[0-9a-fA-F]{24}$/;
-    const onlyIds = attrs.length > 0 && attrs.every(v => typeof v === "string" && ID_RE.test(v));
+                      const ID_RE = /^[0-9a-fA-F]{24}$/;
+                      const onlyIds = attrs.length > 0 && attrs.every(v => typeof v === "string" && ID_RE.test(v));
 
-    // 👇 priority: resolved names from useEffect → names saved on the order → non-ID strings in attractions
-    const names =
-      (Array.isArray(resolved) && resolved.length ? resolved : null) ??
-      (Array.isArray(rawNames) && rawNames.length ? rawNames : null) ??
-      (attrs.length && !onlyIds ? attrs : []);
+                      const names =
+                        (Array.isArray(resolved) && resolved.length ? resolved : null) ??
+                        (Array.isArray(rawNames) && rawNames.length ? rawNames : null) ??
+                        (attrs.length && !onlyIds ? attrs : []);
 
-    // Loading state while resolving IDs to names
-    if (!names.length && onlyIds) {
-      return <span className="chip chip--muted">Resolving {attrs.length}…</span>;
-    }
+                      if (!names.length && onlyIds) {
+                        return <span className="chip chip--muted">Resolving {attrs.length}…</span>;
+                      }
 
-    if (names.length) {
-      return (
-        <span className="chip-list">
-          {names.map((n, i) => (
-            <span key={i} className="chip">{n}</span>
-          ))}
-        </span>
-      );
-    }
+                      if (names.length) {
+                        return (
+                          <span className="chip-list">
+                            {names.map((n, i) => (
+                              <span key={i} className="chip">{n}</span>
+                            ))}
+                          </span>
+                        );
+                      }
 
-    return "—";
-  })()}
-</p>
+                      return "—";
+                    })()}
+                  </p>
 
                   <p><strong>Transportation:</strong> {selectedOrder.transportation}</p>
                   <p><strong>Payment Method:</strong> {selectedOrder.paymentMethod}</p>
-                  <p style={{ gridColumn: "1 / -1" }}>
-                    <strong>Total Price:</strong> {new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(Number(selectedOrder.totalPrice ?? 0))}
+                  <p className="full-width">
+                    <strong>Total Price:</strong> {toUsd(selectedOrder.totalPrice)}
                   </p>
                 </div>
               </div>
@@ -985,7 +925,7 @@ useEffect(() => {
           </div>
         )}
 
-        {/* Orders */}
+        {/* Orders Tab */}
         {activeTab === "orders" && (
           <>
             <h2 className="heading">Your Previous Orders</h2>
@@ -995,50 +935,32 @@ useEffect(() => {
             )}
 
             {isOrdersLoading ? (
-              <LoadingSpinner size="large" message="טוען הזמנות קודמות..." />
+              <LoadingSpinner size="large" message="Loading previous orders..." />
             ) : (
               <>
-                {/* Compact date + sort filters */}
-                <div
-                  className="orders-filters"
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
-                    gap: 8,
-                    alignItems: "end",
-                    marginBottom: 12,
-                  }}
-                >
+                {/* Date + sort filters */}
+                <div className="orders-filters">
                   <div>
-                    <label style={{ display: "block", fontSize: 12, color: "#666" }}>
-                      From
-                    </label>
+                    <label className="filter-label">From</label>
                     <input
                       type="date"
                       value={dateFrom}
                       onChange={(e) => setDateFrom(e.target.value)}
-                      style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid #e5e7eb" }}
                     />
                   </div>
                   <div>
-                    <label style={{ display: "block", fontSize: 12, color: "#666" }}>
-                      To
-                    </label>
+                    <label className="filter-label">To</label>
                     <input
                       type="date"
                       value={dateTo}
                       onChange={(e) => setDateTo(e.target.value)}
-                      style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid #e5e7eb" }}
                     />
                   </div>
                   <div>
-                    <label style={{ display: "block", fontSize: 12, color: "#666" }}>
-                      Sort
-                    </label>
+                    <label className="filter-label">Sort</label>
                     <select
                       value={sortDir}
                       onChange={(e) => setSortDir(e.target.value)}
-                      style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid #e5e7eb" }}
                     >
                       <option value="desc">Newest first</option>
                       <option value="asc">Oldest first</option>
@@ -1047,26 +969,57 @@ useEffect(() => {
                   <div>
                     <button
                       onClick={clearFilters}
-                      className="view-details-button"
-                      style={{ width: "100%" }}
+                      className="view-details-button filter-clear-btn"
                     >
                       Clear
                     </button>
                   </div>
                 </div>
 
-                <small style={{ color: "#666", display: "block", marginBottom: 8 }}>
+                <small className="filter-summary">
                   Showing: {filteredOrders.length} of {orders.length}
                 </small>
 
                 {filteredOrders.length > 0 ? (
                   <>
-              <ul className="orders-grid">
-                {currentPageOrders.map((o, index) => (
-                  <li
-key={o.id || (o.raw?._id?.$oid) || (o.raw?._id) || String(index)}
+                    <ul className="orders-grid">
+                      {currentPageOrders.map((o, index) => (
+                        <li
+                          key={o.id || (o.raw?._id?.$oid) || (o.raw?._id) || String(index)}
+                          className={`order-card ${o.isCancelled ? 'order-card--cancelled' : ''}`}
+                        >
+                          {/* Cancel button - only show if order can be cancelled */}
+                          {!o.isCancelled && o.canCancel && (
+                            <button
+                              className="cancel-order-btn"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleCancelOrder(o);
+                              }}
+                              title="Cancel Order"
+                              aria-label="Cancel Order"
+                            >
+                              <svg 
+                                width="16" 
+                                height="16" 
+                                viewBox="0 0 24 24" 
+                                fill="none" 
+                                stroke="white" 
+                                strokeWidth="2"
+                                strokeLinecap="round" 
+                                strokeLinejoin="round"
+                              >
+                                <path d="M3 6h18l-2 13H5L3 6z"></path>
+                                <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                              </svg>
+                            </button>
+                          )}
 
-                    className="order-card">
+                          {/* Cancelled badge */}
+                          {o.isCancelled && (
+                            <div className="cancelled-badge">CANCELLED</div>
+                          )}
+
                           <div className="top">
                             <div className="route">
                               <strong>{o.departure} → {o.destination}</strong>
@@ -1079,14 +1032,14 @@ key={o.id || (o.raw?._id?.$oid) || (o.raw?._id) || String(index)}
                             <div><span className="lbl">Payment</span>{o.paymentMethod || "—"}</div>
                             <div><span className="lbl">Flight</span>{o.flight}</div>
                             <div><span className="lbl">Hotel</span>{o.hotel}</div>
-                           <div>
-      <span className="lbl">Trip</span>
-      {o.tripStartTs
-        ? `${new Date(o.tripStartTs).toLocaleDateString()}${
-            o.tripEndTs ? ` – ${new Date(o.tripEndTs).toLocaleDateString()}` : ""
-          }`
-        : "—"}
-    </div>
+                            <div>
+                              <span className="lbl">Trip</span>
+                              {o.tripStartTs
+                                ? `${new Date(o.tripStartTs).toLocaleDateString()}${
+                                    o.tripEndTs ? ` – ${new Date(o.tripEndTs).toLocaleDateString()}` : ""
+                                  }`
+                                : "—"}
+                            </div>
                           </div>
 
                           <button className="view-details-button" onClick={() => handleViewOrderDetails(o)}>
@@ -1113,14 +1066,16 @@ key={o.id || (o.raw?._id?.$oid) || (o.raw?._id) || String(index)}
                     </div>
                   </>
                 ) : (
-                  <div><p>No orders match the selected dates.</p></div>
+                  <div className="empty-orders">
+                    <p>No orders match the selected dates.</p>
+                  </div>
                 )}
               </>
             )}
           </>
         )}
 
-        {/* Newsletter */}
+        {/* Newsletter Tab */}
         {activeTab === "newsletter" && (
           <>
             <h2 className="heading">Sign Up for Newsletter</h2>
@@ -1140,16 +1095,9 @@ key={o.id || (o.raw?._id?.$oid) || (o.raw?._id) || String(index)}
               disabled={loading}
             >
               {loading ? (
-                <span style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}>
-                  <div style={{
-                    width: "16px",
-                    height: "16px",
-                    border: "2px solid transparent",
-                    borderTop: "2px solid #ffffff",
-                    borderRadius: "50%",
-                    animation: "spin 1s linear infinite"
-                  }} />
-                  loading...
+                <span className="newsletter-loading">
+                  <div className="newsletter-loading-spinner" />
+                  Loading...
                 </span>
               ) : (
                 "Subscribe"
@@ -1172,6 +1120,18 @@ key={o.id || (o.raw?._id?.$oid) || (o.raw?._id) || String(index)}
         isVisible={showSuccessPopup}
         onClose={() => setShowSuccessPopup(false)}
         message={successMessage}
+      />
+
+      {/* Cancel Confirmation Popup */}
+      <CancelConfirmationPopup
+        isVisible={showCancelPopup}
+        onClose={() => {
+          setShowCancelPopup(false);
+          setOrderToCancel(null);
+        }}
+        onConfirm={confirmCancelOrder}
+        orderDetails={orderToCancel}
+        isLoading={isCancelling}
       />
     </div>
   );
