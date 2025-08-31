@@ -78,6 +78,7 @@
   background: var(--card);
   border-radius: 22px;
   box-shadow: var(--shadow-sm);
+  
 }
 
 /* Tabs — pill group */
@@ -361,6 +362,7 @@
   overflow: hidden;
   transform: translateY(4px) scale(.98);
   animation: popIn .18s ease-out forwards;
+  
 }
 
 .modal-header {
