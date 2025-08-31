@@ -60,7 +60,9 @@ export async function createOrder(req, res) {
   try {
     const uid = reqUserId(req);
     const userObjectId = toObjectId(uid);
-    if (!userObjectId) return res.status(401).json({ message: 'Unauthorized (invalid user id in token)' });
+    if (!userObjectId) {
+      return res.status(401).json({ message: 'Unauthorized (invalid user id in token)' });
+    }
 
     const {
       departureCityId,
@@ -72,12 +74,12 @@ export async function createOrder(req, res) {
       hotelId = '',
       hotelName = '',
 
-      // 👇 sent from RN
+      // from RN
       departureDate,   // ISO
       returnDate,      // ISO
       tripDuration,    // number
 
-      attractions = [],
+      attractions = [],     // can be raw ObjectId strings or compound "id-idx"/"id_idx"
       transportation = '',
       paymentMethod = '',
       totalPrice,
@@ -96,52 +98,79 @@ export async function createOrder(req, res) {
 
     const tripStart = departureDate ? new Date(departureDate) : null;
     const tripEnd   = returnDate ? new Date(returnDate) : null;
-    const tripDays  = Number.isFinite(Number(tripDuration)) ? Number(tripDuration) : (
-      tripStart && tripEnd ? Math.max(1, Math.ceil((tripEnd - tripStart) / 86400000)) : null
-    );
+    const tripDays  = Number.isFinite(Number(tripDuration))
+      ? Number(tripDuration)
+      : (tripStart && tripEnd ? Math.max(1, Math.ceil((tripEnd - tripStart) / 86400000)) : null);
 
     const db = await connectDB();
 
-    // Best-effort resolve attraction names now so the profile can show them without extra calls
+    // ---- helper: pull a 24-hex id from a possibly-compound value like "68075f..._0" or "68...-1"
+    const extractPureId = (val) => {
+      if (!val) return null;
+      const s = String(val);
+      // split by underscore or hyphen, take the first token that looks like 24-hex
+      const parts = s.split(/[-_]/g);
+      for (const p of parts) {
+        if (/^[0-9a-fA-F]{24}$/.test(p)) return p;
+      }
+      // if whole string is 24-hex, return it
+      if (/^[0-9a-fA-F]{24}$/.test(s)) return s;
+      return null;
+    };
+
+    // Resolve attraction_names even if inbound values are compound strings
     let attractionNames = [];
     if (Array.isArray(attractions) && attractions.length) {
-      const ids = attractions
-        .map(a => toObjectId(a))
-        .filter(Boolean);
-      if (ids.length) {
+      const pureIds = attractions
+        .map(extractPureId)
+        .filter(Boolean)
+        .map((id24) => new ObjectId(id24));
+
+      if (pureIds.length) {
         const rows = await db.collection('attractions')
-          .find({ _id: { $in: ids } }, { projection: { name: 1 } })
+          .find({ _id: { $in: pureIds } }, { projection: { name: 1 } })
           .toArray();
         attractionNames = rows.map(r => r?.name).filter(Boolean);
       }
     }
 
+    // ── IMPORTANT: Keep your incoming IDs AS STRING, to support compound IDs
+    // If you ALSO want city ids as pure ObjectIds, you can wrap those two only.
+    // Your "expected" example shows city ids as strings, so we keep them as strings too.
     const doc = {
       user_id: userObjectId,
 
-      departure_city_id: toObjectId(departureCityId) ?? departureCityId,
+      // store as strings (to match your example shape)
+      departure_city_id: String(departureCityId),
       departure_city_name: String(departureCityName),
 
-      destination_city_id: toObjectId(destinationCityId) ?? destinationCityId,
+      destination_city_id: String(destinationCityId),
       destination_city_name: String(destinationCityName),
 
-      flight_id: toObjectId(flightId) ?? flightId,
+      flight_id: String(flightId),       // <-- keep compound id like "68075f..._0"
       flight_name: String(flightName || ''),
 
-      // if hotelId is bad/empty, still store a readable hotel_name
-      hotel_id: hotelId ? (toObjectId(hotelId) ?? hotelId) : null,
+      hotel_id: hotelId ? String(hotelId) : null, // <-- keep "68...-0" when present
       hotel_name: String(hotelName || ''),
 
-      attractions: Array.isArray(attractions)
-        ? attractions.map((a) => toObjectId(a) ?? String(a))
-        : [],
-      attraction_names: attractionNames, // 👈 denormalized helper
+      // If you want to SAVE NO attraction IDs (like your sample), keep this as []:
+ // keep only real 24-hex ids and store as ObjectId[]
+attractions: Array.isArray(attractions)
+  ? attractions
+      .map(String)
+      .filter(id => /^[0-9a-fA-F]{24}$/.test(id))
+      .map(id => toObjectId(id))
+  : [],
+
+
+      // denormalized names so profile can display without extra calls
+      attraction_names: attractionNames,
 
       transportation: String(transportation || ''),
       payment_method: String(paymentMethod || ''),
       total_price: Number(totalPrice) || 0,
 
-      // 👇 NEW date fields
+      // dates
       trip_start_date: tripStart || null,
       trip_end_date: tripEnd || null,
       trip_duration: tripDays ?? null,
@@ -156,12 +185,9 @@ export async function createOrder(req, res) {
     return res.status(201).json({
       _id: result.insertedId,
       ...doc,
+      // convenience string copies for RN
       _id_str: result.insertedId?.toString(),
       user_id_str: doc.user_id?.toString?.(),
-      departure_city_id_str: doc.departure_city_id?.toString?.(),
-      destination_city_id_str: doc.destination_city_id?.toString?.(),
-      flight_id_str: doc.flight_id?.toString?.(),
-      hotel_id_str: doc.hotel_id?.toString?.() ?? null,
     });
   } catch (e) {
     console.error('createOrder error:', e);

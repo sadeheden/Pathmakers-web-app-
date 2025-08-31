@@ -485,7 +485,11 @@ export default function HomeScreen() {
 
   // Booking state variables
   const [departureCity, setDepartureCity] = useState('68022f445f7300b11f986829');
-  const [selectedAttractions, setSelectedAttractions] = useState(['6807610adc218773e065223d']);
+// instead of: ['6807610adc218773e065223d']
+const [selectedAttractions, setSelectedAttractions] = useState([
+  { _id: '6807610adc218773e065223d', name: 'Burj Khalifa' }
+]);
+
   const [selectedTransportation, setSelectedTransportation] = useState('Public Transport');
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('PayPal');
 
@@ -645,110 +649,130 @@ useEffect(() => {
     setUserVotes((prev) => ({ ...prev, [id]: 'dislike' }));
   };
 
-  const handlePaymentSuccess = async () => {
-    setPaymentCompleted(true);
-    setShowPaymentModal(false);
+const handlePaymentSuccess = async () => {
+  setPaymentCompleted(true);
+  setShowPaymentModal(false);
 
-    if (!selectedDestination || !selectedTripDates) {
-      Alert.alert('Missing data', 'Please select destination and dates again.');
-      return;
-    }
+  if (!selectedDestination || !selectedTripDates) {
+    Alert.alert('Missing data', 'Please select destination and dates again.');
+    return;
+  }
 
-    const resolvedFlightId = getFlightId(selectedDestination);
-    if (!resolvedFlightId) {
-      Alert.alert('Missing flight', 'Could not resolve a flight for this destination.');
-      return;
-    }
+  const resolvedFlightId = getFlightId(selectedDestination);
+  if (!resolvedFlightId) {
+    Alert.alert('Missing flight', 'Could not resolve a flight for this destination.');
+    return;
+  }
 
-    const destId = getDestinationCityId(selectedDestination);
-    if (!destId) {
-      Alert.alert('Missing destination', 'Could not resolve destination city ID.');
-      return;
-    }
+  const destId = getDestinationCityId(selectedDestination);
+  if (!destId) {
+    Alert.alert('Missing destination', 'Could not resolve destination city ID.');
+    return;
+  }
 
-    const selectedHotel = Array.isArray(global?.hotelsList)
-      ? global.hotelsList.find(h => h._id === getHotelId(selectedDestination))
-      : null;
+  // ✅ Normalize attractions into clean 24-hex IDs and optional names
+  const normalizeAttractions = (arr) => {
+    const ids = [];
+    const names = [];
+    (Array.isArray(arr) ? arr : []).forEach((a) => {
+      const candidateId =
+        typeof a === 'string' ? a : (a?._id || a?.id || a?.value || '');
 
-    const orderData = {
-      departureCityId: getDepartureCityId(selectedDestination),
-      departureCityName: selectedDestination?.name || selectedDestination?.slug || '',
-      destinationCityId: destId,
-      destinationCityName: selectedDestination?.name || selectedDestination?.slug || '',
-      flightId: resolvedFlightId,
-      flightName: selectedDestination?.name ? `${selectedDestination.name} Flight` : '',
-      hotelId: selectedHotel?._id ?? null,
-    hotelName: selectedHotel?.name ?? (selectedDestination?.hotel || ''),
-      attractions: selectedAttractions || [],
-      transportation: selectedTransportation,
-      paymentMethod: selectedPaymentMethod,
-      totalPrice: parseInt(selectedDestination?.price) || 0,
-      departureDate: selectedTripDates.departureDate.toISOString(),
-      returnDate: selectedTripDates.returnDate.toISOString(),
-      tripDuration: selectedTripDates.tripDuration,
-    };
-
-    console.log('Order data prepared:', JSON.stringify(orderData, null, 2));
-
-    try {
-      const token = await AsyncStorage.getItem('token');
-      
-      if (!token) {
-        throw new Error('No authentication token found');
+      if (typeof candidateId === 'string' && /^[0-9a-fA-F]{24}$/.test(candidateId)) {
+        ids.push(candidateId);
       }
 
-      const response = await fetch('https://pathmakers-web-app-app-travel.onrender.com/api/orders', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(orderData),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => null);
-        console.error('Server error:', errorData);
-        throw new Error(errorData?.message || `Server error: ${response.status}`);
-      }
-
-      const responseData = await response.json();
-      console.log('Order saved on server:', responseData);
-      
-      Alert.alert(
-        'Success!', 
-        `Your trip to ${selectedDestination.name} has been booked successfully!\n\nTrip dates: ${selectedTripDates.departureDate.toLocaleDateString()} - ${selectedTripDates.returnDate.toLocaleDateString()}\nOrder ID: ${responseData._id}`,
-        [ 
-          {
-            text: 'View My Orders',
-            onPress: () => navigation.navigate('(tabs)', { screen: 'profile' }),
-          },
-          {
-            text: 'OK',
-            style: 'default'
-          }
-        ]
-      );
-      
-    } catch (error) {
-      console.error('Error saving order:', error);
-      
-      Alert.alert(
-        'Warning', 
-        `Trip booked locally but failed to save to server.\nError: ${error.message}`,
-        [
-          {
-            text: 'Retry',
-            onPress: () => handlePaymentSuccess()
-          },
-          {
-            text: 'Continue Anyway',
-            style: 'default'
-          }
-        ]
-      );
-    }
+      const nm =
+        typeof a === 'string'
+          ? (a.length === 24 ? null : a) // a plain name string (not an ObjectId)
+          : (a?.name || a?.label || null);
+      if (nm) names.push(nm);
+    });
+    return { ids, names };
   };
+
+  const { ids: attractionIds, names: attractionNames } =
+    normalizeAttractions(selectedAttractions);
+
+  const selectedHotel = Array.isArray(global?.hotelsList)
+    ? global.hotelsList.find((h) => h._id === getHotelId(selectedDestination))
+    : null;
+
+  const hotelIdForSave = selectedHotel?._id ?? `${destId}-0`;
+  const hotelNameForSave = selectedHotel?.name ?? (selectedDestination?.hotel || '');
+
+  const TEL_AVIV_ID = '68b470794a23cbf87338495f';
+
+  const orderData = {
+    departureCityId: TEL_AVIV_ID,
+    departureCityName: 'Tel Aviv',
+
+    destinationCityId: destId,
+    destinationCityName: selectedDestination?.name || selectedDestination?.slug || '',
+
+    flightId: getFlightId(selectedDestination),
+    flightName: selectedDestination?.name ? `${selectedDestination.name} Flight` : '',
+
+    hotelId: hotelIdForSave,
+    hotelName: hotelNameForSave,
+
+    // 👇 now both are defined
+    attractions: attractionIds,
+    attraction_names: attractionNames.length ? attractionNames : undefined,
+
+    transportation: selectedTransportation,
+    paymentMethod: selectedPaymentMethod,
+    totalPrice: parseInt(selectedDestination?.price) || 0,
+
+    departureDate: selectedTripDates.departureDate.toISOString(),
+    returnDate: selectedTripDates.returnDate.toISOString(),
+    tripDuration: selectedTripDates.tripDuration,
+  };
+
+  console.log('Order data prepared:', JSON.stringify(orderData, null, 2));
+
+  try {
+    const token = await AsyncStorage.getItem('token');
+    if (!token) throw new Error('No authentication token found');
+
+    const response = await fetch('https://pathmakers-web-app-app-travel.onrender.com/api/orders', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(orderData),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => null);
+      console.error('Server error:', errorData);
+      throw new Error(errorData?.message || `Server error: ${response.status}`);
+    }
+
+    const responseData = await response.json();
+    console.log('Order saved on server:', responseData);
+
+    Alert.alert(
+      'Success!',
+      `Your trip to ${selectedDestination.name} has been booked successfully!\n\nTrip dates: ${selectedTripDates.departureDate.toLocaleDateString()} - ${selectedTripDates.returnDate.toLocaleDateString()}\nOrder ID: ${responseData._id}`,
+      [
+        { text: 'View My Orders', onPress: () => navigation.navigate('(tabs)', { screen: 'profile' }) },
+        { text: 'OK', style: 'default' },
+      ]
+    );
+  } catch (error) {
+    console.error('Error saving order:', error);
+    Alert.alert(
+      'Warning',
+      `Trip booked locally but failed to save to server.\nError: ${error.message}`,
+      [
+        { text: 'Retry', onPress: () => handlePaymentSuccess() },
+        { text: 'Continue Anyway', style: 'default' },
+      ]
+    );
+  }
+};
 
   if (loading) {
     return (
