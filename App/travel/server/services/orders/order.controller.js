@@ -54,13 +54,14 @@ async function fetchAttractionIdsForCity(db, destinationCityId, destinationCityN
          .map(s => new ObjectId(s));
 }
 
+// services/orders/order.controller.js
+
 export async function createOrder(req, res) {
   try {
     const uid = reqUserId(req);
     const userObjectId = toObjectId(uid);
     if (!userObjectId) return res.status(401).json({ message: 'Unauthorized (invalid user id in token)' });
 
-    // Required (from your app)
     const {
       departureCityId,
       departureCityName,
@@ -70,13 +71,18 @@ export async function createOrder(req, res) {
       flightName = '',
       hotelId = '',
       hotelName = '',
+
+      // 👇 sent from RN
+      departureDate,   // ISO
+      returnDate,      // ISO
+      tripDuration,    // number
+
       attractions = [],
       transportation = '',
       paymentMethod = '',
       totalPrice,
     } = req.body || {};
 
-    // Basic validation
     const missing = [];
     if (!departureCityId) missing.push('departureCityId');
     if (!departureCityName) missing.push('departureCityName');
@@ -88,12 +94,32 @@ export async function createOrder(req, res) {
       return res.status(400).json({ message: `Missing required field(s): ${missing.join(', ')}` });
     }
 
-    // Convert to your DB schema (snake_case)
-    // NOTE: your lookups expect ObjectId in *_id fields (city, flights, hotels)
+    const tripStart = departureDate ? new Date(departureDate) : null;
+    const tripEnd   = returnDate ? new Date(returnDate) : null;
+    const tripDays  = Number.isFinite(Number(tripDuration)) ? Number(tripDuration) : (
+      tripStart && tripEnd ? Math.max(1, Math.ceil((tripEnd - tripStart) / 86400000)) : null
+    );
+
+    const db = await connectDB();
+
+    // Best-effort resolve attraction names now so the profile can show them without extra calls
+    let attractionNames = [];
+    if (Array.isArray(attractions) && attractions.length) {
+      const ids = attractions
+        .map(a => toObjectId(a))
+        .filter(Boolean);
+      if (ids.length) {
+        const rows = await db.collection('attractions')
+          .find({ _id: { $in: ids } }, { projection: { name: 1 } })
+          .toArray();
+        attractionNames = rows.map(r => r?.name).filter(Boolean);
+      }
+    }
+
     const doc = {
       user_id: userObjectId,
 
-      departure_city_id: toObjectId(departureCityId) ?? departureCityId, // prefer ObjectId, fallback string
+      departure_city_id: toObjectId(departureCityId) ?? departureCityId,
       departure_city_name: String(departureCityName),
 
       destination_city_id: toObjectId(destinationCityId) ?? destinationCityId,
@@ -102,31 +128,34 @@ export async function createOrder(req, res) {
       flight_id: toObjectId(flightId) ?? flightId,
       flight_name: String(flightName || ''),
 
+      // if hotelId is bad/empty, still store a readable hotel_name
       hotel_id: hotelId ? (toObjectId(hotelId) ?? hotelId) : null,
       hotel_name: String(hotelName || ''),
 
       attractions: Array.isArray(attractions)
         ? attractions.map((a) => toObjectId(a) ?? String(a))
         : [],
+      attraction_names: attractionNames, // 👈 denormalized helper
 
       transportation: String(transportation || ''),
       payment_method: String(paymentMethod || ''),
-
       total_price: Number(totalPrice) || 0,
+
+      // 👇 NEW date fields
+      trip_start_date: tripStart || null,
+      trip_end_date: tripEnd || null,
+      trip_duration: tripDays ?? null,
 
       status: 'confirmed',
       created_at: new Date(),
       updated_at: new Date(),
     };
 
-    const db = await connectDB();
     const result = await db.collection('orders').insertOne(doc);
 
-    // Return flat doc (RN expects _id at root)
     return res.status(201).json({
       _id: result.insertedId,
       ...doc,
-      // stringified ids for RN convenience
       _id_str: result.insertedId?.toString(),
       user_id_str: doc.user_id?.toString?.(),
       departure_city_id_str: doc.departure_city_id?.toString?.(),
@@ -139,6 +168,7 @@ export async function createOrder(req, res) {
     return res.status(500).json({ message: 'Failed to create order' });
   }
 }
+
 
 /** ========= PROFILE ORDERS (yours, unchanged) =========
  * Orders for Profile.jsx (clean, no attraction formatting)
@@ -180,6 +210,10 @@ export async function getOrdersForProfile(req, res) {
           payment_method: 1,
           total_price: 1,
           created_at: 1,
+          trip_start_date: 1,
+trip_end_date: 1,
+trip_duration: 1,
+attraction_names: 1,
 
           departure_city_name: {
             $ifNull: [
