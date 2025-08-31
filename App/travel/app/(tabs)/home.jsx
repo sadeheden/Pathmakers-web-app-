@@ -693,7 +693,7 @@ const orderData = {
 
   // ✅ send clean ids; backend will resolve attraction_names
  // keep incoming attraction IDs (strings or compound) as-is
-attractions: Array.isArray(attractions) ? attractions.map(String) : [],
+  attractions: attractionIds,
 
 
   transportation: selectedTransportation,
@@ -716,7 +716,7 @@ attractions: Array.isArray(attractions) ? attractions.map(String) : [],
         throw new Error('No authentication token found');
       }
 
-      const response = await fetch('https://pathmakers-web-app-app-travel.onrender.com/api/order', {
+      const response = await fetch('https://pathmakers-web-app-app-travel.onrender.com/api/orders', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,

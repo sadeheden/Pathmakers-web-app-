@@ -154,7 +154,14 @@ export async function createOrder(req, res) {
       hotel_name: String(hotelName || ''),
 
       // If you want to SAVE NO attraction IDs (like your sample), keep this as []:
-      attractions: [],
+ // keep only real 24-hex ids and store as ObjectId[]
+attractions: Array.isArray(attractions)
+  ? attractions
+      .map(String)
+      .filter(id => /^[0-9a-fA-F]{24}$/.test(id))
+      .map(id => toObjectId(id))
+  : [],
+
 
       // denormalized names so profile can display without extra calls
       attraction_names: attractionNames,
