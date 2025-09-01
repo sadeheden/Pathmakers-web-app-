@@ -188,22 +188,26 @@ export async function createOrder(req, res) {
         console.warn('Failed to auto-fetch city attractions:', err);
       }
     }
+const depObjId  = toObjectId(extractPureId(departureCityId));
+const destObjId = toObjectId(extractPureId(destinationCityId));
+const flightObj = toObjectId(extractPureId(flightId));
+const hotelObj  = hotelId ? toObjectId(extractPureId(hotelId)) : null;
 
     const doc = {
       user_id: userObjectId,
 
       // Store city IDs as strings to match your expected format
-      departure_city_id: String(departureCityId),
-      departure_city_name: String(departureCityName),
+      departure_city_id: depObjId,
+  departure_city_name: String(departureCityName),
 
-      destination_city_id: String(destinationCityId),
-      destination_city_name: String(destinationCityName),
+      destination_city_id: destObjId,
+  destination_city_name: String(destinationCityName),
 
-      flight_id: String(flightId),
-      flight_name: String(flightName || ''),
+        flight_id: flightObj,
+  flight_name: String(flightName || ''),
 
-      hotel_id: hotelId ? String(hotelId) : null,
-      hotel_name: String(hotelName || ''),
+  hotel_id: hotelObj,
+  hotel_name: String(hotelName || ''),
 
       // 🆕 NOW PROPERLY STORING ATTRACTIONS AS OBJECTIDS
       attractions: processedAttractions, // Array of ObjectId instances
@@ -295,83 +299,187 @@ export async function getOrdersForProfile(req, res) {
 
     const db = await connectDB();
 
-    const orders = await db.collection('orders').aggregate([
-      { $match: { user_id: userObjectId } },
+  const orders = await db.collection('orders').aggregate([
+  { $match: { user_id: userObjectId } },
 
-      // IMPORTANT: your collection is "city" (singular)
-      { $lookup: { from: 'city', localField: 'departure_city_id',   foreignField: '_id', as: 'departureCity' } },
-      { $unwind: { path: '$departureCity', preserveNullAndEmptyArrays: true } },
-
-      { $lookup: { from: 'city', localField: 'destination_city_id', foreignField: '_id', as: 'destinationCity' } },
-      { $unwind: { path: '$destinationCity', preserveNullAndEmptyArrays: true } },
-
-      { $lookup: { from: 'flights', localField: 'flight_id', foreignField: '_id', as: 'flight' } },
-      { $unwind: { path: '$flight', preserveNullAndEmptyArrays: true } },
-
-      { $lookup: { from: 'hotels', localField: 'hotel_id', foreignField: '_id', as: 'hotel' } },
-      { $unwind: { path: '$hotel', preserveNullAndEmptyArrays: true } },
-
-      {
-        $project: {
-          _id: 1,
-          user_id: 1,
-          departure_city_id: 1,
-          destination_city_id: 1,
-          flight_id: 1,
-          hotel_id: 1,
-          attractions: 1,
-          transportation: 1,
-          payment_method: 1,
-          total_price: 1,
-          created_at: 1,
-          trip_start_date: 1,
-trip_end_date: 1,
-trip_duration: 1,
-attraction_names: 1,
-
-          departure_city_name: {
-            $ifNull: [
-              '$departureCity.name',
-              { $ifNull: ['$departureCity.city', { $ifNull: ['$departureCity.cityName', { $toString: '$departure_city_id' }] }] }
+  // 1) Coerce string 24-hex ids to ObjectId so lookups work
+  {
+    $addFields: {
+      departure_city_id: {
+        $cond: [
+          {
+            $and: [
+              { $eq: [ { $type: "$departure_city_id" }, "string" ] },
+              { $regexMatch: { input: "$departure_city_id", regex: /^[0-9a-f]{24}$/i } }
             ]
           },
-          destination_city_name: {
-            $ifNull: [
-              '$destinationCity.name',
-              { $ifNull: ['$destinationCity.city', { $ifNull: ['$destinationCity.cityName', { $toString: '$destination_city_id' }] }] }
-            ]
-          },
-          flight_name: {
-            $ifNull: [
-              '$flight.flight_number',
-              { $ifNull: [
-                '$flight.name',
-                { $ifNull: [
-                  '$flight.flightNumber',
-                  {
-                    $cond: [
-                      { $or: [ { $ifNull: ['$flight.airline', false] }, { $ifNull: ['$flight.flight_number', false] } ] },
-                      { $trim: { input: { $concat: [ { $ifNull: ['$flight.airline', ''] }, ' ', { $ifNull: ['$flight.flight_number', ''] } ] } } },
-                      { $toString: '$flight_id' }
-                    ]
-                  }
-                ] }
-              ] }
-            ]
-          },
-          hotel_name: {
-            $ifNull: [
-              '$hotel.name',
-              { $ifNull: ['$hotel.hotel_name', { $ifNull: ['$hotel.hotelName', { $toString: '$hotel_id' }] }] }
-            ]
-          }
-        }
+          { $toObjectId: "$departure_city_id" },
+          "$departure_city_id"
+        ]
       },
-      { $sort: { created_at: -1 } }
-    ]).toArray();
+      destination_city_id: {
+        $cond: [
+          {
+            $and: [
+              { $eq: [ { $type: "$destination_city_id" }, "string" ] },
+              { $regexMatch: { input: "$destination_city_id", regex: /^[0-9a-f]{24}$/i } }
+            ]
+          },
+          { $toObjectId: "$destination_city_id" },
+          "$destination_city_id"
+        ]
+      },
+      flight_id: {
+        $cond: [
+          {
+            $and: [
+              { $eq: [ { $type: "$flight_id" }, "string" ] },
+              { $regexMatch: { input: "$flight_id", regex: /^[0-9a-f]{24}$/i } }
+            ]
+          },
+          { $toObjectId: "$flight_id" },
+          "$flight_id"
+        ]
+      },
+      hotel_id: {
+        $cond: [
+          {
+            $and: [
+              { $eq: [ { $type: "$hotel_id" }, "string" ] },
+              { $regexMatch: { input: "$hotel_id", regex: /^[0-9a-f]{24}$/i } }
+            ]
+          },
+          { $toObjectId: "$hotel_id" },
+          "$hotel_id"
+        ]
+      }
+    }
+  },
+
+  // 2) Lookups
+  { $lookup: { from: 'city',    localField: 'departure_city_id',   foreignField: '_id', as: 'departureCity' } },
+  { $unwind: { path: '$departureCity', preserveNullAndEmptyArrays: true } },
+
+  { $lookup: { from: 'city',    localField: 'destination_city_id', foreignField: '_id', as: 'destinationCity' } },
+  { $unwind: { path: '$destinationCity', preserveNullAndEmptyArrays: true } },
+
+  { $lookup: { from: 'flights', localField: 'flight_id', foreignField: '_id', as: 'flight' } },
+  { $unwind: { path: '$flight', preserveNullAndEmptyArrays: true } },
+
+  { $lookup: { from: 'hotels',  localField: 'hotel_id', foreignField: '_id', as: 'hotel' } },
+  { $unwind: { path: '$hotel', preserveNullAndEmptyArrays: true } },
+
+  // 3) Project friendly names with fallbacks
+  {
+    $project: {
+      _id: 1,
+      user_id: 1,
+      departure_city_id: 1,
+      destination_city_id: 1,
+      flight_id: 1,
+      hotel_id: 1,
+      attractions: 1,
+      transportation: 1,
+      payment_method: 1,
+      total_price: 1,
+      created_at: 1,
+      trip_start_date: 1,
+      trip_end_date: 1,
+      trip_duration: 1,
+      attraction_names: 1,
+
+      // derive names from joined docs; if missing, fall back to stringified id
+   departure_city_name: {
+  $ifNull: [
+    '$departureCity.name',
+    { $ifNull: [
+      '$departureCity.city',
+      { $ifNull: [
+        '$departureCity.cityName',
+        { $ifNull: [
+          '$departure_city_name',     // 👈 stored string from createOrder
+          { $toString: '$departure_city_id' }
+        ] }
+      ] }
+    ] }
+  ]
+},
+destination_city_name: {
+  $ifNull: [
+    '$destinationCity.name',
+    { $ifNull: [
+      '$destinationCity.city',
+      { $ifNull: [
+        '$destinationCity.cityName',
+        { $ifNull: [
+          '$destination_city_name',   // 👈 stored string from createOrder
+          { $toString: '$destination_city_id' }
+        ] }
+      ] }
+    ] }
+  ]
+},
+
+destination_city_name: {
+  $ifNull: [
+    '$destinationCity.name',
+    { $ifNull: [
+      '$destinationCity.city',
+      { $ifNull: [
+        '$destinationCity.cityName',
+        // 👇 use stored name if lookup failed
+        { $ifNull: [
+          '$destination_city_name',
+          { $toString: '$destination_city_id' }
+        ] }
+      ] }
+    ] }
+  ]
+},
+
+      flight_name: {
+        $ifNull: [
+          '$flight.flight_number',
+          { $ifNull: [
+            '$flight.name',
+            { $ifNull: [
+              '$flight.flightNumber',
+              {
+                $cond: [
+                  { $or: [ { $ifNull: ['$flight.airline', false] }, { $ifNull: ['$flight.flight_number', false] } ] },
+                  { $trim: { input: { $concat: [ { $ifNull: ['$flight.airline', ''] }, ' ', { $ifNull: ['$flight.flight_number', ''] } ] } } },
+                  { $toString: '$flight_id' }
+                ]
+              }
+            ] }
+          ] }
+        ]
+      },
+      hotel_name: {
+        $ifNull: [
+          '$hotel.name',
+          { $ifNull: [
+            '$hotel.hotel_name',
+            { $ifNull: [
+              '$hotel.hotelName',
+              { $toString: '$hotel_id' }
+            ] }
+          ] }
+        ]
+      }
+    }
+  },
+
+  { $sort: { created_at: -1 } }
+]).toArray();
+
 
     // stringify IDs for RN
 const safe = orders.map(o => ({
+  // 1) put the raw projection first
+  ...o,
+
+  // 2) then override with string versions so they don't get overwritten
   _id: o._id?.toString(),
   user_id: o.user_id?.toString(),
   departure_city_id: o.departure_city_id?.toString() || null,
@@ -379,9 +487,9 @@ const safe = orders.map(o => ({
   flight_id: o.flight_id?.toString() || null,
   hotel_id: o.hotel_id?.toString() || null,
   attractions: Array.isArray(o.attractions) ? o.attractions.map(a => a?.toString?.() || a) : [],
-  createdAt: o.createdAt || o.created_at,   // ✅ unify
-  ...o
+  createdAt: o.createdAt || o.created_at,
 }));
+
 
 
     return res.status(200).json({ success: true, orders: safe });
