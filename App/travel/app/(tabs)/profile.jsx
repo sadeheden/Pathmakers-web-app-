@@ -78,14 +78,13 @@ export default function Profile() {
     try {
       const token = (await AsyncStorage.getItem('token'))?.replace(/^"|"$/g, '') || null;
       if (!token) return {};
-const typeForApi = type === 'cities' ? 'city' : type;
+      const typeForApi = type === 'cities' ? 'city' : type;
       console.log(`🔍 Fetching ${type} data for IDs:`, ids);
-const validIds = (ids || []).filter(isHex24);
-   if (validIds.length === 0) {
-     console.log(`⏭️ No valid ${type} ids to fetch`);
-     return {};
-     
-   }
+      const validIds = (ids || []).filter(isHex24);
+      if (validIds.length === 0) {
+        console.log(`⏭️ No valid ${type} ids to fetch`);
+        return {};
+      }
       const response = await fetchWithTimeout(
         'https://pathmakers-web-app-app-travel.onrender.com/api/orders/dynamic-data',
         {
@@ -114,20 +113,41 @@ const validIds = (ids || []).filter(isHex24);
 
   // Extract name from MongoDB document based on type
   const extractNameFromDocument = (type, doc) => {
-    if (!doc) return null;
-    
-    switch (type) {
-      case 'cities':
-        return doc.name || doc.city || doc.cityName || doc.city_name || null;
-      case 'flights':
-        return doc.flight_number || doc.name || doc.flightNumber || doc.flight_name ||
-               (doc.airline ? `${doc.airline} ${doc.flight_number || doc.flightNumber || ''}`.trim() : null);
-      case 'hotels':
-        return doc.name || doc.hotel_name || doc.hotelName || null;
-      default:
-        return null;
+  if (!doc) return null;
+
+  switch (type) {
+    case 'cities':
+      return doc.name || doc.city || doc.cityName || doc.city_name || null;
+
+    case 'flights': {
+      // direct fields if present
+      if (doc.flight_number || doc.flightNumber) return doc.flight_number || doc.flightNumber;
+      if (doc.name || doc.flight_name) return doc.name || doc.flight_name;
+
+      // handle array form: choose the cheapest airline name, or first as fallback
+      if (Array.isArray(doc.airlines) && doc.airlines.length) {
+        const best = [...doc.airlines].sort(
+          (a, b) => (a.price ?? Number.MAX_SAFE_INTEGER) - (b.price ?? Number.MAX_SAFE_INTEGER)
+        )[0];
+        return best?.name || doc.airlines[0]?.name || null;
+      }
+
+      // airline + number combo
+      if (doc.airline) {
+        const num = doc.flight_number || doc.flightNumber || '';
+        return `${doc.airline}${num ? ' ' + num : ''}`.trim();
+      }
+      return null;
     }
-  };
+
+    case 'hotels':
+      return doc.name || doc.hotel_name || doc.hotelName || null;
+
+    default:
+      return null;
+  }
+};
+
   const isHex24 = (s) => typeof s === 'string' && /^[0-9a-f]{24}$/i.test(s);
 
 
@@ -159,13 +179,12 @@ const validIds = (ids || []).filter(isHex24);
                                  order.departure_city_name.match(/^[0-9a-f]{24}$/i)) && 
                                 order.departure_city_id && 
                                 !staticMappings.cities[order.departure_city_id];
-    if (needsDepartureCity && isHex24(order.departure_city_id)) {
+      if (needsDepartureCity && isHex24(order.departure_city_id)) {
         console.log(`🏙️ Need to fetch departure city: ${order.departure_city_id}`);
         missingIds.cities.add(order.departure_city_id);
+      } else if (needsDepartureCity) {
+        console.log('⛔ Skipping bad departure_city_id:', order.departure_city_id);
       }
- else if (needsDepartureCity) {
-   console.log('⛔ Skipping bad departure_city_id:', order.departure_city_id);
-  }
       // Check destination cities
       const needsDestinationCity = (!order.destination_city_name || 
                                    order.destination_city_name.match(/^[0-9a-f]{24}$/i)) && 
@@ -181,7 +200,7 @@ const validIds = (ids || []).filter(isHex24);
                           order.flight_name.match(/^[0-9a-f]{24}$/i)) && 
                          order.flight_id && 
                          !staticMappings.flights[order.flight_id];
-     if (needsFlight && isHex24(order.flight_id)) {
+      if (needsFlight && isHex24(order.flight_id)) {
         console.log(`✈️ Need to fetch flight: ${order.flight_id}`);
         missingIds.flights.add(order.flight_id);
       }
@@ -191,7 +210,7 @@ const validIds = (ids || []).filter(isHex24);
                          order.hotel_name.match(/^[0-9a-f]{24}$/i)) && 
                         order.hotel_id && 
                         !staticMappings.hotels[order.hotel_id];
-   if (needsHotel && isHex24(order.hotel_id)) {
+      if (needsHotel && isHex24(order.hotel_id)) {
         console.log(`🏨 Need to fetch hotel: ${order.hotel_id}`);
         missingIds.hotels.add(order.hotel_id);
       }
@@ -271,9 +290,9 @@ const validIds = (ids || []).filter(isHex24);
         }
 
         const ordersData = data.orders || [];
-  const sortedOrders = [...ordersData].sort(
-   (a, b) => new Date(b.created_at || b.createdAt) - new Date(a.created_at || a.createdAt)
- );
+        const sortedOrders = [...ordersData].sort(
+          (a, b) => new Date(b.created_at || b.createdAt) - new Date(a.created_at || a.createdAt)
+        );
         setOrders(sortedOrders);
                 
         // Fetch missing dynamic data
@@ -301,106 +320,175 @@ const validIds = (ids || []).filter(isHex24);
   const toggleExpand = (orderId) => {
     setExpandedOrderId((prev) => (prev === orderId ? null : orderId));
   };
+// Safely turn any mongo id-ish value into a string
+// Safely turn any mongo id-ish value into a string
+const toStringId = (val) => {
+  if (typeof val === 'string') return val;
+  if (val?.$oid) return String(val.$oid);         // when coming as { $oid: "..." }
+  if (val?.toString) return String(val.toString());
+  try { return JSON.stringify(val); } catch { return String(val); }
+};
+
+// Short, readable id for UI
+const shortId = (id) => {
+  const s = toStringId(id);
+  return s.length > 12 ? `${s.slice(0, 6)}…${s.slice(-4)}` : s;
+};
+// Normalize an id into a safe string key for lookups
+// Normalize an id into a safe string key for lookups (strip "-0", "_1", etc.)
+const idKey = (id) => {
+  const s = toStringId(id) || '';
+  const m = s.match(/^([0-9a-f]{24})(?:[-_]\d+)?$/i);
+  return m ? m[1] : s;
+};
+
+// Helpers for checking patterns
+const looksLikeCompositeObjectId = (s) =>
+  typeof s === 'string' && /^([0-9a-f]{24})(?:[-_]\d+)?$/i.test(s);
+
 
   // Safe name functions
-  const getSafeName = (name, id) => {
-    if (name && name !== id && !name.match(/^[0-9a-f]{24}$/i)) {
-      return name;
-    }
-    if (typeof id === 'string' && id.length === 24) {
-      return `ID: ${id.substring(0, 8)}...`;
-    }
-    return id || 'Unknown';
-  };
+const getSafeName = (name, id) => {
+  const idStr = toStringId(id);
+  if (name && name !== idStr && !name.match(/^[0-9a-f]{24}$/i)) {
+    return name;
+  }
+  if (typeof idStr === 'string' && idStr.length === 24) {
+    return `ID: ${idStr.substring(0, 8)}...`;
+  }
+  return idStr || 'Unknown';
+};
+
 
   // Enhanced name getter functions with dynamic lookup
-  const getCityName = (cityName, cityId) => {
-    console.log(`🏙️ Getting city name for: name="${cityName}", id="${cityId}"`);
-    
-    // First check if we have a valid non-ObjectId name
-    if (cityName && !cityName.match(/^[0-9a-f]{24}$/i)) {
-      console.log(`✅ Using provided city name: ${cityName}`);
-      return cityName;
-    }
-    
-    // Check static mappings
-    if (staticMappings.cities[cityId]) {
-      console.log(`✅ Found in static mappings: ${staticMappings.cities[cityId]}`);
-      return staticMappings.cities[cityId];
-    }
-    
-    // Check dynamic data
-    if (dynamicData.cities[cityId]) {
-      const doc = dynamicData.cities[cityId];
-      console.log(`🔍 Found in dynamic data:`, doc);
-      const name = extractNameFromDocument('cities', doc);
-      if (name) {
-        console.log(`✅ Extracted city name: ${name}`);
-        return name;
-      }
-    }
-    
-    // Fallback
-    const fallback = getSafeName(cityName, cityId);
-    console.log(`⚠️ Using fallback for city: ${fallback}`);
-    return fallback;
-  };
+// Enhanced name getter functions with dynamic lookup (fixed)
+const getCityName = (cityName, cityId) => {
+  const key = idKey(cityId);                              // normalize key
+  const nameStr = typeof cityName === 'string' ? cityName : toStringId(cityName);
 
-  const getFlightName = (flightName, flightId) => {
-    console.log(`✈️ Getting flight name for: name="${flightName}", id="${flightId}"`);
-    
-    if (flightName && !flightName.match(/^[0-9a-f]{24}$/i)) {
-      console.log(`✅ Using provided flight name: ${flightName}`);
-      return flightName;
-    }
-    
-    if (staticMappings.flights[flightId]) {
-      console.log(`✅ Found in static mappings: ${staticMappings.flights[flightId]}`);
-      return staticMappings.flights[flightId];
-    }
-    
-    if (dynamicData.flights[flightId]) {
-      const doc = dynamicData.flights[flightId];
-      console.log(`🔍 Found in dynamic data:`, doc);
-      const name = extractNameFromDocument('flights', doc);
-      if (name) {
-        console.log(`✅ Extracted flight name: ${name}`);
-        return name;
-      }
-    }
-    
-    const fallback = getSafeName(flightName, flightId);
-    console.log(`⚠️ Using fallback for flight: ${fallback}`);
-    return fallback;
-  };
+  console.log(`🏙️ Getting city name for: name="${nameStr}", id="${key}"`);
 
-  const getHotelName = (hotelName, hotelId) => {
-    console.log(`🏨 Getting hotel name for: name="${hotelName}", id="${hotelId}"`);
-    
-    if (hotelName && !hotelName.match(/^[0-9a-f]{24}$/i)) {
-      console.log(`✅ Using provided hotel name: ${hotelName}`);
-      return hotelName;
+  // If we already have a human name (not a 24-hex id), use it
+  if (nameStr && !/^[0-9a-f]{24}$/i.test(nameStr)) {
+    console.log(`✅ Using provided city name: ${nameStr}`);
+    return nameStr;
+  }
+
+  // Static map
+  if (staticMappings.cities[key]) {
+    console.log(`✅ Found in static mappings: ${staticMappings.cities[key]}`);
+    return staticMappings.cities[key];
+  }
+
+  // Dynamic map
+  if (dynamicData.cities[key]) {
+    const doc = dynamicData.cities[key];
+    console.log(`🔍 Found in dynamic data:`, doc);
+    const name = extractNameFromDocument('cities', doc);
+    if (name) {
+      console.log(`✅ Extracted city name: ${name}`);
+      return name;
     }
-    
-    if (staticMappings.hotels[hotelId]) {
-      console.log(`✅ Found in static mappings: ${staticMappings.hotels[hotelId]}`);
-      return staticMappings.hotels[hotelId];
+  }
+
+  // Fallback
+  const fallback = getSafeName(nameStr, key);
+  console.log(`⚠️ Using fallback for city: ${fallback}`);
+  return fallback;
+};
+
+const getFlightName = (flightName, flightId) => {
+  const key = idKey(flightId);
+  const rawName = typeof flightName === 'string' ? flightName : toStringId(flightName);
+  const nameStr = looksLikeCompositeObjectId(rawName) ? '' : rawName;
+
+  console.log(`✈️ Getting flight name for: name="${nameStr}", id="${key}"`);
+
+  if (nameStr && !/^[0-9a-f]{24}$/i.test(nameStr)) {
+    console.log(`✅ Using provided flight name: ${nameStr}`);
+    return nameStr;
+  }
+
+  if (staticMappings.flights[key]) {
+    console.log(`✅ Found in static mappings: ${staticMappings.flights[key]}`);
+    return staticMappings.flights[key];
+  }
+
+  if (dynamicData.flights[key]) {
+    const doc = dynamicData.flights[key];
+    console.log(`🔍 Found in dynamic data:`, doc);
+    const name = extractNameFromDocument('flights', doc);
+    if (name) {
+      console.log(`✅ Extracted flight name: ${name}`);
+      return name;
     }
-    
-    if (dynamicData.hotels[hotelId]) {
-      const doc = dynamicData.hotels[hotelId];
-      console.log(`🔍 Found in dynamic data:`, doc);
-      const name = extractNameFromDocument('hotels', doc);
-      if (name) {
-        console.log(`✅ Extracted hotel name: ${name}`);
-        return name;
-      }
+  }
+
+  const fallback = getSafeName(nameStr, key);
+  console.log(`⚠️ Using fallback for flight: ${fallback}`);
+  return fallback;
+};
+
+const getHotelName = (hotelName, hotelId) => {
+  const key = idKey(hotelId);
+  const rawName = typeof hotelName === 'string' ? hotelName : toStringId(hotelName);
+  const nameStr = looksLikeCompositeObjectId(rawName) ? '' : rawName;
+
+  console.log(`🏨 Getting hotel name for: name="${nameStr}", id="${key}"`);
+
+  if (nameStr && !/^[0-9a-f]{24}$/i.test(nameStr)) {
+    console.log(`✅ Using provided hotel name: ${nameStr}`);
+  }
+
+  if (staticMappings.hotels[key]) {
+    console.log(`✅ Found in static mappings: ${staticMappings.hotels[key]}`);
+    return staticMappings.hotels[key];
+  }
+
+  if (dynamicData.hotels[key]) {
+    const doc = dynamicData.hotels[key];
+    console.log(`🔍 Found in dynamic data:`, doc);
+    const name = extractNameFromDocument('hotels', doc);
+    if (name) {
+      console.log(`✅ Extracted hotel name: ${name}`);
+      return name;
     }
+  }
+
+  const fallback = getSafeName(nameStr, key);
+  console.log(`⚠️ Using fallback for hotel: ${fallback}`);
+  return fallback;
+};
+
+
+
+  // const getHotelName = (hotelName, hotelId) => {
+  //   console.log(`🏨 Getting hotel name for: name="${hotelName}", id="${hotelId}"`);
     
-    const fallback = getSafeName(hotelName, hotelId);
-    console.log(`⚠️ Using fallback for hotel: ${fallback}`);
-    return fallback;
-  };
+  //   if (hotelName && !hotelName.match(/^[0-9a-f]{24}$/i)) {
+  //     console.log(`✅ Using provided hotel name: ${hotelName}`);
+  //     return hotelName;
+  //   }
+    
+  //   if (staticMappings.hotels[hotelId]) {
+  //     console.log(`✅ Found in static mappings: ${staticMappings.hotels[hotelId]}`);
+  //     return staticMappings.hotels[hotelId];
+  //   }
+    
+  //   if (dynamicData.hotels[hotelId]) {
+  //     const doc = dynamicData.hotels[hotelId];
+  //     console.log(`🔍 Found in dynamic data:`, doc);
+  //     const name = extractNameFromDocument('hotels', doc);
+  //     if (name) {
+  //       console.log(`✅ Extracted hotel name: ${name}`);
+  //       return name;
+  //     }
+  //   }
+    
+  //   const fallback = getSafeName(hotelName, hotelId);
+  //   console.log(`⚠️ Using fallback for hotel: ${fallback}`);
+  //   return fallback;
+  // };
 
   const renderOrder = ({ item }) => {
     const isExpanded = expandedOrderId === item._id;
@@ -424,9 +512,11 @@ const validIds = (ids || []).filter(isHex24);
             <Text style={styles.tripPrice}>${item.total_price}</Text>
           </View>
           
-          <Text style={styles.tripDate}>
-            📅 {new Date(item.created_at || item.createdAt).toLocaleDateString()}
-          </Text>
+         <Text style={styles.tripDate}>
+  📅 {new Date(item.created_at || item.createdAt).toLocaleDateString()}
+</Text>
+<Text style={styles.orderId}>Order: {shortId(item._id)}</Text>
+
           
           {isExpanded && (
             <View style={styles.expandedContent}>
@@ -472,11 +562,11 @@ const validIds = (ids || []).filter(isHex24);
   };
 
   const renderStats = () => {
-    const totalTrips = orders.length;
-    const totalSpent = orders.reduce((sum, order) => sum + (order.total_price || 0), 0);
-    const destinations = new Set(orders.map(order => 
-      getCityName(order.destination_city_name, order.destination_city_id)
-    )).size;
+    const totalTrips = activeOrders.length;
+    const totalSpent = activeOrders.reduce((sum, order) => sum + (order.total_price || 0), 0);
+    const destinations = new Set(
+      activeOrders.map(order => getCityName(order.destination_city_name, order.destination_city_id))
+    ).size;
 
     return (
       <View style={styles.statsContainer}>
@@ -488,7 +578,7 @@ const validIds = (ids || []).filter(isHex24);
         >
           <View style={styles.statItem}>
             <Text style={styles.statNumber}>{totalTrips}</Text>
-            <Text style={styles.statLabel}>Trips</Text>
+            <Text style={styles.statLabel}>Active</Text>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statItem}>
@@ -513,6 +603,31 @@ const validIds = (ids || []).filter(isHex24);
       </View>
     );
   }
+
+  // Determine if an order is active (trip happening now)
+  const isActiveOrder = (order) => {
+    const now = new Date();
+
+    // Be liberal with possible date field names
+    const start = new Date(
+      order.trip_start_date ||
+      order.start_date ||
+      order.tripDate ||           // web app variant
+      order.created_at || order.createdAt
+    );
+
+    const end = new Date(
+      order.trip_end_date ||
+      order.end_date ||
+      order.returnDate ||         // web app variant
+      order.created_at || order.createdAt
+    );
+
+    return start <= now && now <= end;
+  };
+
+  // 👇 Filter active orders (render + stats use this)
+  const activeOrders = orders.filter(isActiveOrder);
 
   return (
     <View style={styles.container}>
@@ -551,25 +666,33 @@ const validIds = (ids || []).filter(isHex24);
             </View>
 
             {/* Stats */}
-            {orders.length > 0 && renderStats()}
+         {activeOrders.length > 0 && renderStats()}
 
             {/* Title */}
             <View style={styles.sectionTitleContainer}>
-              <Text style={styles.sectionTitle}>Your Adventures</Text>
+              <Text style={styles.sectionTitle}>Active trips</Text>
               <View style={styles.sectionTitleUnderline} />
+              <View style={{ alignItems: 'center', marginTop: 6 }}>
+                <Text style={{ fontSize: 12, color: '#d84228ff' }}>
+                  Showing active trips only — see website for all trips.
+                </Text>
+              </View>
             </View>
           </>
         }
 
-        data={orders}
-        keyExtractor={(item) => item._id.toString()}
+        data={activeOrders}         
+keyExtractor={(item) => toStringId(item._id)}
+
         renderItem={renderOrder}
 
         ListEmptyComponent={
           <LinearGradient colors={['#f8f9fa', '#e9ecef']} style={styles.noTripsContainer}>
             <Text style={styles.noTripsEmoji}>✈️</Text>
-            <Text style={styles.noTripsTitle}>Ready for Adventure?</Text>
-            <Text style={styles.noTripsText}>Start exploring the world!</Text>
+            <Text style={styles.noTripsTitle}>No Active Trips</Text>
+            <Text style={styles.noTripsText}>
+              To see all your trips (past & upcoming), please visit our website.
+            </Text>
           </LinearGradient>
         }
 
@@ -782,6 +905,13 @@ const styles = StyleSheet.create({
     color: '#6c757d',
     textAlign: 'center',
   },
+  orderId: {
+  marginTop: 2,
+  fontSize: 12,
+  fontWeight: '600',
+  color: '#6c757d',
+},
+
   buttonContainer: {
     marginTop: 30,
     borderRadius: 25,
