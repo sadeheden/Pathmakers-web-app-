@@ -514,18 +514,29 @@ const getHotelName = (hotelName, hotelId) => {
           end={{ x: 1, y: 1 }}
           style={styles.tripGradient}
         >
-          <View style={styles.tripHeader}>
+<View style={styles.tripHeader}>
             <Text style={styles.tripTitle}>
               🏖️ {getCityName(item.destination_city_name, item.destination_city_id)}
             </Text>
             <Text style={styles.tripPrice}>${item.total_price}</Text>
           </View>
           
-         <Text style={styles.tripDate}>
-  📅 {new Date(item.created_at || item.createdAt).toLocaleDateString()}
-</Text>
-<Text style={styles.orderId}>Order: {shortId(item._id)}</Text>
-
+          {/* Trip dates - departure and return */}
+          {(item.tripDate || item.trip_start_date) && (
+            <Text style={styles.tripDate}>
+              🛫 Departure: {new Date(item.tripDate || item.trip_start_date).toLocaleDateString()}
+            </Text>
+          )}
+          {(item.returnDate || item.trip_end_date) && (
+            <Text style={styles.tripDate}>
+              🛬 Return: {new Date(item.returnDate || item.trip_end_date).toLocaleDateString()}
+            </Text>
+          )}
+          
+          <Text style={styles.tripDate}>
+            📅 Booked: {new Date(item.created_at || item.createdAt || item.bookingDate).toLocaleDateString()}
+          </Text>
+          <Text style={styles.orderId}>Order: {shortId(item._id)}</Text>
           
           {isExpanded && (
             <View style={styles.expandedContent}>
