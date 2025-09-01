@@ -64,34 +64,38 @@ useEffect(() => {
 
 
     // Handle logout
-    const handleLogout = async () => {
-        const token = localStorage.getItem("authToken");
-        try {
-            const response = await fetch("http://localhost:4000/api/auth/logout", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`
-                }
-            });
-            if (!response.ok) throw new Error(`Logout failed: ${response.statusText}`);
-            // Clean up
-            // 🧹 clear ALL chat/order memory
-   localStorage.removeItem("currentStep");
-   localStorage.removeItem("userResponses");
-   sessionStorage.removeItem("orderSaved");
-   sessionStorage.removeItem("lastOrderId");
-            localStorage.removeItem("authToken");
-            window.dispatchEvent(new Event("userChanged"));
-            sessionStorage.removeItem("hasLoggedIn");
-            localStorage.removeItem("currentStep");
-            localStorage.removeItem("userResponses");
-            setUser(null);
-            navigate("/login");
-        } catch (error) {
-            console.error("⚠️ Logout error:", error);
-        }
-    };
+// Handle logout
+const handleLogout = async () => {
+  const token = localStorage.getItem("authToken");
+  try {
+    const response = await fetch("http://localhost:4000/api/auth/logout", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    if (!response.ok) throw new Error(`Logout failed: ${response.statusText}`);
+
+    // 🧹 clear ALL chat/order memory
+    localStorage.removeItem("currentStep");
+    localStorage.removeItem("userResponses");
+    sessionStorage.removeItem("orderSaved");
+    sessionStorage.removeItem("lastOrderId");
+    localStorage.removeItem("authToken");
+    sessionStorage.removeItem("hasLoggedIn");
+
+    // notify both Header and Chat
+    window.dispatchEvent(new Event("userChanged"));
+    window.dispatchEvent(new Event("app:logout")); // 👈 added
+
+    setUser(null);
+    navigate("/login");
+  } catch (error) {
+    console.error("⚠️ Logout error:", error);
+  }
+};
+
 
     // Define pages to disable the menu
     const disabledPages = ["/", "/signup", "/login"];

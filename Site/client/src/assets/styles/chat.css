@@ -517,12 +517,9 @@ select:focus {
 /* Centered, evenly spaced buttons in the summary */
 .summary-buttons {
   display: flex;
-  grid-template-columns: repeat(2, minmax(200px, 1fr)); /* 2 columns */
-  justify-content: center;   /* center the grid tracks */
-  gap: 16px;                 /* space between buttons */
-  max-width: 560px;          /* keeps the group narrow */
-  margin: 20px auto 0;       /* centers the group in the box */
-  padding: 0;                /* drop the % padding */
+  justify-content: center;
+  gap: 14px;              /* space between the two buttons */
+  margin-top: 20px;
 }
 
 @media (max-width: 640px) {
@@ -534,21 +531,37 @@ select:focus {
 
 /* Make each button fill its grid cell and center its content */
 .summary-buttons button {
-  width: 100%;
-  height: 44px;
-  border-radius: 10px;
-  font-weight: 600;
+  flex: 1;                /* equal width */
+  max-width: 220px;       /* keeps them from stretching too wide */
+  height: 46px;
+  border-radius: 12px;
   font-size: 0.95rem;
-  border: none;
+  font-weight: 700;
   cursor: pointer;
-  padding: 0 16px;
-  display: inline-flex;         /* so gap works for icon+label */
-  align-items: center;
-  justify-content: center;
-  gap: 8px;                     /* space between icon and text */
-  transition: background 0.18s ease-in-out, transform 0.03s ease-in-out, box-shadow 0.18s ease;
+  transition: background .18s ease, transform .15s ease;
 }
-/* Chips */
+/* Primary: Go to Personal Area */
+.summary-buttons .btn-primary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #fff;
+  border: none;
+  box-shadow: 0 6px 18px rgba(102,126,234,.28);
+}
+.summary-buttons .btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 24px rgba(102,126,234,.36);
+}
+
+/* Secondary: Start Over */
+.summary-buttons .btn-lightblue {
+  background: #eef1f6;   /* same as page background */
+  color: #3e77ac;        /* soft blue text */
+  border: 1px solid #d0d6e4;
+}
+.summary-buttons .btn-lightblue:hover {
+  background: #e0e6f0;
+  transform: translateY(-2px);
+}
 .price-chips {
   display: flex;
   flex-wrap: wrap;
@@ -609,13 +622,13 @@ select:focus {
 /* Primary (Go to Personal Area, Plan Another Trip) */
 .personal-area-btn,
 .summary-buttons .btn-primary {
-  background: #574ff3;                 /* matches your progress bar color */
+  background: #289fd2;                 /* matches your progress bar color */
   color: #fff;
   box-shadow: 0 2px 8px rgba(87, 79, 243, 0.18);
 }
 .personal-area-btn:hover,
 .summary-buttons .btn-primary:hover {
-  background: #4e46ea;
+  background: #004e75;
 }
 .personal-area-btn:active,
 .summary-buttons .btn-primary:active {

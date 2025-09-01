@@ -100,26 +100,11 @@ const TripSummary = ({
         <p><strong>Total:</strong> ${total}</p>
       </div>
 
-      <div className="summary-buttons">
-        <button
-          type="button"
-          className="btn btn-primary"
-          onClick={handleGoToPersonalArea}
-          aria-label="Go to Personal Area"
-        >
-          Go to Personal Area
-        </button>
+     <div className="summary-buttons">
+  <button className="btn-lightblue" onClick={onRestart}>Start Over</button>
+  <button className="btn-primary" onClick={() => navigate('/personal-area')}>Go to Personal Area</button>
+</div>
 
-        <button
-          type="button"
-          className="btn btn-outline danger"
-          onClick={onRestart}
-          title="Clear answers and go back to step 1"
-          aria-label="Start over"
-        >
-          Start Over
-        </button>
-      </div>
     </div>
   );
 };
