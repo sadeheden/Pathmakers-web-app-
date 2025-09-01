@@ -80,7 +80,9 @@ export default function Profile() {
       if (!token) return {};
       const typeForApi = type === 'cities' ? 'city' : type;
       console.log(`🔍 Fetching ${type} data for IDs:`, ids);
-      const validIds = (ids || []).filter(isHex24);
+  // normalize ids and keep only true 24-hex
+const validIds = (ids || []).map(idKey).filter(isHex24);
+
       if (validIds.length === 0) {
         console.log(`⏭️ No valid ${type} ids to fetch`);
         return {};
@@ -162,59 +164,63 @@ export default function Profile() {
     };
 
     // Identify missing data with detailed logging
-    orders.forEach((order, index) => {
-      console.log(`📋 Analyzing order ${index + 1}:`, {
-        departure_city_name: order.departure_city_name,
-        departure_city_id: order.departure_city_id,
-        destination_city_name: order.destination_city_name,
-        destination_city_id: order.destination_city_id,
-        flight_name: order.flight_name,
-        flight_id: order.flight_id,
-        hotel_name: order.hotel_name,
-        hotel_id: order.hotel_id
-      });
+   orders.forEach((order, index) => {
+  const depIdKey  = idKey(order.departure_city_id);
+  const destIdKey = idKey(order.destination_city_id);
 
-      // Check departure cities
-      const needsDepartureCity = (!order.departure_city_name || 
-                                 order.departure_city_name.match(/^[0-9a-f]{24}$/i)) && 
-                                order.departure_city_id && 
-                                !staticMappings.cities[order.departure_city_id];
-      if (needsDepartureCity && isHex24(order.departure_city_id)) {
-        console.log(`🏙️ Need to fetch departure city: ${order.departure_city_id}`);
-        missingIds.cities.add(order.departure_city_id);
-      } else if (needsDepartureCity) {
-        console.log('⛔ Skipping bad departure_city_id:', order.departure_city_id);
-      }
-      // Check destination cities
-      const needsDestinationCity = (!order.destination_city_name || 
-                                   order.destination_city_name.match(/^[0-9a-f]{24}$/i)) && 
-                                  order.destination_city_id && 
-                                  !staticMappings.cities[order.destination_city_id];
-      if (needsDestinationCity && isHex24(order.destination_city_id)) {
-        console.log(`🏙️ Need to fetch destination city: ${order.destination_city_id}`);
-        missingIds.cities.add(order.destination_city_id);
-      }
-      
-      // Check flights
-      const needsFlight = (!order.flight_name || 
-                          order.flight_name.match(/^[0-9a-f]{24}$/i)) && 
-                         order.flight_id && 
-                         !staticMappings.flights[order.flight_id];
-      if (needsFlight && isHex24(order.flight_id)) {
-        console.log(`✈️ Need to fetch flight: ${order.flight_id}`);
-        missingIds.flights.add(order.flight_id);
-      }
-      
-      // Check hotels
-      const needsHotel = (!order.hotel_name || 
-                         order.hotel_name.match(/^[0-9a-f]{24}$/i)) && 
-                        order.hotel_id && 
-                        !staticMappings.hotels[order.hotel_id];
-      if (needsHotel && isHex24(order.hotel_id)) {
-        console.log(`🏨 Need to fetch hotel: ${order.hotel_id}`);
-        missingIds.hotels.add(order.hotel_id);
-      }
-    });
+  const depName  = typeof order.departure_city_name === 'string' ? order.departure_city_name : toStringId(order.departure_city_name);
+  const destName = typeof order.destination_city_name === 'string' ? order.destination_city_name : toStringId(order.destination_city_name);
+
+  const depNameLooksLikeId  = looksLikeCompositeObjectId(depName)  || /^[0-9a-f]{24}$/i.test(depName || '');
+  const destNameLooksLikeId = looksLikeCompositeObjectId(destName) || /^[0-9a-f]{24}$/i.test(destName || '');
+
+  // departure city: need fetch if name looks like an id AND we have a normalized 24-hex id that isn't in static map
+  const needsDepartureCity =
+    depNameLooksLikeId &&
+    isHex24(depIdKey) &&
+    !staticMappings.cities[depIdKey];
+
+  if (needsDepartureCity) {
+    missingIds.cities.add(depIdKey);
+  }
+
+  // destination city
+  const needsDestinationCity =
+    destNameLooksLikeId &&
+    isHex24(destIdKey) &&
+    !staticMappings.cities[destIdKey];
+
+  if (needsDestinationCity) {
+    missingIds.cities.add(destIdKey);
+  }
+
+  // flight
+  const flightIdKey = idKey(order.flight_id);
+  const flightName  = typeof order.flight_name === 'string' ? order.flight_name : toStringId(order.flight_name);
+  const flightNameLooksLikeId = looksLikeCompositeObjectId(flightName) || /^[0-9a-f]{24}$/i.test(flightName || '');
+  const needsFlight =
+    flightNameLooksLikeId &&
+    isHex24(flightIdKey) &&
+    !staticMappings.flights[flightIdKey];
+
+  if (needsFlight) {
+    missingIds.flights.add(flightIdKey);
+  }
+
+  // hotel
+  const hotelIdKey = idKey(order.hotel_id);
+  const hotelName  = typeof order.hotel_name === 'string' ? order.hotel_name : toStringId(order.hotel_name);
+  const hotelNameLooksLikeId = looksLikeCompositeObjectId(hotelName) || /^[0-9a-f]{24}$/i.test(hotelName || '');
+  const needsHotel =
+    hotelNameLooksLikeId &&
+    isHex24(hotelIdKey) &&
+    !staticMappings.hotels[hotelIdKey];
+
+  if (needsHotel) {
+    missingIds.hotels.add(hotelIdKey);
+  }
+});
+
     console.log('📊 Summary of missing IDs:', {
       cities: Array.from(missingIds.cities),
       flights: Array.from(missingIds.flights),
@@ -350,11 +356,11 @@ const looksLikeCompositeObjectId = (s) =>
   // Safe name functions
 const getSafeName = (name, id) => {
   const idStr = toStringId(id);
-  if (name && name !== idStr && !name.match(/^[0-9a-f]{24}$/i)) {
-    return name;
-  }
-  if (typeof idStr === 'string' && idStr.length === 24) {
-    return `ID: ${idStr.substring(0, 8)}...`;
+  const looksId = looksLikeCompositeObjectId(name) || /^[0-9a-f]{24}$/i.test(name || '');
+  if (name && !looksId) return name;
+  if (typeof idStr === 'string' && idStr.length >= 24) {
+    const core = idKey(idStr); // strip "-0" etc
+    return `ID: ${core.substring(0, 8)}...`;
   }
   return idStr || 'Unknown';
 };
@@ -362,25 +368,27 @@ const getSafeName = (name, id) => {
 
   // Enhanced name getter functions with dynamic lookup
 // Enhanced name getter functions with dynamic lookup (fixed)
+// Replace your getCityName with this (uses idKey + composite-id guard)
 const getCityName = (cityName, cityId) => {
-  const key = idKey(cityId);                              // normalize key
-  const nameStr = typeof cityName === 'string' ? cityName : toStringId(cityName);
+  const key = idKey(cityId); // normalize id (strips "-0", "_1", etc.)
+  const rawName = typeof cityName === 'string' ? cityName : toStringId(cityName);
+  const nameStr = looksLikeCompositeObjectId(rawName) ? '' : rawName;
 
   console.log(`🏙️ Getting city name for: name="${nameStr}", id="${key}"`);
 
-  // If we already have a human name (not a 24-hex id), use it
+  // If already a human-readable name, use it
   if (nameStr && !/^[0-9a-f]{24}$/i.test(nameStr)) {
     console.log(`✅ Using provided city name: ${nameStr}`);
     return nameStr;
   }
 
-  // Static map
+  // Try static mapping
   if (staticMappings.cities[key]) {
     console.log(`✅ Found in static mappings: ${staticMappings.cities[key]}`);
     return staticMappings.cities[key];
   }
 
-  // Dynamic map
+  // Try dynamic mapping
   if (dynamicData.cities[key]) {
     const doc = dynamicData.cities[key];
     console.log(`🔍 Found in dynamic data:`, doc);
@@ -391,11 +399,12 @@ const getCityName = (cityName, cityId) => {
     }
   }
 
-  // Fallback
+  // Fallback to safe label
   const fallback = getSafeName(nameStr, key);
   console.log(`⚠️ Using fallback for city: ${fallback}`);
   return fallback;
 };
+
 
 const getFlightName = (flightName, flightId) => {
   const key = idKey(flightId);
