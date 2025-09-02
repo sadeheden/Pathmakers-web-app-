@@ -41,7 +41,40 @@ const TripSummary = ({
       // already alerted inside downloadReceipt
     }
   };
+const ISO_RE = /^\d{4}-\d{2}-\d{2}$/;
 
+const toDate = (v) => {
+  if (!v) return null;
+  const raw = (v && typeof v === "object" && v.$d instanceof Date) ? v.$d : v;
+  if (raw instanceof Date && !Number.isNaN(raw)) return raw;
+  if (typeof raw === "string") {
+    if (ISO_RE.test(raw.trim())) {
+      const [y, m, d] = raw.trim().split("-").map(Number);
+      return new Date(Date.UTC(y, m - 1, d, 12, 0, 0));
+    }
+    const d = new Date(raw);
+    return Number.isNaN(+d) ? null : d;
+  }
+  return null;
+};
+
+const START_KEY = "Select trip start date";
+const END_KEY   = "Select trip end date";
+
+const getFromResponses = (obj, keys) =>
+  keys.map(k => obj?.[k]).find(Boolean);
+
+const startVal = getFromResponses(userResponses, [START_KEY, "Trip start date", "Start date", "From"]);
+const endVal   = getFromResponses(userResponses,   [END_KEY,   "Trip end date",   "End date",   "To"]);
+
+const startDisp = (() => {
+  const d = toDate(startVal);
+  return d ? d.toLocaleDateString() : "—";
+})();
+const endDisp = (() => {
+  const d = toDate(endVal);
+  return d ? d.toLocaleDateString() : "—";
+})();
   const handleGoToPersonalArea = () => {
     navigate(personalAreaPath, { replace: true });
   };
@@ -84,20 +117,26 @@ const TripSummary = ({
       </div>
 
       <div className="summary-details">
-        <h3>Your Trip Summary</h3>
-        <p><strong>From:</strong> {textOrName(dep) || "—"}</p>
-        <p><strong>To:</strong> {textOrName(dst) || "—"}</p>
-        <p><strong>Flight:</strong> {textOrName(flight) || "—"}</p>
-        <p><strong>Hotel:</strong> {textOrName(hotel) || "—"}</p>
-        <p>
-          <strong>Attractions:</strong>{" "}
-          {Array.isArray(attractions)
-            ? attractions.map((a) => textOrName(a) || a).join(", ")
-            : textOrName(attractions) || "—"}
-        </p>
-        <p><strong>Transportation:</strong> {transport || "—"}</p>
-        <p><strong>Payment:</strong> {payMethod || "—"}</p>
-        <p><strong>Total:</strong> ${total}</p>
+       <h3>Your Trip Summary</h3>
+<p><strong>From:</strong> {textOrName(dep) || "—"}</p>
+<p><strong>To:</strong> {textOrName(dst) || "—"}</p>
+
+{/* change these two to match the bold style */}
+<p><strong>Departure date:</strong> {startDisp || "—"}</p>
+<p><strong>Return date:</strong> {endDisp || "—"}</p>
+
+<p><strong>Flight:</strong> {textOrName(flight) || "—"}</p>
+<p><strong>Hotel:</strong> {textOrName(hotel) || "—"}</p>
+<p>
+  <strong>Attractions:</strong>{" "}
+  {Array.isArray(attractions)
+    ? attractions.map((a) => textOrName(a) || a).join(", ")
+    : textOrName(attractions) || "—"}
+</p>
+<p><strong>Transportation:</strong> {transport || "—"}</p>
+<p><strong>Payment:</strong> {payMethod || "—"}</p>
+<p><strong>Total:</strong> ${total}</p>
+
       </div>
 
      <div className="summary-buttons">

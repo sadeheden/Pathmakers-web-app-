@@ -337,6 +337,35 @@ console.log("📅 Dates before save:", {
   start: getVal(START_KEY),
   end: getVal(END_KEY),
 });
+// === PREVENT OVERLAPPING TRIPS (frontend preflight) ===
+if (!tripStartYMD || !tripEndYMD) {
+  setToast({ type: "error", text: "Please select trip start and end dates." });
+  setTimeout(() => setToast(null), 3000);
+  setIsPlacingOrder(false);
+  savingOrderRef.current = false;
+  return;
+}
+
+// Ask backend if these dates collide
+try {
+const r0 = await fetch(`${API_BASE}/api/order/conflicts?start=${encodeURIComponent(tripStartYMD)}&end=${encodeURIComponent(tripEndYMD)}`, { headers });
+  const j0 = await r0.json().catch(() => ({}));
+  if (j0?.conflict) {
+    const first = Array.isArray(j0.overlaps) && j0.overlaps[0];
+    const msg = first
+      ? `You already have a trip ${first.destination ? `to ${first.destination} ` : ""}from ${new Date(first.start).toLocaleDateString()} to ${new Date(first.end).toLocaleDateString()}.`
+      : (j0.message || "You already have a trip on these dates.");
+    setToast({ type: "error", text: `❌ ${msg}` });
+    setTimeout(() => setToast(null), 4500);
+    setIsPlacingOrder(false);
+    savingOrderRef.current = false;
+    return; // 🚫 stop here; do NOT create the order
+  }
+} catch (e) {
+  console.warn("Conflict preflight failed:", e);
+  // You can choose to block on error, but usually we let server be final guard.
+}
+
 
     // ---------- helpers (declare BEFORE use) ----------
    const looksLikeObjectId = (v) => typeof v === "string" && /^[0-9a-fA-F]{24}$/.test(v);
@@ -567,6 +596,19 @@ tripEndDate:   tripEndYMD,
       headers,
       body: JSON.stringify(payload),
     });
+    // NEW: show a nice toast if backend blocks overlapping dates
+if (r2.status === 409) {
+  const j = await r2.json().catch(() => ({}));
+  const msg =
+    j?.message ||
+    (j?.conflict ? "You already have a trip on these dates." : "Conflict.");
+  setToast({ type: "error", text: `❌ ${msg}` });
+  setTimeout(() => setToast(null), 4500);
+  setIsPlacingOrder(false);
+  savingOrderRef.current = false;
+  return; // stop flow
+}
+
     if (!r2.ok) {
       const text = await r2.text();
       try {
