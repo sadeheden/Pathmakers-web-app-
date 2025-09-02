@@ -1,13 +1,21 @@
 // services/orders2/orders2.router.js
 import express from 'express';
-import Orders2Controller from './orders2.controller.js';
+import {
+  createOrder,
+  getUserOrders,
+  resolveOrderRefs,
+  getOrderReceiptPdf,
+  hasDateConflict,
+} from "./orders2.controller.js";
 import authenticateUser from '../middleware/authenticateUser.js';
 
 const router = express.Router();
 
-router.use(authenticateUser);                 // 🔒 protect all
-router.get('/conflicts', Orders2Controller.checkConflict);  // ✅ conflict check
-router.post('/', Orders2Controller.createOrder);
-router.get('/', Orders2Controller.getUserOrders);
+router.use(authenticateUser);                          // 🔒 protect all routes
+router.get("/conflicts", authenticateUser, hasDateConflict);
+router.post("/", authenticateUser, createOrder);
+router.get("/:id/receipt.pdf", authenticateUser, getOrderReceiptPdf);
+router.get("/", authenticateUser, getUserOrders);
+router.post("/resolve", authenticateUser, resolveOrderRefs);
 
 export default router;

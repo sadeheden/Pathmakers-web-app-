@@ -18,33 +18,93 @@ class Orders2DB {
       throw new Error(`Failed to create order: ${error.message}`);
     }
   }
-  async findOverlappingOrder({ userId, destinationName, destinationCityId, tripDate, returnDate }) {
+async findOverlappingOrder({ userId, destinationName, destinationCityId, tripDate, returnDate }) {
+  try {
     const escapeRegExp = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const name = (destinationName || '').trim();
     const nameRegex = name ? new RegExp(`^${escapeRegExp(name)}$`, 'i') : null;
 
+    // Convert dates to proper Date objects
+    const newTripDate = new Date(tripDate);
+    const newReturnDate = new Date(returnDate);
+
+    // Validate dates
+    if (isNaN(newTripDate.getTime()) || isNaN(newReturnDate.getTime())) {
+      throw new Error('Invalid date format provided');
+    }
+
+    if (newReturnDate <= newTripDate) {
+      throw new Error('Return date must be after trip date');
+    }
+
+    // Build query step by step
     const query = {
       user_id: new ObjectId(userId),
-      status: { $ne: 'cancelled' },                 // ignore cancelled
-      ...(destinationCityId
-        ? { destination_city_id: destinationCityId }
-        : nameRegex
-          ? {
-              $or: [
-                { destination_city_name: nameRegex },
-                { destination: nameRegex },
-                { cityName: nameRegex },
-              ],
-            }
-          : {}),
-      // overlap: existing.tripDate <= newReturn AND existing.returnDate >= newTrip
-      tripDate: { $lte: new Date(returnDate) },
-      returnDate: { $gte: new Date(tripDate) },
+      status: { $nin: ['cancelled', 'refunded', 'rejected'] },
     };
 
-    return await this.Order2.collection.findOne(query);
-  }
+    // Add destination matching - fix the conditional logic
+    if (destinationCityId) {
+      query.destination_city_id = new ObjectId(destinationCityId);
+    } else if (nameRegex) {
+      query.$or = [
+        { destination_city_name: nameRegex },
+        { destination: nameRegex },
+        { cityName: nameRegex },
+      ];
+    } else if (name) {
+      // Fallback: if we have a name but couldn't create regex, do exact match
+      query.$or = [
+        { destination_city_name: name },
+        { destination: name },
+        { cityName: name },
+      ];
+    }
 
+    // Add date overlap conditions with existence checks
+    // Two date ranges overlap if: start1 < end2 AND start2 < end1
+    query.$and = [
+      // Ensure dates exist and are valid
+      { tripDate: { $exists: true, $type: 'date' } },
+      { returnDate: { $exists: true, $type: 'date' } },
+      // Check for overlap
+      { tripDate: { $lt: newReturnDate } },     // existing starts before new ends
+      { returnDate: { $gt: newTripDate } }      // existing ends after new starts
+    ];
+
+    console.log('🔍 MongoDB query for conflicts:', {
+      userId,
+      destinationName: name,
+      destinationCityId,
+      newTripDate: newTripDate.toISOString(),
+      newReturnDate: newReturnDate.toISOString(),
+      queryStructure: JSON.stringify(query, null, 2)
+    });
+
+    const conflictingOrder = await this.Order2.collection.findOne(query);
+    
+    if (conflictingOrder) {
+      console.log('⚠️ Found conflicting order:', {
+        orderId: conflictingOrder._id,
+        orderNumber: conflictingOrder.orderNumber,
+        destination: conflictingOrder.destination_city_name || conflictingOrder.destination || conflictingOrder.cityName,
+        existingTripDate: conflictingOrder.tripDate?.toISOString(),
+        existingReturnDate: conflictingOrder.returnDate?.toISOString(),
+        status: conflictingOrder.status
+      });
+      
+      // Return the order for debugging
+      return conflictingOrder;
+    } else {
+      console.log('✅ No conflicting orders found');
+      return null;
+    }
+
+  } catch (error) {
+    console.error('❌ Error in findOverlappingOrder:', error);
+    throw new Error(`Failed to check for overlapping orders: ${error.message}`);
+  }
+}
   async getUserOrders(userId, options = {}) {
     try {
       const { page = 1, limit = 10, status = null, sortBy = 'createdAt', sortOrder = -1 } = options;

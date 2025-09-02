@@ -140,22 +140,67 @@ bookingDate: bookingDate ? new Date(bookingDate) : new Date(),
       });
     }
   }
+// In your orders2.controller.js, replace the checkConflict method with this improved version:
+
 static async checkConflict(req, res) {
   try {
+    console.log('🔍 Checking for order conflicts:', req.query);
+    
     if (!req.user?.id) {
-      return res.status(401).json({ success: false, message: 'Unauthorized' });
+      return res.status(401).json({ 
+        success: false, 
+        message: 'Unauthorized - Please log in' 
+      });
     }
-    const { destination, destination_city_id, tripDate, returnDate } = req.query;
-    if (!tripDate) return res.status(400).json({ success: false, message: 'tripDate is required' });
 
+    const { destination, destination_city_id, tripDate, returnDate } = req.query;
+    
+    if (!destination && !destination_city_id) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'destination or destination_city_id is required' 
+      });
+    }
+    
+    if (!tripDate) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'tripDate is required' 
+      });
+    }
+
+    // Parse and validate dates
     const tripDateObj = new Date(tripDate);
+    if (isNaN(tripDateObj.getTime())) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Invalid tripDate format' 
+      });
+    }
+
     let returnDateObj = returnDate ? new Date(returnDate) : null;
-    if (!returnDateObj || isNaN(returnDateObj)) {
+    if (!returnDateObj || isNaN(returnDateObj.getTime())) {
+      // Default to 7 days after trip date
       returnDateObj = new Date(tripDateObj);
       returnDateObj.setDate(returnDateObj.getDate() + 7);
     }
 
-    const conflict = await orders2DB.findOverlappingOrder({
+    if (returnDateObj <= tripDateObj) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Return date must be after trip date' 
+      });
+    }
+
+    console.log('📅 Checking dates:', {
+      destination,
+      tripDate: tripDateObj.toISOString(),
+      returnDate: returnDateObj.toISOString(),
+      userId: req.user.id
+    });
+
+    // Check for overlapping orders
+    const conflictingOrder = await orders2DB.findOverlappingOrder({
       userId: req.user.id,
       destinationName: destination,
       destinationCityId: destination_city_id,
@@ -163,13 +208,39 @@ static async checkConflict(req, res) {
       returnDate: returnDateObj,
     });
 
-    return res.json({ success: true, conflict: !!conflict, order: conflict || null });
-  } catch (err) {
-    console.error('❌ checkConflict error:', err);
-    return res.status(500).json({ success: false, message: 'Internal error' });
+    if (conflictingOrder) {
+      console.log('⚠️ Conflict found:', conflictingOrder._id);
+      return res.json({ 
+        success: true, 
+        conflict: true, 
+        message: `You already have a trip to ${destination} from ${conflictingOrder.tripDate.toDateString()} to ${conflictingOrder.returnDate?.toDateString() || 'N/A'}`,
+        order: {
+          id: conflictingOrder._id,
+          orderNumber: conflictingOrder.orderNumber,
+          destination: conflictingOrder.destination_city_name || conflictingOrder.destination,
+          tripDate: conflictingOrder.tripDate,
+          returnDate: conflictingOrder.returnDate,
+          status: conflictingOrder.status
+        }
+      });
+    }
+
+    console.log('✅ No conflicts found');
+    return res.json({ 
+      success: true, 
+      conflict: false, 
+      message: 'No conflicts found'
+    });
+
+  } catch (error) {
+    console.error('❌ Error in checkConflict:', error);
+    return res.status(500).json({ 
+      success: false, 
+      message: 'Internal server error while checking conflicts',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
 }
-
   static async getUserOrders(req, res) {
     try {
       if (!req.user?.id) return res.status(401).json({ success: false, message: 'User authentication required' });
@@ -193,6 +264,57 @@ static async checkConflict(req, res) {
         error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
       });
     }
+  }
+}
+export async function hasDateConflict(req, res) {
+  try {
+    // pick your auth shape
+    const userId =
+      req.user?.id || req.user?._id || req.auth?.userId || req.userId;
+
+    if (!userId) {
+      return res.status(401).json({ success: false, error: "UNAUTHENTICATED" });
+    }
+
+    const {
+      destination,          // city name string (e.g., "Tokyo")
+      destinationCityId,    // optional ObjectId string
+      tripDate,
+      returnDate,
+    } = req.query;
+
+    if (!tripDate || !returnDate) {
+      return res.status(400).json({ success: false, error: "MISSING_DATES" });
+    }
+
+    const conflict = await orders2DB.findOverlappingOrder({
+      userId,
+      destinationName: destination || null,
+      destinationCityId: destinationCityId || null,
+      tripDate,
+      returnDate,
+    });
+
+    if (conflict) {
+      // return a slimmed order for the UI
+      const payload = {
+        _id: conflict._id,
+        orderNumber: conflict.orderNumber,
+        destination:
+          conflict.destination_city_name ||
+          conflict.destination ||
+          conflict.cityName,
+        tripDate: conflict.tripDate,
+        returnDate: conflict.returnDate,
+        status: conflict.status,
+      };
+      return res.status(200).json({ success: true, conflict: true, order: payload });
+    }
+
+    return res.status(200).json({ success: true, conflict: false });
+  } catch (err) {
+    console.error("❌ hasDateConflict error:", err);
+    return res.status(500).json({ success: false, error: "SERVER_ERROR" });
   }
 }
 

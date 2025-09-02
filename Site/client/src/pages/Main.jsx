@@ -247,7 +247,7 @@ const [conflictInfo, setConflictInfo] = useState(null);
   const [paymentCompleted, setPaymentCompleted] = useState(false);
   const [showIntroPopup, setShowIntroPopup] = useState(false);
   const [orderError, setOrderError] = useState("");
-
+const [conflictCheck, setConflictCheck] = useState({ checking: false, hasConflict: false, message: '' });
   
   // תאריכי טיול - מתחילים עם תאריכים ברירת מחדל
   const [tripDate, setTripDate] = useState("");
@@ -292,18 +292,59 @@ async function checkOrderConflict({ destination, tripDate, returnDate }) {
               `&returnDate=${encodeURIComponent(returnDate)}`;
 
   try {
-    const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
-    const text = await res.text();
-    let json = {};
-    try { json = JSON.parse(text); } catch {}
+    const res = await fetch(url, { 
+      headers: { Authorization: `Bearer ${token}` },
+      timeout: 10000 // 10 second timeout
+    });
+    
+if (!res.ok) {
+  console.warn(`Conflict check failed with status ${res.status}`);
+  return { conflict: false, _error: `HTTP_${res.status}` };
+}
 
-    if (!res.ok) return { conflict: false, _error: `HTTP_${res.status}`, _body: text };
-    return json?.success ? json : { conflict: false, _error: "BAD_SHAPE" };
+
+    const json = await res.json();
+    
+    if (json.success && json.conflict) {
+      return { 
+        conflict: true, 
+        message: `You already have a trip to ${destination} during these dates`,
+        existingOrder: json.order 
+      };
+    }
+    
+    return { conflict: false };
   } catch (e) {
-    console.error("❌ Conflict check threw:", e);
+    console.error("Conflict check error:", e);
     return { conflict: false, _error: "NETWORK" };
   }
 }
+
+// Add this new function to perform real-time conflict checking:
+const performConflictCheck = async (city, departure, returnD) => {
+  if (!city || !departure || !returnD) {
+    setConflictCheck({ checking: false, hasConflict: false, message: '' });
+    return;
+  }
+
+  setConflictCheck({ checking: true, hasConflict: false, message: '' });
+  
+  const result = await checkOrderConflict({
+    destination: city,
+    tripDate: departure,
+    returnDate: returnD,
+  });
+
+  if (result.conflict) {
+    setConflictCheck({ 
+      checking: false, 
+      hasConflict: true, 
+      message: result.message || `You already have a trip to ${city} during these dates`
+    });
+  } else {
+    setConflictCheck({ checking: false, hasConflict: false, message: '' });
+  }
+};
 
   // פונקציה לבדיקת תקינות תאריכים
   const validateDates = (departure, returnD) => {
@@ -329,22 +370,28 @@ async function checkOrderConflict({ destination, tripDate, returnDate }) {
   };
 
   // טיפול בשינוי תאריך יציאה
-  const handleTripDateChange = (newDate) => {
-    setTripDate(newDate);
-    setDateError("");
+ const handleTripDateChange = (newDate) => {
+  setTripDate(newDate);
+  setDateError("");
+  
+  if (returnDate <= newDate) {
+    const newReturnDate = new Date(newDate);
+    newReturnDate.setDate(newReturnDate.getDate() + 7);
+    setReturnDate(formatDateForInput(newReturnDate));
     
-    // אם תאריך החזרה קטן או שווה לתאריך היציאה החדש, עדכן אותו
-    if (returnDate <= newDate) {
-      const newReturnDate = new Date(newDate);
-      newReturnDate.setDate(newReturnDate.getDate() + 7); // ברירת מחדל של שבוע
-      setReturnDate(formatDateForInput(newReturnDate));
-    }
-  };
+    // Check conflicts with the new return date
+    performConflictCheck(selectedCity.name, newDate, formatDateForInput(newReturnDate));
+  } else {
+    // Check conflicts with existing return date
+    performConflictCheck(selectedCity.name, newDate, returnDate);
+  }
+};
 
   // טיפול בשינוי תאריך חזרה
   const handleReturnDateChange = (newDate) => {
     setReturnDate(newDate);
     setDateError("");
+      performConflictCheck(selectedCity.name, tripDate, newDate);
   };
 
   return (
@@ -577,11 +624,49 @@ async function checkOrderConflict({ destination, tripDate, returnDate }) {
                 </div>
               )}
 
-              {tripDate && returnDate && !dateError && (
-                <div style={{ marginTop: '10px', padding: '10px', backgroundColor: '#e8f5e8', borderRadius: '4px', fontSize: '14px' }}>
-                  ✅ Trip Duration: {Math.ceil((new Date(returnDate) - new Date(tripDate)) / (1000 * 60 * 60 * 24))} days
-                </div>
-              )}
+           {tripDate && returnDate && !dateError && (
+  <div style={{ marginTop: '10px' }}>
+    <div style={{ 
+      padding: '10px', 
+      backgroundColor: '#e8f5e8', 
+      borderRadius: '4px', 
+      fontSize: '14px',
+      marginBottom: '8px'
+    }}>
+      ✅ Trip Duration: {Math.ceil((new Date(returnDate) - new Date(tripDate)) / (1000 * 60 * 60 * 24))} days
+    </div>
+    
+    {/* Conflict checking status */}
+    {conflictCheck.checking && (
+      <div style={{ 
+        padding: '8px', 
+        backgroundColor: '#fff3cd', 
+        border: '1px solid #ffeaa7',
+        borderRadius: '4px', 
+        fontSize: '13px',
+        color: '#856404'
+      }}>
+        🔍 Checking for existing trips...
+      </div>
+    )}
+    
+    {/* Conflict warning */}
+    {conflictCheck.hasConflict && (
+      <div style={{ 
+        padding: '10px', 
+        backgroundColor: '#f8d7da', 
+        border: '1px solid #f5c6cb',
+        borderRadius: '4px', 
+        fontSize: '14px',
+        color: '#721c24'
+      }}>
+        ⚠️ {conflictCheck.message}
+        <br />
+        <small>Please choose different dates to proceed.</small>
+      </div>
+    )}
+  </div>
+)}
               {orderError && (
   <div
     style={{
@@ -628,25 +713,25 @@ onClick={async () => {
 
   // If check failed (404/401/500/etc.) -> show inline red error and STOP
  // If check failed (404/401/500/etc.)
-if (result?._error) {
-  // If the endpoint is missing (404), don't block the flow.
-  if (result._error === 'HTTP_404') {
-    console.warn('⚠️ /conflicts endpoint not found. Proceeding without pre-check.');
-  } else {
-    setOrderError("Could not verify conflicts right now. Please try again later.");
-    return; // block only for non-404 errors
-  }
-}
+    if (result._error && result._error !== 'HTTP_404') {
+      setOrderError("Could not verify conflicts right now. Please try again later.");
+      return;
+    }
+
+    if (result.conflict) {
+      setOrderError(result.message || "You already have a trip during these dates. Please choose different dates.");
+      return;
+    }
 
 
   // OK to proceed
   setShowPaymentModal(true);
 }}
+ disabled={!tripDate || !returnDate || conflictCheck.hasConflict || conflictCheck.checking}
 
 
-  disabled={!tripDate || !returnDate}
 >
-  Continue to Payment
+{conflictCheck.checking ? "Checking..." : "Continue to Payment"}
 </button>
 
             </div>
