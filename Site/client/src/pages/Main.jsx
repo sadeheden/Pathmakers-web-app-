@@ -246,6 +246,8 @@ const [conflictInfo, setConflictInfo] = useState(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [paymentCompleted, setPaymentCompleted] = useState(false);
   const [showIntroPopup, setShowIntroPopup] = useState(false);
+  const [orderError, setOrderError] = useState("");
+
   
   // תאריכי טיול - מתחילים עם תאריכים ברירת מחדל
   const [tripDate, setTripDate] = useState("");
@@ -282,10 +284,7 @@ async function checkOrderConflict({ destination, tripDate, returnDate }) {
     localStorage.getItem("access_token") ||
     localStorage.getItem("userToken");
 
-  if (!token) {
-    alert("You must be logged in to check existing orders.");
-    return { conflict: false, _error: "NO_TOKEN" };
-  }
+  if (!token) return { conflict: false, _error: "NO_TOKEN" };
 
   const url = `${API_BASE}/api/orders2/conflicts` +
               `?destination=${encodeURIComponent(destination)}` +
@@ -294,27 +293,14 @@ async function checkOrderConflict({ destination, tripDate, returnDate }) {
 
   try {
     const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
-    const text = await res.text(); // read once
+    const text = await res.text();
     let json = {};
     try { json = JSON.parse(text); } catch {}
 
-    if (!res.ok) {
-      console.warn("⚠️ Conflict check failed:", res.status, text);
-      // If the server said unauthorized, stop here (prevents creating order blindly)
-      if (res.status === 401) {
-        alert("Session expired or not authorized. Please log in again.");
-        return { conflict: false, _error: "UNAUTHORIZED" };
-      }
-      // If endpoint not found or server error, surface it
-      alert(`Conflict check error (${res.status}). Make sure /api/orders2/conflicts exists.`);
-      return { conflict: false, _error: `HTTP_${res.status}` };
-    }
-
-    // Expecting { success: true, conflict: boolean, order?: {...} }
+    if (!res.ok) return { conflict: false, _error: `HTTP_${res.status}`, _body: text };
     return json?.success ? json : { conflict: false, _error: "BAD_SHAPE" };
   } catch (e) {
     console.error("❌ Conflict check threw:", e);
-    alert("Network error while checking conflicts.");
     return { conflict: false, _error: "NETWORK" };
   }
 }
@@ -460,25 +446,51 @@ async function checkOrderConflict({ destination, tripDate, returnDate }) {
       )}
 {conflictInfo && (
   <div className="modal-overlay" onClick={() => setConflictInfo(null)}>
-    <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-      <button className="modal-close-x" onClick={() => setConflictInfo(null)} aria-label="Close">
-        &#10005;
+    <div
+      className="modal-content"
+      onClick={(e) => e.stopPropagation()}
+      style={{
+        borderLeft: '6px solid #dc3545',
+        boxShadow: '0 12px 30px rgba(220,53,69,0.25)',
+      }}
+    >
+      <button
+        className="modal-close-x"
+        onClick={() => setConflictInfo(null)}
+        aria-label="Close"
+        style={{ color: '#dc3545' }}
+      >
+        ✕
       </button>
-      <h2>Cannot Create Order</h2>
-      <p>
-        You already have an order for <strong>{conflictInfo.destination}</strong> that overlaps
-        {" "}
-        <strong>{new Date(conflictInfo.tripDate).toLocaleDateString()}</strong> –{" "}
-        <strong>{new Date(conflictInfo.returnDate).toLocaleDateString()}</strong>.
-      </p>
+
+      <h2 style={{ color: '#dc3545', marginTop: 0 }}>Can’t create order</h2>
+
+      {conflictInfo.kind === 'conflict' ? (
+        <p style={{ lineHeight: 1.5 }}>
+          You already have an order on these dates for <strong>{conflictInfo.destination}</strong>.<br />
+          Please choose different dates.
+        </p>
+      ) : (
+        <p style={{ lineHeight: 1.5 }}>
+          We couldn’t verify conflicts right now. Please try again later.
+        </p>
+      )}
+
       <div className="modal-btns">
-        <button className="btn btn-primary modal-btn" onClick={() => setConflictInfo(null)}>
+        <button
+          className="btn btn-primary modal-btn"
+          onClick={() => setConflictInfo(null)}
+          style={{ backgroundColor: '#dc3545', borderColor: '#dc3545' }}
+        >
           OK
         </button>
       </div>
     </div>
   </div>
 )}
+
+
+
 
       {/* Trip Details Modal עם בחירת תאריכים */}
       {selectedCity && !paymentCompleted && !showPaymentModal && !showIntroPopup && (
@@ -570,6 +582,22 @@ async function checkOrderConflict({ destination, tripDate, returnDate }) {
                   ✅ Trip Duration: {Math.ceil((new Date(returnDate) - new Date(tripDate)) / (1000 * 60 * 60 * 24))} days
                 </div>
               )}
+              {orderError && (
+  <div
+    style={{
+      marginTop: '10px',
+      padding: '10px',
+      backgroundColor: '#fdecea',   // light red
+      border: '1px solid #f5c2c7',  // red border
+      color: '#842029',             // dark red text
+      borderRadius: '4px',
+      fontSize: '14px'
+    }}
+  >
+    {orderError}
+  </div>
+)}
+
             </div>
 
             <div style={{ textAlign: 'center', marginBottom: '15px' }}>
@@ -581,33 +609,41 @@ async function checkOrderConflict({ destination, tripDate, returnDate }) {
             <div className="modal-btns">
            <button
   className="btn btn-primary modal-btn"
-  onClick={async () => {
-    const validationError = validateDates(tripDate, returnDate);
-    if (validationError) {
-      setDateError(validationError);
-      return;
-    }
+onClick={async () => {
+  const validationError = validateDates(tripDate, returnDate);
+  if (validationError) { 
+    setDateError(validationError); 
+    setOrderError("");            // clear order error if date invalid
+    return; 
+  }
 
-    // 🔎 pre-check with server BEFORE payment modal
-    const { conflict, order } = await checkOrderConflict({
-      destination: selectedCity.name,
-      tripDate,
-      returnDate,
-    });
+  setDateError("");
+  setOrderError("");              // clear previous order error
 
-    if (conflict) {
-      setConflictInfo({
-        destination: selectedCity.name,
-        tripDate,
-        returnDate,
-        order,
-      });
-      return; // 🚫 stop here, don't open payment
-    }
+  const result = await checkOrderConflict({
+    destination: selectedCity.name,
+    tripDate,
+    returnDate,
+  });
 
-    setDateError("");
-    setShowPaymentModal(true);
-  }}
+  // If check failed (404/401/500/etc.) -> show inline red error and STOP
+ // If check failed (404/401/500/etc.)
+if (result?._error) {
+  // If the endpoint is missing (404), don't block the flow.
+  if (result._error === 'HTTP_404') {
+    console.warn('⚠️ /conflicts endpoint not found. Proceeding without pre-check.');
+  } else {
+    setOrderError("Could not verify conflicts right now. Please try again later.");
+    return; // block only for non-404 errors
+  }
+}
+
+
+  // OK to proceed
+  setShowPaymentModal(true);
+}}
+
+
   disabled={!tripDate || !returnDate}
 >
   Continue to Payment
@@ -724,13 +760,25 @@ async function checkOrderConflict({ destination, tripDate, returnDate }) {
 
               console.log("✅ Order created successfully:", response.data);
               setHasSaved(true);
-            } catch (error) {
-              console.error("❌ Order creation error:", error.response?.data || error.message);
-              // allow retry on failure only
-              sessionStorage.removeItem("mainOrders2Saved");
-            } finally {
-              savingRef.current = false;
-            }
+     } catch (error) {
+  if (axios.isAxiosError(error) && error.response?.status === 409) {
+    // Server blocked due to overlapping order
+    setShowPaymentModal(false);
+    setPaymentCompleted(false);
+    setOrderError("Can't create order — you already have an order on those dates.");
+  } else {
+    console.error("❌ Order creation error:", error.response?.data || error.message);
+    setShowPaymentModal(false);
+    setPaymentCompleted(false);
+    setOrderError("There was a problem creating your order. Please try again.");
+  }
+  // allow retry
+  sessionStorage.removeItem("mainOrders2Saved");
+} finally {
+  savingRef.current = false;
+}
+
+
           }}
         />
       )}

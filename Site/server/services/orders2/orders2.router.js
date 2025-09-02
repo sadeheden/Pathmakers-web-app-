@@ -1,19 +1,13 @@
-// orders2.router.js
+// services/orders2/orders2.router.js
 import express from 'express';
 import Orders2Controller from './orders2.controller.js';
-import authenticateUser from "../middleware/authenticateUser.js";
+import authenticateUser from '../middleware/authenticateUser.js';
 
 const router = express.Router();
 
-// כל ה־routes דורשים authentication
-router.use(authenticateUser);
-
-// POST /api/orders2 — יצירת הזמנה חדשה
+router.use(authenticateUser);                 // 🔒 protect all
+router.get('/conflicts', Orders2Controller.checkConflict);  // ✅ conflict check
 router.post('/', Orders2Controller.createOrder);
-
-// GET /api/orders2 — שליפת כל הזמנות המשתמש
 router.get('/', Orders2Controller.getUserOrders);
-router.get('/conflicts', Orders2Controller.checkConflict);
-
 
 export default router;
