@@ -17,8 +17,11 @@ import { LinearGradient } from 'expo-linear-gradient'
 import { Ionicons } from '@expo/vector-icons';
 import { LogOut } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect } from '@react-navigation/native';
+
 
 const { width } = Dimensions.get('window');
+
 
 function fetchWithTimeout(resource, options = {}) {
   const { timeout = 10000 } = options;
@@ -36,6 +39,7 @@ export default function Profile() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [expandedOrderId, setExpandedOrderId] = useState(null);
+  const [refreshing, setRefreshing] = useState(false);
   const [dynamicData, setDynamicData] = useState({
     cities: {},
     flights: {},
@@ -250,73 +254,73 @@ const validIds = (ids || []).map(idKey).filter(isHex24);
     setDynamicData(newDynamicData);
   }, [dynamicData]);
 
-  useEffect(() => {
-    const loadData = async () => {
-      console.log('📥 Start loading data...');
-      try {
-        // READ & CLEAN YOUR TOKEN
-        const raw = await AsyncStorage.getItem('token');
-        const token = raw?.replace(/^"|"$/g, '') || null;
-        console.log('🔑 Clean token:', token);
 
-        if (!token) {
-          console.log('🚪 No token found, redirecting to login');
-          router.replace('/login');
-          return;
-        }
 
-        // LOAD CACHED USER DATA
-        const userDataJson = await AsyncStorage.getItem('userData');
-        if (userDataJson) {
-          console.log('🗃️ Cached user data:', userDataJson);
-          setUser(JSON.parse(userDataJson));
-        }
+const loadData = useCallback(async ({ spinner = false } = {}) => {
+  if (spinner) setLoading(true);
+  setRefreshing(true);
+  console.log('📥 Start loading data...');
+  try {
+    const raw = await AsyncStorage.getItem('token');
+    const token = raw?.replace(/^"|"$/g, '') || null;
+    console.log('🔑 Clean token:', token);
 
-        // FETCH ORDERS WITH THE CLEAN TOKEN
-        console.log('🌐 Fetching orders from server...');
-        const response = await fetchWithTimeout(
-          'https://pathmakers-web-app-app-travel.onrender.com/api/orders',
-          {
-            headers: { Authorization: `Bearer ${token}` },
-            timeout: 10000,
-          }
-        );
+    if (!token) {
+      console.log('🚪 No token found, redirecting to login');
+      router.replace('/login');
+      return;
+    }
 
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => null);
-          console.log('❌ Response error body:', errorData);
-          throw new Error(errorData?.message || 'Failed to load orders');
-        }
+    const userDataJson = await AsyncStorage.getItem('userData');
+    if (userDataJson) {
+      console.log('🗃️ Cached user data:', userDataJson);
+      setUser(JSON.parse(userDataJson));
+    }
 
-        const data = await response.json();
-        console.log('📦 Orders received:', data);
+    console.log('🌐 Fetching orders from server...');
+    const response = await fetchWithTimeout(
+      'https://pathmakers-web-app-app-travel.onrender.com/api/orders',
+      { headers: { Authorization: `Bearer ${token}` }, timeout: 10000 }
+    );
 
-        if (!data.success) {
-          throw new Error(data.message || 'Failed to load orders');
-        }
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => null);
+      console.log('❌ Response error body:', errorData);
+      throw new Error(errorData?.message || 'Failed to load orders');
+    }
 
-        const ordersData = data.orders || [];
-        const sortedOrders = [...ordersData].sort(
-          (a, b) => new Date(b.created_at || b.createdAt) - new Date(a.created_at || a.createdAt)
-        );
-        setOrders(sortedOrders);
-                
-        // Fetch missing dynamic data
-        if (ordersData.length > 0) {
-          await fetchMissingData(ordersData);
-        }
+    const data = await response.json();
+    console.log('📦 Orders received:', data);
+    if (!data.success) throw new Error(data.message || 'Failed to load orders');
 
-      } catch (err) {
-        console.error('🔥 Load data error:', err);
-        Alert.alert('Error', err.message || 'Failed to load data');
-      } finally {
-        setLoading(false);
-        console.log('✅ Finished loading data. Loading state set to false.');
-      }
-    };
+    const ordersData = data.orders || [];
+    const sortedOrders = [...ordersData].sort(
+      (a, b) => new Date(b.created_at || b.createdAt) - new Date(a.created_at || a.createdAt)
+    );
+    setOrders(sortedOrders);
 
-    loadData();
-  }, []);
+    if (ordersData.length > 0) {
+      await fetchMissingData(ordersData);
+    }
+  } catch (err) {
+    console.error('🔥 Load data error:', err);
+    Alert.alert('Error', err.message || 'Failed to load data');
+  } finally {
+    setRefreshing(false);
+    if (spinner) setLoading(false);
+    console.log('✅ Finished loading data.');
+  }
+}, [router, fetchMissingData]);
+useEffect(() => {
+  loadData({ spinner: true });
+}, [loadData]);
+
+useFocusEffect(
+  useCallback(() => {
+    loadData();            // light refresh (no big spinner)
+    return () => {};
+  }, [loadData])
+);
 
   const handleLogout = async () => {
     await AsyncStorage.clear();
@@ -705,6 +709,8 @@ const getHotelName = (hotelName, hotelId) => {
 keyExtractor={(item) => toStringId(item._id)}
 
         renderItem={renderOrder}
+  refreshing={refreshing}
+  onRefresh={() => loadData()}
 
         ListEmptyComponent={
           <LinearGradient colors={['#f8f9fa', '#e9ecef']} style={styles.noTripsContainer}>
