@@ -6,9 +6,13 @@ import City from "../cities/cities.model.js";
 import Flight from "../flights/flights.model.js";
 import Hotel from "../hotel/hotel.model.js";
 import { MongoClient, ObjectId } from "mongodb"; // you already import ObjectId; extend it
-
+import { findOverlappingOrdersByUser } from "./order.db.js";
 const uri = process.env.CONNECTION_STRING;
-const dbName = process.env.DB_NAME || "travel";
+const dbName = process.env.DB_NAME;
+ if (!dbName) {
+   throw new Error("Missing DB_NAME env var (controller). It must match order.db.js");
+}
+console.log("[controller] Using DB:", dbName);
 let __client;
 
 async function getDb() {
@@ -39,13 +43,30 @@ function looksLikeObjectId(v) {
 // Use the official validator from mongodb driver
 const isValidObjectId = (v) => typeof v === "string" && ObjectId.isValid(v);
 
-// Safe wrapper for DB calls with fallback
-async function safeDbOperation(fn, fallback = null) {
-  try { return await fn(); }
-  catch (err) {
-    console.error("❌ DB op failed:", err?.message || err);
-    return fallback;
-  }
+// put near top of controller, after getDb()
+async function findOneById(colName, id) {
+  if (!id || !ObjectId.isValid(id)) return null;
+  const db = await getDb();
+  return db.collection(colName).findOne({ _id: new ObjectId(id) });
+}
+
+// Cities can be in "cities" or "city"
+async function findCityNative(id) {
+  if (!id || !ObjectId.isValid(id)) return null;
+  const db = await getDb();
+  let doc = await db.collection("cities").findOne({ _id: new ObjectId(id) });
+  if (!doc) doc = await db.collection("city").findOne({ _id: new ObjectId(id) });
+  return doc;
+}
+
+// Parse "YYYY-MM-DD" safely to noon UTC (stable across timezones)
+function ymdToNoonUTC(v) {
+  if (!v) return null;
+  const s = String(v).trim();
+  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return null;
+  const Y = Number(m[1]), M = Number(m[2]), D = Number(m[3]);
+  return new Date(Date.UTC(Y, M - 1, D, 12, 0, 0));
 }
 
 // Clean and extract the base ObjectId from a possibly compound ID (e.g., "abc123-2")
@@ -348,27 +369,44 @@ export async function resolveOrderRefs(req, res) {
     const flightCompoundId = flightDoc ? `${String(flightDoc._id)}_${flightIndex}` : `${new ObjectId()}_0`; // fallback dummy
 
     // --- Hotel ---
-    const parsedHotel = parseCompound(hotelRaw);
-    let hotelDoc = null;
-    let hotelIndex = parsedHotel.idx;
-    if (is24(parsedHotel.base)) hotelDoc = await Hotels.findOne({ _id: new ObjectId(parsedHotel.base) });
-    else if (parsedHotel.base) {
-      const needle = parsedHotel.base.replace(/\([^)]*\)/g, "").split(" - ")[0].trim();
-      hotelDoc = await Hotels.findOne({ $and: [{ destination_city_id: String(dstCity._id) }, { $or: [{ name: needle }, { "hotels.name": needle }] }] });
-    }
-    if (!hotelDoc) hotelDoc = await Hotels.findOne({ destination_city_id: String(dstCity._id) });
-    if (!hotelDoc) {
-      // fallback – אם אין מלון בכלל, צור dummy עם city id
-      hotelDoc = { _id: dstCity._id };
-      hotelIndex = 0;
-    }
+    // --- Hotel ---
+const parsedHotel = parseCompound(hotelRaw);
+let hotelDoc = null;
+let hotelIndex = parsedHotel.idx;
 
-    const ids = {
-      departureCityId: String(depCity._id),
-      destinationCityId: String(dstCity._id),
-      flightId: flightCompoundId,
-      hotelId: `${String(hotelDoc._id)}-${hotelIndex}`, // תמיד קיים
-    };
+// ✅ build a destination filter that works whether the field is stored as ObjectId or string
+const dstIdStr = String(dstCity._id);
+const dstIdObj = new ObjectId(dstIdStr);
+const destFilter = { $or: [ { destination_city_id: dstIdObj }, { destination_city_id: dstIdStr } ] };
+
+if (is24(parsedHotel.base)) {
+  hotelDoc = await Hotels.findOne({ _id: new ObjectId(parsedHotel.base) });
+} else if (parsedHotel.base) {
+  const needle = parsedHotel.base.replace(/\([^)]*\)/g, "").split(" - ")[0].trim();
+  hotelDoc = await Hotels.findOne({
+    $and: [
+      destFilter,
+      { $or: [ { name: needle }, { "hotels.name": needle } ] }
+    ]
+  });
+}
+
+if (!hotelDoc) {
+  hotelDoc = await Hotels.findOne(destFilter);
+}
+
+if (!hotelDoc) {
+  // fallback – no hotel found, create a dummy carrying the city id
+  hotelDoc = { _id: dstCity._id };
+  hotelIndex = 0;
+}
+
+const ids = {
+  departureCityId: String(depCity._id),
+  destinationCityId: String(dstCity._id),
+  flightId: flightCompoundId,
+  hotelId: `${String(hotelDoc._id)}-${hotelIndex}`,
+};
 
     return res.status(200).json({ success: true, ids });
 
@@ -424,8 +462,8 @@ export async function createOrder(req, res) {
     const depClean = cleanId(departureCityId);
     const dstClean = cleanId(destinationCityId);
     // 🔎 Resolve city names at save time
-const depCityDoc = depClean ? await safeDbOperation(() => City.findById(depClean), null) : null;
-const dstCityDoc = dstClean ? await safeDbOperation(() => City.findById(dstClean), null) : null;
+const depCityDoc = depClean ? await findCityNative(depClean) : null;
+const dstCityDoc = dstClean ? await findCityNative(dstClean) : null;
 
 const departureCityNameResolved = depCityDoc?.city || depCityDoc?.name || null;
 const destinationCityNameResolved = dstCityDoc?.city || dstCityDoc?.name || null;
@@ -510,6 +548,26 @@ const startDt = toDate(tripStartDate ?? tripDate);
 const endDt   = toDate(tripEndDate   ?? returnDate);
 
 console.log("📅 Parsed trip dates:", { startDt, endDt });
+// 🔒 Block overlapping trips for this user (pre-save guard)
+if (startDt && endDt) {
+try {
+    const overlaps = await findOverlappingOrdersByUser(String(req.user.id), startDt, endDt);
+    if (overlaps.length) {
+      const e = overlaps[0];
+      return res.status(409).json({
+        conflict: true,
+        message: `You already have a trip from ${
+          new Date(e.trip_start_date ?? e.tripDate).toLocaleDateString()
+        } to ${
+          new Date(e.trip_end_date ?? e.returnDate).toLocaleDateString()
+        }${e.destination_city_name ? ` (to ${e.destination_city_name})` : ""}.`,
+      });
+    }
+  } catch (err) {
+    console.error("Conflict lookup failed:", err?.message || err);
+    // don't block on lookup failure; you can choose to 500 here if you prefer strict behavior
+  }
+}
 
 // 2) (optional) require dates
 // if (!startDt || !endDt) {
@@ -615,24 +673,13 @@ export async function getUserOrders(req, res) {
         const storedAttractions =
           Array.isArray(order.attraction_names) ? order.attraction_names : [];
 
-        // Fetch only what’s missing
-        const [departureCity, destinationCity, flightDoc, hotelDoc] = await Promise.all([
-          hasStoredDepartureCity
-            ? Promise.resolve(null)
-            : safeDbOperation(() => City.findById(depCityObjectId), null),
+const [departureCity, destinationCity, flightDoc, hotelDoc] = await Promise.all([
+  hasStoredDepartureCity ? null : findCityNative(depCityObjectId),
+  hasStoredDestinationCity ? null : findCityNative(dstCityObjectId),
+  hasStoredFlightName ? null : findOneById("flights", flightObjectId),
+  hasStoredHotelName ? null : findOneById("hotels",  hotelObjectId),
+]);
 
-          hasStoredDestinationCity
-            ? Promise.resolve(null)
-            : safeDbOperation(() => City.findById(dstCityObjectId), null),
-
-          hasStoredFlightName
-            ? Promise.resolve(null)
-            : safeDbOperation(() => Flight.findById(flightObjectId), null),
-
-          hasStoredHotelName
-            ? Promise.resolve(null)
-            : safeDbOperation(() => Hotel.findById(hotelObjectId), null),
-        ]);
 
         // Resolve display names
         const departureCityName = hasStoredDepartureCity
@@ -743,38 +790,38 @@ order.trip_end_date   = order.trip_end_date   ? new Date(order.trip_end_date)   
     let hotelName  = order.hotel_name  || "";
 
     // Resolve city names if not stored
-    if (!departureCityName) {
-      const depId = cleanId(order.departure_city_id);
-      if (depId) {
-        const depDoc = await safeDbOperation(() => City.findById(depId), null);
-        departureCityName = depDoc?.city || depDoc?.name || "";
-      }
-    }
-    if (!destinationCityName) {
-      const dstId = cleanId(order.destination_city_id);
-      if (dstId) {
-        const dstDoc = await safeDbOperation(() => City.findById(dstId), null);
-        destinationCityName = dstDoc?.city || dstDoc?.name || "";
-      }
-    }
+   if (!departureCityName) {
+  const depId = cleanId(order.departure_city_id);
+  if (depId) {
+    const depDoc = await findCityNative(depId);
+    departureCityName = depDoc?.city || depDoc?.name || "";
+  }
+}
+if (!destinationCityName) {
+  const dstId = cleanId(order.destination_city_id);
+  if (dstId) {
+    const dstDoc = await findCityNative(dstId);
+    destinationCityName = dstDoc?.city || dstDoc?.name || "";
+  }
+}
+// Flights/Hotels:
+if (!flightName) {
+  const fId = cleanId(order.flight_id);
+  const fIdx = extractIndex(order.flight_id);
+  if (fId) {
+    const fDoc = await findOneById("flights", fId);
+    flightName = getFlightName(fDoc, fIdx);
+  }
+}
+if (!hotelName) {
+  const hId = cleanId(order.hotel_id);
+  const hIdx = extractIndex(order.hotel_id);
+  if (hId) {
+    const hDoc = await findOneById("hotels", hId);
+    hotelName = getHotelName(hDoc, hIdx);
+  }
+}
 
-    // Resolve flight/hotel names if not stored
-    if (!flightName) {
-      const fId = cleanId(order.flight_id);
-      const fIdx = extractIndex(order.flight_id);
-      if (fId) {
-        const fDoc = await safeDbOperation(() => Flight.findById(fId), null);
-        flightName = getFlightName(fDoc, fIdx);
-      }
-    }
-    if (!hotelName) {
-      const hId = cleanId(order.hotel_id);
-      const hIdx = extractIndex(order.hotel_id);
-      if (hId) {
-        const hDoc = await safeDbOperation(() => Hotel.findById(hId), null);
-        hotelName = getHotelName(hDoc, hIdx);
-      }
-    }
 
     // Attractions — prefer stored names; else keep empty (to match summary)
     let attractionsList = "";
@@ -883,7 +930,12 @@ order.trip_end_date   = order.trip_end_date   ? new Date(order.trip_end_date)   
     yL = row("To", destinationCityName, MARGIN + 16, yL, colW - 32);
     yL = row("Flight", flightName, MARGIN + 16, yL, colW - 32);
     yL = row("Hotel", hotelName, MARGIN + 16, yL, colW - 32);
-
+const departDisp = order.trip_start_date
+  ? new Date(order.trip_start_date).toLocaleDateString()
+  : "—";
+const returnDisp = order.trip_end_date
+  ? new Date(order.trip_end_date).toLocaleDateString()
+  : "—";
     // Right column
     yR = row("Attractions", attractionsList, MARGIN + colW + colGap + 16, yR, colW - 32);
     yR = row("Transportation", transportation, MARGIN + colW + colGap + 16, yR, colW - 32);
@@ -922,5 +974,36 @@ const tripEndDisp = order.trip_end_date
     if (!res.headersSent) {
       res.status(500).json({ message: "Failed to generate receipt PDF" });
     }
+  }
+}
+// GET /api/order/conflicts?start=YYYY-MM-DD&end=YYYY-MM-DD
+export async function hasDateConflict(req, res) {
+  if (!req.user?.id) return res.status(401).json({ message: "Unauthorized" });
+
+  const start = ymdToNoonUTC(req.query.start);
+  const end   = ymdToNoonUTC(req.query.end);
+
+  if (!start || !end || end < start) {
+    return res.status(400).json({ message: "Invalid date range. Use YYYY-MM-DD and ensure start <= end." });
+  }
+
+  try {
+    const overlaps = await findOverlappingOrdersByUser(String(req.user.id), start, end);
+    if (overlaps?.length) {
+      return res.status(200).json({
+        conflict: true,
+        overlaps: overlaps.map(o => ({
+           id: String(o._id),
+  start: o.trip_start_date ?? o.tripDate,
+  end:   o.trip_end_date   ?? o.returnDate,
+  destination: o.destination_city_name || "your trip",
+        })),
+        message: "You already have a trip on these dates.",
+      });
+    }
+    return res.status(200).json({ conflict: false });
+  } catch (err) {
+    console.error("hasDateConflict error:", err?.message || err);
+    return res.status(500).json({ message: "Internal Server Error" });
   }
 }
