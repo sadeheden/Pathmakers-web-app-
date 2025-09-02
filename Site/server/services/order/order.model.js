@@ -1,6 +1,5 @@
 import { ObjectId } from "mongodb";
 import { findOrdersByUserIdFromDb, insertOrderToDb, findOrderByIdFromDb } from './order.db.js';
-
 // Helper function to validate ObjectId
 export function isValidObjectId(id) {
   return typeof id === "string" && id.length === 24 && /^[a-fA-F0-9]{24}$/.test(id);

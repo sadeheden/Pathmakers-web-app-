@@ -1,7 +1,5 @@
-// Fix for MongoDB SSL connection issues
-// Update your order.db.js file
-
-import { MongoClient, ObjectId } from "mongodb";
+// services/order/order.db.js
+import { MongoClient, ObjectId } from 'mongodb';
 import dotenv from "dotenv";
 dotenv.config();
 
@@ -14,41 +12,31 @@ if (!uri || !dbName) {
 
 let client;
 
-// Updated connection options to handle SSL issues
+// Dev-friendly TLS options (tighten for production)
 const mongoOptions = {
-  // SSL/TLS options to fix the connection error
   tls: true,
-  tlsAllowInvalidCertificates: true, // Only for development!
-  tlsAllowInvalidHostnames: true,    // Only for development!
-  
-  // Connection pool options
+  tlsAllowInvalidCertificates: true, // DEV ONLY
+  tlsAllowInvalidHostnames: true,    // DEV ONLY
   maxPoolSize: 10,
   serverSelectionTimeoutMS: 5000,
   socketTimeoutMS: 45000,
   connectTimeoutMS: 10000,
-  
-  // Retry options
   retryWrites: true,
   retryReads: true,
-  
-  // Additional stability options
   heartbeatFrequencyMS: 10000,
   maxIdleTimeMS: 30000,
 };
 
 async function getClient() {
+  // Create client if needed
   if (!client) {
     console.log("🔗 Creating new MongoDB client...");
     client = new MongoClient(uri, mongoOptions);
-    
     try {
       await client.connect();
       console.log("✅ MongoDB connected successfully");
-      
-      // Test the connection
       await client.db(dbName).admin().ping();
       console.log("✅ MongoDB ping successful");
-      
     } catch (error) {
       console.error("❌ MongoDB connection failed:", error.message);
       client = null;
@@ -56,71 +44,71 @@ async function getClient() {
     }
   }
 
-  // Check if client is still connected
-  if (!client.topology || !client.topology.isConnected()) {
-    console.log("🔄 MongoDB client disconnected, reconnecting...");
-try {
-   await client.db(dbName).command({ ping: 1 });
- } catch (e) {
-   console.warn("🔄 MongoDB ping failed, recreating client…", e.message);
-   try { await client.close().catch(() => {}); } catch {}
-   client = new MongoClient(uri, mongoOptions);
-   await client.connect();
-    }
+  // Ensure connection is alive; if not, recreate client
+  try {
+    await client.db(dbName).command({ ping: 1 });
+  } catch (e) {
+    console.warn("🔄 Mongo ping failed, recreating client…", e.message);
+    try { await client.close().catch(() => {}); } catch {}
+    client = new MongoClient(uri, mongoOptions);
+    await client.connect();
   }
 
   return client;
 }
 
-// Add connection retry wrapper
+// Generic retry wrapper
 async function withRetry(operation, maxRetries = 3) {
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
       return await operation();
     } catch (error) {
       console.error(`❌ Attempt ${attempt} failed:`, error.message);
-      
-      if (attempt === maxRetries) {
-        throw error;
-      }
-      
-      // Reset client on connection errors
-      if (error.name === 'MongoNetworkError') {
-        client = null;
-      }
-      
-      // Wait before retry (exponential backoff)
-      const delay = Math.min(1000 * Math.pow(2, attempt - 1), 5000);
+      if (attempt === maxRetries) throw error;
+
+      const delay = Math.min(1000 * 2 ** (attempt - 1), 5000);
       console.log(`⏳ Retrying in ${delay}ms...`);
-      await new Promise(resolve => setTimeout(resolve, delay));
+      await new Promise((r) => setTimeout(r, delay));
     }
   }
 }
 
-// Updated database functions with retry logic
+/** Insert one order and return the inserted document */
+export async function insertOrderToDb(order) {
+  return withRetry(async () => {
+    const c = await getClient();
+    const db = c.db(dbName);
+    const res = await db.collection("orders").insertOne(order);
+    return await db.collection("orders").findOne({ _id: res.insertedId });
+  });
+}
+
+/** Find orders by userId (match string or ObjectId forms of user_id) */
 export async function findOrdersByUserIdFromDb(userId) {
   return withRetry(async () => {
-    const client = await getClient();
-    const db = client.db(dbName);
-
-    console.log("🔍 Searching for user_id:", userId);
+    const c = await getClient();
+    const db = c.db(dbName);
 
     const looksLikeOid = /^[0-9a-fA-F]{24}$/.test(String(userId));
     const userOr = [{ user_id: String(userId) }];
     if (looksLikeOid) userOr.push({ user_id: new ObjectId(String(userId)) });
 
-    const filter = { $or: userOr };                    // ✅ use both
-    console.log("🔍 Using filter:", filter);
-
-    const result = await db.collection("orders").find(filter).toArray();
-    console.log("🔍 Found orders:", result.length);
-    return result;
+    const filter = { $or: userOr };
+    return await db.collection("orders").find(filter).toArray();
   });
 }
 
-// ADD near the other exports
+/** Find a single order by its _id */
+export async function findOrderByIdFromDb(id) {
+  return withRetry(async () => {
+    const c = await getClient();
+    const db = c.db(dbName);
+    return await db.collection("orders").findOne({ _id: new ObjectId(String(id)) });
+  });
+}
+
+/** Find overlapping orders for a user in [startDate, endDate] (blocks conflicts) */
 export async function findOverlappingOrdersByUser(userId, startDate, endDate) {
-  // Normalize to Date at noon UTC
   const toNoonUTC = (v) => {
     if (!v) return null;
     if (v instanceof Date && !isNaN(v)) return v;
@@ -136,18 +124,17 @@ export async function findOverlappingOrdersByUser(userId, startDate, endDate) {
   if (!start || !end || end < start) return [];
 
   return withRetry(async () => {
-    const client = await getClient();
-    const db = client.db(dbName);
+    const c = await getClient();
+    const db = c.db(dbName);
 
-    // Match user_id as ObjectId OR string
     const looksLikeOid = /^[0-9a-fA-F]{24}$/.test(String(userId));
     const userOr = [{ user_id: String(userId) }];
     if (looksLikeOid) userOr.push({ user_id: new ObjectId(String(userId)) });
 
-    // Only non-cancelled should block
+    // Only active orders should block
     const ACTIVE = { status: { $nin: ["cancelled", "refunded"] } };
 
-    // $expr converts legacy string dates to Date, checks not null, then applies overlap
+    // Convert legacy string dates to Date inside $expr and test overlap
     const match = {
       ...ACTIVE,
       $or: userOr,
@@ -191,8 +178,6 @@ export async function findOverlappingOrdersByUser(userId, startDate, endDate) {
       }
     };
 
-    console.log("🧭 Overlap $match:", JSON.stringify(match));
-
     let results = await db.collection("orders")
       .aggregate([
         { $match: match },
@@ -205,9 +190,8 @@ export async function findOverlappingOrdersByUser(userId, startDate, endDate) {
       ])
       .toArray();
 
-    // Optional safety net: if nothing came back, fall back to a JS compare
+    // Safety net: fall back to JS compare if the aggregation returns nothing
     if (!results.length) {
-      console.log("🧪 DB overlap empty; JS fallback scan");
       const all = await db.collection("orders")
         .find({ ...ACTIVE, $or: userOr })
         .project({
@@ -233,7 +217,6 @@ export async function findOverlappingOrdersByUser(userId, startDate, endDate) {
       });
     }
 
-    console.log("🧭 Overlap matches:", results.length);
     return results;
   });
 }

@@ -1,15 +1,20 @@
-// src/orders2/order2.routes.js
+// server/services/orders2/orders2.router.js
 import express from "express";
 import authenticateUser from "../middleware/authenticateUser.js";
-import { createOrder, getUserOrders, resolveOrderRefs, getOrderReceiptPdf, hasDateConflict } from "./order.controller.js";
+import { createOrder, getUserOrders, hasDateConflict } from "./orders2.controller.js";
 
 const router = express.Router();
 
-router.get("/conflicts", authenticateUser, hasDateConflict); // ✅ add this first
+// Check for conflicts
+router.get("/conflicts", authenticateUser, hasDateConflict);
 
+// Create + list orders
 router.post("/", authenticateUser, createOrder);
-router.get("/:id/receipt.pdf", authenticateUser, getOrderReceiptPdf);
 router.get("/", authenticateUser, getUserOrders);
-router.post("/resolve", authenticateUser, resolveOrderRefs);
+
+// (Comment these out unless you've implemented them in the controller)
+// import { resolveOrderRefs, getOrderReceiptPdf } from "./orders2.controller.js";
+// router.post("/resolve", authenticateUser, resolveOrderRefs);
+// router.get("/:id/receipt.pdf", authenticateUser, getOrderReceiptPdf);
 
 export default router;
