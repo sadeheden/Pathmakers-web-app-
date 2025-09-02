@@ -5,6 +5,7 @@ import {
   createOrder,
   getOrdersForProfile,
   getDynamicData,
+  checkAvailability,
   getAttractionsByCity  // Add this import
 } from './order.controller.js';
 
@@ -16,6 +17,8 @@ router.post('/', authenticateUser, createOrder);
 router.post('/api/orders', authenticateUser, createOrder);
 router.get('/', authenticateUser, getOrdersForProfile);
 router.post('/dynamic-data', authenticateUser, getDynamicData);
+// GET /api/orders/availability?start=ISO&end=ISO
+router.get('/availability', authMiddleware, checkAvailability);
 
 // Add the new attractions endpoint
 router.get('/attractions/city/:cityId', authenticateUser, getAttractionsByCity);

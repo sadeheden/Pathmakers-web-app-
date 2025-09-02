@@ -64,6 +64,9 @@ export async function createOrder(req, res) {
       return res.status(401).json({ message: 'Unauthorized (invalid user id in token)' });
     }
 
+    // 👇 Get DB first (we use it for the overlap check and later work)
+    const db = await connectDB();
+
     const {
       departureCityId,
       departureCityName,
@@ -79,7 +82,7 @@ export async function createOrder(req, res) {
       returnDate,      // ISO
       tripDuration,    // number
 
-      attractions = [],     // can be raw ObjectId strings or compound "id-idx"/"id_idx"
+      attractions = [],     // can be raw ObjectId strings or objects with _id
       transportation = '',
       paymentMethod = '',
       totalPrice,
@@ -98,47 +101,55 @@ export async function createOrder(req, res) {
 
     const tripStart = departureDate ? new Date(departureDate) : null;
     const tripEnd   = returnDate ? new Date(returnDate) : null;
+    if ((tripStart && isNaN(tripStart)) || (tripEnd && isNaN(tripEnd))) {
+      return res.status(400).json({ message: 'Invalid departureDate/returnDate' });
+    }
     const tripDays  = Number.isFinite(Number(tripDuration))
       ? Number(tripDuration)
       : (tripStart && tripEnd ? Math.max(1, Math.ceil((tripEnd - tripStart) / 86400000)) : null);
 
-    const db = await connectDB();
+    // ⛔ Prevent double-booking: edge-inclusive overlap (blocks same-day touch)
+    // Change to $lt/$gt if you want to ALLOW back-to-back trips.
+    if (tripStart && tripEnd) {
+      const existing = await db.collection('orders').findOne({
+        user_id: userObjectId,
+        status: { $nin: ['cancelled'] },
+        trip_start_date: { $lte: tripEnd },
+        trip_end_date:   { $gte: tripStart },
+      });
+      if (existing) {
+        return res.status(409).json({
+          message: "Can't book these dates — you already have a trip that overlaps those days.",
+          conflict_order_id: String(existing._id),
+          existing_trip_range: {
+            start: existing.trip_start_date,
+            end: existing.trip_end_date
+          }
+        });
+      }
+    }
 
     // ---- helper: pull a 24-hex id from a possibly-compound value like "68075f..._0" or "68...-1"
     const extractPureId = (val) => {
       if (!val) return null;
       const s = String(val);
-      // split by underscore or hyphen, take the first token that looks like 24-hex
       const parts = s.split(/[-_]/g);
-      for (const p of parts) {
-        if (/^[0-9a-fA-F]{24}$/.test(p)) return p;
-      }
-      // if whole string is 24-hex, return it
+      for (const p of parts) if (/^[0-9a-fA-F]{24}$/.test(p)) return p;
       if (/^[0-9a-fA-F]{24}$/.test(s)) return s;
       return null;
     };
 
-    // Resolve attraction_names even if inbound values are compound strings
-   // In your createOrder function, replace the attractions handling section with this:
-
-    // Handle attractions - ensure we convert valid ObjectId strings to ObjectIds
+    // Handle attractions
     let processedAttractions = [];
     let attractionNames = [];
 
     if (Array.isArray(attractions) && attractions.length > 0) {
-      // Extract pure 24-hex ObjectIds and convert to ObjectId instances
       const validObjectIds = attractions
         .map(attr => {
-          // Handle string ObjectIds
-          if (typeof attr === 'string' && /^[0-9a-fA-F]{24}$/.test(attr)) {
-            return toObjectId(attr);
-          }
-          // Handle objects with _id property
+          if (typeof attr === 'string' && /^[0-9a-fA-F]{24}$/.test(attr)) return toObjectId(attr);
           if (attr && typeof attr === 'object' && attr._id) {
             const id = typeof attr._id === 'string' ? attr._id : attr._id.toString();
-            if (/^[0-9a-fA-F]{24}$/.test(id)) {
-              return toObjectId(id);
-            }
+            if (/^[0-9a-fA-F]{24}$/.test(id)) return toObjectId(id);
           }
           return null;
         })
@@ -146,16 +157,12 @@ export async function createOrder(req, res) {
 
       processedAttractions = validObjectIds;
 
-      // If we have valid attraction IDs, fetch their names from the database
       if (validObjectIds.length > 0) {
         try {
-          const attractionDocs = await db.collection('attractions')
+          const docs = await db.collection('attractions')
             .find({ _id: { $in: validObjectIds } }, { projection: { name: 1, title: 1, attraction_name: 1 } })
             .toArray();
-          
-          attractionNames = attractionDocs.map(doc => 
-            doc.name || doc.title || doc.attraction_name || 'Unnamed Attraction'
-          ).filter(Boolean);
+          attractionNames = docs.map(d => d.name || d.title || d.attraction_name || 'Unnamed Attraction').filter(Boolean);
         } catch (err) {
           console.warn('Failed to fetch attraction names:', err);
           attractionNames = [];
@@ -163,12 +170,10 @@ export async function createOrder(req, res) {
       }
     }
 
-    // If attractions array is empty but we have a destination city, try to fetch all attractions for that city
     if (processedAttractions.length === 0 && destinationCityId) {
       try {
         const destObjectId = toObjectId(destinationCityId);
         if (destObjectId) {
-          // Try multiple possible field names for city reference in attractions collection
           const cityAttractions = await db.collection('attractions').find({
             $or: [
               { city_id: destObjectId },
@@ -176,50 +181,46 @@ export async function createOrder(req, res) {
               { destination_city_id: destObjectId }
             ]
           }).toArray();
-          
+
           if (cityAttractions.length > 0) {
             processedAttractions = cityAttractions.map(attr => attr._id);
-            attractionNames = cityAttractions.map(attr => 
-              attr.name || attr.title || attr.attraction_name || 'Unnamed Attraction'
-            ).filter(Boolean);
+            attractionNames = cityAttractions
+              .map(attr => attr.name || attr.title || attr.attraction_name || 'Unnamed Attraction')
+              .filter(Boolean);
           }
         }
       } catch (err) {
         console.warn('Failed to auto-fetch city attractions:', err);
       }
     }
-const depObjId  = toObjectId(extractPureId(departureCityId));
-const destObjId = toObjectId(extractPureId(destinationCityId));
-const flightObj = toObjectId(extractPureId(flightId));
-const hotelObj  = hotelId ? toObjectId(extractPureId(hotelId)) : null;
+
+    const depObjId  = toObjectId(extractPureId(departureCityId));
+    const destObjId = toObjectId(extractPureId(destinationCityId));
+    const flightObj = toObjectId(extractPureId(flightId));
+    const hotelObj  = hotelId ? toObjectId(extractPureId(hotelId)) : null;
 
     const doc = {
       user_id: userObjectId,
 
-      // Store city IDs as strings to match your expected format
       departure_city_id: depObjId,
-  departure_city_name: String(departureCityName),
+      departure_city_name: String(departureCityName),
 
       destination_city_id: destObjId,
-  destination_city_name: String(destinationCityName),
+      destination_city_name: String(destinationCityName),
 
-        flight_id: flightObj,
-  flight_name: String(flightName || ''),
+      flight_id: flightObj,
+      flight_name: String(flightName || ''),
 
-  hotel_id: hotelObj,
-  hotel_name: String(hotelName || ''),
+      hotel_id: hotelObj,
+      hotel_name: String(hotelName || ''),
 
-      // 🆕 NOW PROPERLY STORING ATTRACTIONS AS OBJECTIDS
-      attractions: processedAttractions, // Array of ObjectId instances
-
-      // Store attraction names for easy display
+      attractions: processedAttractions,
       attraction_names: attractionNames,
 
       transportation: String(transportation || ''),
       payment_method: String(paymentMethod || ''),
       total_price: Number(totalPrice) || 0,
 
-      // dates
       trip_start_date: tripStart || null,
       trip_end_date: tripEnd || null,
       trip_duration: tripDays ?? null,
@@ -228,12 +229,12 @@ const hotelObj  = hotelId ? toObjectId(extractPureId(hotelId)) : null;
       created_at: new Date(),
       updated_at: new Date(),
     };
+
     const result = await db.collection('orders').insertOne(doc);
 
     return res.status(201).json({
       _id: result.insertedId,
       ...doc,
-      // convenience string copies for RN
       _id_str: result.insertedId?.toString(),
       user_id_str: doc.user_id?.toString?.(),
     });
@@ -243,7 +244,44 @@ const hotelObj  = hotelId ? toObjectId(extractPureId(hotelId)) : null;
   }
 }
 
+
 // Add this to your order.controller.js or create a separate attractions controller
+export async function checkAvailability(req, res) {
+  try {
+    const db = await connectDB();
+    const userId = req.user?.id || req.user?.userId || req.user?._id;
+    if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+
+    const { start, end } = req.query;
+    if (!start || !end) return res.status(400).json({ message: 'Missing start/end' });
+
+    const tripStart = new Date(start);
+    const tripEnd = new Date(end);
+
+    // Edge-inclusive overlap
+    const existing = await db.collection('orders').findOne({
+      user_id: toObjectId(userId),
+      status: { $nin: ['cancelled'] },
+      trip_start_date: { $lte: tripEnd },
+      trip_end_date:   { $gte: tripStart },
+    });
+
+    if (existing) {
+      return res.status(409).json({
+        message: "Can't book these dates — you already have a trip that overlaps those days.",
+        conflict_order_id: String(existing._id),
+        existing_trip_range: {
+          start: existing.trip_start_date,
+          end: existing.trip_end_date
+        }
+      });
+    }
+    return res.json({ ok: true });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ message: 'Availability check failed' });
+  }
+}
 
 export async function getAttractionsByCity(req, res) {
   try {
@@ -413,23 +451,6 @@ destination_city_name: {
         '$destinationCity.cityName',
         { $ifNull: [
           '$destination_city_name',   // 👈 stored string from createOrder
-          { $toString: '$destination_city_id' }
-        ] }
-      ] }
-    ] }
-  ]
-},
-
-destination_city_name: {
-  $ifNull: [
-    '$destinationCity.name',
-    { $ifNull: [
-      '$destinationCity.city',
-      { $ifNull: [
-        '$destinationCity.cityName',
-        // 👇 use stored name if lookup failed
-        { $ifNull: [
-          '$destination_city_name',
           { $toString: '$destination_city_id' }
         ] }
       ] }

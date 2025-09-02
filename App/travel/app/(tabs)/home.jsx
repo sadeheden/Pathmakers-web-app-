@@ -87,23 +87,55 @@ const handleReturnDateChange = (event, d) => {
 };
 
 
+const handleConfirm = async () => {
+  if (returnDate <= departureDate) {
+    setError('Return date must be after departure date');
+    return;
+  }
+  const today = new Date(); today.setHours(0,0,0,0);
+  if (departureDate < today) {
+    setError('Departure date cannot be in the past');
+    return;
+  }
 
-  const handleConfirm = () => {
-    if (returnDate <= departureDate) {
-      setError('Return date must be after departure date');
-      return;
+  // 🔎 Availability pre-check (optional)
+  try {
+    const token = await AsyncStorage.getItem('token');
+    const qs = new URLSearchParams({
+      start: departureDate.toISOString(),
+      end: returnDate.toISOString()
+    }).toString();
+
+    const resp = await fetch(
+      `https://pathmakers-web-app-app-travel.onrender.com/api/orders/availability?${qs}`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+
+    if (resp.status === 409) {
+      const conflict = await resp.json().catch(() => null);
+      Alert.alert(
+        'Cannot Book These Dates',
+        conflict?.message || "You already have a trip during these dates.",
+        [
+          { text: 'View My Trips', onPress: () => onClose?.() },
+          { text: 'OK' },
+        ]
+      );
+      return; // stop here, don't proceed to payment
     }
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    if (departureDate < today) {
-      setError('Departure date cannot be in the past');
-      return;
+    if (!resp.ok) {
+      throw new Error('Availability check failed');
     }
+  } catch (err) {
+    console.warn('Availability pre-check error:', err.message);
+    // You can choose to block here, or let them continue and rely on the 409 at save-time.
+    // return;
+  }
 
-    const tripDuration = Math.ceil((returnDate - departureDate) / (1000 * 60 * 60 * 24));
-    onConfirm({ departureDate, returnDate, tripDuration });
-  };
+  const tripDuration = Math.ceil((returnDate - departureDate) / (1000 * 60 * 60 * 24));
+  onConfirm({ departureDate, returnDate, tripDuration });
+};
 
   if (!visible) return null;
 
@@ -749,20 +781,36 @@ const handlePaymentSuccess = async () => {
     const token = await AsyncStorage.getItem('token');
     if (!token) throw new Error('No authentication token found');
 
-    const response = await fetch('https://pathmakers-web-app-app-travel.onrender.com/api/orders', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(orderData),
-    });
+const response = await fetch('https://pathmakers-web-app-app-travel.onrender.com/api/orders', {
+  method: 'POST',
+  headers: {
+    Authorization: `Bearer ${token}`,
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify(orderData),
+});
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => null);
-      console.error('Server error:', errorData);
-      throw new Error(errorData?.message || `Server error: ${response.status}`);
-    }
+// 👇 NEW: handle duplicate/overlap
+if (response.status === 409) {
+  const conflict = await response.json().catch(() => null);
+  Alert.alert(
+    'Cannot Book These Dates',
+    conflict?.message ||
+      "Can't book this flight — you already have a trip during these dates.",
+    [
+      { text: 'View My Trips', onPress: () => navigation.navigate('(tabs)', { screen: 'profile' }) },
+      { text: 'OK' },
+    ]
+  );
+  return; // stop here
+}
+
+if (!response.ok) {
+  const errorData = await response.json().catch(() => null);
+  console.error('Server error:', errorData);
+  throw new Error(errorData?.message || `Server error: ${response.status}`);
+}
+
 
     const responseData = await response.json();
     console.log('Order saved on server:', responseData);
