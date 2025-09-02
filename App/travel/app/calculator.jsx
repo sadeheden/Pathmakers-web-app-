@@ -4,7 +4,7 @@ import {
   ActivityIndicator, StyleSheet, ScrollView, KeyboardAvoidingView, Platform
 } from 'react-native';
 import { MaterialCommunityIcons, Feather, FontAwesome5 } from '@expo/vector-icons';
-
+import { useNavigation } from '@react-navigation/native';
 const popularCurrencies = ['USD','EUR','GBP','JPY','CNY','AUD','CAD','CHF','ILS'];
 
 const CurrencySelector = ({ label, value, onChange, disabledCurrency }) => (
@@ -36,6 +36,7 @@ const CurrencySelector = ({ label, value, onChange, disabledCurrency }) => (
 );
 
 const CurrencyConverter = () => {
+  const navigation = useNavigation();
   const [amount, setAmount] = useState('1');
   const [fromCurrency, setFromCurrency] = useState('USD');
   const [toCurrency, setToCurrency] = useState('EUR');
@@ -98,6 +99,10 @@ const CurrencyConverter = () => {
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <ScrollView contentContainerStyle={{ flexGrow: 1, padding: 20 }}>
         <View style={styles.container}>
+          <TouchableOpacity onPress={() =>  navigation.navigate('(tabs)', { screen: 'home' })} style={styles.backButton}>
+            <Feather name="arrow-left" size={24} color="white" />
+            
+          </TouchableOpacity>
           <View style={styles.header}>
             <View style={styles.iconCircle}>
               <MaterialCommunityIcons name="currency-usd" size={32} color="white" />
@@ -148,10 +153,20 @@ const CurrencyConverter = () => {
 };
 
 const styles = StyleSheet.create({
-  container: { flexGrow: 1, backgroundColor: '#e0e7ff', justifyContent: 'center' },
+  container: { flexGrow: 1, backgroundColor: '#f7f7f7ff', justifyContent: 'center' },
   header: { alignItems: 'center', marginBottom: 30, marginTop: 10 },
   iconCircle: { backgroundColor: '#4f46e5', padding: 16, borderRadius: 40, marginBottom: 8 },
   title: { fontSize: 28, fontWeight: 'bold', color: '#1e293b' },
+  backButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#4f46e5',
+    padding: 12,
+    borderRadius: 12,
+    marginBottom: 20,
+    alignSelf: 'flex-start'
+  },
+  backButtonText: { color: 'white', marginLeft: 8, fontWeight: '600', fontSize: 16 },
   card: { backgroundColor: 'white', borderRadius: 20, padding: 20, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 10, shadowOffset: { width: 0, height: 5 } },
   label: { fontSize: 16, fontWeight: '600', color: '#475569', marginBottom: 8 },
   input: { borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 12, padding: 12, fontSize: 18, fontWeight: '600', color: '#1e293b', marginBottom: 20 },
