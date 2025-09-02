@@ -18,6 +18,7 @@ const Header = () => {
         const token = localStorage.getItem("authToken");
         if (!token) {
             setUser(null);
+            
             return;
         }
         try {
@@ -89,8 +90,9 @@ const handleLogout = async () => {
     window.dispatchEvent(new Event("userChanged"));
     window.dispatchEvent(new Event("app:logout")); // 👈 added
 
-    setUser(null);
-    navigate("/login");
+
+     localStorage.setItem("app:logout", String(Date.now()));
+    navigate("/login", { replace: true });
   } catch (error) {
     console.error("⚠️ Logout error:", error);
   }

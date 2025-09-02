@@ -88,7 +88,12 @@ useEffect(() => {
   };
 
   window.addEventListener("app:logout", onAppLogout);
-  return () => window.removeEventListener("app:logout", onAppLogout);
+   // cross-tab support
+ const onStorage = (e) => {
+   if (e.key === "app:logout") onAppLogout();
+ };
++ window.addEventListener("storage", onStorage);
+  return () => window.removeEventListener("storage", onStorage);
 }, []);
 
   useEffect(() => {
