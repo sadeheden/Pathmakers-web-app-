@@ -158,139 +158,86 @@ const validIds = (ids || []).map(idKey).filter(isHex24);
 
 
   // Bulk fetch missing data when orders load
-  const fetchMissingData = useCallback(async (orders) => {
-    console.log('🔍 Starting to analyze orders for missing data:', orders.length);
-    
-    const missingIds = {
-      cities: new Set(),
-      flights: new Set(),
-      hotels: new Set()
-    };
+const fetchMissingData = useCallback(async (orders) => {
+  const missingIds = { cities: new Set(), flights: new Set(), hotels: new Set() };
 
-    // Identify missing data with detailed logging
-   orders.forEach((order, index) => {
-  const depIdKey  = idKey(order.departure_city_id);
-  const destIdKey = idKey(order.destination_city_id);
+  orders.forEach((order) => {
+    const depIdKey  = idKey(order.departure_city_id);
+    const destIdKey = idKey(order.destination_city_id);
 
-  const depName  = typeof order.departure_city_name === 'string' ? order.departure_city_name : toStringId(order.departure_city_name);
-  const destName = typeof order.destination_city_name === 'string' ? order.destination_city_name : toStringId(order.destination_city_name);
+    const depName  = typeof order.departure_city_name === 'string' ? order.departure_city_name : toStringId(order.departure_city_name);
+    const destName = typeof order.destination_city_name === 'string' ? order.destination_city_name : toStringId(order.destination_city_name);
 
-  const depNameLooksLikeId  = looksLikeCompositeObjectId(depName)  || /^[0-9a-f]{24}$/i.test(depName || '');
-  const destNameLooksLikeId = looksLikeCompositeObjectId(destName) || /^[0-9a-f]{24}$/i.test(destName || '');
+    const depNameLooksLikeId  = looksLikeCompositeObjectId(depName)  || /^[0-9a-f]{24}$/i.test(depName || '');
+    const destNameLooksLikeId = looksLikeCompositeObjectId(destName) || /^[0-9a-f]{24}$/i.test(destName || '');
 
-  // departure city: need fetch if name looks like an id AND we have a normalized 24-hex id that isn't in static map
-  const needsDepartureCity =
-    depNameLooksLikeId &&
-    isHex24(depIdKey) &&
-    !staticMappings.cities[depIdKey];
+    if (depNameLooksLikeId && isHex24(depIdKey) && !staticMappings.cities[depIdKey]) missingIds.cities.add(depIdKey);
+    if (destNameLooksLikeId && isHex24(destIdKey) && !staticMappings.cities[destIdKey]) missingIds.cities.add(destIdKey);
 
-  if (needsDepartureCity) {
-    missingIds.cities.add(depIdKey);
-  }
+    const flightIdKey = idKey(order.flight_id);
+    const flightName  = typeof order.flight_name === 'string' ? order.flight_name : toStringId(order.flight_name);
+    const flightNameLooksLikeId = looksLikeCompositeObjectId(flightName) || /^[0-9a-f]{24}$/i.test(flightName || '');
+    if (flightNameLooksLikeId && isHex24(flightIdKey) && !staticMappings.flights[flightIdKey]) missingIds.flights.add(flightIdKey);
 
-  // destination city
-  const needsDestinationCity =
-    destNameLooksLikeId &&
-    isHex24(destIdKey) &&
-    !staticMappings.cities[destIdKey];
+    const hotelIdKey = idKey(order.hotel_id);
+    const hotelName  = typeof order.hotel_name === 'string' ? order.hotel_name : toStringId(order.hotel_name);
+    const hotelNameLooksLikeId = looksLikeCompositeObjectId(hotelName) || /^[0-9a-f]{24}$/i.test(hotelName || '');
+    if (hotelNameLooksLikeId && isHex24(hotelIdKey) && !staticMappings.hotels[hotelIdKey]) missingIds.hotels.add(hotelIdKey);
+  });
 
-  if (needsDestinationCity) {
-    missingIds.cities.add(destIdKey);
-  }
+  const fetchPromises = Object.entries(missingIds).map(async ([type, idSet]) => {
+    if (!idSet.size) return { type, data: {} };
+    const data = await fetchDynamicData(type, Array.from(idSet));
+    return { type, data };
+  });
+  const results = await Promise.all(fetchPromises);
 
-  // flight
-  const flightIdKey = idKey(order.flight_id);
-  const flightName  = typeof order.flight_name === 'string' ? order.flight_name : toStringId(order.flight_name);
-  const flightNameLooksLikeId = looksLikeCompositeObjectId(flightName) || /^[0-9a-f]{24}$/i.test(flightName || '');
-  const needsFlight =
-    flightNameLooksLikeId &&
-    isHex24(flightIdKey) &&
-    !staticMappings.flights[flightIdKey];
-
-  if (needsFlight) {
-    missingIds.flights.add(flightIdKey);
-  }
-
-  // hotel
-  const hotelIdKey = idKey(order.hotel_id);
-  const hotelName  = typeof order.hotel_name === 'string' ? order.hotel_name : toStringId(order.hotel_name);
-  const hotelNameLooksLikeId = looksLikeCompositeObjectId(hotelName) || /^[0-9a-f]{24}$/i.test(hotelName || '');
-  const needsHotel =
-    hotelNameLooksLikeId &&
-    isHex24(hotelIdKey) &&
-    !staticMappings.hotels[hotelIdKey];
-
-  if (needsHotel) {
-    missingIds.hotels.add(hotelIdKey);
-  }
-});
-
-    console.log('📊 Summary of missing IDs:', {
-      cities: Array.from(missingIds.cities),
-      flights: Array.from(missingIds.flights),
-      hotels: Array.from(missingIds.hotels)
-    });
-
-    // Fetch missing data for each type
-    const fetchPromises = Object.entries(missingIds).map(async ([type, idSet]) => {
-      if (idSet.size > 0) {
-        const ids = Array.from(idSet);
-        console.log(`🔄 Fetching missing ${type} data for ${ids.length} IDs:`, ids);
-        const data = await fetchDynamicData(type, ids);
-        console.log(`✅ Received ${type} data:`, data);
-        return { type, data };
-      }
-      return { type, data: {} };
-    });
-    const results = await Promise.all(fetchPromises);
-    
-    // Update dynamic data state
-    const newDynamicData = { ...dynamicData };
+  // functional update only
+  setDynamicData((prev) => {
+    const next = { ...prev };
     results.forEach(({ type, data }) => {
-      newDynamicData[type] = { ...newDynamicData[type], ...data };
+      next[type] = { ...next[type], ...data };
     });
-    
-    console.log('🎯 Updated dynamic data:', newDynamicData);
-    setDynamicData(newDynamicData);
-  }, [dynamicData]);
+    return next;
+  });
+}, []); // <-- IMPORTANT: no dynamicData here
 
+const inFlightRef = React.useRef(false);
 
+function fetchWithTimeout(resource, options = {}) {
+  const { timeout = 30000, ...rest } = options; // ⬆️ 30s
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeout);
+  return fetch(resource, { ...rest, signal: controller.signal })
+    .finally(() => clearTimeout(id));
+}
 
 const loadData = useCallback(async ({ spinner = false } = {}) => {
-  if (spinner) setLoading(true);
-  setRefreshing(true);
-  console.log('📥 Start loading data...');
+  if (inFlightRef.current) return;   // ⛔️ don’t overlap
+  inFlightRef.current = true;
+
   try {
+    if (spinner) setLoading(true);
+    setRefreshing(true);
+
     const raw = await AsyncStorage.getItem('token');
     const token = raw?.replace(/^"|"$/g, '') || null;
-    console.log('🔑 Clean token:', token);
-
-    if (!token) {
-      console.log('🚪 No token found, redirecting to login');
-      router.replace('/login');
-      return;
-    }
+    if (!token) { router.replace('/login'); return; }
 
     const userDataJson = await AsyncStorage.getItem('userData');
-    if (userDataJson) {
-      console.log('🗃️ Cached user data:', userDataJson);
-      setUser(JSON.parse(userDataJson));
-    }
+    if (userDataJson) setUser(JSON.parse(userDataJson));
 
-    console.log('🌐 Fetching orders from server...');
     const response = await fetchWithTimeout(
       'https://pathmakers-web-app-app-travel.onrender.com/api/orders',
-      { headers: { Authorization: `Bearer ${token}` }, timeout: 10000 }
+      { headers: { Authorization: `Bearer ${token}` }, timeout: 30000 } // ⬆️ 30s
     );
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => null);
-      console.log('❌ Response error body:', errorData);
-      throw new Error(errorData?.message || 'Failed to load orders');
+      throw new Error(errorData?.message || `Failed to load orders (${response.status})`);
     }
 
     const data = await response.json();
-    console.log('📦 Orders received:', data);
     if (!data.success) throw new Error(data.message || 'Failed to load orders');
 
     const ordersData = data.orders || [];
@@ -303,21 +250,23 @@ const loadData = useCallback(async ({ spinner = false } = {}) => {
       await fetchMissingData(ordersData);
     }
   } catch (err) {
+    // Only show one alert per failure burst
     console.error('🔥 Load data error:', err);
     Alert.alert('Error', err.message || 'Failed to load data');
   } finally {
     setRefreshing(false);
     if (spinner) setLoading(false);
-    console.log('✅ Finished loading data.');
+    inFlightRef.current = false;
   }
-}, [router, fetchMissingData]);
+}, [router, fetchMissingData]); // <- stable now
+
 useEffect(() => {
   loadData({ spinner: true });
 }, [loadData]);
 
 useFocusEffect(
   useCallback(() => {
-    loadData();            // light refresh (no big spinner)
+    loadData();  // no spinner
     return () => {};
   }, [loadData])
 );
