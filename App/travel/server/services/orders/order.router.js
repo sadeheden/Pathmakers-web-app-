@@ -6,21 +6,27 @@ import {
   getOrdersForProfile,
   getDynamicData,
   checkAvailability,
-  getAttractionsByCity  // Add this import
+  getAttractionsByCity,
 } from './order.controller.js';
 
 const router = express.Router();
 
+// Simple healthcheck for this router (mounted at /api/orders)
 router.get('/test', (req, res) => res.json({ message: 'Orders route is working!' }));
 
+// Create order
 router.post('/', authenticateUser, createOrder);
-router.post('/api/orders', authenticateUser, createOrder);
-router.get('/', authenticateUser, getOrdersForProfile);
-router.post('/dynamic-data', authenticateUser, getDynamicData);
-// GET /api/orders/availability?start=ISO&end=ISO
-router.get('/availability', authMiddleware, checkAvailability);
 
-// Add the new attractions endpoint
+// List current user's orders (for Profile)
+router.get('/', authenticateUser, getOrdersForProfile);
+
+// Dynamic lookups (cities/flights/hotels)
+router.post('/dynamic-data', authenticateUser, getDynamicData);
+
+// Availability pre-check: GET /api/orders/availability?start=ISO&end=ISO
+router.get('/availability', authenticateUser, checkAvailability);
+
+// Attractions by city (frontend calls: /api/orders/attractions/city/:cityId)
 router.get('/attractions/city/:cityId', authenticateUser, getAttractionsByCity);
 
 export default router;
