@@ -266,56 +266,107 @@ static async checkConflict(req, res) {
     }
   }
 }
+// src/orders2/order.controller.js
+import { ObjectId } from "mongodb";
+
 export async function hasDateConflict(req, res) {
   try {
-    // pick your auth shape
-    const userId =
-      req.user?.id || req.user?._id || req.auth?.userId || req.userId;
+    const db = req.app.locals.db;                 // ← set in server.js after connecting
+    const orders = db.collection("orders2");
 
-    if (!userId) {
-      return res.status(401).json({ success: false, error: "UNAUTHENTICATED" });
+    const userIdStr = req.user?.id || req.user?._id || req.user?.userId;
+    if (!userIdStr) return res.status(401).json({ success: false, error: "UNAUTHORIZED" });
+
+    let userId;
+    try {
+      userId = new ObjectId(userIdStr);
+    } catch {
+      return res.status(400).json({ success: false, error: "BAD_USER_ID" });
     }
 
-    const {
-      destination,          // city name string (e.g., "Tokyo")
-      destinationCityId,    // optional ObjectId string
-      tripDate,
-      returnDate,
-    } = req.query;
-
+    const { tripDate, returnDate, destination } = req.query;
     if (!tripDate || !returnDate) {
       return res.status(400).json({ success: false, error: "MISSING_DATES" });
     }
 
-    const conflict = await orders2DB.findOverlappingOrder({
-      userId,
-      destinationName: destination || null,
-      destinationCityId: destinationCityId || null,
-      tripDate,
-      returnDate,
-    });
+    // Normalize to inclusive range (start of dep day .. end of ret day)
+    const dep = new Date(tripDate);
+    dep.setHours(0, 0, 0, 0);
+    const ret = new Date(returnDate);
+    ret.setHours(23, 59, 59, 999);
 
-    if (conflict) {
-      // return a slimmed order for the UI
-      const payload = {
-        _id: conflict._id,
-        orderNumber: conflict.orderNumber,
-        destination:
-          conflict.destination_city_name ||
-          conflict.destination ||
-          conflict.cityName,
-        tripDate: conflict.tripDate,
-        returnDate: conflict.returnDate,
-        status: conflict.status,
-      };
-      return res.status(200).json({ success: true, conflict: true, order: payload });
+    if (isNaN(dep.getTime()) || isNaN(ret.getTime()) || ret <= dep) {
+      return res.status(400).json({ success: false, error: "BAD_DATES" });
     }
 
-    return res.status(200).json({ success: true, conflict: false });
+    // Optional destination matching across your fields
+    const dest = (destination || "").trim();
+    const destFilter = dest
+      ? { $or: [{ destination_city_name: dest }, { destination: dest }, { cityName: dest }] }
+      : {};
+
+    // Overlap condition: existing.tripDate <= newReturn AND existing.returnDate >= newStart
+ // Replace the "query" + findOne with this variant if tripDate/returnDate are strings
+const queryExpr = {
+  $and: [
+    { $expr: { $eq: ["$user_id", userId] } },
+    // optional destination match as $or outside $expr:
+    // apply destFilter outside as well, it still works together
+    // Overlap using dateFromString
+    {
+      $expr: {
+        $and: [
+          {
+            $lte: [
+              { $dateFromString: { dateString: "$tripDate" } },
+              ret,
+            ],
+          },
+          {
+            $gte: [
+              { $dateFromString: { dateString: "$returnDate" } },
+              dep,
+            ],
+          },
+        ],
+      },
+    },
+  ],
+};
+
+const finalQuery = dest ? { ...destFilter, ...queryExpr } : queryExpr;
+
+const existing = await orders.findOne(finalQuery, {
+  projection: { _id: 1, destination_city_name: 1, destination: 1, cityName: 1, tripDate: 1, returnDate: 1, status: 1 },
+});
+
+
+    return res.json({
+      success: true,
+      conflict: !!existing,
+      order: existing
+        ? {
+            _id: existing._id,
+            destination_city_name:
+              existing.destination_city_name || existing.destination || existing.cityName,
+            tripDate: existing.tripDate,
+            returnDate: existing.returnDate,
+            status: existing.status,
+          }
+        : null,
+    });
   } catch (err) {
-    console.error("❌ hasDateConflict error:", err);
+    console.error("hasDateConflict error:", err);
     return res.status(500).json({ success: false, error: "SERVER_ERROR" });
   }
 }
+
+// re-export static methods as named functions so the router can import them
+export const createOrder = Orders2Controller.createOrder;
+export const getUserOrders = Orders2Controller.getUserOrders;
+
+// If you don't have these implemented yet, either implement or temporarily comment-out
+// their routes in the router to avoid undefined handlers.
+
 
 export default Orders2Controller;

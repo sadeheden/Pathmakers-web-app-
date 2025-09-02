@@ -237,6 +237,110 @@ const PaymentModal = ({ isOpen, onClose, totalAmount, onPaymentSuccess }) => {
     </div>
   );
 };
+// === conflict helpers (client-side fallback) ===
+const getAuthToken = () =>
+  localStorage.getItem("token") ||
+  localStorage.getItem("authToken") ||
+  localStorage.getItem("jwt") ||
+  localStorage.getItem("access_token") ||
+  localStorage.getItem("userToken");
+
+const toDayStart = (d) => {
+  const x = new Date(d);
+  x.setHours(0, 0, 0, 0);
+  return x;
+};
+
+const toDayEnd = (d) => {
+  const x = new Date(d);
+  x.setHours(23, 59, 59, 999);
+  return x;
+};
+
+const overlaps = (aStart, aEnd, bStart, bEnd) =>
+  aStart <= bEnd && aEnd >= bStart;
+
+const namesEqual = (a, b) => String(a || "").trim().toLowerCase() === String(b || "").trim().toLowerCase();
+
+/** Robust date reader: supports Date, ISO string, or Mongo extended JSON */
+const readDate = (val) => {
+  if (!val) return null;
+  // Mongo extended {"$date":{"$numberLong":"..."}}
+  if (val.$date) {
+    const n = typeof val.$date === "object" ? Number(val.$date.$numberLong) : Number(val.$date);
+    return isNaN(n) ? null : new Date(n);
+  }
+  // plain millis in string/number
+  if (typeof val === "string" && /^\d+$/.test(val)) return new Date(Number(val));
+  // ISO or Date
+  const d = new Date(val);
+  return isNaN(d.getTime()) ? null : d;
+};
+
+/** Fetch current user's orders (works with array or {data:[]}/{orders:[]} shapes) */
+async function fetchMyOrders(API_BASE) {
+  const token = getAuthToken();
+  if (!token) throw new Error("NO_TOKEN");
+  const r = await fetch(`${API_BASE}/api/orders2`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!r.ok) throw new Error(`ORDERS_FETCH_${r.status}`);
+  const j = await r.json();
+  if (Array.isArray(j)) return j;
+  if (Array.isArray(j?.data)) return j.data;
+  if (Array.isArray(j?.orders)) return j.orders;
+  return [];
+}
+
+/** Pure local overlap check across your likely fields */
+async function checkConflictLocal({ API_BASE, destination, tripDate, returnDate }) {
+  try {
+    const orders = await fetchMyOrders(API_BASE);
+
+    const newStart = toDayStart(tripDate);
+    const newEnd = toDayEnd(returnDate);
+
+    const hit = orders.find((o) => {
+      const dest =
+        o?.destination_city_name ??
+        o?.destination ??
+        o?.cityName ??
+        o?.destinationCityName ??
+        o?.city_name;
+
+      // match same destination only (as you requested)
+      if (!namesEqual(dest, destination)) return false;
+
+      // read stored dates (many shapes supported)
+      const oStart = readDate(o?.tripDate) ?? readDate(o?.startDate) ?? readDate(o?.trip_date);
+      const oEnd   = readDate(o?.returnDate) ?? readDate(o?.endDate)   ?? readDate(o?.return_date);
+
+      if (!oStart || !oEnd) return false;
+      return overlaps(newStart, newEnd, toDayStart(oStart), toDayEnd(oEnd));
+    });
+
+    if (hit) {
+      return {
+        conflict: true,
+        message: `You already have a trip to ${destination} during these dates.`,
+        order: {
+          id: hit._id,
+          tripDate: hit.tripDate ?? hit.startDate ?? hit.trip_date,
+          returnDate: hit.returnDate ?? hit.endDate ?? hit.return_date,
+          destination:
+            hit.destination_city_name ??
+            hit.destination ??
+            hit.cityName ??
+            hit.destinationCityName,
+        },
+      };
+    }
+    return { conflict: false };
+  } catch (e) {
+    console.warn("Local conflict check failed:", e.message || e);
+    return { conflict: false, _error: "LOCAL_CHECK_FAILED" };
+  }
+}
 
 // ------- Main Page -------
 const Main = () => {
@@ -247,8 +351,12 @@ const [conflictInfo, setConflictInfo] = useState(null);
   const [paymentCompleted, setPaymentCompleted] = useState(false);
   const [showIntroPopup, setShowIntroPopup] = useState(false);
   const [orderError, setOrderError] = useState("");
-const [conflictCheck, setConflictCheck] = useState({ checking: false, hasConflict: false, message: '' });
-  
+ const [conflictCheck, setConflictCheck] = useState({
+  checking: false,
+  hasConflict: false,
+  message: ''
+});
+
   // תאריכי טיול - מתחילים עם תאריכים ברירת מחדל
   const [tripDate, setTripDate] = useState("");
  const [returnDate, setReturnDate] = useState("");
@@ -276,6 +384,8 @@ const [conflictCheck, setConflictCheck] = useState({ checking: false, hasConflic
     if (!rowRef.current) return;
     rowRef.current.scrollBy({ left: (CARD_WIDTH + GAP) * n, behavior: "smooth" });
   };
+// Try server endpoint(s). If 404 or network error, fall back to local scan.
+// Local-only conflict check — blocks on ANY overlapping order by default.
 async function checkOrderConflict({ destination, tripDate, returnDate }) {
   const token =
     localStorage.getItem("token") ||
@@ -286,39 +396,98 @@ async function checkOrderConflict({ destination, tripDate, returnDate }) {
 
   if (!token) return { conflict: false, _error: "NO_TOKEN" };
 
-  const url = `${API_BASE}/api/orders2/conflicts` +
-              `?destination=${encodeURIComponent(destination)}` +
-              `&tripDate=${encodeURIComponent(tripDate)}` +
-              `&returnDate=${encodeURIComponent(returnDate)}`;
+  // set to true if you only want “same destination” conflicts
+  const SAME_DEST_ONLY = false;
 
   try {
-    const res = await fetch(url, { 
+    const resp = await fetch(`${API_BASE}/api/orders2`, {
       headers: { Authorization: `Bearer ${token}` },
-      timeout: 10000 // 10 second timeout
     });
-    
-if (!res.ok) {
-  console.warn(`Conflict check failed with status ${res.status}`);
-  return { conflict: false, _error: `HTTP_${res.status}` };
-}
+    if (!resp.ok) return { conflict: false, _error: `ORDERS_FETCH_${resp.status}` };
 
+    const data = await resp.json();
+    const orders = Array.isArray(data)
+      ? data
+      : Array.isArray(data?.data)
+      ? data.data
+      : Array.isArray(data?.orders)
+      ? data.orders
+      : [];
 
-    const json = await res.json();
-    
-    if (json.success && json.conflict) {
-      return { 
-        conflict: true, 
-        message: `You already have a trip to ${destination} during these dates`,
-        existingOrder: json.order 
+    const toDayStart = (d) => { const x = new Date(d); x.setHours(0,0,0,0); return x; };
+    const toDayEnd   = (d) => { const x = new Date(d); x.setHours(23,59,59,999); return x; };
+    const overlaps   = (aStart,aEnd,bStart,bEnd)=> aStart <= bEnd && aEnd >= bStart;
+    const namesEqual = (a,b)=> String(a||"").trim().toLowerCase() === String(b||"").trim().toLowerCase();
+
+    const readDate = (val) => {
+      if (!val) return null;
+      if (val.$date) {
+        const n = typeof val.$date === "object" ? Number(val.$date.$numberLong) : Number(val.$date);
+        return isNaN(n) ? null : new Date(n);
+      }
+      if (typeof val === "string" && /^\d+$/.test(val)) return new Date(Number(val));
+      const d = new Date(val);
+      return isNaN(d.getTime()) ? null : d;
+    };
+
+    const newStart = toDayStart(tripDate);
+    const newEnd   = toDayEnd(returnDate);
+
+    const hit = orders.find((o) => {
+      const destStored =
+        o?.destination_city_name ??
+        o?.destination ??
+        o?.cityName ??
+        o?.destinationCityName ??
+        o?.city_name;
+
+      // 1) destination rule
+      if (SAME_DEST_ONLY && !namesEqual(destStored, destination)) return false;
+
+      // 2) dates (support many shapes)
+      const oStart =
+        readDate(o?.tripDate) ??
+        readDate(o?.startDate) ??
+        readDate(o?.trip_date);
+
+      let oEnd =
+        readDate(o?.returnDate) ??
+        readDate(o?.endDate)   ??
+        readDate(o?.return_date);
+
+      // if server saved a missing returnDate, assume +7 days
+      if (oStart && !oEnd) {
+        oEnd = new Date(oStart);
+        oEnd.setDate(oEnd.getDate() + 7);
+      }
+
+      if (!oStart || !oEnd) return false;
+
+      return overlaps(newStart, newEnd, toDayStart(oStart), toDayEnd(oEnd));
+    });
+
+    if (hit) {
+      const destStored =
+        hit?.destination_city_name ??
+        hit?.destination ??
+        hit?.cityName ??
+        hit?.destinationCityName ??
+        hit?.city_name ??
+        destination;
+
+      return {
+        conflict: true,
+        message: `You already have a trip (${destStored}) overlapping these dates.`,
+        existingOrder: hit,
       };
     }
-    
     return { conflict: false };
   } catch (e) {
-    console.error("Conflict check error:", e);
-    return { conflict: false, _error: "NETWORK" };
+    console.warn("Local conflict check error:", e?.message || e);
+    return { conflict: false, _error: "LOCAL_CHECK_FAILED" };
   }
 }
+
 
 // Add this new function to perform real-time conflict checking:
 const performConflictCheck = async (city, departure, returnD) => {
@@ -328,23 +497,33 @@ const performConflictCheck = async (city, departure, returnD) => {
   }
 
   setConflictCheck({ checking: true, hasConflict: false, message: '' });
-  
+
   const result = await checkOrderConflict({
     destination: city,
     tripDate: departure,
     returnDate: returnD,
   });
 
+  if (result._error) {
+    setConflictCheck({
+      checking: false,
+      hasConflict: false,
+      message: 'Couldn’t verify conflicts right now.',
+    });
+    return;
+  }
+
   if (result.conflict) {
-    setConflictCheck({ 
-      checking: false, 
-      hasConflict: true, 
-      message: result.message || `You already have a trip to ${city} during these dates`
+    setConflictCheck({
+      checking: false,
+      hasConflict: true,
+      message: result.message || `You already have a trip to ${city} during these dates`,
     });
   } else {
     setConflictCheck({ checking: false, hasConflict: false, message: '' });
   }
 };
+
 
   // פונקציה לבדיקת תקינות תאריכים
   const validateDates = (departure, returnD) => {
@@ -370,29 +549,36 @@ const performConflictCheck = async (city, departure, returnD) => {
   };
 
   // טיפול בשינוי תאריך יציאה
- const handleTripDateChange = (newDate) => {
+const handleTripDateChange = (newDate) => {
   setTripDate(newDate);
   setDateError("");
-  
+  setOrderError("");
+
   if (returnDate <= newDate) {
     const newReturnDate = new Date(newDate);
     newReturnDate.setDate(newReturnDate.getDate() + 7);
-    setReturnDate(formatDateForInput(newReturnDate));
-    
-    // Check conflicts with the new return date
-    performConflictCheck(selectedCity.name, newDate, formatDateForInput(newReturnDate));
+    const rr = formatDateForInput(newReturnDate);
+    setReturnDate(rr);
+    performConflictCheck(selectedCity?.name, newDate, rr);
   } else {
-    // Check conflicts with existing return date
-    performConflictCheck(selectedCity.name, newDate, returnDate);
+    performConflictCheck(selectedCity?.name, newDate, returnDate);
   }
 };
 
-  // טיפול בשינוי תאריך חזרה
-  const handleReturnDateChange = (newDate) => {
-    setReturnDate(newDate);
-    setDateError("");
-      performConflictCheck(selectedCity.name, tripDate, newDate);
-  };
+const handleReturnDateChange = (newDate) => {
+  setReturnDate(newDate);
+  setOrderError("");
+
+  if (tripDate && new Date(newDate) <= new Date(tripDate)) {
+    setDateError("תאריך חזרה חייב להיות אחרי תאריך היציאה");
+    setConflictCheck({ checking: false, hasConflict: false, message: "" });
+    return;
+  }
+
+  setDateError("");
+  performConflictCheck(selectedCity?.name, tripDate, newDate);
+};
+
 
   return (
     <div className="trips-page">
@@ -440,7 +626,11 @@ const performConflictCheck = async (city, departure, returnD) => {
                   setShowPaymentModal(false);
                   setShowIntroPopup(true);
                   setDateError(""); // נקה שגיאות תאריכים
-                }}
+                  setOrderError("");
+                  setConflictCheck({ checking: false, hasConflict: false, message: "" });
+                  setTripDate("");
+                  setReturnDate("");
+                                  }}
               >
                 <img src={city.img} alt={city.name} />
                 <div className="city-card-text">
@@ -458,39 +648,65 @@ const performConflictCheck = async (city, departure, returnD) => {
       </section>
 
       {/* Intro Popup */}
-      {selectedCity && showIntroPopup && (
-        <div className="modal-overlay" onClick={() => setShowIntroPopup(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <button
-              className="modal-close-x"
-              onClick={() => {
-                setShowIntroPopup(false);
-    // default dates: tomorrow → +7 days
-      const tomorrow = new Date();
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      const ret = new Date(tomorrow);
-      ret.setDate(ret.getDate() + 7);
-      setTripDate(tomorrow.toISOString().split('T')[0]);
-      setReturnDate(ret.toISOString().split('T')[0]);
-                  setSelectedCity(null);
-              }}
-              aria-label="Close"
-            >
-              &#10005;
-            </button>
-            <h2>You've Selected {selectedCity.name}!</h2>
-            <p>
-              ✈️ Awesome! You're about to see your trip details to <strong>{selectedCity.name}</strong>.<br />
-              This includes flight number, departure info, and you can choose your preferred dates.
-            </p>
-            <p>Click <strong>Continue</strong> to choose dates and proceed to payment.</p>
-            <p><strong>Price per person: ${getPriceByCity(selectedCity.name)}</strong></p>
-            <button className="btn btn-primary modal-btn" onClick={() => setShowIntroPopup(false)}>
-              Continue
-            </button>
-          </div>
-        </div>
-      )}
+  {/* Intro Popup */}
+{selectedCity && showIntroPopup && (
+  <div
+    className="modal-overlay"
+    onClick={() => {
+      // Clicking the backdrop should dismiss the intro and cancel selection
+      setShowIntroPopup(false);
+      setSelectedCity(null);
+    }}
+  >
+    <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+      <button
+        className="modal-close-x"
+        onClick={() => {
+          // X button = just close the intro and cancel selection (no dates set)
+          setShowIntroPopup(false);
+          setSelectedCity(null);
+        }}
+        aria-label="Close"
+      >
+        &#10005;
+      </button>
+
+      <h2>You've Selected {selectedCity.name}!</h2>
+      <p>
+        ✈️ Awesome! You're about to see your trip details to <strong>{selectedCity.name}</strong>.<br />
+        This includes flight number, departure info, and you can choose your preferred dates.
+      </p>
+      <p>Click <strong>Continue</strong> to choose dates and proceed to payment.</p>
+      <p><strong>Price per person: ${getPriceByCity(selectedCity.name)}</strong></p>
+
+      <button
+        className="btn btn-primary modal-btn"
+        onClick={() => {
+          // Continue = set sensible defaults and open the date modal
+          const tomorrow = new Date();
+          tomorrow.setDate(tomorrow.getDate() + 1);
+          const ret = new Date(tomorrow);
+          ret.setDate(ret.getDate() + 7);
+
+          setTripDate(tomorrow.toISOString().split("T")[0]);
+          setReturnDate(ret.toISOString().split("T")[0]);
+
+          // reset any previous errors/state before showing date modal
+          setDateError("");
+          setOrderError("");
+          setConflictCheck({ checking: false, hasConflict: false, message: "" });
+
+          // close intro -> date modal will show because selectedCity stays set
+          setShowIntroPopup(false);
+        }}
+      >
+        Continue
+      </button>
+    </div>
+  </div>
+)}
+
+
 {conflictInfo && (
   <div className="modal-overlay" onClick={() => setConflictInfo(null)}>
     <div
@@ -696,37 +912,30 @@ const performConflictCheck = async (city, departure, returnD) => {
   className="btn btn-primary modal-btn"
 onClick={async () => {
   const validationError = validateDates(tripDate, returnDate);
-  if (validationError) { 
-    setDateError(validationError); 
-    setOrderError("");            // clear order error if date invalid
-    return; 
+  if (validationError) {
+    setDateError(validationError);
+    setOrderError("");
+    return;
   }
 
   setDateError("");
-  setOrderError("");              // clear previous order error
+  setOrderError("");
 
-  const result = await checkOrderConflict({
-    destination: selectedCity.name,
-    tripDate,
-    returnDate,
-  });
+const result = await checkOrderConflict({ destination: selectedCity.name, tripDate, returnDate });
 
-  // If check failed (404/401/500/etc.) -> show inline red error and STOP
- // If check failed (404/401/500/etc.)
-    if (result._error && result._error !== 'HTTP_404') {
-      setOrderError("Could not verify conflicts right now. Please try again later.");
-      return;
-    }
-
-    if (result.conflict) {
-      setOrderError(result.message || "You already have a trip during these dates. Please choose different dates.");
-      return;
-    }
+if (result._error) {
+  setOrderError("Could not verify conflicts right now. Please try again later.");
+  return;
+}
+if (result.conflict) {
+  setOrderError(result.message || "You already have a trip during these dates. Please choose different dates.");
+  return;
+}
+setShowPaymentModal(true);
 
 
-  // OK to proceed
-  setShowPaymentModal(true);
 }}
+
  disabled={!tripDate || !returnDate || conflictCheck.hasConflict || conflictCheck.checking}
 
 
