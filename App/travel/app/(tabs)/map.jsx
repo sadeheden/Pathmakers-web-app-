@@ -61,40 +61,232 @@ const makeAvailability = (id) => {
 };
 
 /* =====================
-   Enhanced Cart Modal Component (No Delete)
+   People Selection Modal Component
+   ===================== */
+const PeopleSelectionModal = ({ visible, item, onClose, onConfirm }) => {
+  const [peopleCount, setPeopleCount] = useState(1);
+  const [customInput, setCustomInput] = useState('1');
+
+  useEffect(() => {
+    if (visible) {
+      setPeopleCount(1);
+      setCustomInput('1');
+    }
+  }, [visible]);
+
+  const handlePeopleChange = (count) => {
+    const validCount = Math.max(1, Math.min(50, count)); // Limit between 1-50 people
+    setPeopleCount(validCount);
+    setCustomInput(validCount.toString());
+  };
+
+  const handleCustomInputChange = (text) => {
+    setCustomInput(text);
+    const num = parseInt(text, 10);
+    if (!isNaN(num) && num > 0) {
+      setPeopleCount(Math.max(1, Math.min(50, num)));
+    }
+  };
+
+  const totalPrice = (item?.price || 0) * peopleCount;
+  const isFree = (item?.price || 0) === 0;
+
+  const handleConfirm = () => {
+    onConfirm({
+      peopleCount,
+      totalPrice,
+      pricePerPerson: item?.price || 0
+    });
+  };
+
+  if (!item) return null;
+
+  return (
+    <Modal
+      visible={visible}
+      animationType="slide"
+      transparent={true}
+      onRequestClose={onClose}
+    >
+      <View style={styles.peopleModalOverlay}>
+        <View style={styles.peopleModalContent}>
+          {/* Header */}
+          <View style={styles.peopleModalHeader}>
+            <Text style={styles.peopleModalTitle}>Select Number of People</Text>
+            <TouchableOpacity onPress={onClose} style={styles.peopleCloseButton}>
+              <Ionicons name="close" size={24} color="#666" />
+            </TouchableOpacity>
+          </View>
+
+          {/* Attraction Info */}
+          <View style={styles.attractionInfo}>
+            <Text style={styles.attractionInfoName}>{item.name}</Text>
+            <Text style={styles.attractionInfoCity}>{item.city}</Text>
+            <View style={styles.pricePerPersonRow}>
+              <Text style={styles.pricePerPersonLabel}>Price per person:</Text>
+              <Text style={[styles.pricePerPersonValue, isFree && styles.freePrice]}>
+                {isFree ? 'FREE' : `$${item.price}`}
+              </Text>
+            </View>
+          </View>
+
+          {/* People Counter */}
+          <View style={styles.peopleCounter}>
+            <Text style={styles.peopleCounterLabel}>Number of people:</Text>
+            
+            {/* Quick Select Buttons */}
+            <View style={styles.quickSelectRow}>
+              {[1, 2, 3, 4, 5, 6].map((count) => (
+                <TouchableOpacity
+                  key={count}
+                  style={[
+                    styles.quickSelectButton,
+                    peopleCount === count && styles.quickSelectButtonActive
+                  ]}
+                  onPress={() => handlePeopleChange(count)}
+                >
+                  <Text style={[
+                    styles.quickSelectButtonText,
+                    peopleCount === count && styles.quickSelectButtonTextActive
+                  ]}>
+                    {count}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {/* Manual Input and Controls */}
+            <View style={styles.manualInputRow}>
+              <TouchableOpacity
+                style={styles.counterButton}
+                onPress={() => handlePeopleChange(peopleCount - 1)}
+                disabled={peopleCount <= 1}
+              >
+                <Ionicons 
+                  name="remove" 
+                  size={20} 
+                  color={peopleCount <= 1 ? "#ccc" : "#666"} 
+                />
+              </TouchableOpacity>
+
+              <TextInput
+                style={styles.peopleInput}
+                value={customInput}
+                onChangeText={handleCustomInputChange}
+                keyboardType="numeric"
+                textAlign="center"
+                maxLength={2}
+                onBlur={() => {
+                  if (!customInput || isNaN(parseInt(customInput))) {
+                    setCustomInput('1');
+                    setPeopleCount(1);
+                  }
+                }}
+              />
+
+              <TouchableOpacity
+                style={styles.counterButton}
+                onPress={() => handlePeopleChange(peopleCount + 1)}
+                disabled={peopleCount >= 50}
+              >
+                <Ionicons 
+                  name="add" 
+                  size={20} 
+                  color={peopleCount >= 50 ? "#ccc" : "#666"} 
+                />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.peopleLimit}>Maximum 50 people per booking</Text>
+          </View>
+
+          {/* Price Calculator */}
+          <View style={styles.priceCalculator}>
+            <View style={styles.calculatorHeader}>
+              <Ionicons name="calculator-outline" size={20} color="#2ea44f" />
+              <Text style={styles.calculatorTitle}>Price Calculator</Text>
+            </View>
+            
+            <View style={styles.calculationRow}>
+              <Text style={styles.calculationText}>
+                {peopleCount} {peopleCount === 1 ? 'person' : 'people'} × {isFree ? 'FREE' : `$${item.price}`} =
+              </Text>
+              <Text style={[styles.totalPrice, isFree && styles.totalPriceFree]}>
+                {isFree ? 'FREE' : `$${totalPrice}`}
+              </Text>
+            </View>
+
+            {!isFree && peopleCount > 1 && (
+              <Text style={styles.savingsText}>
+                Save ${((item.price * 0.1) * peopleCount).toFixed(2)} with group booking!
+              </Text>
+            )}
+          </View>
+
+          {/* Action Buttons */}
+          <View style={styles.peopleModalButtons}>
+            <TouchableOpacity 
+              style={styles.peopleCancelButton} 
+              onPress={onClose}
+            >
+              <Text style={styles.peopleCancelButtonText}>Cancel</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.peopleConfirmButton}
+              onPress={handleConfirm}
+            >
+              <Ionicons name="checkmark" size={18} color="#fff" />
+              <Text style={styles.peopleConfirmButtonText}>
+                {isFree ? 'Book Free' : `Book for $${totalPrice}`}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+};
+
+/* =====================
+   Enhanced Cart Modal Component (Updated for People Count)
    ===================== */
 const CartModal = ({ visible, purchasedItems, onClose }) => {
   const [sortBy, setSortBy] = useState('city'); // city, date, price
   const [showSortMenu, setShowSortMenu] = useState(false);
   
-  // חישוב נתונים
+  // Updated calculations to include people count
   const totalValue = purchasedItems.reduce((sum, item) => {
-    const price = typeof item.price === 'number' ? item.price : 0;
+    const price = typeof item.totalPrice === 'number' ? item.totalPrice : (typeof item.price === 'number' ? item.price : 0);
     return sum + price;
   }, 0);
   
+  const totalPeople = purchasedItems.reduce((sum, item) => {
+    return sum + (item.peopleCount || 1);
+  }, 0);
+  
   const freeItemsCount = purchasedItems.filter(item => {
-    const price = typeof item.price === 'number' ? item.price : 0;
+    const price = typeof item.totalPrice === 'number' ? item.totalPrice : (typeof item.price === 'number' ? item.price : 0);
     return price === 0;
   }).length;
   
   const paidItemsCount = purchasedItems.length - freeItemsCount;
   const uniqueCities = [...new Set(purchasedItems.map(item => item.city || 'Other Cities'))].length;
 
-  // מיון הפריטים
+  // Sort items
   const sortedItems = useMemo(() => {
     const sorted = [...purchasedItems];
     switch (sortBy) {
       case 'date':
         return sorted.sort((a, b) => new Date(b.purchaseDate || b.booked_at || 0) - new Date(a.purchaseDate || a.booked_at || 0));
       case 'price':
-        return sorted.sort((a, b) => (b.price || 0) - (a.price || 0));
+        return sorted.sort((a, b) => (b.totalPrice || b.price || 0) - (a.totalPrice || a.price || 0));
       default:
         return sorted.sort((a, b) => (a.city || 'zzz').localeCompare(b.city || 'zzz'));
     }
   }, [purchasedItems, sortBy]);
 
-  // קיבוץ לפי עיר (רק כאשר הסידור לפי עיר)
+  // Group by city (only when sorting by city)
   const groupedItems = useMemo(() => {
     if (sortBy !== 'city') return null;
     
@@ -123,12 +315,15 @@ const CartModal = ({ visible, purchasedItems, onClose }) => {
     }
   };
 
-  // רנדור פריט בודד - ללא כפתור מחיקה
+  // Render individual attraction item - updated for people count
   const renderAttractionItem = (item, index) => {
     const attractionName = item.attractionName || item.name || 'Unknown Attraction';
     const timeSlot = item.bookingSlot || item.slot || 'No time slot';
-    const price = typeof item.price === 'number' ? item.price : 0;
+    const totalPrice = typeof item.totalPrice === 'number' ? item.totalPrice : (typeof item.price === 'number' ? item.price : 0);
+    const pricePerPerson = item.pricePerPerson || (typeof item.price === 'number' ? item.price : 0);
+    const peopleCount = item.peopleCount || 1;
     const purchaseDate = item.purchaseDate || item.booked_at;
+    const isFree = totalPrice === 0;
 
     return (
       <View 
@@ -146,6 +341,12 @@ const CartModal = ({ visible, purchasedItems, onClose }) => {
                   <Ionicons name="time-outline" size={12} color="#666" />
                   <Text style={styles.detailText}>{timeSlot}</Text>
                 </View>
+                <View style={styles.detailRow}>
+                  <Ionicons name="people-outline" size={12} color="#666" />
+                  <Text style={styles.detailText}>
+                    {peopleCount} {peopleCount === 1 ? 'person' : 'people'}
+                  </Text>
+                </View>
               </View>
             </View>
           </View>
@@ -153,10 +354,15 @@ const CartModal = ({ visible, purchasedItems, onClose }) => {
           <View style={styles.attractionFooter}>
             <View style={styles.priceRow}>
               <View style={styles.priceContainer}>
-                <Text style={[styles.priceText, price === 0 && styles.freeText]}>
-                  {price === 0 ? 'FREE' : `$${price}`}
+                <Text style={[styles.priceText, isFree && styles.freeText]}>
+                  {isFree ? 'FREE' : `$${totalPrice}`}
                 </Text>
-                {price > 0 && (
+                {!isFree && (
+                  <Text style={styles.pricePerPersonText}>
+                    (${pricePerPerson}/person)
+                  </Text>
+                )}
+                {!isFree && (
                   <View style={styles.paidBadge}>
                     <Text style={styles.paidBadgeText}>PAID</Text>
                   </View>
@@ -172,7 +378,7 @@ const CartModal = ({ visible, purchasedItems, onClose }) => {
     );
   };
 
-  // רנדור סקשן עיר
+  // Render city section
   const renderCitySection = (city, items) => (
     <View key={city} style={styles.citySection}>
       <View style={styles.cityHeader}>
@@ -184,14 +390,14 @@ const CartModal = ({ visible, purchasedItems, onClose }) => {
     </View>
   );
 
-  // תפריט מיון
+  // Sort menu
   const SortMenu = () => (
     showSortMenu && (
       <View style={styles.sortMenu}>
         {[
-          { key: 'city', label: '📍 By City', icon: 'location-outline' },
-          { key: 'date', label: '📅 By Date', icon: 'time-outline' },
-          { key: 'price', label: '💰 By Price', icon: 'cash-outline' }
+          { key: 'city', label: 'By City', icon: 'location-outline' },
+          { key: 'date', label: 'By Date', icon: 'time-outline' },
+          { key: 'price', label: 'By Price', icon: 'cash-outline' }
         ].map((option) => (
           <TouchableOpacity
             key={option.key}
@@ -237,7 +443,7 @@ const CartModal = ({ visible, purchasedItems, onClose }) => {
             <View style={styles.headerLeft}>
               <Text style={styles.modalTitle}>My Bookings</Text>
               <Text style={styles.headerSubtitle}>
-                {purchasedItems.length} item{purchasedItems.length !== 1 ? 's' : ''} • {uniqueCities} cit{uniqueCities !== 1 ? 'ies' : 'y'}
+                {purchasedItems.length} item{purchasedItems.length !== 1 ? 's' : ''} • {totalPeople} people • {uniqueCities} cit{uniqueCities !== 1 ? 'ies' : 'y'}
               </Text>
             </View>
             
@@ -257,78 +463,77 @@ const CartModal = ({ visible, purchasedItems, onClose }) => {
 
           <SortMenu />
 
-       {purchasedItems.length === 0 ? (
-  <View style={styles.emptyCart}>
-    <View style={styles.emptyCartIcon}>
-      <Ionicons name="bag-outline" size={64} color="#ddd" />
-    </View>
-    <Text style={styles.emptyCartTitle}>No Bookings Yet</Text>
-    <Text style={styles.emptyCartText}>
-      Start exploring amazing attractions and book your first experience!
-    </Text>
-    <TouchableOpacity style={styles.exploreButton} onPress={onClose}>
-      <Ionicons name="compass-outline" size={18} color="#fff" />
-      <Text style={styles.exploreButtonText}>Explore Attractions</Text>
-    </TouchableOpacity>
-  </View>
-) : (
-  <View style={{ flex: 1 }}>
-    {/* Attractions List */}
-    <ScrollView
-      style={styles.attractionsList}
-      showsVerticalScrollIndicator={false}
-      contentContainerStyle={{ paddingBottom: 20 }}
-    >
-      {groupedItems ? (
-        Object.entries(groupedItems)
-          .sort(([cityA], [cityB]) =>
-            cityA === 'Other Cities'
-              ? 1
-              : cityB === 'Other Cities'
-              ? -1
-              : cityA.localeCompare(cityB)
-          )
-          .map(([city, items]) => renderCitySection(city, items))
-      ) : (
-        sortedItems.map((item, index) => renderAttractionItem(item, index))
-      )}
-    </ScrollView>
+          {purchasedItems.length === 0 ? (
+            <View style={styles.emptyCart}>
+              <View style={styles.emptyCartIcon}>
+                <Ionicons name="bag-outline" size={64} color="#ddd" />
+              </View>
+              <Text style={styles.emptyCartTitle}>No Bookings Yet</Text>
+              <Text style={styles.emptyCartText}>
+                Start exploring amazing attractions and book your first experience!
+              </Text>
+              <TouchableOpacity style={styles.exploreButton} onPress={onClose}>
+                <Ionicons name="compass-outline" size={18} color="#fff" />
+                <Text style={styles.exploreButtonText}>Explore Attractions</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <View style={{ flex: 1 }}>
+              {/* Attractions List */}
+              <ScrollView
+                style={styles.attractionsList}
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={{ paddingBottom: 20 }}
+              >
+                {groupedItems ? (
+                  Object.entries(groupedItems)
+                    .sort(([cityA], [cityB]) =>
+                      cityA === 'Other Cities'
+                        ? 1
+                        : cityB === 'Other Cities'
+                        ? -1
+                        : cityA.localeCompare(cityB)
+                    )
+                    .map(([city, items]) => renderCitySection(city, items))
+                ) : (
+                  sortedItems.map((item, index) => renderAttractionItem(item, index))
+                )}
+              </ScrollView>
 
-    {/* Summary Footer – קבוע בתחתית */}
-    <View style={styles.summaryFooter}>
-      <View style={styles.summaryHeader}>
-        <Text style={styles.summaryTitle}>📊 Booking Summary</Text>
-      </View>
+              {/* Summary Footer – Fixed at bottom */}
+              <View style={styles.summaryFooter}>
+                <View style={styles.summaryHeader}>
+                  <Text style={styles.summaryTitle}>Booking Summary</Text>
+                </View>
 
-      <View style={styles.summaryGrid}>
-        <View style={styles.summaryItem}>
-          <Ionicons name="location-outline" size={20} color="#2ea44f" />
-          <Text style={styles.summaryLabel}>Cities</Text>
-          <Text style={styles.summaryValue}>{uniqueCities}</Text>
-        </View>
+                <View style={styles.summaryGrid}>
+                  <View style={styles.summaryItem}>
+                    <Ionicons name="location-outline" size={20} color="#2ea44f" />
+                    <Text style={styles.summaryLabel}>Cities</Text>
+                    <Text style={styles.summaryValue}>{uniqueCities}</Text>
+                  </View>
 
-        <View style={styles.summaryItem}>
-          <Ionicons name="ticket-outline" size={20} color="#2ea44f" />
-          <Text style={styles.summaryLabel}>Total</Text>
-          <Text style={styles.summaryValue}>{purchasedItems.length}</Text>
-        </View>
+                  <View style={styles.summaryItem}>
+                    <Ionicons name="ticket-outline" size={20} color="#2ea44f" />
+                    <Text style={styles.summaryLabel}>Bookings</Text>
+                    <Text style={styles.summaryValue}>{purchasedItems.length}</Text>
+                  </View>
 
-        <View style={styles.summaryItem}>
-          <Ionicons name="gift-outline" size={20} color="#ff6b35" />
-          <Text style={styles.summaryLabel}>Free</Text>
-          <Text style={styles.summaryValue}>{freeItemsCount}</Text>
-        </View>
+                  <View style={styles.summaryItem}>
+                    <Ionicons name="people-outline" size={20} color="#ff6b35" />
+                    <Text style={styles.summaryLabel}>People</Text>
+                    <Text style={styles.summaryValue}>{totalPeople}</Text>
+                  </View>
 
-        <View style={styles.summaryItem}>
-          <Ionicons name="card-outline" size={20} color="#1b5e20" />
-          <Text style={styles.summaryLabel}>Spent</Text>
-          <Text style={styles.summaryValueHighlight}>${totalValue}</Text>
-        </View>
-      </View>
-    </View>
-  </View>
-)}
-
+                  <View style={styles.summaryItem}>
+                    <Ionicons name="card-outline" size={20} color="#1b5e20" />
+                    <Text style={styles.summaryLabel}>Total</Text>
+                    <Text style={styles.summaryValueHighlight}>${totalValue}</Text>
+                  </View>
+                </View>
+              </View>
+            </View>
+          )}
         </TouchableOpacity>
       </TouchableOpacity>
     </Modal>
@@ -336,9 +541,9 @@ const CartModal = ({ visible, purchasedItems, onClose }) => {
 };
 
 /* =====================
-   Payment Modal Component
+   Updated Payment Modal Component (with people count display)
    ===================== */
-const PaymentModal = ({ visible, item, onClose, onConfirm, loading }) => {
+const PaymentModal = ({ visible, item, peopleData, onClose, onConfirm, loading }) => {
   const [cardNumber, setCardNumber] = useState('');
   const [expiryDate, setExpiryDate] = useState('');
   const [cvv, setCvv] = useState('');
@@ -354,7 +559,9 @@ const PaymentModal = ({ visible, item, onClose, onConfirm, loading }) => {
       expiryDate,
       cvv,
       cardholderName,
-      amount: item?.price || 0
+      amount: peopleData?.totalPrice || 0,
+      peopleCount: peopleData?.peopleCount || 1,
+      pricePerPerson: peopleData?.pricePerPerson || 0
     });
   };
 
@@ -370,7 +577,7 @@ const PaymentModal = ({ visible, item, onClose, onConfirm, loading }) => {
     onClose();
   };
 
-  if (!item) return null;
+  if (!item || !peopleData) return null;
 
   return (
     <Modal
@@ -388,9 +595,28 @@ const PaymentModal = ({ visible, item, onClose, onConfirm, loading }) => {
             </TouchableOpacity>
           </View>
 
+          {/* Booking Details */}
+          <View style={styles.bookingDetails}>
+            <View style={styles.bookingDetailRow}>
+              <Ionicons name="people-outline" size={16} color="#666" />
+              <Text style={styles.bookingDetailText}>
+                {peopleData.peopleCount} {peopleData.peopleCount === 1 ? 'person' : 'people'}
+              </Text>
+            </View>
+            <View style={styles.bookingDetailRow}>
+              <Ionicons name="pricetag-outline" size={16} color="#666" />
+              <Text style={styles.bookingDetailText}>
+                ${peopleData.pricePerPerson} per person
+              </Text>
+            </View>
+          </View>
+
           <View style={styles.priceSection}>
-            <Text style={styles.priceLabel}>Amount to pay:</Text>
-            <Text style={styles.priceAmount}>${item.price}</Text>
+            <Text style={styles.priceLabel}>Total amount:</Text>
+            <Text style={styles.priceAmount}>${peopleData.totalPrice}</Text>
+            <Text style={styles.priceCalculation}>
+              {peopleData.peopleCount} × ${peopleData.pricePerPerson}
+            </Text>
           </View>
 
           <View style={styles.paymentForm}>
@@ -469,7 +695,7 @@ const PaymentModal = ({ visible, item, onClose, onConfirm, loading }) => {
               ) : (
                 <>
                   <Ionicons name="card-outline" size={18} color="#fff" />
-                  <Text style={styles.payButtonText}>Pay ${item.price}</Text>
+                  <Text style={styles.payButtonText}>Pay ${peopleData.totalPrice}</Text>
                 </>
               )}
             </TouchableOpacity>
@@ -530,7 +756,10 @@ export default function AttractionsScreen() {
   const [loadingList, setLoadingList] = useState(false);
   const [items, setItems] = useState([]);
   const [errorText, setErrorText] = useState('');
-  const [paymentModal, setPaymentModal] = useState({ visible: false, item: null });
+  
+  // Updated state for people selection and payment
+  const [peopleModal, setPeopleModal] = useState({ visible: false, item: null });
+  const [paymentModal, setPaymentModal] = useState({ visible: false, item: null, peopleData: null });
   const [paymentLoading, setPaymentLoading] = useState(false);
   
   const [cartModal, setCartModal] = useState(false);
@@ -646,14 +875,28 @@ export default function AttractionsScreen() {
       return;
     }
 
-    if (item.price === 0) {
-      await handleFreeBooking(item);
+    // Always show people selection modal first
+    setPeopleModal({ visible: true, item });
+  };
+
+  const handlePeopleSelection = async (peopleData) => {
+    const { item } = peopleModal;
+    setPeopleModal({ visible: false, item: null });
+
+    if (peopleData.totalPrice === 0) {
+      // Handle free booking
+      await handleFreeBooking(item, peopleData);
     } else {
-      setPaymentModal({ visible: true, item });
+      // Show payment modal
+      setPaymentModal({ 
+        visible: true, 
+        item, 
+        peopleData 
+      });
     }
   };
 
-  const handleFreeBooking = async (item) => {
+  const handleFreeBooking = async (item, peopleData) => {
     try {
       const bookingData = { 
         attractionId: item.id,
@@ -661,6 +904,9 @@ export default function AttractionsScreen() {
         city: item.city,
         slot: item.availability?.[0] ?? null, 
         price: 0,
+        totalPrice: 0,
+        peopleCount: peopleData.peopleCount,
+        pricePerPerson: 0,
         paymentType: 'free' 
       };
       
@@ -670,7 +916,10 @@ export default function AttractionsScreen() {
       
       if (!response.success) throw new Error(response.message || 'Booking failed');
       
-      Alert.alert('Booked Successfully! 🎉', `Your booking for ${item.name} is confirmed (free!)`);
+      Alert.alert(
+        'Booked Successfully! 🎉', 
+        `Your booking for ${item.name} is confirmed for ${peopleData.peopleCount} ${peopleData.peopleCount === 1 ? 'person' : 'people'} (free!)`
+      );
       
       console.log('🔄 Refreshing cart after successful booking...');
       await loadPurchasedAttractions();
@@ -688,7 +937,10 @@ export default function AttractionsScreen() {
         attractionName: paymentModal.item.name,
         city: paymentModal.item.city,
         slot: paymentModal.item.availability?.[0] ?? null,
-        price: paymentData.amount,
+        price: paymentData.pricePerPerson,
+        totalPrice: paymentData.amount,
+        peopleCount: paymentData.peopleCount,
+        pricePerPerson: paymentData.pricePerPerson,
         paymentType: 'paid',
         paymentDetails: {
           cardNumber: paymentData.cardNumber.replace(/\s/g, ''),
@@ -705,8 +957,11 @@ export default function AttractionsScreen() {
       
       if (!response.success) throw new Error(response.message || 'Payment failed');
       
-      Alert.alert('Payment Successful! 🎉', `Your payment of $${paymentData.amount} for ${paymentModal.item.name} is confirmed!`);
-      setPaymentModal({ visible: false, item: null });
+      Alert.alert(
+        'Payment Successful! 🎉', 
+        `Your payment of ${paymentData.amount} for ${paymentModal.item.name} is confirmed for ${paymentData.peopleCount} ${paymentData.peopleCount === 1 ? 'person' : 'people'}!`
+      );
+      setPaymentModal({ visible: false, item: null, peopleData: null });
       
       console.log('🔄 Refreshing cart after successful payment...');
       await loadPurchasedAttractions();
@@ -837,7 +1092,7 @@ export default function AttractionsScreen() {
         <View style={styles.bookRow}>
           <Ionicons name="checkmark-circle-outline" size={14} />
           <Text style={styles.bookText}>
-            {item.price === 0 ? 'Free - Bookable' : item.price != null ? `From ${item.price}` : 'Available to book'}
+            {item.price === 0 ? 'Free - Bookable' : item.price != null ? `From ${item.price}/person` : 'Available to book'}
           </Text>
         </View>
       ) : (
@@ -890,10 +1145,18 @@ export default function AttractionsScreen() {
         />
       )}
 
+      <PeopleSelectionModal
+        visible={peopleModal.visible}
+        item={peopleModal.item}
+        onClose={() => setPeopleModal({ visible: false, item: null })}
+        onConfirm={handlePeopleSelection}
+      />
+
       <PaymentModal
         visible={paymentModal.visible}
         item={paymentModal.item}
-        onClose={() => setPaymentModal({ visible: false, item: null })}
+        peopleData={paymentModal.peopleData}
+        onClose={() => setPaymentModal({ visible: false, item: null, peopleData: null })}
         onConfirm={handlePaymentConfirm}
         loading={paymentLoading}
       />
@@ -908,7 +1171,7 @@ export default function AttractionsScreen() {
 }
 
 /* =====================
-   Complete Styles (No Delete Features)
+   Complete Styles (Updated with People Selection Components)
    ===================== */
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff' },
@@ -944,6 +1207,237 @@ const styles = StyleSheet.create({
     color: '#2ea44f',
     marginLeft: 8,
     fontWeight: '600',
+  },
+
+  // People Selection Modal Styles
+  peopleModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  peopleModalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 24,
+    margin: 20,
+    width: '90%',
+    maxHeight: '80%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  peopleModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  peopleModalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1a1a1a',
+    flex: 1,
+  },
+  peopleCloseButton: {
+    padding: 8,
+    backgroundColor: '#f5f5f5',
+    borderRadius: 20,
+  },
+  
+  // Attraction Info Section
+  attractionInfo: {
+    backgroundColor: '#f8fffe',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: '#e3f2fd',
+  },
+  attractionInfoName: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1b5e20',
+    marginBottom: 4,
+  },
+  attractionInfoCity: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 8,
+  },
+  pricePerPersonRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  pricePerPersonLabel: {
+    fontSize: 14,
+    color: '#666',
+    fontWeight: '500',
+  },
+  pricePerPersonValue: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#2ea44f',
+  },
+  freePrice: {
+    color: '#ff6b35',
+  },
+  
+  // People Counter Section
+  peopleCounter: {
+    marginBottom: 24,
+  },
+  peopleCounterLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1a1a1a',
+    marginBottom: 12,
+  },
+  quickSelectRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 16,
+  },
+  quickSelectButton: {
+    backgroundColor: '#f5f5f5',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  quickSelectButtonActive: {
+    backgroundColor: '#e8f5e8',
+    borderColor: '#2ea44f',
+  },
+  quickSelectButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#666',
+  },
+  quickSelectButtonTextActive: {
+    color: '#2ea44f',
+  },
+  manualInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+    marginBottom: 8,
+  },
+  counterButton: {
+    backgroundColor: '#f5f5f5',
+    borderRadius: 20,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+  },
+  peopleInput: {
+    backgroundColor: '#fff',
+    borderWidth: 2,
+    borderColor: '#2ea44f',
+    borderRadius: 12,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    fontSize: 18,
+    fontWeight: '700',
+    minWidth: 80,
+    color: '#1a1a1a',
+  },
+  peopleLimit: {
+    fontSize: 12,
+    color: '#888',
+    textAlign: 'center',
+    fontStyle: 'italic',
+  },
+  
+  // Price Calculator Section
+  priceCalculator: {
+    backgroundColor: '#f0f8f0',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: '#e3f2fd',
+  },
+  calculatorHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  calculatorTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1b5e20',
+    marginLeft: 8,
+  },
+  calculationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  calculationText: {
+    fontSize: 14,
+    color: '#666',
+    flex: 1,
+  },
+  totalPrice: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#2ea44f',
+  },
+  totalPriceFree: {
+    color: '#ff6b35',
+  },
+  savingsText: {
+    fontSize: 12,
+    color: '#2ea44f',
+    textAlign: 'center',
+    marginTop: 8,
+    fontStyle: 'italic',
+  },
+  
+  // People Modal Buttons
+  peopleModalButtons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  peopleCancelButton: {
+    flex: 1,
+    backgroundColor: '#f5f5f5',
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  peopleCancelButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#666',
+  },
+  peopleConfirmButton: {
+    flex: 2,
+    backgroundColor: '#2ea44f',
+    paddingVertical: 14,
+    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#2ea44f',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  peopleConfirmButtonText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#fff',
+    marginLeft: 6,
   },
   
   // Enhanced Cart Button Styles
@@ -993,28 +1487,26 @@ const styles = StyleSheet.create({
   },
 
   // Enhanced Cart Modal Styles
- modalOverlay: {
+  modalOverlay: {
     flex: 1,
     justifyContent: 'flex-end',
     backgroundColor: 'rgba(0,0,0,0.4)',
   },
-  
- modalContent: {
-  backgroundColor: '#fff',
-  borderTopLeftRadius: 25,
-  borderTopRightRadius: 25,
-  paddingTop: 8,
-  paddingHorizontal: 20,
-  paddingBottom: 34,
-  maxHeight: '85%',
-  flex: 1,
-  shadowColor: '#000',
-  shadowOffset: { width: 0, height: -3 },
-  shadowOpacity: 0.15,
-  shadowRadius: 10,
-  elevation: 15,
-},
-  
+  modalContent: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 25,
+    borderTopRightRadius: 25,
+    paddingTop: 8,
+    paddingHorizontal: 20,
+    paddingBottom: 34,
+    maxHeight: '85%',
+    flex: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -3 },
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    elevation: 15,
+  },
   handleBar: {
     width: 40,
     height: 4,
@@ -1023,7 +1515,6 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     marginVertical: 12,
   },
-  
   modalHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1033,32 +1524,27 @@ const styles = StyleSheet.create({
     borderBottomColor: '#f0f0f0',
     marginBottom: 16,
   },
-  
   headerLeft: {
     flex: 1,
   },
-  
   modalTitle: {
     fontSize: 20,
     fontWeight: '700',
     color: '#1a1a1a',
     letterSpacing: -0.3,
   },
-  
   headerSubtitle: {
     fontSize: 13,
     color: '#666',
     marginTop: 2,
     fontWeight: '500',
   },
-  
   sortButton: {
     backgroundColor: '#f5f5f5',
     borderRadius: 20,
     padding: 8,
     marginRight: 8,
   },
-  
   closeButton: {
     backgroundColor: '#f5f5f5',
     borderRadius: 20,
@@ -1078,7 +1564,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#f0f0f0',
   },
-  
   sortOption: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1087,11 +1572,9 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#f8f8f8',
   },
-  
   sortOptionActive: {
     backgroundColor: '#f0f8f0',
   },
-  
   sortOptionText: {
     fontSize: 14,
     color: '#666',
@@ -1099,7 +1582,6 @@ const styles = StyleSheet.create({
     flex: 1,
     fontWeight: '500',
   },
-  
   sortOptionTextActive: {
     color: '#2ea44f',
     fontWeight: '600',
@@ -1113,14 +1595,12 @@ const styles = StyleSheet.create({
     paddingVertical: 60,
     paddingHorizontal: 40,
   },
-  
   emptyCartIcon: {
     backgroundColor: '#f8f8f8',
     borderRadius: 50,
     padding: 20,
     marginBottom: 16,
   },
-  
   emptyCartTitle: {
     fontSize: 22,
     fontWeight: '700',
@@ -1128,14 +1608,12 @@ const styles = StyleSheet.create({
     marginTop: 16,
     marginBottom: 8,
   },
-  
   emptyCartText: {
     fontSize: 16,
     color: '#666',
     textAlign: 'center',
     lineHeight: 22,
   },
-  
   exploreButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1150,7 +1628,6 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 6,
   },
-  
   exploreButtonText: {
     color: '#fff',
     fontSize: 16,
@@ -1168,7 +1645,6 @@ const styles = StyleSheet.create({
   citySection: {
     marginBottom: 24,
   },
-  
   cityHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1186,13 +1662,11 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 2,
   },
-  
   cityTitle: {
     fontSize: 18,
     fontWeight: '700',
     color: '#1b5e20',
   },
-  
   cityCount: {
     fontSize: 13,
     color: '#2ea44f',
@@ -1203,7 +1677,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   
-  // Enhanced Attraction Items (No Delete Button)
+  // Enhanced Attraction Items (Updated for People Count)
   attractionItem: {
     backgroundColor: '#fff',
     marginBottom: 12,
@@ -1216,22 +1690,18 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#f0f0f0',
   },
-  
   attractionContent: {
     padding: 16,
   },
-  
   attractionHeader: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     justifyContent: 'space-between',
     marginBottom: 10,
   },
-  
   attractionMainInfo: {
     flex: 1,
   },
-  
   attractionName: {
     fontSize: 16,
     fontWeight: '600',
@@ -1239,56 +1709,51 @@ const styles = StyleSheet.create({
     flex: 1,
     lineHeight: 22,
   },
-  
   attractionMeta: {
     marginTop: 6,
+    gap: 6,
   },
-  
   attractionFooter: {
     marginTop: 10,
     paddingTop: 10,
     borderTopWidth: 1,
     borderTopColor: '#f8f8f8',
   },
-  
-  attractionDetails: {
-    gap: 8,
-  },
-  
   detailRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
   },
-  
   detailText: {
     fontSize: 14,
     color: '#555',
     fontWeight: '500',
   },
-  
   priceRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  
   priceContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    flexWrap: 'wrap',
   },
-  
   priceText: {
     fontSize: 15,
     fontWeight: '700',
     color: '#2ea44f',
   },
-  
   freeText: {
     color: '#ff6b35',
     fontWeight: '800',
   },
-  
+  pricePerPersonText: {
+    fontSize: 12,
+    color: '#888',
+    marginLeft: 6,
+    fontStyle: 'italic',
+  },
   paidBadge: {
     backgroundColor: '#2ea44f',
     paddingHorizontal: 6,
@@ -1296,19 +1761,11 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginLeft: 8,
   },
-  
   paidBadgeText: {
     color: '#fff',
     fontSize: 10,
     fontWeight: '700',
   },
-  
-  separator: {
-    fontSize: 12,
-    color: '#ccc',
-    marginHorizontal: 6,
-  },
-  
   dateText: {
     fontSize: 13,
     color: '#888',
@@ -1322,24 +1779,20 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: '#f0f0f0',
   },
-  
   summaryHeader: {
     alignItems: 'center',
     marginBottom: 16,
   },
-  
   summaryTitle: {
     fontSize: 18,
     fontWeight: '700',
     color: '#1a1a1a',
   },
-  
   summaryGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 12,
   },
-  
   summaryItem: {
     flex: 1,
     minWidth: '45%',
@@ -1355,7 +1808,6 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 2,
   },
-  
   summaryLabel: {
     fontSize: 12,
     color: '#666',
@@ -1364,14 +1816,12 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontWeight: '600',
   },
-  
   summaryValue: {
     fontSize: 20,
     fontWeight: '800',
     color: '#2ea44f',
     textAlign: 'center',
   },
-  
   summaryValueHighlight: {
     fontSize: 20,
     fontWeight: '900',
@@ -1493,7 +1943,7 @@ const styles = StyleSheet.create({
   errorText: { fontSize: 14, color: '#666', textAlign: 'center', marginBottom: 4 },
   errorHint: { fontSize: 12, color: '#999', textAlign: 'center', fontStyle: 'italic' },
   
-  // Payment Modal Styles
+  // Updated Payment Modal Styles (with booking details)
   paymentModalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
@@ -1506,7 +1956,7 @@ const styles = StyleSheet.create({
     padding: 20,
     margin: 20,
     width: '90%',
-    maxHeight: '80%',
+    maxHeight: '85%',
   },
   paymentModalHeader: {
     flexDirection: 'row',
@@ -1521,6 +1971,23 @@ const styles = StyleSheet.create({
   },
   paymentCloseButton: {
     padding: 8,
+  },
+  bookingDetails: {
+    backgroundColor: '#f8fffe',
+    padding: 12,
+    borderRadius: 10,
+    marginBottom: 16,
+    gap: 8,
+  },
+  bookingDetailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  bookingDetailText: {
+    fontSize: 14,
+    color: '#666',
+    fontWeight: '500',
   },
   priceSection: {
     backgroundColor: '#f0f8f0',
@@ -1538,6 +2005,12 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: '700',
     color: '#2ea44f',
+  },
+  priceCalculation: {
+    fontSize: 12,
+    color: '#888',
+    marginTop: 4,
+    fontStyle: 'italic',
   },
   paymentForm: {
     marginBottom: 20,
