@@ -140,7 +140,49 @@ bookingDate: bookingDate ? new Date(bookingDate) : new Date(),
       });
     }
   }
+  static async checkConflict(req, res) {
+    try {
+      if (!req.user?.id) {
+        return res.status(401).json({ success: false, message: 'User authentication required' });
+      }
 
+      const { destination, destination_city_id, tripDate, returnDate } = req.query;
+      if (!tripDate) return res.status(400).json({ success: false, message: 'tripDate is required' });
+
+      const tripDateObj = new Date(tripDate);
+      if (isNaN(tripDateObj)) return res.status(400).json({ success: false, message: 'Invalid tripDate' });
+
+      let returnDateObj = returnDate ? new Date(returnDate) : null;
+      if (!returnDateObj || isNaN(returnDateObj)) {
+        returnDateObj = new Date(tripDateObj);
+        returnDateObj.setDate(returnDateObj.getDate() + 7); // default 7 days
+      }
+
+ const conflict = await orders2DB.findOverlappingOrder({
+      userId: req.user.id,
+      destinationName: destinationCityName || destination || cityName,
+      destinationCityId: toOid(destination_city_id),
+      tripDate: tripDateObj,
+      returnDate: returnDateObj,
+    });
+
+    if (conflict) {
+      return res.status(409).json({
+        success: false,
+        message: 'An overlapping order already exists for this destination and dates.',
+        conflictOrderId: conflict._id,
+        conflict,
+      });
+    }
+
+    // ✅ now continue with order creation
+    const newOrder = await orders2DB.createOrder(orderData);
+    return res.status(201).json({ success: true, order: newOrder });
+  } catch (error) {
+    console.error("❌ Error creating order:", error);
+    return res.status(500).json({ success: false, message: "Internal server error" });
+  }
+}
   static async getUserOrders(req, res) {
     try {
       if (!req.user?.id) return res.status(401).json({ success: false, message: 'User authentication required' });

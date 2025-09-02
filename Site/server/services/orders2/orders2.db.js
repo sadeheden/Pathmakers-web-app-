@@ -18,6 +18,32 @@ class Orders2DB {
       throw new Error(`Failed to create order: ${error.message}`);
     }
   }
+  async findOverlappingOrder({ userId, destinationName, destinationCityId, tripDate, returnDate }) {
+    const escapeRegExp = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const name = (destinationName || '').trim();
+    const nameRegex = name ? new RegExp(`^${escapeRegExp(name)}$`, 'i') : null;
+
+    const query = {
+      user_id: new ObjectId(userId),
+      status: { $ne: 'cancelled' },                 // ignore cancelled
+      ...(destinationCityId
+        ? { destination_city_id: destinationCityId }
+        : nameRegex
+          ? {
+              $or: [
+                { destination_city_name: nameRegex },
+                { destination: nameRegex },
+                { cityName: nameRegex },
+              ],
+            }
+          : {}),
+      // overlap: existing.tripDate <= newReturn AND existing.returnDate >= newTrip
+      tripDate: { $lte: new Date(returnDate) },
+      returnDate: { $gte: new Date(tripDate) },
+    };
+
+    return await this.Order2.collection.findOne(query);
+  }
 
   async getUserOrders(userId, options = {}) {
     try {

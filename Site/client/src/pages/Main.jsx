@@ -150,6 +150,7 @@ const PaymentModal = ({ isOpen, onClose, totalAmount, onPaymentSuccess }) => {
   const currentYear = new Date().getFullYear();
   const maxYear = currentYear + 10;
 
+
   const handlePayment = () => {
     const errors = [];
 
@@ -240,7 +241,7 @@ const PaymentModal = ({ isOpen, onClose, totalAmount, onPaymentSuccess }) => {
 // ------- Main Page -------
 const Main = () => {
   const navigate = useNavigate();
-
+const [conflictInfo, setConflictInfo] = useState(null);
   const [selectedCity, setSelectedCity] = useState(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [paymentCompleted, setPaymentCompleted] = useState(false);
@@ -273,6 +274,50 @@ const Main = () => {
     if (!rowRef.current) return;
     rowRef.current.scrollBy({ left: (CARD_WIDTH + GAP) * n, behavior: "smooth" });
   };
+async function checkOrderConflict({ destination, tripDate, returnDate }) {
+  const token =
+    localStorage.getItem("token") ||
+    localStorage.getItem("authToken") ||
+    localStorage.getItem("jwt") ||
+    localStorage.getItem("access_token") ||
+    localStorage.getItem("userToken");
+
+  if (!token) {
+    alert("You must be logged in to check existing orders.");
+    return { conflict: false, _error: "NO_TOKEN" };
+  }
+
+  const url = `${API_BASE}/api/orders2/conflicts` +
+              `?destination=${encodeURIComponent(destination)}` +
+              `&tripDate=${encodeURIComponent(tripDate)}` +
+              `&returnDate=${encodeURIComponent(returnDate)}`;
+
+  try {
+    const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+    const text = await res.text(); // read once
+    let json = {};
+    try { json = JSON.parse(text); } catch {}
+
+    if (!res.ok) {
+      console.warn("⚠️ Conflict check failed:", res.status, text);
+      // If the server said unauthorized, stop here (prevents creating order blindly)
+      if (res.status === 401) {
+        alert("Session expired or not authorized. Please log in again.");
+        return { conflict: false, _error: "UNAUTHORIZED" };
+      }
+      // If endpoint not found or server error, surface it
+      alert(`Conflict check error (${res.status}). Make sure /api/orders2/conflicts exists.`);
+      return { conflict: false, _error: `HTTP_${res.status}` };
+    }
+
+    // Expecting { success: true, conflict: boolean, order?: {...} }
+    return json?.success ? json : { conflict: false, _error: "BAD_SHAPE" };
+  } catch (e) {
+    console.error("❌ Conflict check threw:", e);
+    alert("Network error while checking conflicts.");
+    return { conflict: false, _error: "NETWORK" };
+  }
+}
 
   // פונקציה לבדיקת תקינות תאריכים
   const validateDates = (departure, returnD) => {
@@ -413,6 +458,27 @@ const Main = () => {
           </div>
         </div>
       )}
+{conflictInfo && (
+  <div className="modal-overlay" onClick={() => setConflictInfo(null)}>
+    <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+      <button className="modal-close-x" onClick={() => setConflictInfo(null)} aria-label="Close">
+        &#10005;
+      </button>
+      <h2>Cannot Create Order</h2>
+      <p>
+        You already have an order for <strong>{conflictInfo.destination}</strong> that overlaps
+        {" "}
+        <strong>{new Date(conflictInfo.tripDate).toLocaleDateString()}</strong> –{" "}
+        <strong>{new Date(conflictInfo.returnDate).toLocaleDateString()}</strong>.
+      </p>
+      <div className="modal-btns">
+        <button className="btn btn-primary modal-btn" onClick={() => setConflictInfo(null)}>
+          OK
+        </button>
+      </div>
+    </div>
+  </div>
+)}
 
       {/* Trip Details Modal עם בחירת תאריכים */}
       {selectedCity && !paymentCompleted && !showPaymentModal && !showIntroPopup && (
@@ -513,21 +579,40 @@ const Main = () => {
             </div>
 
             <div className="modal-btns">
-              <button 
-                className="btn btn-primary modal-btn" 
-                onClick={() => {
-                  const validationError = validateDates(tripDate, returnDate);
-                  if (validationError) {
-                    setDateError(validationError);
-                    return;
-                  }
-                  setDateError("");
-                  setShowPaymentModal(true);
-                }}
-                disabled={!tripDate || !returnDate}
-              >
-                Continue to Payment
-              </button>
+           <button
+  className="btn btn-primary modal-btn"
+  onClick={async () => {
+    const validationError = validateDates(tripDate, returnDate);
+    if (validationError) {
+      setDateError(validationError);
+      return;
+    }
+
+    // 🔎 pre-check with server BEFORE payment modal
+    const { conflict, order } = await checkOrderConflict({
+      destination: selectedCity.name,
+      tripDate,
+      returnDate,
+    });
+
+    if (conflict) {
+      setConflictInfo({
+        destination: selectedCity.name,
+        tripDate,
+        returnDate,
+        order,
+      });
+      return; // 🚫 stop here, don't open payment
+    }
+
+    setDateError("");
+    setShowPaymentModal(true);
+  }}
+  disabled={!tripDate || !returnDate}
+>
+  Continue to Payment
+</button>
+
             </div>
           </div>
         </div>

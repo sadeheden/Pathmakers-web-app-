@@ -13,5 +13,7 @@ router.post('/', Orders2Controller.createOrder);
 
 // GET /api/orders2 — שליפת כל הזמנות המשתמש
 router.get('/', Orders2Controller.getUserOrders);
+router.get('/conflicts', Orders2Controller.checkConflict);
+
 
 export default router;
