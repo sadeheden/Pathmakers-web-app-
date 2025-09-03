@@ -89,13 +89,17 @@ useEffect(() => {
     try { window.scrollTo({ top: 0, behavior: "smooth" }); } catch {}
   };
 
-  window.addEventListener("app:logout", onAppLogout);
-   // cross-tab support
- const onStorage = (e) => {
-   if (e.key === "app:logout") onAppLogout();
- };
-+ window.addEventListener("storage", onStorage);
-  return () => window.removeEventListener("storage", onStorage);
+window.addEventListener("app:logout", onAppLogout);
+// cross-tab support
+const onStorage = (e) => {
+  if (e.key === "app:logout") onAppLogout();
+};
+window.addEventListener("storage", onStorage);
+
+return () => {
+  window.removeEventListener("app:logout", onAppLogout);
+  window.removeEventListener("storage", onStorage);
+};
 }, []);
 
   useEffect(() => {
@@ -364,6 +368,7 @@ if (token) {
   totalAmount={calculateTotalPrice(userResponses)}
 // FIXED Payment Success Handler in Chat.jsx
 onPaymentSuccess={async ({ attractionIds, attractionNames } = {}) => {
+  setIsPaymentModalOpen(false);        // ← close the modal right away
   setIsPlacingOrder(true);
   // prevent duplicate saves in the same session
   if (sessionStorage.getItem("orderSaved") === "1") {

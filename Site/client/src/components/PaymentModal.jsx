@@ -12,7 +12,6 @@ const PaymentModal = ({
   const [paymentDetails, setPaymentDetails] = useState("");
   const [expiryDate, setExpiryDate] = useState("");
   const [cvv, setCvv] = useState("");
-  const [paymentSuccess, setPaymentSuccess] = useState(false);
   const [error, setError] = useState("");
 
   const method = userResponses?.["Select payment method"];
@@ -35,22 +34,21 @@ const PaymentModal = ({
   const pretty = `$${Number(totalAmount || 0).toFixed(2)}`;
 
   const handlePayment = () => {
-    if (paymentSuccess || busy) return;
+    if (busy) return;
 
     const errs = [];
-    if (!fullName.trim() || fullName.trim().length < 3) {
-    errs.push("❌ Invalid Full Name. Enter at least 3 characters.");
-  } else {
-    const parts = fullName.trim().split(/\s+/);
-    if (parts.length < 2) {
+    const name = fullName.trim();
+
+    if (!name || name.length < 3) {
+      errs.push("❌ Invalid Full Name. Enter at least 3 characters.");
+    } else if (name.split(/\s+/).length < 2) {
       errs.push("❌ Full Name must contain at least two words (first and last).");
     }
-  }
+
     if (!isBank) {
       if (!/^\d{16}$/.test(paymentDetails)) {
         errs.push("❌ Invalid Payment Number. Must be 16 digits.");
       }
-      
 
       const expiryMatch = expiryDate.match(/^(0[1-9]|1[0-2])\/(\d{4})$/);
       if (!expiryMatch) {
@@ -78,115 +76,99 @@ const PaymentModal = ({
     }
 
     setError("");
-    setPaymentSuccess(true);
-
-    setTimeout(() => {
-      setPaymentSuccess(false);
-      onClose?.();
-      onPaymentSuccess?.({ attractionIds, attractionNames });
-    }, 1200);
+    onPaymentSuccess?.({ attractionIds, attractionNames });
   };
 
   if (!isOpen) return null;
 
-  const disableAll = paymentSuccess || busy;
+  const disableAll = busy;
 
   return (
     <div className="modal-overlay" role="dialog" aria-modal="true">
-      <div className={`modal-content payment ${paymentSuccess ? "success" : ""}`}>
-        {paymentSuccess ? (
-          <>
-            <h2>🎉 Payment Successful! 🎉</h2>
-            <p>Your payment of <strong>{pretty}</strong> has been processed.</p>
-            <p>✅ Your trip is now confirmed!</p>
-          </>
-        ) : (
-          <>
-            {/* header row that matches the success look */}
-            <div className="modal-headline">
-              <h2>Payment</h2>
-              <div className="total-pill">
-                Total: <strong>{pretty}</strong>
-              </div>
-            </div>
+      <div className="modal-content payment">
+        {/* Header */}
+        <div className="modal-headline">
+          <h2>Payment</h2>
+          <div className="total-pill">
+            Total: <strong>{pretty}</strong>
+          </div>
+        </div>
 
-            {error && (
-              <p className="error-message" style={{ whiteSpace: "pre-line" }}>
-                {error}
-              </p>
-            )}
+        {error && (
+          <p className="error-message" style={{ whiteSpace: "pre-line" }}>
+            {error}
+          </p>
+        )}
 
-            <form
-              className="modal-form"
-              onSubmit={(e) => {
-                e.preventDefault();
-                handlePayment();
-              }}
-            >
-              <label>Full Name</label>
+        <form
+          className="modal-form"
+          onSubmit={(e) => {
+            e.preventDefault();
+            handlePayment();
+          }}
+        >
+          <label>Full Name</label>
+          <input
+            type="text"
+            placeholder="John Doe"
+            value={fullName}
+            onChange={(e) => setFullName(e.target.value)}
+            disabled={disableAll}
+          />
+
+          {!isBank && (
+            <>
+              <label>Payment Number</label>
               <input
                 type="text"
-                placeholder="John Doe"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
+                placeholder="1234 5678 9012 3456"
+                maxLength="16"
+                value={paymentDetails}
+                onChange={(e) =>
+                  setPaymentDetails(e.target.value.replace(/\D/g, ""))
+                }
                 disabled={disableAll}
               />
 
-              {!isBank && (
-                <>
-                  <label>Payment Number</label>
+              <div className="field-row">
+                <div>
+                  <label>Expiry Date</label>
                   <input
                     type="text"
-                    placeholder="1234 5678 9012 3456"
-                    maxLength="16"
-                    value={paymentDetails}
-                    onChange={(e) =>
-                      setPaymentDetails(e.target.value.replace(/\D/g, ""))
-                    }
+                    placeholder="MM/YYYY"
+                    value={expiryDate}
+                    onChange={(e) => setExpiryDate(e.target.value)}
                     disabled={disableAll}
                   />
+                </div>
+                <div>
+                  <label>CVV</label>
+                  <input
+                    type="text"
+                    placeholder="123"
+                    maxLength="3"
+                    value={cvv}
+                    onChange={(e) => setCvv(e.target.value.replace(/\D/g, ""))}
+                    disabled={disableAll}
+                  />
+                </div>
+              </div>
+            </>
+          )}
 
-                  <div className="field-row">
-                    <div>
-                      <label>Expiry Date</label>
-                      <input
-                        type="text"
-                        placeholder="MM/YYYY"
-                        value={expiryDate}
-                        onChange={(e) => setExpiryDate(e.target.value)}
-                        disabled={disableAll}
-                      />
-                    </div>
-                    <div>
-                      <label>CVV</label>
-                      <input
-                        type="text"
-                        placeholder="123"
-                        maxLength="3"
-                        value={cvv}
-                        onChange={(e) => setCvv(e.target.value.replace(/\D/g, ""))}
-                        disabled={disableAll}
-                      />
-                    </div>
-                  </div>
-                </>
-              )}
+          <button className="pay-button" type="submit" disabled={disableAll}>
+            {disableAll ? "Processing…" : `Pay ${pretty}`}
+          </button>
 
-              <button className="pay-button" type="submit" disabled={disableAll}>
-                {disableAll ? "Processing…" : `Pay ${pretty}`}
-              </button>
-
-              <button
-                type="button"
-                className="change-payment"
-                onClick={onClose}
-                disabled={disableAll}
-              >
-                Change payment method
-              </button>
-            </form>
-          </>
-        )}
+          <button
+            type="button"
+            className="change-payment"
+            onClick={onClose}
+            disabled={disableAll}
+          >
+            Change payment method
+          </button>
+        </form>
       </div>
     </div>
   );
