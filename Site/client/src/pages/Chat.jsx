@@ -23,6 +23,8 @@ const savingOrderRef = useRef(false);
 const [toast, setToast] = useState(null); // { type: 'success' | 'error', text: string }
 // Chat.jsx
 const [isPlacingOrder, setIsPlacingOrder] = useState(false);
+// Chat.jsx
+const [conflictModal, setConflictModal] = useState({ open: false, message: "" });
 
   // progress
   const [currentStep, setCurrentStep] = useState(() => {
@@ -267,6 +269,92 @@ if (token) {
         </header>
 
         {renderStepContent()}
+{conflictModal.open && (
+  <div
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="conflict-title"
+    style={{
+      position: "fixed",
+      inset: 0,
+      background: "rgba(0,0,0,0.45)",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      zIndex: 10000
+    }}
+    onClick={(e) => {
+      // Close when clicking backdrop, and restart
+      if (e.target === e.currentTarget) {
+        setConflictModal({ open: false, message: "" });
+        restartTrip(); // resets everything to step 0
+      }
+    }}
+  >
+    <div
+      style={{
+        background: "#fff",
+        width: "min(92vw, 520px)",
+        borderRadius: 16,
+        boxShadow: "0 24px 60px rgba(0,0,0,0.25)",
+        border: "1px solid rgba(0,0,0,0.06)",
+        padding: "22px 20px 16px",
+        position: "relative"
+      }}
+      onClick={(e) => e.stopPropagation()}
+    >
+      <button
+        aria-label="Close"
+        onClick={() => {
+          setConflictModal({ open: false, message: "" });
+          restartTrip(); // start from beginning on close
+        }}
+        style={{
+          position: "absolute",
+          insetInlineEnd: 10,
+          top: 10,
+          width: 36,
+          height: 36,
+          borderRadius: 10,
+          border: "1px solid #e5e7eb",
+          background: "#fff",
+          fontSize: 20,
+          lineHeight: "20px",
+          cursor: "pointer"
+        }}
+      >
+        ×
+      </button>
+
+      <h3 id="conflict-title" style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "#111827" }}>
+        Trip Date Conflict
+      </h3>
+
+      <p style={{ marginTop: 10, marginBottom: 18, color: "#334155" }}>
+        {conflictModal.message}
+      </p>
+
+      <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+        <button
+          onClick={() => {
+            setConflictModal({ open: false, message: "" });
+            restartTrip(); // also restart from here
+          }}
+          style={{
+            padding: "10px 14px",
+            borderRadius: 10,
+            border: "1px solid #e5e7eb",
+            background: "#fff",
+            fontWeight: 600,
+            cursor: "pointer"
+          }}
+        >
+          Start Over
+        </button>
+      </div>
+    </div>
+  </div>
+)}
 
    <PaymentModal
   isOpen={isPaymentModalOpen}
@@ -355,17 +443,18 @@ if (!tripStartYMD || !tripEndYMD) {
 try {
 const r0 = await fetch(`${API_BASE}/api/order/conflicts?start=${encodeURIComponent(tripStartYMD)}&end=${encodeURIComponent(tripEndYMD)}`, { headers });
   const j0 = await r0.json().catch(() => ({}));
-  if (j0?.conflict) {
-    const first = Array.isArray(j0.overlaps) && j0.overlaps[0];
-    const msg = first
-      ? `You already have a trip ${first.destination ? `to ${first.destination} ` : ""}from ${new Date(first.start).toLocaleDateString()} to ${new Date(first.end).toLocaleDateString()}.`
-      : (j0.message || "You already have a trip on these dates.");
-    setToast({ type: "error", text: `❌ ${msg}` });
-    setTimeout(() => setToast(null), 4500);
-    setIsPlacingOrder(false);
-    savingOrderRef.current = false;
-    return; // 🚫 stop here; do NOT create the order
-  }
+if (j0?.conflict) {
+  const first = Array.isArray(j0.overlaps) && j0.overlaps[0];
+  const msg = first
+    ? `You already have a trip ${first.destination ? `to ${first.destination} ` : ""}from ${new Date(first.start).toLocaleDateString()} to ${new Date(first.end).toLocaleDateString()}.`
+    : (j0.message || "You already have a trip on these dates.");
+
+  setConflictModal({ open: true, message: `❌ ${msg}` });
+  setIsPlacingOrder(false);
+  savingOrderRef.current = false;
+  return; // stop here; do NOT create the order
+}
+
 } catch (e) {
   console.warn("Conflict preflight failed:", e);
   // You can choose to block on error, but usually we let server be final guard.
