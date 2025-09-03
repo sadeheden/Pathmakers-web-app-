@@ -386,6 +386,8 @@ const [conflictInfo, setConflictInfo] = useState(null);
   };
 // Try server endpoint(s). If 404 or network error, fall back to local scan.
 // Local-only conflict check — blocks on ANY overlapping order by default.
+// Replace your existing checkOrderConflict function with this corrected version:
+
 async function checkOrderConflict({ destination, tripDate, returnDate }) {
   const token =
     localStorage.getItem("token") ||
@@ -394,16 +396,82 @@ async function checkOrderConflict({ destination, tripDate, returnDate }) {
     localStorage.getItem("access_token") ||
     localStorage.getItem("userToken");
 
-  if (!token) return { conflict: false, _error: "NO_TOKEN" };
+  if (!token) {
+    return { conflict: false, _error: "NO_TOKEN" };
+  }
 
-  // set to true if you only want “same destination” conflicts
-  const SAME_DEST_ONLY = false;
+  try {
+    console.log('Checking for conflicts:', { destination, tripDate, returnDate });
 
+    // Use the dedicated conflict checking endpoint instead of fetching all orders
+    const params = new URLSearchParams({
+      destination: destination,
+      tripDate: tripDate,
+      returnDate: returnDate
+    });
+
+    const response = await fetch(`${API_BASE}/api/orders2/conflicts?${params}`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!response.ok) {
+      console.error('Conflict check failed:', response.status, response.statusText);
+      
+      // If the conflicts endpoint doesn't exist, fall back to client-side checking
+      if (response.status === 404) {
+        console.warn('Conflict endpoint not found, falling back to client-side check');
+        return await checkOrderConflictFallback({ destination, tripDate, returnDate, token });
+      }
+      
+      return { 
+        conflict: false, 
+        _error: `CONFLICT_CHECK_FAILED_${response.status}` 
+      };
+    }
+
+    const data = await response.json();
+    console.log('Conflict check response:', data);
+
+    if (!data.success) {
+      return { 
+        conflict: false, 
+        _error: data.message || "CONFLICT_CHECK_FAILED" 
+      };
+    }
+
+    if (data.conflict) {
+      return {
+        conflict: true,
+        message: data.message || `You already have a trip to ${destination} during these dates.`,
+        existingOrder: data.order
+      };
+    }
+
+    return { conflict: false };
+
+  } catch (error) {
+    console.error('Conflict check error:', error);
+    
+    // If network error, try fallback
+    console.warn('Network error, attempting fallback conflict check');
+    return await checkOrderConflictFallback({ destination, tripDate, returnDate, token });
+  }
+}
+
+// Fallback function (your original logic) - only used if the main endpoint fails
+async function checkOrderConflictFallback({ destination, tripDate, returnDate, token }) {
   try {
     const resp = await fetch(`${API_BASE}/api/orders2`, {
       headers: { Authorization: `Bearer ${token}` },
     });
-    if (!resp.ok) return { conflict: false, _error: `ORDERS_FETCH_${resp.status}` };
+    
+    if (!resp.ok) {
+      return { conflict: false, _error: `ORDERS_FETCH_${resp.status}` };
+    }
 
     const data = await resp.json();
     const orders = Array.isArray(data)
@@ -414,10 +482,21 @@ async function checkOrderConflict({ destination, tripDate, returnDate }) {
       ? data.orders
       : [];
 
-    const toDayStart = (d) => { const x = new Date(d); x.setHours(0,0,0,0); return x; };
-    const toDayEnd   = (d) => { const x = new Date(d); x.setHours(23,59,59,999); return x; };
-    const overlaps   = (aStart,aEnd,bStart,bEnd)=> aStart <= bEnd && aEnd >= bStart;
-    const namesEqual = (a,b)=> String(a||"").trim().toLowerCase() === String(b||"").trim().toLowerCase();
+    const toDayStart = (d) => { 
+      const x = new Date(d); 
+      x.setHours(0, 0, 0, 0); 
+      return x; 
+    };
+    
+    const toDayEnd = (d) => { 
+      const x = new Date(d); 
+      x.setHours(23, 59, 59, 999); 
+      return x; 
+    };
+    
+    const overlaps = (aStart, aEnd, bStart, bEnd) => aStart <= bEnd && aEnd >= bStart;
+    
+    const namesEqual = (a, b) => String(a || "").trim().toLowerCase() === String(b || "").trim().toLowerCase();
 
     const readDate = (val) => {
       if (!val) return null;
@@ -431,7 +510,7 @@ async function checkOrderConflict({ destination, tripDate, returnDate }) {
     };
 
     const newStart = toDayStart(tripDate);
-    const newEnd   = toDayEnd(returnDate);
+    const newEnd = toDayEnd(returnDate);
 
     const hit = orders.find((o) => {
       const destStored =
@@ -441,10 +520,10 @@ async function checkOrderConflict({ destination, tripDate, returnDate }) {
         o?.destinationCityName ??
         o?.city_name;
 
-      // 1) destination rule
-      if (SAME_DEST_ONLY && !namesEqual(destStored, destination)) return false;
+      // Check same destination
+      if (!namesEqual(destStored, destination)) return false;
 
-      // 2) dates (support many shapes)
+      // Check dates
       const oStart =
         readDate(o?.tripDate) ??
         readDate(o?.startDate) ??
@@ -452,10 +531,9 @@ async function checkOrderConflict({ destination, tripDate, returnDate }) {
 
       let oEnd =
         readDate(o?.returnDate) ??
-        readDate(o?.endDate)   ??
+        readDate(o?.endDate) ??
         readDate(o?.return_date);
 
-      // if server saved a missing returnDate, assume +7 days
       if (oStart && !oEnd) {
         oEnd = new Date(oStart);
         oEnd.setDate(oEnd.getDate() + 7);
@@ -477,54 +555,78 @@ async function checkOrderConflict({ destination, tripDate, returnDate }) {
 
       return {
         conflict: true,
-        message: `You already have a trip (${destStored}) overlapping these dates.`,
+        message: `You already have a trip to ${destStored} overlapping these dates.`,
         existingOrder: hit,
       };
     }
+    
     return { conflict: false };
+    
   } catch (e) {
-    console.warn("Local conflict check error:", e?.message || e);
+    console.warn("Fallback conflict check error:", e?.message || e);
     return { conflict: false, _error: "LOCAL_CHECK_FAILED" };
   }
 }
 
 
 // Add this new function to perform real-time conflict checking:
+// Replace your existing performConflictCheck function with this updated version:
+
 const performConflictCheck = async (city, departure, returnD) => {
   if (!city || !departure || !returnD) {
     setConflictCheck({ checking: false, hasConflict: false, message: '' });
     return;
   }
 
-  setConflictCheck({ checking: true, hasConflict: false, message: '' });
-
-  const result = await checkOrderConflict({
-    destination: city,
-    tripDate: departure,
-    returnDate: returnD,
-  });
-
-  if (result._error) {
-    setConflictCheck({
-      checking: false,
-      hasConflict: false,
-      message: 'Couldn’t verify conflicts right now.',
-    });
+  // Don't check if dates are invalid
+  const depDate = new Date(departure);
+  const retDate = new Date(returnD);
+  if (isNaN(depDate.getTime()) || isNaN(retDate.getTime()) || retDate <= depDate) {
+    setConflictCheck({ checking: false, hasConflict: false, message: '' });
     return;
   }
 
-  if (result.conflict) {
+  setConflictCheck({ checking: true, hasConflict: false, message: '' });
+
+  try {
+    const result = await checkOrderConflict({
+      destination: city,
+      tripDate: departure,
+      returnDate: returnD,
+    });
+
+    if (result._error) {
+      console.warn('Conflict check failed:', result._error);
+      setConflictCheck({
+        checking: false,
+        hasConflict: false,
+        message: 'Could not verify conflicts right now.',
+      });
+      return;
+    }
+
+    if (result.conflict) {
+      setConflictCheck({
+        checking: false,
+        hasConflict: true,
+        message: result.message || `You already have a trip to ${city} during these dates`,
+      });
+    } else {
+      setConflictCheck({ 
+        checking: false, 
+        hasConflict: false, 
+        message: '' 
+      });
+    }
+  } catch (error) {
+    console.error('Error in performConflictCheck:', error);
     setConflictCheck({
       checking: false,
-      hasConflict: true,
-      message: result.message || `You already have a trip to ${city} during these dates`,
+      hasConflict: false,
+      message: 'Error checking for conflicts.',
     });
-  } else {
-    setConflictCheck({ checking: false, hasConflict: false, message: '' });
   }
 };
-
-
   // פונקציה לבדיקת תקינות תאריכים
   const validateDates = (departure, returnD) => {
     const depDate = new Date(departure);
@@ -908,39 +1010,67 @@ const handleReturnDateChange = (newDate) => {
             </div>
 
             <div className="modal-btns">
-           <button
+      
+
+<button
   className="btn btn-primary modal-btn"
-onClick={async () => {
-  const validationError = validateDates(tripDate, returnDate);
-  if (validationError) {
-    setDateError(validationError);
+  onClick={async () => {
+    // First validate dates
+    const validationError = validateDates(tripDate, returnDate);
+    if (validationError) {
+      setDateError(validationError);
+      setOrderError("");
+      return;
+    }
+
+    setDateError("");
     setOrderError("");
-    return;
-  }
 
-  setDateError("");
-  setOrderError("");
+    // Show loading state
+    setConflictCheck({ checking: true, hasConflict: false, message: '' });
 
-const result = await checkOrderConflict({ destination: selectedCity.name, tripDate, returnDate });
+    try {
+      // Check for conflicts using the server endpoint
+      const result = await checkOrderConflict({ 
+        destination: selectedCity.name, 
+        tripDate, 
+        returnDate 
+      });
 
-if (result._error) {
-  setOrderError("Could not verify conflicts right now. Please try again later.");
-  return;
-}
-if (result.conflict) {
-  setOrderError(result.message || "You already have a trip during these dates. Please choose different dates.");
-  return;
-}
-setShowPaymentModal(true);
+      setConflictCheck({ checking: false, hasConflict: false, message: '' });
 
+      if (result._error) {
+        console.warn('Conflict check failed:', result._error);
+        // If conflict check fails, warn user but allow them to proceed
+        const proceed = window.confirm(
+          "Could not verify if you have existing trips on these dates. Would you like to proceed anyway?"
+        );
+        if (!proceed) return;
+      } else if (result.conflict) {
+        // Conflict found - show error and prevent proceeding
+        setOrderError(result.message || "You already have a trip during these dates. Please choose different dates.");
+        return;
+      }
 
-}}
+      // No conflicts found - proceed to payment
+      setShowPaymentModal(true);
 
- disabled={!tripDate || !returnDate || conflictCheck.hasConflict || conflictCheck.checking}
-
-
+    } catch (error) {
+      console.error('Error during conflict check:', error);
+      setConflictCheck({ checking: false, hasConflict: false, message: '' });
+      
+      // On error, ask user if they want to proceed
+      const proceed = window.confirm(
+        "Could not verify conflicts due to a network error. Would you like to proceed anyway?"
+      );
+      if (proceed) {
+        setShowPaymentModal(true);
+      }
+    }
+  }}
+  disabled={!tripDate || !returnDate || conflictCheck.checking}
 >
-{conflictCheck.checking ? "Checking..." : "Continue to Payment"}
+  {conflictCheck.checking ? "Checking for conflicts..." : "Continue to Payment"}
 </button>
 
             </div>
