@@ -628,43 +628,45 @@ const performConflictCheck = async (city, departure, returnD) => {
   }
 };
   // פונקציה לבדיקת תקינות תאריכים
-  const validateDates = (departure, returnD) => {
-    const depDate = new Date(departure);
-    const retDate = new Date(returnD);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+const validateDates = (departure, returnD) => {
+  const depDate = new Date(departure);
+  const retDate = new Date(returnD);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
 
-    if (depDate <= today) {
-      return "תאריך יציאה חייב להיות לפחות מחר";
-    }
-    if (retDate <= depDate) {
-      return "תאריך חזרה חייב להיות אחרי תאריך היציאה";
-    }
-    const diffDays = (retDate - depDate) / (1000 * 60 * 60 * 24);
-    if (diffDays < 1) {
-      return "הטיול חייב להיות לפחות יום אחד";
-    }
-    if (diffDays > 365) {
-      return "הטיול לא יכול להיות יותר משנה";
-    }
-    return "";
-  };
+  if (depDate <= today) {
+    return "Trip date must be at least tomorrow";
+  }
+  if (retDate <= depDate) {
+    return "Return date must be after trip date";
+  }
+  
+  const diffDays = (retDate - depDate) / (1000 * 60 * 60 * 24);
+  
+  // Add this validation to enforce exactly 7 days:
+  if (diffDays !== 7) {
+    return "All trips must be exactly 7 days";
+  }
+  
+  if (diffDays > 365) {
+    return "Trip cannot be longer than one year";
+  }
+  return "";
+};
 
-  // טיפול בשינוי תאריך יציאה
+// Replace the existing handleTripDateChange function with this:
 const handleTripDateChange = (newDate) => {
   setTripDate(newDate);
   setDateError("");
   setOrderError("");
 
-  if (returnDate <= newDate) {
-    const newReturnDate = new Date(newDate);
-    newReturnDate.setDate(newReturnDate.getDate() + 7);
-    const rr = formatDateForInput(newReturnDate);
-    setReturnDate(rr);
-    performConflictCheck(selectedCity?.name, newDate, rr);
-  } else {
-    performConflictCheck(selectedCity?.name, newDate, returnDate);
-  }
+  // Always automatically set return date to exactly 7 days after departure
+  const newReturnDate = new Date(newDate);
+  newReturnDate.setDate(newReturnDate.getDate() + 7);
+  const autoReturnDate = formatDateForInput(newReturnDate);
+  
+  setReturnDate(autoReturnDate);
+  performConflictCheck(selectedCity?.name, newDate, autoReturnDate);
 };
 
 const handleReturnDateChange = (newDate) => {
@@ -901,38 +903,25 @@ const handleReturnDateChange = (newDate) => {
                   />
                 </div>
                 
-               <div>
-              <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>
-                Return Date:
-              </label>
-              <input
-                type="date"
-                value={returnDate}
-                min={
-                  tripDate
-                    ? new Date(new Date(tripDate).getTime() + 24 * 60 * 60 * 1000)
-                        .toISOString()
-                        .split('T')[0] // תמיד יום אחרי tripDate
-                    : getMinDate()
-                }
-                max={getMaxDate()}
-                onChange={(e) => {
-                  const selectedDate = e.target.value;
-                  if (tripDate && new Date(selectedDate) <= new Date(tripDate)) {
-                    alert("תאריך החזרה חייב להיות אחרי תאריך היציאה 🚫");
-                    return;
-                  }
-                  handleReturnDateChange(selectedDate);
-                }}
-                style={{
-                  width: '100%',
-                  padding: '8px',
-                  border: '1px solid #ddd',
-                  borderRadius: '4px',
-                  fontSize: '14px'
-                }}
-              />
-            </div>
+<div>
+  <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>
+    Return Date:
+  </label>
+  <input
+    type="date"
+    value={returnDate}
+    readOnly // Make it read-only so user can't change it
+    style={{
+      width: '100%',
+      padding: '8px',
+      border: '1px solid #ddd',
+      borderRadius: '4px',
+      fontSize: '14px',
+      backgroundColor: '#f8f9fa', // Gray background to show it's read-only
+      cursor: 'not-allowed'
+    }}
+  />
+</div>
 
                           </div>
 

@@ -236,7 +236,14 @@ static async checkConflict(req, res) {
       returnDate: returnDateObj.toISOString(),
       userId: req.user.id
     });
-
+// Add this missing line in checkConflict method:
+const conflictingOrder = await orders2DB.findOverlappingOrder({
+  userId: req.user.id,
+  destinationName: destination,
+  destinationCityId: destination_city_id,
+  tripDate: tripDateObj,
+  returnDate: returnDateObj,
+});
     // Check for overlapping orders
     if (conflictingOrder) {
   const dest =
