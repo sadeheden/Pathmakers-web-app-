@@ -36,6 +36,44 @@ class Orders2Controller {
  if (isNaN(tripDateObj.getTime())) {
    return res.status(400).json({ success: false, message: 'Invalid trip date format' });
  }
+ // ⛔ HARD BLOCK: any overlap for this user (ignore destination)
+const preInsertConflict = await orders2DB.findOverlappingOrder({
+  userId: req.user.id,
+  destinationName: null,           // block ANY overlap, not just same city
+  destinationCityId: null,
+  tripDate: tripDateObj,
+  returnDate: returnDateObj,
+});
+
+if (preInsertConflict) {
+  const dest =
+    preInsertConflict.destination_city_name ||
+    preInsertConflict.destination ||
+    preInsertConflict.cityName ||
+    "this destination";
+
+  const tripStr = preInsertConflict.tripDate
+    ? new Date(preInsertConflict.tripDate).toDateString()
+    : "unknown";
+  const returnStr = preInsertConflict.returnDate
+    ? new Date(preInsertConflict.returnDate).toDateString()
+    : "N/A";
+
+  return res.status(409).json({
+    success: false,
+    conflict: true,
+    message: `Can't create order — you already have a trip from ${tripStr} to ${returnStr} (${dest}).`,
+    order: {
+      id: preInsertConflict._id,
+      orderNumber: preInsertConflict.orderNumber,
+      destination: dest,
+      tripDate: preInsertConflict.tripDate,
+      returnDate: preInsertConflict.returnDate,
+      status: preInsertConflict.status,
+    },
+  });
+}
+
  // must be a future date (>= tomorrow)
  const today = new Date();
  today.setHours(0,0,0,0);
@@ -200,47 +238,49 @@ static async checkConflict(req, res) {
     });
 
     // Check for overlapping orders
-    const conflictingOrder = await orders2DB.findOverlappingOrder({
-      userId: req.user.id,
-      destinationName: destination,
-      destinationCityId: destination_city_id,
-      tripDate: tripDateObj,
-      returnDate: returnDateObj,
-    });
-
     if (conflictingOrder) {
-      console.log('⚠️ Conflict found:', conflictingOrder._id);
-      return res.json({ 
-        success: true, 
-        conflict: true, 
-        message: `You already have a trip to ${destination} from ${conflictingOrder.tripDate.toDateString()} to ${conflictingOrder.returnDate?.toDateString() || 'N/A'}`,
-        order: {
-          id: conflictingOrder._id,
-          orderNumber: conflictingOrder.orderNumber,
-          destination: conflictingOrder.destination_city_name || conflictingOrder.destination,
-          tripDate: conflictingOrder.tripDate,
-          returnDate: conflictingOrder.returnDate,
-          status: conflictingOrder.status
-        }
-      });
-    }
+  const dest =
+    conflictingOrder.destination_city_name ||
+    conflictingOrder.destination ||
+    conflictingOrder.cityName ||
+    destination ||
+    "this destination";
 
-    console.log('✅ No conflicts found');
-    return res.json({ 
-      success: true, 
-      conflict: false, 
-      message: 'No conflicts found'
-    });
+  const tripStr = conflictingOrder.tripDate
+    ? new Date(conflictingOrder.tripDate).toDateString()
+    : "unknown";
+  const returnStr = conflictingOrder.returnDate
+    ? new Date(conflictingOrder.returnDate).toDateString()
+    : "N/A";
 
-  } catch (error) {
-    console.error('❌ Error in checkConflict:', error);
-    return res.status(500).json({ 
-      success: false, 
-      message: 'Internal server error while checking conflicts',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
-    });
-  }
+  console.log("⚠️ Conflict found:", conflictingOrder._id);
+
+  // 200 OK so the client can read a normal JSON body
+  return res.status(200).json({
+    success: true,
+    conflict: true,
+    message: `You already have a trip to ${dest} from ${tripStr} to ${returnStr}.`,
+    order: {
+      id: conflictingOrder._id,
+      orderNumber: conflictingOrder.orderNumber,
+      destination: dest,
+      tripDate: conflictingOrder.tripDate,
+      returnDate: conflictingOrder.returnDate,
+      status: conflictingOrder.status,
+    },
+  });
 }
+
+// no conflict
+return res.status(200).json({
+  success: true,
+  conflict: false,
+  message: "No conflicts found",
+});
+  } catch (error) {
+    console.error('❌ Error in checkConflict controller:', error);
+
+  }}
   static async getUserOrders(req, res) {
     try {
       if (!req.user?.id) return res.status(401).json({ success: false, message: 'User authentication required' });
