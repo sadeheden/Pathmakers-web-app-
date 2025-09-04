@@ -18,93 +18,100 @@ class Orders2DB {
       throw new Error(`Failed to create order: ${error.message}`);
     }
   }
+// orders2.db.js
 async findOverlappingOrder({ userId, destinationName, destinationCityId, tripDate, returnDate }) {
   try {
-    const escapeRegExp = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const name = (destinationName || '').trim();
-    const nameRegex = name ? new RegExp(`^${escapeRegExp(name)}$`, 'i') : null;
+    const HEX24 = /^[0-9a-fA-F]{24}$/;
+// inside findOverlappingOrder
+if (!HEX24.test(String(userId))) {
+  console.warn("findOverlappingOrder: BAD userId", userId);
+  return null; // ← don't throw
+}
 
-    // Convert dates to proper Date objects
-    const newTripDate = new Date(tripDate);
-    const newReturnDate = new Date(returnDate);
 
-    // Validate dates
-    if (isNaN(newTripDate.getTime()) || isNaN(newReturnDate.getTime())) {
-      throw new Error('Invalid date format provided');
-    }
+    const name = (destinationName || "").trim();
+    const escapeRegExp = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const nameRegex = name ? new RegExp(`^${escapeRegExp(name)}$`, "i") : null;
+const newTripDate = new Date(tripDate);
+let newReturnDate = returnDate ? new Date(returnDate) : null;
 
-    if (newReturnDate <= newTripDate) {
-      throw new Error('Return date must be after trip date');
-    }
+if (isNaN(newTripDate.getTime())) {
+  console.warn("findOverlappingOrder: BAD tripDate", tripDate);
+  return null;
+}
+if (!newReturnDate || isNaN(newReturnDate.getTime())) {
+  newReturnDate = new Date(newTripDate);
+  newReturnDate.setDate(newReturnDate.getDate() + 7);
+}
+if (newReturnDate <= newTripDate) {
+  console.warn("findOverlappingOrder: RANGE_ERROR", { tripDate, returnDate });
+  return null;
+}
 
-    // Build query step by step
-    const query = {
+    const baseMatch = {
       user_id: new ObjectId(userId),
-      status: { $nin: ['cancelled', 'refunded', 'rejected'] },
+      status: { $nin: ["cancelled", "refunded", "rejected"] },
+      tripDate: { $type: "date" }, // tripDate must be a Date
+      // do NOT require returnDate type here; we’ll compute fallback
     };
 
-    // Add destination matching - fix the conditional logic
-    if (destinationCityId) {
-      query.destination_city_id = new ObjectId(destinationCityId);
+    // Destination filter (optional)
+    if (destinationCityId && HEX24.test(String(destinationCityId))) {
+      baseMatch.destination_city_id = new ObjectId(destinationCityId);
     } else if (nameRegex) {
-      query.$or = [
+      baseMatch.$or = [
         { destination_city_name: nameRegex },
         { destination: nameRegex },
         { cityName: nameRegex },
       ];
     } else if (name) {
-      // Fallback: if we have a name but couldn't create regex, do exact match
-      query.$or = [
+      baseMatch.$or = [
         { destination_city_name: name },
         { destination: name },
         { cityName: name },
       ];
     }
 
-    // Add date overlap conditions with existence checks
-    // Two date ranges overlap if: start1 < end2 AND start2 < end1
-    query.$and = [
-      // Ensure dates exist and are valid
-      { tripDate: { $exists: true, $type: 'date' } },
-      { returnDate: { $exists: true, $type: 'date' } },
-      // Check for overlap
-      { tripDate: { $lt: newReturnDate } },     // existing starts before new ends
-      { returnDate: { $gt: newTripDate } }      // existing ends after new starts
+    // Overlap: start1 < end2 && start2 < end1
+    const pipeline = [
+      { $match: baseMatch },
+      {
+        $addFields: {
+          _computedReturnDate: {
+            $ifNull: [
+              {
+                $cond: [
+                  { $eq: [{ $type: "$returnDate" }, "date"] },
+                  "$returnDate",
+                  null,
+                ],
+              },
+              { $dateAdd: { startDate: "$tripDate", unit: "day", amount: 7 } },
+            ],
+          },
+        },
+      },
+      {
+        $match: {
+          tripDate: { $lt: newReturnDate },
+          _computedReturnDate: { $gt: newTripDate },
+        },
+      },
+      { $limit: 1 },
     ];
 
-    console.log('🔍 MongoDB query for conflicts:', {
-      userId,
-      destinationName: name,
-      destinationCityId,
-      newTripDate: newTripDate.toISOString(),
-      newReturnDate: newReturnDate.toISOString(),
-      queryStructure: JSON.stringify(query, null, 2)
-    });
+    const conflicting = await this.Order2.collection.aggregate(pipeline).toArray();
 
-    const conflictingOrder = await this.Order2.collection.findOne(query);
-    
-    if (conflictingOrder) {
-      console.log('⚠️ Found conflicting order:', {
-        orderId: conflictingOrder._id,
-        orderNumber: conflictingOrder.orderNumber,
-        destination: conflictingOrder.destination_city_name || conflictingOrder.destination || conflictingOrder.cityName,
-        existingTripDate: conflictingOrder.tripDate?.toISOString(),
-        existingReturnDate: conflictingOrder.returnDate?.toISOString(),
-        status: conflictingOrder.status
-      });
-      
-      // Return the order for debugging
-      return conflictingOrder;
-    } else {
-      console.log('✅ No conflicting orders found');
-      return null;
+    if (conflicting.length) {
+      return conflicting[0];
     }
-
+    return null;
   } catch (error) {
-    console.error('❌ Error in findOverlappingOrder:', error);
+    console.error("❌ Error in findOverlappingOrder:", error);
     throw new Error(`Failed to check for overlapping orders: ${error.message}`);
   }
 }
+
   async getUserOrders(userId, options = {}) {
     try {
       const { page = 1, limit = 10, status = null, sortBy = 'createdAt', sortOrder = -1 } = options;
