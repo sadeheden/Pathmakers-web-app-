@@ -1028,7 +1028,7 @@ const PersonalArea = () => {
                           </div>
 
                           <div className="meta">
-                            <div><span className="lbl">Date</span>{Number.isFinite(o.createdAtTs) ? new Date(o.createdAtTs).toLocaleDateString() : "—"}</div>
+                            <div><span className="lbl">Date of purchase</span>{Number.isFinite(o.createdAtTs) ? new Date(o.createdAtTs).toLocaleDateString() : "—"}</div>
                             <div><span className="lbl">Payment</span>{o.paymentMethod || "—"}</div>
                             <div><span className="lbl">Flight</span>{o.flight}</div>
                             <div><span className="lbl">Hotel</span>{o.hotel}</div>
