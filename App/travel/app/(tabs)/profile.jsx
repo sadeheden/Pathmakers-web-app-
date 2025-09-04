@@ -213,7 +213,7 @@ function fetchWithTimeout(resource, options = {}) {
 }
 
 const loadData = useCallback(async ({ spinner = false } = {}) => {
-  if (inFlightRef.current) return;   // ⛔️ don’t overlap
+  if (inFlightRef.current) return;   // ⛔️ don't overlap
   inFlightRef.current = true;
 
   try {
@@ -422,36 +422,6 @@ const getHotelName = (hotelName, hotelId) => {
   return fallback;
 };
 
-
-
-  // const getHotelName = (hotelName, hotelId) => {
-  //   console.log(`🏨 Getting hotel name for: name="${hotelName}", id="${hotelId}"`);
-    
-  //   if (hotelName && !hotelName.match(/^[0-9a-f]{24}$/i)) {
-  //     console.log(`✅ Using provided hotel name: ${hotelName}`);
-  //     return hotelName;
-  //   }
-    
-  //   if (staticMappings.hotels[hotelId]) {
-  //     console.log(`✅ Found in static mappings: ${staticMappings.hotels[hotelId]}`);
-  //     return staticMappings.hotels[hotelId];
-  //   }
-    
-  //   if (dynamicData.hotels[hotelId]) {
-  //     const doc = dynamicData.hotels[hotelId];
-  //     console.log(`🔍 Found in dynamic data:`, doc);
-  //     const name = extractNameFromDocument('hotels', doc);
-  //     if (name) {
-  //       console.log(`✅ Extracted hotel name: ${name}`);
-  //       return name;
-  //     }
-  //   }
-    
-  //   const fallback = getSafeName(hotelName, hotelId);
-  //   console.log(`⚠️ Using fallback for hotel: ${fallback}`);
-  //   return fallback;
-  // };
-
   const renderOrder = ({ item }) => {
     const isExpanded = expandedOrderId === item._id;
 
@@ -535,10 +505,10 @@ const getHotelName = (hotelName, hotelId) => {
   };
 
   const renderStats = () => {
-    const totalTrips = activeOrders.length;
-    const totalSpent = activeOrders.reduce((sum, order) => sum + (order.total_price || 0), 0);
+    const totalTrips = upcomingOrders.length;
+    const totalSpent = upcomingOrders.reduce((sum, order) => sum + (order.total_price || 0), 0);
     const destinations = new Set(
-      activeOrders.map(order => getCityName(order.destination_city_name, order.destination_city_id))
+      upcomingOrders.map(order => getCityName(order.destination_city_name, order.destination_city_id))
     ).size;
 
     return (
@@ -551,7 +521,7 @@ const getHotelName = (hotelName, hotelId) => {
         >
           <View style={styles.statItem}>
             <Text style={styles.statNumber}>{totalTrips}</Text>
-            <Text style={styles.statLabel}>Active</Text>
+            <Text style={styles.statLabel}>Upcoming</Text>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statItem}>
@@ -561,7 +531,7 @@ const getHotelName = (hotelName, hotelId) => {
           <View style={styles.statDivider} />
           <View style={styles.statItem}>
             <Text style={styles.statNumber}>${totalSpent}</Text>
-            <Text style={styles.statLabel}>Total Spent</Text>
+            <Text style={styles.statLabel}>Total Value</Text>
           </View>
         </LinearGradient>
       </View>
@@ -577,9 +547,11 @@ const getHotelName = (hotelName, hotelId) => {
     );
   }
 
-  // Determine if an order is active (trip happening now)
-const isActiveOrder = (order) => {
-  const now = new Date();
+  // NEW: Check if trip is upcoming (starts today or in the future)
+const isUpcomingOrder = (order) => {
+  const today = new Date();
+  // Set time to start of day for comparison
+  today.setHours(0, 0, 0, 0);
 
   console.log('🔍 DEBUG - Order dates:', {
     orderId: order._id,
@@ -599,6 +571,7 @@ const isActiveOrder = (order) => {
     return isNaN(d.getTime()) ? null : d;
   };
 
+  // Get the start date of the trip
   const start =
     getValidDate(order.trip_start_date) ||
     getValidDate(order.start_date) ||
@@ -606,26 +579,28 @@ const isActiveOrder = (order) => {
     getValidDate(order.created_at) ||
     getValidDate(order.createdAt);
 
-  const end =
-    getValidDate(order.trip_end_date) ||
-    getValidDate(order.end_date) ||
-    getValidDate(order.returnDate) ||
-    getValidDate(order.created_at) ||
-    getValidDate(order.createdAt);
+  if (!start) {
+    console.log('⚠️ No valid start date found for order:', order._id);
+    return false;
+  }
 
-  console.log('🔍 DEBUG - Parsed dates:', {
+  // Set start time to start of day for comparison
+  start.setHours(0, 0, 0, 0);
+
+  const isUpcoming = start >= today;
+
+  console.log('🔍 DEBUG - Trip status:', {
     orderId: order._id,
-    start: start ? start.toISOString() : null,
-    end: end ? end.toISOString() : null,
-    now: now.toISOString(),
-    isActive: start && end ? start <= now && now <= end : false
+    startDate: start.toISOString(),
+    today: today.toISOString(),
+    isUpcoming: isUpcoming
   });
 
-  return start && end ? start <= now && now <= end : false;
+  return isUpcoming;
 };
 
-  // 👇 Filter active orders (render + stats use this)
-  const activeOrders = orders.filter(isActiveOrder);
+  // Filter upcoming orders (trips starting today or in the future)
+  const upcomingOrders = orders.filter(isUpcomingOrder);
 
   return (
     <View style={styles.container}>
@@ -664,22 +639,22 @@ const isActiveOrder = (order) => {
             </View>
 
             {/* Stats */}
-         {activeOrders.length > 0 && renderStats()}
+         {upcomingOrders.length > 0 && renderStats()}
 
             {/* Title */}
             <View style={styles.sectionTitleContainer}>
-              <Text style={styles.sectionTitle}>Active trips</Text>
+              <Text style={styles.sectionTitle}>Upcoming Trips</Text>
               <View style={styles.sectionTitleUnderline} />
               <View style={{ alignItems: 'center', marginTop: 6 }}>
                 <Text style={{ fontSize: 12, color: '#d84228ff' }}>
-                  Showing active trips only — see website for all trips.
+                  Showing trips starting today and in the future — see website for all trips.
                 </Text>
               </View>
             </View>
           </>
         }
 
-        data={activeOrders}         
+        data={upcomingOrders}         
 keyExtractor={(item) => toStringId(item._id)}
 
         renderItem={renderOrder}
@@ -689,7 +664,7 @@ keyExtractor={(item) => toStringId(item._id)}
         ListEmptyComponent={
           <LinearGradient colors={['#f8f9fa', '#e9ecef']} style={styles.noTripsContainer}>
             <Text style={styles.noTripsEmoji}>✈️</Text>
-            <Text style={styles.noTripsTitle}>No Active Trips</Text>
+            <Text style={styles.noTripsTitle}>No Upcoming Trips</Text>
             <Text style={styles.noTripsText}>
               To see all your trips (past & upcoming), please visit our website.
             </Text>
@@ -906,12 +881,11 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   orderId: {
-  marginTop: 2,
-  fontSize: 12,
-  fontWeight: '600',
-  color: '#6c757d',
-},
-
+    marginTop: 2,
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#6c757d',
+  },
   buttonContainer: {
     marginTop: 30,
     borderRadius: 25,
