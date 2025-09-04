@@ -578,26 +578,51 @@ const getHotelName = (hotelName, hotelId) => {
   }
 
   // Determine if an order is active (trip happening now)
-  const isActiveOrder = (order) => {
-    const now = new Date();
+const isActiveOrder = (order) => {
+  const now = new Date();
 
-    // Be liberal with possible date field names
-    const start = new Date(
-      order.trip_start_date ||
-      order.start_date ||
-      order.tripDate ||           // web app variant
-      order.created_at || order.createdAt
-    );
+  console.log('🔍 DEBUG - Order dates:', {
+    orderId: order._id,
+    trip_start_date: order.trip_start_date,
+    start_date: order.start_date,
+    tripDate: order.tripDate,
+    trip_end_date: order.trip_end_date,
+    end_date: order.end_date,
+    returnDate: order.returnDate,
+    created_at: order.created_at,
+    createdAt: order.createdAt
+  });
 
-    const end = new Date(
-      order.trip_end_date ||
-      order.end_date ||
-      order.returnDate ||         // web app variant
-      order.created_at || order.createdAt
-    );
-
-    return start <= now && now <= end;
+  const getValidDate = (val) => {
+    if (!val) return null;
+    const d = new Date(val);
+    return isNaN(d.getTime()) ? null : d;
   };
+
+  const start =
+    getValidDate(order.trip_start_date) ||
+    getValidDate(order.start_date) ||
+    getValidDate(order.tripDate) ||
+    getValidDate(order.created_at) ||
+    getValidDate(order.createdAt);
+
+  const end =
+    getValidDate(order.trip_end_date) ||
+    getValidDate(order.end_date) ||
+    getValidDate(order.returnDate) ||
+    getValidDate(order.created_at) ||
+    getValidDate(order.createdAt);
+
+  console.log('🔍 DEBUG - Parsed dates:', {
+    orderId: order._id,
+    start: start ? start.toISOString() : null,
+    end: end ? end.toISOString() : null,
+    now: now.toISOString(),
+    isActive: start && end ? start <= now && now <= end : false
+  });
+
+  return start && end ? start <= now && now <= end : false;
+};
 
   // 👇 Filter active orders (render + stats use this)
   const activeOrders = orders.filter(isActiveOrder);
