@@ -5,71 +5,91 @@ const looksLikeId = (v) => typeof v === "string" && /^[0-9a-fA-F]{24}$/.test(v);
 const toOid = (v) => (looksLikeId(v) ? new ObjectId(v) : v ?? null);
 
 class Orders2Controller {
-  static async createOrder(req, res) {
+static async createOrder(req, res) {
+  try {
+    console.log('📝 Creating new order for user:', req.user?.id);
+    console.log('📦 Order data received:', req.body);
+
+    const {
+      cityName, citySlug, flightNumber, departure, destination,
+      tripDate, returnDate, totalPrice, paymentMethod, status,
+      bookingDate, summary, cityImage, departure_city_id, destination_city_id,
+      flight_id, hotel_id, attractions, transportation,
+      departureCityName, destinationCityName, flightName, hotelName,
+      attraction_names, attractionNames
+    } = req.body;
+
+    // Validation
+    if ((!cityName && !departure_city_id) || (!flightNumber && !flight_id) || !tripDate || !totalPrice) {
+      return res.status(400).json({
+        success: false,
+        message: 'Missing required fields',
+        required: ['cityName or departure_city_id', 'FlightNumber or flight_id', 'tripDate', 'totalPrice'],
+        received: Object.keys(req.body)
+      });
+    }
+
+    if (!req.user?.id) {
+      return res.status(401).json({ success: false, message: 'User authentication required' });
+    }
+
+ 
+  // 🔧 FIX: stricter totalPrice validation
+if (!Number.isFinite(Number(totalPrice)) || Number(totalPrice) <= 0) {
+  return res.status(400).json({ success: false, message: 'Total price must be a positive number' });
+}
+
+    // FIX: define userObjectId (prevents ReferenceError later)
+    let userObjectId;
     try {
-      console.log('📝 Creating new order for user:', req.user?.id);
-      console.log('📦 Order data received:', req.body);
+      userObjectId = new ObjectId(String(req.user.id));
+    } catch {
+      return res.status(400).json({ success: false, message: 'Bad user id format' });
+    }
 
-      const {
-        cityName, citySlug, flightNumber, departure, destination,
-        tripDate, returnDate, totalPrice, paymentMethod, status,
-        bookingDate, summary, cityImage, departure_city_id, destination_city_id,
-        flight_id, hotel_id, attractions, transportation,
-        departureCityName, destinationCityName, flightName, hotelName,
-        attraction_names, attractionNames
-      } = req.body;
+    // Parse and validate dates
+ // --- Parse & normalize dates (avoid TDZ) ---
+let tripDateObj;
+let returnDateObj;
 
-      // Validation
-      if ((!cityName && !departure_city_id) || (!flightNumber && !flight_id) || !tripDate || !totalPrice) {
-        return res.status(400).json({
-          success: false,
-          message: 'Missing required fields',
-          required: ['cityName or departure_city_id', 'flightNumber or flight_id', 'tripDate', 'totalPrice'],
-          received: Object.keys(req.body)
-        });
-      }
+// tripDate: must be a valid date
+tripDateObj = new Date(tripDate);
+if (Number.isNaN(tripDateObj.getTime())) {
+  return res.status(400).json({ success: false, message: 'Invalid trip date format' });
+}
 
-      if (!req.user?.id) {
-        return res.status(401).json({ success: false, message: 'User authentication required' });
-      }
-      
-      if (isNaN(totalPrice) || totalPrice <= 0) {
-        return res.status(400).json({ success: false, message: 'Total price must be a positive number' });
-      }
+// returnDate: if missing/invalid, default to +7 days from tripDate
+if (returnDate) {
+  const tmp = new Date(returnDate);
+  if (!Number.isNaN(tmp.getTime())) {
+    returnDateObj = tmp;
+  }
+}
+if (!returnDateObj) {
+  returnDateObj = new Date(tripDateObj);
+  returnDateObj.setDate(returnDateObj.getDate() + 7);
+}
 
-      // Parse and validate dates
-      const tripDateObj = new Date(tripDate);
-      if (isNaN(tripDateObj.getTime())) {
-        return res.status(400).json({ success: false, message: 'Invalid trip date format' });
-      }
+// chronological sanity
+if (returnDateObj <= tripDateObj) {
+  return res.status(400).json({ success: false, message: 'Return date must be after trip date' });
+}
 
-      // Handle return date
-      let returnDateObj = returnDate ? new Date(returnDate) : null;
-      if (!returnDateObj || isNaN(returnDateObj.getTime())) {
-        // Default to 7 days after tripDate
-        returnDateObj = new Date(tripDateObj);
-        returnDateObj.setDate(returnDateObj.getDate() + 7);
-      }
+// must be at least tomorrow
+const today = new Date();
+today.setHours(0, 0, 0, 0);
+const tomorrow = new Date(today);
+tomorrow.setDate(today.getDate() + 1);
 
-      if (returnDateObj <= tripDateObj) {
-        return res.status(400).json({ success: false, message: 'Return date must be after trip date' });
-      }
-
-      // Check if trip date is in the future
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const tomorrow = new Date(today);
-      tomorrow.setDate(today.getDate() + 1);
-      
-      if (tripDateObj < tomorrow) {
-        return res.status(400).json({ success: false, message: 'Trip date must be in the future (at least tomorrow)' });
-      }
+if (tripDateObj < tomorrow) {
+  return res.status(400).json({ success: false, message: 'Trip date must be in the future (at least tomorrow)' });
+}
 
       // Check for overlapping orders BEFORE creating the order
       const preInsertConflict = await orders2DB.findOverlappingOrder({
         userId: req.user.id,
-        destinationName: null, // block ANY overlap, not just same city
-        destinationCityId: null,
+ destinationName: destinationCityName || destination || cityName, // string or undefined
+  destinationCityId: toOid(destination_city_id) || undefined,    
         tripDate: tripDateObj,
         returnDate: returnDateObj,
       });
@@ -118,50 +138,57 @@ class Orders2Controller {
       }
 
       // Create order data object
-      const orderData = {
-        user_id: userObjectId,
+    // Create order data object (matches your target Mongo doc shape)
+const orderData = {
+  user_id: userObjectId,
 
-        // Legacy display fields
-        cityName: cityName?.trim() || null,
-        citySlug: citySlug ? citySlug.trim() : cityName?.toLowerCase().replace(/\s+/g, '-') || null,
-        flightNumber: flightNumber?.trim() || null,
-        departure: departure?.trim() || null,
-        destination: destination?.trim() || null,
+  // legacy display fields
+  cityName: cityName ? String(cityName) : null,
+  citySlug: citySlug?.trim()
+    ?? (cityName ? String(cityName).toLowerCase().replace(/\s+/g, "-") : null),
+  flightNumber: flightNumber ? String(flightNumber) : null,
+  departure: departure ? String(departure) : "Tel Aviv",
+  destination: destination ? String(destination) : (cityName ? String(cityName) : null),
 
-        // Dates - use consistent naming
-        tripDate: tripDateObj,
-        returnDate: returnDateObj,
-        bookingDate: bookingDate ? new Date(bookingDate) : new Date(),
+  // dates (Mongo Date objects)
+  tripDate: tripDateObj,
+  returnDate: returnDateObj,
+  bookingDate: bookingDate ? new Date(bookingDate) : new Date(),
 
-        // Price and status
-        total_price: Number(totalPrice),
-        payment_method: paymentMethod || "Credit Card",
-        status: status || "confirmed",
-        summary: summary?.trim() || null,
-        cityImage: cityImage?.trim() || null,
+  // price & status
+  total_price: Number(totalPrice),
+  payment_method: paymentMethod ? String(paymentMethod) : "Credit Card",
+  status: status ? String(status) : "confirmed",
+  summary: summary ? String(summary) : null,
+  cityImage: typeof cityImage === "string" ? cityImage : null,
 
-        // IDs (normalize to ObjectId when possible)
-        departure_city_id: toOid(departure_city_id),
-        destination_city_id: toOid(destination_city_id),
-        flight_id: flight_id ?? null,
-        hotel_id: hotel_id ?? null,
+  // canonical IDs (null or ObjectId)
+  departure_city_id: toOid(departure_city_id),
+  destination_city_id: toOid(destination_city_id),
+  flight_id: toOid(flight_id),
+  hotel_id: toOid(hotel_id),
 
-        transportation: transportation || null,
+  // misc
+  transportation: transportation ? String(transportation) : null,
 
-        // Denormalized names (both snake_case & camelCase for compatibility)
-        departure_city_name: departureCityName || departure || null,
-        destination_city_name: destinationCityName || destination || null,
-        flight_name: flightName || flightNumber || null,
-        hotel_name: hotelName || null,
+  // denormalized names (snake_case + camelCase)
+  departure_city_name: departureCityName ? String(departureCityName) : (departure ? String(departure) : "Tel Aviv"),
+  destination_city_name: destinationCityName ? String(destinationCityName) : (destination ? String(destination) : (cityName ? String(cityName) : null)),
+  flight_name: flightName ? String(flightName) : (flightNumber ? String(flightNumber) : null),
+  hotel_name: hotelName ? String(hotelName) : null,
 
-        // CamelCase versions for PersonalArea compatibility
-        flightName: flightName || flightNumber || null,
-        hotelName: hotelName || null,
+  // camelCase duplicates for PersonalArea compatibility
+  flightName: flightName ? String(flightName) : (flightNumber ? String(flightNumber) : null),
+  hotelName: hotelName ? String(hotelName) : null,
 
-        // Attractions
-        attractions: finalAttractionIds,
-        attraction_names: finalAttractionNames,
-      };
+  // attractions (ids & names)
+  attractions: Array.isArray(attractions) ? attractions.filter(looksLikeId).map((id) => new ObjectId(id)) : [],
+  attraction_names: Array.isArray(attraction_names)
+    ? [...new Set(attraction_names.map((s) => String(s).trim()).filter(Boolean))]
+    : Array.isArray(attractionNames)
+      ? [...new Set(attractionNames.map((s) => String(s).trim()).filter(Boolean))]
+      : [],
+};
 
       // Create the order
       const savedOrder = await orders2DB.createOrder(orderData);
@@ -304,7 +331,12 @@ class Orders2Controller {
       if (!req.user?.id) {
         return res.status(401).json({ success: false, message: 'User authentication required' });
       }
-
+let userObjectId;
+try {
+  userObjectId = new ObjectId(String(req.user.id));
+} catch {
+  return res.status(400).json({ success: false, message: 'Bad user id format' });
+}
       const options = {
         page: parseInt(req.query.page) || 1,
         limit: parseInt(req.query.limit) || 10,
