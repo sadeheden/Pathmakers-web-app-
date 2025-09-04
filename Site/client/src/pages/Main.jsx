@@ -4,6 +4,7 @@ import React, { useState, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import "../assets/styles/main.css";
+import "../assets/styles/mainMobile.css"; 
 import flag from "../assets/images/flag.jpg";
 import { API_BASE } from "../config/api";
 
