@@ -14,6 +14,16 @@ const dbName = process.env.DB_NAME;
 }
 console.log("[controller] Using DB:", dbName);
 let __client;
+// --- minimal shim: safeDbOperation ---
+// Usage: await safeDbOperation(() => dbCall(), fallbackValue)
+async function safeDbOperation(fn, fallback = null, label = 'DB') {
+  try {
+    return await fn();
+  } catch (err) {
+    console.error(`❌ ${label} operation failed:`, err.stack || err);
+    return fallback;
+  }
+}
 
 async function getDb() {
   if (!__client) {
