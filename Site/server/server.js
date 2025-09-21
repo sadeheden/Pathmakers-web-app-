@@ -10,19 +10,12 @@ import { fileURLToPath } from 'url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const distPath = path.join(__dirname, '../client/dist');
 
-// Serve static files
-app.use(express.static(distPath));
-
-// Serve React index.html for any unknown route (SPA fallback)
-app.get('*', (req, res) => {
-  res.sendFile(path.join(distPath, 'index.html'));
-});
 // Load .env first, then let .env.local override if present
 dotenv.config({ path: path.join(__dirname, '.env') });
 dotenv.config({ path: path.join(__dirname, '.env.local') });
 
 if (!process.env.VITE_HF_TOKEN) {
-  console.error('❌ VITE_HF_TOKEN is missing. Add it to .env or .env.local');
+  console.error('⚠️ VITE_HF_TOKEN is missing. Add it to .env or .env.local');
 }
 
 const hf = new HfInference(process.env.HF_TOKEN);
@@ -30,8 +23,15 @@ const app = express();
 const PORT = process.env.PORT || 4000;
 
 // ---------- Middleware ----------
+// FIXED: Allow your static site domain
 app.use(cors({
-  origin: ['https://pathmakers-web-app-site.onrender.com/api'], // add more origins if needed
+  origin: [
+    'https://pathmakers-web-app.onrender.com',  // Your static site
+    'https://pathmakers-web-app-site.onrender.com', // Your backend (for development)
+    'http://localhost:3000',  // Local development
+    'http://localhost:5173'   // Vite dev server
+  ],
+  credentials: true
 }));
 app.use(express.json());
 
@@ -143,7 +143,6 @@ app.post('/api/chat', async (req, res) => {
   }
 });
 
-
 // ---------- Routers ----------
 import citiesRouter from './services/cities/cities.router.js';
 import attractionRoutes from './services/attraction/att.router.js';
@@ -154,11 +153,12 @@ import uploadRouter from './services/upload/upload.router.js';
 import managerRoutes from './services/manager/manager.routes.js';
 import travelRoutes from './services/travel/travel.routes.js';
 import supportRouter from './services/support/support.router.js';
-import ordersRouter from './services/order/order.router.js'; // רק זה נשאר
+import ordersRouter from './services/order/order.router.js';
 import orders2Router from './services/orders2/orders2.router.js';
 import newsletterRouter from './services/newsletter/newsletter.router.js';
-import orderCancellationRoutes  from './services/orderCancellation/orderCancellation.routes.js';
-// ---------- API Endpoints ----------
+import orderCancellationRoutes from './services/orderCancellation/orderCancellation.routes.js';
+
+// ---------- API Endpoints (BEFORE static files) ----------
 app.use('/api/cities', citiesRouter);
 app.use('/api/attractions', attractionRoutes);
 app.use('/api/flights', flightsRoutes);
@@ -166,21 +166,25 @@ app.use('/api/hotels', hotelRoutes);
 app.use('/api/auth', authRouter);
 app.use('/api/upload', uploadRouter);
 app.use('/api/manager', managerRoutes);
-app.use('/api/travel/cities', travelRoutes); // keep only if travelRoutes exposes /cities internally
+app.use('/api/travel/cities', travelRoutes);
 app.use('/api/newsletter', newsletterRouter);
-
-// Travel routes – אין כפילויות
 app.use('/api/travel', travelRoutes);
-
 app.use('/api/order', ordersRouter);
 app.use('/api/orders2', orders2Router);
 app.use('/api/support', supportRouter);
 app.use('/api/order', orderCancellationRoutes);
 
+// MOVED: Serve static files AFTER API routes
+app.use(express.static(distPath));
 
-// 🛑 404
-app.use((req, res) => {
-  res.status(404).json({ error: '🔍 Route not found', path: req.originalUrl });
+// Serve React index.html for any unknown route (SPA fallback)
+app.get('*', (req, res) => {
+  res.sendFile(path.join(distPath, 'index.html'));
+});
+
+// 🛑 404 for API routes only (this won't be reached due to * route above)
+app.use('/api/*', (req, res) => {
+  res.status(404).json({ error: '🔍 API route not found', path: req.originalUrl });
 });
 
 // ---------- Error handler ----------
@@ -192,4 +196,5 @@ app.use((err, _req, res, _next) => {
 // ---------- Start ----------
 app.listen(PORT, () => {
   console.log(`🚀 Server listening at: http://localhost:${PORT}`);
+  console.log(`📡 API available at: http://localhost:${PORT}/api/`);
 });
