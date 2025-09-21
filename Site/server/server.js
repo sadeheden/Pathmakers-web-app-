@@ -8,7 +8,35 @@ import { fileURLToPath } from 'url';
 
 // ---------- Env loading ----------
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const distPath = path.join(__dirname, '../client/dist');
+
+// FIXED: Check multiple possible paths for static files
+const possibleDistPaths = [
+  path.join(__dirname, '../client/dist'),
+  path.join(__dirname, '../client/build'), 
+  path.join(__dirname, './dist'),
+  path.join(__dirname, './build'),
+  path.join(__dirname, '../dist'),
+  path.join(__dirname, '../build'),
+  path.join(__dirname, '../../client/dist'),
+  path.join(__dirname, '../../client/build'),
+];
+
+let distPath = null;
+for (const testPath of possibleDistPaths) {
+  try {
+    if (require('fs').existsSync(testPath)) {
+      distPath = testPath;
+      console.log(`📁 Found static files at: ${distPath}`);
+      break;
+    }
+  } catch (e) {
+    // Continue checking
+  }
+}
+
+if (!distPath) {
+  console.warn('⚠️  No static files found. Running API-only mode.');
+}
 
 // Load .env first, then let .env.local override if present
 dotenv.config({ path: path.join(__dirname, '.env') });
@@ -174,13 +202,32 @@ app.use('/api/orders2', orders2Router);
 app.use('/api/support', supportRouter);
 app.use('/api/order', orderCancellationRoutes);
 
-// MOVED: Serve static files AFTER API routes
-app.use(express.static(distPath));
-
-// Serve React index.html for any unknown route (SPA fallback)
-app.get('*', (req, res) => {
-  res.sendFile(path.join(distPath, 'index.html'));
-});
+// MOVED: Serve static files AFTER API routes (only if found)
+if (distPath) {
+  app.use(express.static(distPath));
+  
+  // Serve React index.html for any unknown route (SPA fallback)
+  app.get('*', (req, res) => {
+    const indexPath = path.join(distPath, 'index.html');
+    if (require('fs').existsSync(indexPath)) {
+      res.sendFile(indexPath);
+    } else {
+      res.status(404).json({ error: 'Static files not found' });
+    }
+  });
+} else {
+  // API-only mode: return 404 for non-API routes
+  app.get('*', (req, res) => {
+    if (req.path.startsWith('/api/')) {
+      res.status(404).json({ error: '🔍 API route not found', path: req.originalUrl });
+    } else {
+      res.status(404).json({ 
+        error: 'This is an API-only server. Static files should be served from a separate service.',
+        availableRoutes: '/api/*'
+      });
+    }
+  });
+}
 
 // 🛑 404 for API routes only (this won't be reached due to * route above)
 app.use('/api/*', (req, res) => {
@@ -197,4 +244,9 @@ app.use((err, _req, res, _next) => {
 app.listen(PORT, () => {
   console.log(`🚀 Server listening at: http://localhost:${PORT}`);
   console.log(`📡 API available at: http://localhost:${PORT}/api/`);
+  if (distPath) {
+    console.log(`📁 Static files served from: ${distPath}`);
+  } else {
+    console.log(`⚠️  Running in API-only mode. Static files should be served separately.`);
+  }
 });
