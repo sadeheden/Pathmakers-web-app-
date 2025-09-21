@@ -1,4 +1,4 @@
-const backendUrl = "https://pathmakers-web-app-app-travel.onrender.com/api";
+const backendUrl = "https://pathmakers-web-app-site.onrender.com/api";
 
 // Example fetch
 export const getOrders = async () => {

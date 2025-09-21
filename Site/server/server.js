@@ -22,7 +22,7 @@ const PORT = process.env.PORT || 4000;
 
 // ---------- Middleware ----------
 app.use(cors({
-  origin: ['http://localhost:5173'], // add more origins if needed
+  origin: ['https://pathmakers-web-app.onrender.com'], // add more origins if needed
 }));
 app.use(express.json());
 
