@@ -8,6 +8,15 @@ import { fileURLToPath } from 'url';
 
 // ---------- Env loading ----------
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const distPath = path.join(__dirname, '../client/dist');
+
+// Serve static files
+app.use(express.static(distPath));
+
+// Serve React index.html for any unknown route (SPA fallback)
+app.get('*', (req, res) => {
+  res.sendFile(path.join(distPath, 'index.html'));
+});
 // Load .env first, then let .env.local override if present
 dotenv.config({ path: path.join(__dirname, '.env') });
 dotenv.config({ path: path.join(__dirname, '.env.local') });
@@ -22,7 +31,7 @@ const PORT = process.env.PORT || 4000;
 
 // ---------- Middleware ----------
 app.use(cors({
-  origin: ['https://pathmakers-web-app.onrender.com'], // add more origins if needed
+  origin: ['https://pathmakers-web-app-site.onrender.com/api'], // add more origins if needed
 }));
 app.use(express.json());
 
