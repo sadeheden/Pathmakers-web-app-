@@ -1220,34 +1220,140 @@ const PersonalArea = () => {
           </>
         )}
 
-        {/* Newsletter Tab */}
+      
+      {/* Newsletter Tab */}
         {activeTab === "newsletter" && (
           <>
-            <h2 className="heading">Sign Up for Newsletter</h2>
-            <div className="profileInfo">
-              <p>Get the latest updates and travel deals straight to your inbox!</p>
+            <div className="newsletter-hero">
+              <div className="newsletter-header">
+                <div className="newsletter-icon">✈️</div>
+                <h2 className="heading newsletter-title">Join Our Travel Community</h2>
+                <p className="newsletter-subtitle">
+                  Unlock exclusive deals and discover your next adventure with our insider newsletter
+                </p>
+              </div>
+              
+              <div className="newsletter-benefits">
+                <h3>What you'll get:</h3>
+                <div className="benefits-grid">
+                  <div className="benefit-item">
+                    <span className="benefit-icon">💰</span>
+                    <div className="benefit-content">
+                      <h4>Exclusive Deals</h4>
+                      <p>Up to 40% off flights and hotels before anyone else</p>
+                    </div>
+                  </div>
+                  <div className="benefit-item">
+                    <span className="benefit-icon">🗺️</span>
+                    <div className="benefit-content">
+                      <h4>Travel Guides</h4>
+                      <p>Insider tips and hidden gems from our travel experts</p>
+                    </div>
+                  </div>
+                  <div className="benefit-item">
+                    <span className="benefit-icon">⚡</span>
+                    <div className="benefit-content">
+                      <h4>Flash Sales</h4>
+                      <p>24-hour lightning deals on popular destinations</p>
+                    </div>
+                  </div>
+                  <div className="benefit-item">
+                    <span className="benefit-icon">🎯</span>
+                    <div className="benefit-content">
+                      <h4>Personalized Picks</h4>
+                      <p>Curated recommendations based on your travel style</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="newsletter-social-proof">
+                <div className="social-proof-stats">
+                  <div className="stat">
+                    <span className="stat-number">50K+</span>
+                    <span className="stat-label">Happy Travelers</span>
+                  </div>
+                  <div className="stat">
+                    <span className="stat-number">$2M+</span>
+                    <span className="stat-label">Savings Generated</span>
+                  </div>
+                  <div className="stat">
+                    <span className="stat-number">95%</span>
+                    <span className="stat-label">Satisfaction Rate</span>
+                  </div>
+                </div>
+                
+                <div className="testimonial">
+                  <p className="testimonial-text">
+                    "I saved over $800 on my European vacation thanks to their newsletter deals!"
+                  </p>
+                  <p className="testimonial-author">- Sarah M., Gold Member</p>
+                </div>
+              </div>
+
+              <div className="newsletter-signup-section">
+                <div className="signup-form">
+                  <h3>Ready to start saving?</h3>
+                  <p className="signup-description">
+                    Join thousands of smart travelers who never miss a deal
+                  </p>
+                  
+                  <div className="email-input-wrapper">
+                    <input
+                      type="email"
+                      placeholder="Enter your email address"
+                      className="newsletter-input"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                    />
+                    <button
+                      onClick={handleSubscribe}
+                      className="newsletter-button"
+                      disabled={loading}
+                    >
+                      {loading ? (
+                        <span className="newsletter-loading">
+                          <div className="newsletter-loading-spinner" />
+                          Loading...
+                        </span>
+                      ) : (
+                        <>
+                          Subscribe Now
+                          <span className="button-icon">🚀</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                  
+                  <div className="signup-guarantee">
+                    <p>
+                      📧 Weekly emails • 🔒 No spam, ever • 📱 Unsubscribe anytime
+                    </p>
+                  </div>
+                </div>
+
+                <div className="newsletter-preview">
+                  <h4>Latest Newsletter Highlights</h4>
+                  <div className="preview-items">
+                    <div className="preview-item">
+                      <span className="preview-date">This Week</span>
+                      <h5>🏖️ Summer Escape: Bali from $299</h5>
+                      <p>Limited time offer - 5 days left!</p>
+                    </div>
+                    <div className="preview-item">
+                      <span className="preview-date">Last Week</span>
+                      <h5>🎿 Alpine Adventure Guide</h5>
+                      <p>Best ski resorts for every budget</p>
+                    </div>
+                    <div className="preview-item">
+                      <span className="preview-date">Popular</span>
+                      <h5>🍝 Food Lover's Italy Itinerary</h5>
+                      <p>10 must-try restaurants in Rome</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
-            <input
-              type="email"
-              placeholder="Enter your email"
-              className="newsletter-input"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
-            <button
-              onClick={handleSubscribe}
-              className="newsletter-button"
-              disabled={loading}
-            >
-              {loading ? (
-                <span className="newsletter-loading">
-                  <div className="newsletter-loading-spinner" />
-                  Loading...
-                </span>
-              ) : (
-                "Subscribe"
-              )}
-            </button>
           </>
         )}
       </div>
