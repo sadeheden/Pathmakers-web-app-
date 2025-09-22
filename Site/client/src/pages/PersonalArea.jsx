@@ -812,34 +812,179 @@ const PersonalArea = () => {
 
       <div className="containerPersonal">
         {/* User Information Tab */}
-        {activeTab === "userInfo" && (
-          <>
-            <h2 className="heading">User Details</h2>
-            <div className="profileInfo">
-              {isUserLoading ? (
-                <LoadingSpinner size="medium" message="Loading user details..." />
-              ) : user ? (
-                <>
-                  <p>
-                    <strong>Username:</strong> {user.username}
-                  </p>
-                  <p>
-                    <strong>Email:</strong> {user.email}
-                  </p>
-                  <div style={{ marginTop: 12 }}>
-                    <button className="view-details-button" onClick={handleLogout}>
-                      Logout
-                    </button>
-                  </div>
-                </>
-              ) : (
-                <div>
-                  <p>No user data available</p>
+      {activeTab === "userInfo" && (
+  <>
+    <h2 className="heading">User Profile</h2>
+    <div className="profileInfo">
+      {isUserLoading ? (
+        <LoadingSpinner size="medium" message="Loading user details..." />
+      ) : user ? (
+        <>
+          {/* Basic User Info */}
+          <div className="user-info-card">
+            <div className="user-avatar">
+              <div className="avatar-circle">
+                {user.username ? user.username.charAt(0).toUpperCase() : "U"}
+              </div>
+            </div>
+            <div className="user-basic-info">
+              <h3>{user.username}</h3>
+              <p className="user-email">{user.email}</p>
+              <p className="user-joined">
+                Member since: {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : "21.01.2023"}
+              </p>
+            </div>
+          </div>
+
+          {/* Membership Status */}
+          <div className="membership-card">
+            <h4>Membership Status</h4>
+            <div className="membership-content">
+              <div className={`membership-badge ${user.membershipLevel || 'bronze'}`}>
+                <span className="membership-icon">
+                  {user.membershipLevel === 'platinum' ? '💎' : 
+                   user.membershipLevel === 'gold' ? '🏆' : 
+                   user.membershipLevel === 'silver' ? '🥈' : '🥉'}
+                </span>
+                <span className="membership-level">
+                  {(user.membershipLevel || 'Bronze').charAt(0).toUpperCase() + (user.membershipLevel || 'Bronze').slice(1)} Member
+                </span>
+              </div>
+              <div className="membership-benefits">
+                <p><strong>Your Benefits:</strong></p>
+                <ul className="benefits-list">
+                  {user.membershipLevel === 'platinum' ? (
+                    <>
+                      <li>✨ 25% discount on all bookings</li>
+                      <li>🎯 Priority customer support</li>
+                      <li>🏨 Free hotel upgrades when available</li>
+                      <li>✈️ Complimentary airport lounge access</li>
+                      <li>📞 24/7 concierge service</li>
+                    </>
+                  ) : user.membershipLevel === 'gold' ? (
+                    <>
+                      <li>⭐ 15% discount on all bookings</li>
+                      <li>📞 Priority customer support</li>
+                      <li>🏨 Free hotel upgrades when available</li>
+                      <li>✈️ Priority check-in assistance</li>
+                    </>
+                  ) : user.membershipLevel === 'silver' ? (
+                    <>
+                      <li>💫 10% discount on all bookings</li>
+                      <li>🎫 Early access to deals</li>
+                      <li>📞 Dedicated support line</li>
+                    </>
+                  ) : (
+                    <>
+                      <li>🎫 Access to special deals</li>
+                      <li>📧 Newsletter updates</li>
+                      <li>💰 Points on every booking</li>
+                    </>
+                  )}
+                </ul>
+              </div>
+              <div className="membership-progress">
+                <p><strong>Membership Progress:</strong></p>
+                <div className="progress-bar">
+                  <div 
+                    className="progress-fill" 
+                    style={{width: `${Math.min(100, (user.totalSpent || 0) / (user.nextLevelThreshold || 1000) * 100)}%`}}
+                  ></div>
                 </div>
+                <p className="progress-text">
+                  {user.membershipLevel !== 'platinum' ? 
+                    `Spend ${toUsd((user.nextLevelThreshold || 1000) - (user.totalSpent || 0))} more to reach the next level!` :
+                    'You\'ve reached the highest membership level! 🎉'
+                  }
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Newsletter Status */}
+          <div className="newsletter-status-card">
+            <h4>Newsletter Subscription</h4>
+            <div className="newsletter-status-content">
+              <div className={`newsletter-status ${user.newsletterSubscribed ? 'subscribed' : 'not-subscribed'}`}>
+                <span className="status-icon">
+                  {user.newsletterSubscribed ? '📧' : '📪'}
+                </span>
+                <div className="status-text">
+                  <p className="status-title">
+                    {user.newsletterSubscribed ? 'Subscribed to Newsletter' : 'Not Subscribed to Newsletter'}
+                  </p>
+                  <p className="status-description">
+                    {user.newsletterSubscribed ? 
+                      `You're receiving our latest travel deals and updates at ${user.email}` :
+                      'Subscribe to get exclusive travel deals and destination guides'
+                    }
+                  </p>
+                  {user.newsletterSubscribed && user.newsletterSubscribedAt && (
+                    <p className="subscription-date">
+                      Subscribed on: {new Date(user.newsletterSubscribedAt).toLocaleDateString()}
+                    </p>
+                  )}
+                </div>
+              </div>
+              {!user.newsletterSubscribed && (
+                <button 
+                  className="subscribe-quick-btn"
+                  onClick={() => setActiveTab("newsletter")}
+                >
+                  Subscribe Now
+                </button>
               )}
             </div>
-          </>
-        )}
+          </div>
+
+          {/* Account Statistics */}
+          <div className="account-stats-card">
+            <h4>Account Statistics</h4>
+            <div className="stats-grid">
+              <div className="stat-item">
+                <span className="stat-number">{orders.length}</span>
+                <span className="stat-label">Total Orders</span>
+              </div>
+              <div className="stat-item">
+                <span className="stat-number">
+                  {toUsd(orders.reduce((sum, order) => sum + (order.totalPrice || 0), 0))}
+                </span>
+                <span className="stat-label">Total Spent</span>
+              </div>
+              <div className="stat-item">
+                <span className="stat-number">
+                  {orders.filter(order => !order.isCancelled).length}
+                </span>
+                <span className="stat-label">Completed Trips</span>
+              </div>
+              <div className="stat-item">
+                <span className="stat-number">{user.loyaltyPoints || 0}</span>
+                <span className="stat-label">Loyalty Points</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Account Actions */}
+          <div className="account-actions">
+            <button className="action-btn secondary" onClick={() => setActiveTab("orders")}>
+              View My Orders
+            </button>
+            <button className="action-btn secondary" onClick={() => navigate("/support")}>
+              Contact Support
+            </button>
+            <button className="view-details-button" onClick={handleLogout}>
+              Logout
+            </button>
+          </div>
+        </>
+      ) : (
+        <div>
+          <p>No user data available</p>
+        </div>
+      )}
+    </div>
+  </>
+)}
 
         {/* Order Details Modal */}
         {selectedOrder && (
