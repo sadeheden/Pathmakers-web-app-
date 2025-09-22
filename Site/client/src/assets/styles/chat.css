@@ -852,6 +852,7 @@ select:focus {
 
 .modal-form {
   display: grid;
+  justify-content: center;
   gap: 12px;             /* vertical rhythm between fields */
 }
 
