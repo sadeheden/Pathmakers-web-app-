@@ -1,311 +1,472 @@
-.phone-landing-container-app {
-  display: flex;
-  flex-direction: row;
-  justify-content: center;
-  align-items: center;
-  gap: 80px;
-  padding: 60px 80px;
-  min-height: 80vh;
-  background: linear-gradient(150deg, #f0f4f8, #d9e2ec);
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen,
-    Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-  color: rgba(30, 41, 59, 0.9);
-  box-sizing: border-box;
+/* DownloadApp.css */
+
+.download-app-container {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
 }
 
-.phone-mockup-app {
-  flex: 0 0 auto;
-  width: 100%;
-  max-width: 480px;
-  background: #EDEFF2;
-  border-radius: 32px;
-  padding: 50px 40px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.08);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  transition: transform 0.4s ease, box-shadow 0.4s ease;
-  cursor: default;
-  position: relative;
-}
-
-.phone-mockup-app:hover {
-  transform: none;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.08);
-}
-
-.mockup-image-app {
-  width: 100%;
-  max-height: 600px;
-  border-radius: 28px;
-  object-fit: contain;
-  display: block;
-}
-
-/* QR code positioning inside mockup */
-.qr-inside-mockup {
-  position: absolute;
-  background: rgba(255, 255, 255, 0.95);
-  -webkit-backdrop-filter: blur(10px);
-  backdrop-filter: blur(10px);
-  padding: 12px 16px;
-  border-radius: 20px;
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.15);
-  cursor: pointer;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  user-select: none;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  width: fit-content;
-  transform: scale(0.85);
-}
-
-.qr-inside-mockup:hover,
-.qr-inside-mockup:focus-visible {
-  transform: scale(0.9);
-  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.25);
-  outline: none;
-  background: rgba(255, 255, 255, 1);
-}
-
-.qr-label-inside {
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: #475569;
-  letter-spacing: 0.02em;
-  user-select: none;
+/* Hero Section */
+.hero-section {
   text-align: center;
-  margin: 0;
-  white-space: nowrap;
+  padding: 5rem 2rem;
+  max-width: 64rem;
+  margin: 0 auto;
 }
 
-.text-content-app {
-  flex: 1;
-  max-width: 580px;
-  text-align: left;
-  direction: ltr;
-  padding-right: 20px;
+.hero-title {
+  font-size: 3rem;
+  font-weight: 700;
+  margin-bottom: 1.5rem;
+  color: #1e293b;
+  line-height: 1.1;
+}
+
+.hero-description {
+  font-size: 1.25rem;
+  color: #64748b;
+  margin-bottom: 3rem;
+  line-height: 1.6;
+  max-width: 48rem;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Features Grid */
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 4rem;
+}
+
+.feature-card {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 0.75rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  transition: box-shadow 0.3s ease;
+}
+
+.feature-card:hover {
+  box-shadow: 0 10px 25px -3px rgba(0, 0, 0, 0.1);
+}
+
+.feature-icon {
+  color: #3b82f6;
+  margin-bottom: 1rem;
   display: flex;
-  flex-direction: column;
   justify-content: center;
 }
 
-.title-app {
-  font-size: 1.2rem;
+.feature-title {
+  font-size: 1.125rem;
   font-weight: 700;
-  margin-bottom: 24px;
-  color: #000000;
-  letter-spacing: 1.2px;
-  line-height: 1.2;
-  user-select: none;
+  color: #1e293b;
+  margin-bottom: 0.5rem;
 }
 
-.app-description-app {
-  font-size: 18px;
-  line-height: 1.5;
-  color: rgba(51, 65, 85, 0.85);
-  margin-bottom: 30px;
-  font-weight: 500;
-  max-width: 100%;
+.feature-text {
+  color: #64748b;
+  font-size: 0.875rem;
 }
 
-.features-list-app {
-  font-size: 14px;
-  line-height: 1.4;
-  margin: 0 0 40px 20px;
-  padding: 0;
-  color: #475569;
+/* Download Buttons */
+.download-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  justify-content: center;
+  align-items: center;
+}
+
+.download-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 1rem 2rem;
+  border-radius: 0.75rem;
   font-weight: 600;
-  list-style-type: disc;
-}
-
-.features-list-app li {
-  margin-bottom: 0;
-}
-
-.floating-support-btn {
-  position: fixed;
-  bottom: 32px;
-  left: 32px;
-  z-index: 1000;
-  background-color: #004e75;
+  font-size: 1.125rem;
   color: white;
   border: none;
-  border-radius: 50%;
-  width: 56px;
-  height: 56px;
-  font-size: 24px;
-  font-weight: bold;
   cursor: pointer;
-  box-shadow: 0 8px 32px rgba(0, 78, 117, 0.3);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 10px 25px -3px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+  text-decoration: none;
+  min-width: 200px;
+}
+
+.download-btn-ios {
+  background-color: #3b82f6;
+}
+
+.download-btn-ios:hover {
+  background-color: #2563eb;
+  transform: translateY(-2px);
+}
+
+.download-btn-android {
+  background-color: #10b981;
+}
+
+.download-btn-android:hover {
+  background-color: #059669;
+  transform: translateY(-2px);
+}
+
+/* Video Tutorial Section */
+.video-section {
+  background: white;
+  padding: 5rem 0;
+}
+
+.video-container {
+  max-width: 88rem;
+  margin: 0 auto;
+  padding: 0 2rem;
+}
+
+.video-header {
+  text-align: center;
+  margin-bottom: 4rem;
+}
+
+.video-title {
+  font-size: 2.25rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin-bottom: 1rem;
+}
+
+.video-subtitle {
+  font-size: 1.125rem;
+  color: #64748b;
+  max-width: 32rem;
+  margin: 0 auto;
+}
+
+.video-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 3rem;
+  align-items: start;
+}
+
+/* Video Player */
+.video-player-container {
+  position: relative;
+  background: #f1f5f9;
+  border-radius: 1rem;
+  overflow: hidden;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  aspect-ratio: 16/9;
+}
+
+.video-iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+
+.video-controls {
+  position: absolute;
+  bottom: 1rem;
+  left: 1rem;
+  right: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.video-nav-btn {
+  background: rgba(0, 0, 0, 0.6);
+  color: white;
+  padding: 0.5rem;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.video-nav-btn:hover {
+  background: rgba(0, 0, 0, 0.8);
+}
+
+.video-counter {
+  background: rgba(0, 0, 0, 0.6);
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 9999px;
+  font-size: 0.875rem;
+}
+
+/* Current Video Info */
+.current-video-info {
+  margin-top: 1.5rem;
+}
+
+.current-video-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.current-video-icon {
+  color: #3b82f6;
+}
+
+.current-video-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.current-video-description {
+  color: #64748b;
+  font-size: 1.125rem;
+  line-height: 1.6;
+}
+
+/* Video List */
+.video-list-container {
+  display: flex;
+  flex-direction: column;
+}
+
+.video-list-title {
+  font-weight: 600;
+  color: #1e293b;
+  margin-bottom: 1rem;
+}
+
+.video-list {
+  max-height: 24rem;
+  overflow-y: auto;
+  padding-right: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.video-item {
+  width: 100%;
+  text-align: left;
+  padding: 1rem;
+  border-radius: 0.75rem;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background: #f8fafc;
+}
+
+.video-item:hover {
+  background: #f1f5f9;
+}
+
+.video-item.active {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+}
+
+.video-item-content {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.video-item-icon {
+  margin-top: 0.25rem;
+  color: #94a3b8;
+}
+
+.video-item.active .video-item-icon {
+  color: #3b82f6;
+}
+
+.video-item-text {
+  flex: 1;
+}
+
+.video-item-title {
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+  color: #475569;
+}
+
+.video-item.active .video-item-title {
+  color: #1d4ed8;
+}
+
+.video-item-description {
+  font-size: 0.875rem;
+  color: #64748b;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.video-item-number {
+  font-size: 0.875rem;
+  color: #94a3b8;
+  font-weight: 500;
+}
+
+/* QR Code Section */
+.qr-section {
+  background: #1e293b;
+  padding: 4rem 0;
+}
+
+.qr-container {
+  max-width: 64rem;
+  margin: 0 auto;
+  padding: 0 2rem;
+  text-align: center;
+}
+
+.qr-title {
+  font-size: 1.875rem;
+  font-weight: 700;
+  color: white;
+  margin-bottom: 1rem;
+}
+
+.qr-subtitle {
+  color: #cbd5e1;
+  margin-bottom: 3rem;
+  font-size: 1.125rem;
+}
+
+.qr-codes-container {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  justify-content: center;
+  align-items: center;
+}
+
+.qr-code-card {
+  background: white;
+  padding: 2rem;
+  border-radius: 1rem;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-align: center;
+}
+
+.qr-code-card:hover {
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4);
+  transform: translateY(-4px);
+}
+
+.qr-code-content {
+  text-align: center;
+}
+
+.qr-code-emoji {
+  font-size: 2.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.qr-code-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin-bottom: 0.25rem;
+}
+
+.qr-code-platform {
+  color: #64748b;
+  font-size: 0.875rem;
+}
+
+.qr-code-instruction {
+  color: #64748b;
+  font-size: 0.75rem;
+  margin-top: 0.5rem;
+  transition: color 0.3s ease;
+}
+
+.qr-code-card:hover .qr-code-instruction.ios {
+  color: #3b82f6;
+}
+
+.qr-code-card:hover .qr-code-instruction.android {
+  color: #10b981;
+}
+
+.qr-footer-text {
+  margin-top: 2rem;
+  color: #94a3b8;
+  font-size: 0.875rem;
+}
+
+/* Support Button */
+.support-btn {
+  position: fixed;
+  bottom: 2rem;
+  left: 2rem;
+  background-color: #2563eb;
+  color: white;
+  padding: 1rem;
+  border-radius: 50%;
+  box-shadow: 0 10px 25px -3px rgba(37, 99, 235, 0.3);
+  border: none;
+  cursor: pointer;
+  z-index: 50;
+  transition: all 0.3s ease;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-.floating-support-btn:hover {
+.support-btn:hover {
+  background-color: #1d4ed8;
+  box-shadow: 0 20px 25px -5px rgba(37, 99, 235, 0.4);
   transform: translateY(-4px) scale(1.1);
-  box-shadow: 0 12px 48px rgba(0, 78, 117, 0.4);
 }
 
-.floating-support-btn:active {
-  transform: translateY(-2px) scale(1.05);
+.support-btn-icon {
+  font-size: 1.25rem;
 }
 
-/* QR code positioning - iOS (bottom left) */
-.qr-ios {
-  bottom: 10px;
-  left: 10px;
-  top: auto;
-  right: auto;
-}
-
-/* QR code positioning - Android (bottom right) */
-.qr-android {
-  bottom: 10px;
-  right: 10px;
-  top: auto;
-  left: auto;
-}
-
-/* Hover effects for different platforms */
-.qr-ios:hover {
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(240, 240, 240, 0.95));
-  border: 1px solid rgba(0, 122, 255, 0.2);
-}
-
-.qr-android:hover {
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(240, 240, 240, 0.95));
-  border: 1px solid rgba(76, 175, 80, 0.2);
-}
-
-/* Media Queries */
-@media (max-width: 1200px) {
-  .phone-landing-container-app {
-    gap: 60px;
-    padding: 40px 60px;
+/* Responsive Design */
+@media (min-width: 640px) {
+  .download-buttons {
+    flex-direction: row;
+  }
+  
+  .qr-codes-container {
+    flex-direction: row;
+  }
+  
+  .hero-title {
+    font-size: 4rem;
   }
 }
 
-@media (max-width: 1024px) {
-  .phone-landing-container-app {
-    gap: 50px;
-    padding: 40px 50px;
+@media (min-width: 1024px) {
+  .features-grid {
+    grid-template-columns: repeat(3, 1fr);
   }
   
-  .phone-mockup-app {
-    max-width: 420px;
-    padding: 40px 30px;
+  .hero-title {
+    font-size: 3rem;
   }
   
-  .mockup-image-app {
-    max-height: 450px;
+  .video-title {
+    font-size: 2.5rem;
   }
 }
 
-@media (max-width: 768px) {
-  .phone-landing-container-app {
-    flex-direction: column;
-    text-align: center;
-    padding: 40px 30px;
-    gap: 50px;
-    min-height: 100vh;
-  }
-  
-  .text-content-app {
-    max-width: 100%;
-    padding-right: 0;
-    text-align: center;
-    order: 1;
-  }
-  
-  .phone-mockup-app {
-    order: 2;
-    max-width: 100%;
-    width: 100%;
-    max-width: 380px;
-  }
-  
-  .mockup-image-app {
-    max-height: 400px;
-  }
-  
-  .qr-inside-mockup {
-    padding: 12px 16px;
-  }
-  
-  /* רספונסיבי לניידים - QR positioning */
-  .qr-ios {
-    bottom: 20px;
-    left: 20px;
-    transform: scale(0.8);
-  }
-  
-  .qr-android {
-    bottom: 20px;
-    right: 20px;
-    transform: scale(0.8);
-  }
-  
-  .floating-support-btn {
-    bottom: 24px;
-    left: 24px;
-    width: 52px;
-    height: 52px;
-    font-size: 22px;
-  }
-}
-
-@media (max-width: 480px) {
-  .phone-landing-container-app {
-    padding:  20px;
-    gap: 40px;
-  }
-  
-  .phone-mockup-app {
-    padding: 30px 20px;
-    border-radius: 28px;
-  }
-  
-  .mockup-image-app {
-    max-height: 350px;
-    border-radius: 24px;
-  }
-  
-  .qr-inside-mockup {
-    padding: 10px 14px;
-    border-radius: 20px;
-  }
-  
-  /* QR positioning for mobile */
-  .qr-ios {
-    bottom: 16px;
-    left: 16px;
-    transform: scale(0.7);
-  }
-  
-  .qr-android {
-    bottom: 16px;
-    right: 16px;
-    transform: scale(0.7);
-  }
-  
-  .floating-support-btn {
-    bottom: 20px;
-    left: 20px;
-    width: 48px;
-    height: 48px;
-    font-size: 20px;
-  }
-  
-  .features-list-app {
-    margin-left: 16px;
-  }
-  
-  .features-list-app li {
-    padding-left: 20px;
+@media (max-width: 1023px) {
+  .video-grid {
+    grid-template-columns: 1fr;
   }
 }
