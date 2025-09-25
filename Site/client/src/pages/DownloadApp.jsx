@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import QRCode from 'react-qr-code';
-import { ChevronLeft, ChevronRight, Download, Map, Calendar, Users, Camera, Settings, Navigation, Book } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Download, Map, Calendar, Users, Camera, Settings, Navigation, Book, MessageCircle, Ticket, HelpCircle, Cloud, Coins } from 'lucide-react';
 import '../assets/styles/DownloadApp.css';
-import mockupImage from '../assets/images/mockup.png';
+import part1Video from '../assets/images/part1.mp4';
 
 const DownloadApp = () => {
   const [currentVideo, setCurrentVideo] = useState(0);
@@ -16,62 +16,70 @@ const DownloadApp = () => {
     window.open(url, '_blank');
   };
 
+  // Updated videos array with your specified tutorials
   const videos = [
     {
       id: 1,
       title: "Getting Started",
       description: "Learn how to login and set up your account for the first time. Simple and quick setup process.",
       icon: <Settings className="w-5 h-5" />,
-      videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ" // Replace with actual video URLs
+      videoUrl: "part1Video" // Replace with your actual video URL or file path
     },
     {
       id: 2,
-      title: "Daily Journal",
-      description: "Create and manage your personalized daily schedule with notes and travel experiences.",
-      icon: <Book className="w-5 h-5" />,
-      videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ"
+      title: "Chat with AI",
+      description: "Discover how to interact with our AI assistant for personalized travel recommendations and support.",
+      icon: <MessageCircle className="w-5 h-5" />,
+      videoUrl: "YOUR_VIDEO_URL_HERE" // Replace with your actual video URL or file path
     },
     {
       id: 3,
-      title: "Interactive Map",
-      description: "Navigate your itinerary with our interactive map featuring stops, attractions, and Waze integration.",
-      icon: <Map className="w-5 h-5" />,
-      videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ"
+      title: "Schedule an Organized Trip",
+      description: "Plan and organize your complete travel itinerary with our smart scheduling features.",
+      icon: <Calendar className="w-5 h-5" />,
+      videoUrl: "YOUR_VIDEO_URL_HERE" // Replace with your actual video URL or file path
     },
     {
       id: 4,
-      title: "Waze Navigation",
-      description: "Seamlessly integrate with Waze for turn-by-turn navigation to your planned destinations.",
-      icon: <Navigation className="w-5 h-5" />,
-      videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ"
+      title: "Purchase a Ticket for Event",
+      description: "Book tickets for attractions, events, and experiences directly through the app.",
+      icon: <Ticket className="w-5 h-5" />,
+      videoUrl: "YOUR_VIDEO_URL_HERE" // Replace with your actual video URL or file path
     },
     {
       id: 5,
-      title: "Family Sync",
-      description: "Share your daily plans with family members for real-time updates and coordination.",
-      icon: <Users className="w-5 h-5" />,
-      videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ"
+      title: "Calendar",
+      description: "Manage your travel schedule and important dates with the integrated calendar feature.",
+      icon: <Calendar className="w-5 h-5" />,
+      videoUrl: "YOUR_VIDEO_URL_HERE" // Replace with your actual video URL or file path
     },
     {
       id: 6,
       title: "Personal Area",
-      description: "Manage your account settings, personal details, and preferences in one convenient location.",
+      description: "Access and manage your personal details, account settings, and preferences.",
       icon: <Settings className="w-5 h-5" />,
-      videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ"
+      videoUrl: "YOUR_VIDEO_URL_HERE" // Replace with your actual video URL or file path
     },
     {
       id: 7,
-      title: "Photo Documentation",
-      description: "Capture and organize your travel memories with our Polarsteps-like photo documentation feature.",
-      icon: <Camera className="w-5 h-5" />,
-      videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ"
+      title: "Create Support Message",
+      description: "Learn how to contact our support team and get help when you need it.",
+      icon: <HelpCircle className="w-5 h-5" />,
+      videoUrl: "YOUR_VIDEO_URL_HERE" // Replace with your actual video URL or file path
     },
     {
       id: 8,
-      title: "Travel Stories",
-      description: "Create and share your travel stories, building a digital diary of your adventures.",
-      icon: <Book className="w-5 h-5" />,
-      videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ"
+      title: "Weather",
+      description: "Check weather conditions for your destinations and plan accordingly.",
+      icon: <Cloud className="w-5 h-5" />,
+      videoUrl: "YOUR_VIDEO_URL_HERE" // Replace with your actual video URL or file path
+    },
+    {
+      id: 9,
+      title: "Coin Converter",
+      description: "Convert currencies and manage your travel budget with real-time exchange rates.",
+      icon: <Coins className="w-5 h-5" />,
+      videoUrl: "YOUR_VIDEO_URL_HERE" // Replace with your actual video URL or file path
     }
   ];
 
@@ -178,14 +186,26 @@ const DownloadApp = () => {
             {/* Main Video Player */}
             <div>
               <div className="video-player-container">
-                <iframe
-                  src={videos[currentVideo].videoUrl}
-                  title={videos[currentVideo].title}
-                  className="video-iframe"
-                  frameBorder="0"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                ></iframe>
+                {/* Check if it's a YouTube URL or local file */}
+                {videos[currentVideo].videoUrl.includes('youtube.com') || videos[currentVideo].videoUrl.includes('youtu.be') ? (
+                  <iframe
+                    src={videos[currentVideo].videoUrl}
+                    title={videos[currentVideo].title}
+                    className="video-iframe"
+                    frameBorder="0"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                  ></iframe>
+                ) : (
+                  <video
+                    className="video-iframe"
+                    controls
+                    key={videos[currentVideo].videoUrl} // Force re-render when video changes
+                  >
+                    <source src={videos[currentVideo].videoUrl} type="video/mp4" />
+                    Your browser does not support the video tag.
+                  </video>
+                )}
                 
                 {/* Video Navigation */}
                 <div className="video-controls">
