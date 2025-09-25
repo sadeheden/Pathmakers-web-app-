@@ -1,5 +1,5 @@
 // FIXED: Use your actual backend URL without duplicate /api
-const backendUrl = "https://pathmakers-web-app-site.onrender.com";
+const backendUrl = "https://pathmakers-server-site.onrender.com";
 
 // Example fetch - FIXED: Remove duplicate /api
 export const getOrders = async () => {
