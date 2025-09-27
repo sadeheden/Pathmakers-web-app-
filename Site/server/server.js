@@ -54,12 +54,13 @@ const PORT = process.env.PORT || 4000;
 // FIXED: Allow your static site domain
 app.use(cors({
   origin: [
-    'https://pathmakers-web-app.onrender.com',  // Your static site
-    'https://pathmakers-web-app-site.onrender.com', // Your backend (for development)
-    'http://localhost:3000',  // Local development
-    'http://localhost:5173'   // Vite dev server
+    'https://pathmakers-server-site.onrender.com',  // Verify this URL is correct
+    'http://localhost:3000',
+    'http://localhost:5173'
   ],
-  credentials: true
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
 app.use(express.json());
 
