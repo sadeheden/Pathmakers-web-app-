@@ -5,6 +5,7 @@ import "../assets/styles/main.css";
 import flag from "../assets/images/flag.jpg";
 import { API_BASE } from "../api.js";
 
+
 // React icons
 import { FiChevronLeft, FiChevronRight } from "react-icons/fi";
 

@@ -101,6 +101,7 @@ export async function put(endpoint, data = {}) {
 }
 
 // DELETE helper
+// DELETE helper
 export async function del(endpoint) {
   try {
     const token = localStorage.getItem('token');
@@ -127,3 +128,8 @@ export async function del(endpoint) {
     throw error;
   }
 }
+
+// 👇 ADD THIS
+export const API_BASE = backendUrl;
+export default API_BASE;
+m
