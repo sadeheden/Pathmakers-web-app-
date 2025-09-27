@@ -18,7 +18,7 @@ const Support = () => {
     e.preventDefault();
 
     try {
-      const res = await fetch("http://localhost:4000/api/support", {
+      const res = await fetch("https://pathmakers-server-site.onrender.com/api/support", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),

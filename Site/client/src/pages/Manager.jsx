@@ -673,7 +673,7 @@ const safeFormatDate = (value) => {
 
   useEffect(() => {
     if (activeItem === "Dashboard") {
-      fetch("http://localhost:4000/api/manager/dashboard")
+      fetch("https://pathmakers-server-site.onrender.com/api/manager/dashboard")
         .then((res) => res.json())
         .then((data) => {
           console.log("📊 Dashboard API data:", data);
@@ -706,7 +706,7 @@ const safeFormatDate = (value) => {
   const fetchLoginLogs = async () => {
     try {
       setLoginLogsLoading(true);
-      const response = await fetch('http://localhost:4000/api/manager/login-logs');
+      const response = await fetch('https://pathmakers-server-site.onrender.com/api/manager/login-logs');
       if (response.ok) {
         const data = await response.json();
         setLoginLogs(data);
@@ -773,7 +773,7 @@ const safeFormatDate = (value) => {
   const fetchUsers = async () => {
     try {
       setUsersLoading(true);
-      const response = await fetch('http://localhost:4000/api/auth/users');
+      const response = await fetch('https://pathmakers-server-site.onrender.com/api/auth/users');
       if (response.ok) {
         const data = await response.json();
         setUsers(data);
@@ -812,7 +812,7 @@ const safeFormatDate = (value) => {
     }
 
     try {
-      const response = await fetch(`http://localhost:4000/api/auth/users/${userId}`, {
+      const response = await fetch(`https://pathmakers-server-site.onrender.com/api/auth/users/${userId}`, {
         method: 'DELETE',
       });
 
@@ -840,7 +840,7 @@ Thanks for reaching out!`);
   const sendSupportEmail = async (message) => {
     try {
       setSendingReply(true);
-      const res = await fetch(`http://localhost:4000/api/support/${message._id}/reply`, {
+      const res = await fetch(`https://pathmakers-server-site.onrender.com/api/support/${message._id}/reply`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -870,7 +870,7 @@ Thanks for reaching out!`);
   const fetchMessages = async () => {
     try {
       setMessagesLoading(true);
-      const response = await fetch('http://localhost:4000/api/support');
+      const response = await fetch('https://pathmakers-server-site.onrender.com/api/support');
       if (response.ok) {
         const data = await response.json();
         setMessages(data);
@@ -886,7 +886,7 @@ Thanks for reaching out!`);
 
   const updateMessageStatus = async (messageId, newStatus) => {
     try {
-      const response = await fetch(`http://localhost:4000/api/support/${messageId}`, {
+      const response = await fetch(`https://pathmakers-server-site.onrender.com/api/support/${messageId}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -1127,7 +1127,7 @@ const renderActionButtons = (message) => {
         switch (collection) {
           case "cities":
             if (!formData.cityName) throw new Error("City name is required");
-            url = "http://localhost:4000/api/travel/cities"; 
+            url = "https://pathmakers-server-site.onrender.com/api/travel/cities"; 
             payload = { city: formData.cityName.trim() };
             break;
 
@@ -1139,7 +1139,7 @@ const renderActionButtons = (message) => {
               throw new Error("At least one hotel with name and price is required");
             }
 
-            url = "http://localhost:4000/api/manager/collections/hotels/upsertItems";
+            url = "https://pathmakers-server-site.onrender.com/api/manager/collections/hotels/upsertItems";
             payload = {
               city: formData.city.trim(),
               hotels: validHotels.map(h => ({
@@ -1160,7 +1160,7 @@ const renderActionButtons = (message) => {
             throw new Error("At least one attraction with all details is required");
           }
 
-          url = "http://localhost:4000/api/manager/collections/attractions/upsertItems";
+          url = "https://pathmakers-server-site.onrender.com/api/manager/collections/attractions/upsertItems";
           payload = {
             city: formData.city.trim(),
             attractions: validAttractions.map(a => ({
@@ -1183,7 +1183,7 @@ const renderActionButtons = (message) => {
             throw new Error("At least one flight with all details is required");
           }
 
-          url = "http://localhost:4000/api/manager/collections/flights/upsertItems";
+          url = "https://pathmakers-server-site.onrender.com/api/manager/collections/flights/upsertItems";
           payload = {
             city: formData.city.trim(),
             flights: validFlights.map(f => ({
