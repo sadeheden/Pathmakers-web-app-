@@ -458,11 +458,13 @@
   place-items: center;
   box-shadow: var(--shadow-sm);
   transition: background .2s ease;
+  z-index: 10;
 }
 
 .close-modal:hover { 
   background: #f1f5f9; 
 }
+
 
 /* Chips for attractions */
 .chip-list { 
