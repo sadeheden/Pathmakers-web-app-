@@ -6,6 +6,13 @@
 html, body {
   background: #f9fafb;
   color: var(--text);
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
 }
 
 /* A scoped place to derive component variables from app.css */
@@ -27,7 +34,9 @@ html, body {
 .trips-page {
   max-width: 1300px;
   margin: 0 auto;
-  padding: 0 1rem 0rem;
+  padding: 0 1rem;
+  width: 100%;
+  overflow-x: hidden;
 }
 
 footer, .footer {
@@ -45,6 +54,7 @@ footer, .footer {
   background-position: center;
   margin: 20px 0;
   overflow: hidden;
+  width: 100%;
 }
 
 .hero-overlay {
@@ -62,16 +72,18 @@ footer, .footer {
   flex-direction: column;
   align-items: center;
   justify-content: flex-start;
-  padding-top: 75px;
+  padding: 75px 20px 20px;
   text-align: center;
   color: #fff;
 }
 
 .hero-content h1 {
-  font-size: clamp(28px, 5vw, 48px);
+  font-size: clamp(24px, 5vw, 48px);
   margin-bottom: 10px;
   font-weight: 800;
   color: #fff;
+  max-width: 90%;
+  line-height: 1.2;
 }
 
 .hero-content p {
@@ -79,6 +91,7 @@ footer, .footer {
   margin-bottom: 20px;
   color: #fff;
   opacity: 0.95;
+  max-width: 90%;
 }
 
 .hero-buttons {
@@ -86,6 +99,8 @@ footer, .footer {
   gap: 12px;
   flex-wrap: wrap;
   justify-content: center;
+  width: 100%;
+  max-width: 400px;
 }
 
 /* Button base styles */
@@ -102,6 +117,8 @@ footer, .footer {
   transition: all 0.2s ease;
   text-decoration: none;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  min-height: 44px;
+  touch-action: manipulation;
 }
 
 .btn-primary {
@@ -134,9 +151,10 @@ footer, .footer {
    =========================== */
 .trip-options {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: 1rem;
   margin-bottom: 4rem;
+  padding: 0;
 }
 
 .trip-card {
@@ -146,6 +164,7 @@ footer, .footer {
   text-align: center;
   box-shadow: var(--shadow-sm);
   transition: transform 0.3s, box-shadow 0.3s;
+  width: 100%;
   max-width: 480px;
   margin: 0 auto;
 }
@@ -160,6 +179,7 @@ footer, .footer {
   max-width: 160px;
   border-radius: var(--radius-lg);
   margin-bottom: 1.5rem;
+  height: auto;
 }
 
 .trip-card h3 { 
@@ -178,12 +198,13 @@ footer, .footer {
    Popular Destinations
    =========================== */
 .popular-trips { 
-  margin: 0 0 0rem 3rem; 
+  margin: 0 0 2rem;
+  padding: 0 1rem;
 }
 
 .popular-trips h2 {
-  font-size: 1.5rem;
-  margin-bottom: 2.2rem;
+  font-size: clamp(1.25rem, 3vw, 1.5rem);
+  margin-bottom: 2rem;
   text-align: left;
   letter-spacing: -1px;
   color: var(--text);
@@ -192,6 +213,7 @@ footer, .footer {
 /* Popular trips: horizontal row */
 .city-scroll-wrapper {
   position: relative;
+  width: 100%;
 }
 
 .city-row {
@@ -202,6 +224,7 @@ footer, .footer {
   scroll-snap-type: x mandatory;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
+  padding: 0 8px 8px;
 }
 
 .city-row::-webkit-scrollbar {
@@ -220,9 +243,9 @@ footer, .footer {
 }
 
 .city-card {
-  flex: 0 0 240px !important;
+  flex: 0 0 240px;
   margin-right: 0; 
-  margin-bottom: 5%;
+  margin-bottom: 0;
   border-radius: 12px;
   overflow: hidden;
   background: #fff;
@@ -269,7 +292,7 @@ footer, .footer {
   width: 40px;
   height: 40px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.6);
+  background: rgba(255, 255, 255, 0.9);
   -webkit-backdrop-filter: blur(6px);
   backdrop-filter: blur(6px);
   border: 1px solid rgba(255, 255, 255, 0.4);
@@ -283,35 +306,36 @@ footer, .footer {
 }
 
 .scroll-btn:hover {
-  background: rgba(255, 255, 255, 0.8);
+  background: rgba(255, 255, 255, 1);
 }
 
 .scroll-btn:active {
   transform: translateY(-50%) scale(0.98);
 }
 
-.scroll-btn.left  { left: -60px; }
-.scroll-btn.right { right: -50px; }
+.scroll-btn.left  { left: -20px; }
+.scroll-btn.right { right: -20px; }
 
 /* ===========================
    Chat Options Boxes
    =========================== */
 .chat-options {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 5.5rem;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 2rem;
   margin: 2.5rem auto;
   max-width: 1200px;
-  padding: 0 1rem;
+  padding: 0;
 }
 
 .chat-card {
   background: var(--bg-card);
   border-radius: var(--radius-lg);
-  padding: 4.8rem 2.5rem;
+  padding: 2.5rem 2rem;
   text-align: center;
   box-shadow: var(--shadow-sm);
   transition: transform 0.25s, box-shadow 0.25s;
+  width: 100%;
 }
 
 .chat-card:hover {
@@ -320,7 +344,7 @@ footer, .footer {
 }
 
 .chat-card h3 {
-  font-size: 1.9rem;
+  font-size: clamp(1.5rem, 3vw, 1.9rem);
   margin-bottom: 0.75rem;
   color: var(--brand);
 }
@@ -351,6 +375,9 @@ footer, .footer {
   cursor: pointer;
   transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
   z-index: 999;
+  min-height: 44px;
+  min-width: 44px;
+  touch-action: manipulation;
 }
 
 .floating-support-btn:hover {
@@ -378,17 +405,19 @@ footer, .footer {
   align-items: center;
   justify-content: center;
   z-index: 1000;
-  padding: max(env(safe-area-inset-top), 20px)
+  padding: max(env(safe-area-inset-top), 16px)
            max(env(safe-area-inset-right), 16px)
            max(env(safe-area-inset-bottom), 16px)
            max(env(safe-area-inset-left), 16px);
   overscroll-behavior: contain;
+  overflow-y: auto;
 }
 
 .modal-content {
   background: white;
   border-radius: 16px;
-  max-width: 90vw;
+  width: 90vw;
+  max-width: 600px;
   max-height: 90vh;
   overflow: auto;
   -webkit-overflow-scrolling: touch;
@@ -396,6 +425,7 @@ footer, .footer {
   padding: var(--card-pad-y) var(--card-pad-x);
   position: relative;
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  margin: auto;
 }
 
 .modal-close-x {
@@ -417,6 +447,9 @@ footer, .footer {
   font-weight: 800;
   box-shadow: 0 6px 20px rgba(0,0,0,.12), inset 0 1px 0 rgba(255,255,255,.6);
   transition: transform .12s ease, background .15s ease;
+  min-height: 38px;
+  min-width: 38px;
+  touch-action: manipulation;
 }
 
 .modal-close-x:hover { 
@@ -429,8 +462,8 @@ footer, .footer {
    =========================== */
 .modal-content h2 {
   margin: 0 0 20px 0;
-  padding: 24px var(--card-pad-x) 0;
-  font-size: clamp(22px, 2.8vw, 28px);
+  padding: 24px 0 0;
+  font-size: clamp(20px, 4vw, 28px);
   font-weight: 800;
   color: var(--brand);
   text-align: center;
@@ -438,7 +471,6 @@ footer, .footer {
 
 .modal-content p {
   margin: 0 0 16px 0;
-  padding: 0 var(--card-pad-x);
   color: #475569;
   line-height: 1.6;
   font-size: 15px;
@@ -459,7 +491,7 @@ footer, .footer {
 .modal-image-wrapper {
   display: grid; 
   place-items: center;
-  padding: 16px var(--card-pad-x) 20px;
+  padding: 16px 0 20px;
 }
 
 .modal-city-image {
@@ -477,9 +509,10 @@ footer, .footer {
 
 /* Modal Buttons */
 .modal-btns {
-  padding: 20px var(--card-pad-x) 0;
+  padding: 20px 0 0;
   display: flex;
   gap: 12px;
+  flex-wrap: wrap;
 }
 
 .modal-btn {
@@ -497,6 +530,8 @@ footer, .footer {
   transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   overflow: hidden;
+  min-height: 44px;
+  touch-action: manipulation;
 }
 
 .modal-btn:before {
@@ -538,14 +573,13 @@ footer, .footer {
 /* Payment form styles */
 .modal-content label { 
   display: block; 
-  font-size: .85rem; 
+  font-size: 0.85rem; 
   color: var(--muted); 
-  margin: 12px var(--card-pad-x) 6px; 
+  margin: 12px 0 6px; 
 }
 
 .modal-content input {
-  width: calc(100% - 2*var(--card-pad-x));
-  margin: 0 var(--card-pad-x);
+  width: 100%;
   padding: 12px 14px;
   border-radius: 12px; 
   border: 1px solid #e5e7eb; 
@@ -553,6 +587,8 @@ footer, .footer {
   box-shadow: inset 0 1px 0 rgba(255,255,255,.6);
   font-size: 14px;
   transition: border-color 0.2s ease;
+  box-sizing: border-box;
+  min-height: 44px;
 }
 
 .modal-content input:focus {
@@ -564,19 +600,19 @@ footer, .footer {
   display: grid; 
   grid-template-columns: 1fr 1fr; 
   gap: 12px; 
-  padding: 0 var(--card-pad-x); 
 }
 
 .expiry-cvv input {
-  width: 100% !important;
+  width: 100%;
   margin: 0;
   padding: 14px 16px;
-  height: 48px;
+  min-height: 48px;
   font-size: 15px;
   border-radius: 12px;
   border: 1px solid #e5e7eb;
   outline: none;
   box-shadow: inset 0 1px 0 rgba(255,255,255,.6);
+  box-sizing: border-box;
 }
 
 .expiry-cvv input:focus {
@@ -591,7 +627,7 @@ footer, .footer {
   color: #dc2626;
   padding: 12px;
   border-radius: 8px;
-  margin: 12px var(--card-pad-x);
+  margin: 12px 0;
   font-size: 14px;
   line-height: 1.4;
 }
@@ -622,6 +658,8 @@ footer, .footer {
   cursor: pointer;
   transition: transform .15s cubic-bezier(.4,0,.2,1),
               box-shadow .15s cubic-bezier(.4,0,.2,1);
+  min-height: 44px;
+  touch-action: manipulation;
 }
 
 .modal-btns .modal-btn.btn-primary:hover,
@@ -649,20 +687,19 @@ footer, .footer {
 }
 
 .modal-payment-btn {
-  width: calc(100% - 2 * var(--card-pad-x));
-  margin: 0 var(--card-pad-x) 16px;
+  width: 100%;
+  margin: 0 0 16px;
 }
 
 .pay-button {
-  margin: 16px var(--card-pad-x) 0; 
-  width: calc(100% - 2*var(--card-pad-x));
+  margin: 16px 0 0; 
+  width: 100%;
 }
 
 .modal-btn.btn {
-  width: calc(100% - 2 * var(--card-pad-x, 1rem));
-  margin: 0 var(--card-pad-x, 1rem) 12px;
+  width: 100%;
+  margin: 10px 0 0;
   display: inline-flex;
-  margin-top: 10px;
   justify-content: center;
 }
 
@@ -670,127 +707,110 @@ footer, .footer {
    MOBILE-FIRST RESPONSIVE
    =========================== */
 
-/* Mobile phones (up to 767px) */
-@media (max-width: 767px) {
-  html, body {
-    overflow-x: hidden;
-  }
-  
+/* Extra Small Mobile (iPhone SE / up to 480px) */
+@media (max-width: 480px) {
   .trips-page {
-    --card-pad-x: 1rem;
+    --card-pad-x: 0.75rem;
     --card-pad-y: 1rem;
-    padding: 0 0.75rem;
+    padding: 0 0.5rem;
   }
 
   .hero-merged {
-    height: 300px;
-    border-radius: 16px;
-    margin: 10px 0 20px;
+    height: 250px;
+    margin: 8px 0 16px;
+    border-radius: 12px;
   }
 
   .hero-content {
+    padding: 40px 16px 20px;
     justify-content: center;
-    padding: 20px;
   }
 
   .hero-content h1 {
-    font-size: clamp(24px, 6vw, 32px);
-    margin-bottom: 12px;
+    font-size: clamp(20px, 6vw, 28px);
+    margin-bottom: 8px;
     line-height: 1.2;
   }
 
   .hero-content p {
-    font-size: clamp(14px, 4vw, 16px);
-    max-width: 300px;
+    font-size: clamp(13px, 4vw, 15px);
+    margin-bottom: 16px;
   }
 
   .hero-buttons {
     flex-direction: column;
     width: 100%;
-    max-width: 280px;
+    max-width: 250px;
+    gap: 8px;
   }
 
   .btn {
-    padding: 14px 24px;
-    font-size: 16px;
+    padding: 14px 20px;
+    font-size: 15px;
     width: 100%;
     min-height: 48px;
-     touch-action: manipulation;
   }
 
   .trip-options {
-    display: flex;
-    flex-direction: column;
-    gap: 1.5rem;
-    padding: 0 0.5rem;
+    grid-template-columns: 1fr;
+    gap: 1rem;
+    padding: 0;
   }
 
   .trip-card {
-    border-radius: 16px;
     padding: 1.5rem 1rem;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-    width: 100%;
-  }
-
-  .trip-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+    border-radius: 12px;
   }
 
   .trip-card img {
-    width: 80%;
-    max-width: 140px;
-    border-radius: 12px;
+    width: 70%;
+    max-width: 120px;
     margin-bottom: 1rem;
   }
 
   .trip-card h3 {
-    font-size: 1.3rem;
+    font-size: 1.2rem;
   }
 
   .trip-card p {
-    font-size: 0.95rem;
+    font-size: 0.9rem;
   }
 
   .popular-trips {
-    margin: 0 0 2rem;
-    padding: 0 1rem;
+    margin: 0 0 1.5rem;
+    padding: 0 0.5rem;
   }
 
   .popular-trips h2 {
-    font-size: 1.3rem;
-    margin-bottom: 1.5rem;
+    font-size: 1.2rem;
+    margin-bottom: 1rem;
     text-align: center;
-    letter-spacing: -0.5px;
   }
 
   .city-row {
-    gap: 16px;
-    padding: 0 8px 8px;
+    gap: 12px;
+    padding: 0 4px 8px;
   }
 
   .city-card {
-    flex: 0 0 160px !important;
-    border-radius: 12px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    flex: 0 0 140px;
   }
 
   .city-card img {
-    height: 100px;
-    filter: grayscale(30%) brightness(0.95);
+    height: 80px;
   }
 
   .city-card-text {
-    padding: 10px 12px 14px;
+    padding: 8px 10px 12px;
   }
 
   .city-card-text h3 {
-    font-size: 0.95rem;
+    font-size: 0.85rem;
     font-weight: 700;
   }
 
   .city-card-text .muted {
-    font-size: 0.8rem;
+    font-size: 0.75rem;
   }
 
   .scroll-btn {
@@ -798,189 +818,346 @@ footer, .footer {
   }
 
   .chat-options {
-    display: flex;
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+    padding: 0;
+  }
+
+  .chat-card {
+    padding: 1.5rem 1rem;
+  }
+
+  .chat-card h3 {
+    font-size: 1.3rem;
+  }
+
+  .modal-overlay {
+    padding: 8px;
+    align-items: flex-start;
+    overflow-y: auto;
+  }
+
+  .modal-content {
+    width: calc(100vw - 16px);
+    max-height: none;
+    max-width: none;
+    border-radius: 12px;
+    margin: 20px 0;
+    --card-pad-x: 1rem;
+  }
+
+  .modal-close-x {
+    width: 32px;
+    height: 32px;
+    top: 8px;
+    right: 8px;
+    font-size: 16px;
+  }
+
+  .modal-btns {
     flex-direction: column;
+    gap: 8px;
+  }
+
+  .modal-btn {
+    width: 100%;
+    padding: 14px 16px;
+    min-height: 48px;
+  }
+
+  .floating-support-btn {
+    bottom: 16px;
+    right: 16px;
+    padding: 10px 16px;
+    font-size: 13px;
+  }
+
+  .expiry-cvv {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+}
+
+/* Small Mobile (481px - 600px) */
+@media (min-width: 481px) and (max-width: 600px) {
+  .trips-page {
+    padding: 0 0.75rem;
+  }
+
+  .hero-merged {
+    height: 300px;
+    margin: 12px 0 20px;
+    border-radius: 16px;
+  }
+
+  .hero-content {
+    padding: 50px 20px 20px;
+  }
+
+  .hero-content h1 {
+    font-size: clamp(24px, 5vw, 32px);
+  }
+
+  .hero-content p {
+    font-size: clamp(14px, 3vw, 16px);
+  }
+
+  .hero-buttons {
+    flex-direction: row;
+    max-width: 350px;
+    gap: 10px;
+  }
+
+  .btn {
+    flex: 1;
+    min-width: 120px;
+  }
+
+  .city-card {
+    flex: 0 0 160px;
+  }
+
+  .city-card img {
+    height: 100px;
+  }
+
+  .city-card-text h3 {
+    font-size: 0.9rem;
+  }
+
+  .city-card-text .muted {
+    font-size: 0.8rem;
+  }
+
+  .chat-options {
+    grid-template-columns: 1fr;
     gap: 2rem;
-    padding: 0 0.5rem;
   }
 
   .chat-card {
     padding: 2rem 1.5rem;
   }
 
-  .chat-card h3 {
-    font-size: 1.5rem;
+  .modal-content {
+    width: calc(100vw - 32px);
+    max-width: 500px;
   }
 
-  .modal-overlay {
-    padding: 16px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 100vh;
+  .expiry-cvv {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* Tablet Portrait (601px - 768px) */
+@media (min-width: 601px) and (max-width: 768px) {
+  .trips-page {
+    padding: 0 1rem;
+  }
+
+  .hero-merged {
+    height: 350px;
+    border-radius: var(--radius-lg);
+  }
+
+  .hero-content {
+    padding: 60px 20px 20px;
+  }
+
+  .hero-buttons {
+    max-width: 400px;
+  }
+
+  .popular-trips {
+    padding: 0 0.5rem;
+  }
+
+  .city-row {
+    gap: 16px;
+  }
+
+  .city-card {
+    flex: 0 0 180px;
+  }
+
+  .city-card img {
+    height: 110px;
+  }
+
+  .scroll-btn {
+    width: 36px;
+    height: 36px;
+  }
+
+  .scroll-btn.left {
+    left: -18px;
+  }
+
+  .scroll-btn.right {
+    right: -18px;
+  }
+
+  .chat-options {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 2rem;
+  }
+
+  .chat-card {
+    padding: 2.5rem 2rem;
   }
 
   .modal-content {
-    width: calc(100vw - 32px);
-    max-height: 90vh;
-    border-radius: 16px;
-  }
-
-  .modal-close-x {
-    width: 32px;
-    height: 32px;
-    top: 12px;
-    right: 12px;
-    font-size: 16px;
+    width: 85vw;
+    max-width: 600px;
   }
 
   .modal-btns {
-    flex-direction: column;
+    flex-direction: row;
   }
 
   .floating-support-btn {
     bottom: 20px;
     right: 20px;
-    padding: 12px 18px;
-    font-size: 14px;
   }
 }
 
-/* Extra Small Mobile (iPhone SE / up to 480px) */
-@media (max-width: 480px) {
-  .trips-page { 
-    padding: 0 0.5rem; 
-  }
-  
-  .hero-merged { 
-    height: 250px; 
-    margin: 8px 0 16px; 
-    border-radius: 12px; 
-  }
-  
-.hero-content h1, 
-.hero-content p {
-  max-width: 90%;
-  margin-left: auto;
-  margin-right: auto;
-  word-break: break-word;
-}
-
-  .chat-card { 
-    padding: 1.5rem 1rem; 
-  }
-  
-  .city-card { 
-    flex: 0 0 140px !important; 
-  }
-  
-  .city-card img { 
-    height: 80px; 
-  }
-  
-  .city-card-text h3 { 
-    font-size: 0.85rem; 
-  }
-  
-  .city-card-text .muted { 
-    font-size: 0.75rem; 
-  }
-  
-  .modal-content { 
-    width: calc(100vw - 16px); 
-    max-height: 95vh; 
-  }
-  
-  .modal-close-x { 
-    width: 28px; 
-    height: 28px; 
-    top: 8px; 
-    right: 8px; 
-    font-size: 14px; 
-  }
-  
-  .floating-support-btn { 
-    bottom: 16px; 
-    right: 16px; 
-    padding: 10px 16px; 
-    font-size: 13px; 
-  }
-}
-
-/* Tablet tweaks (portrait: 600–820px) */
-@media (min-width: 600px) and (max-width: 820px) {
-  .trips-page { 
-    max-width: 980px; 
-    padding: 0 1rem; 
+/* Tablet Landscape (769px - 1024px) */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .trips-page {
+    padding: 0 1.25rem;
   }
 
-  .hero-merged { 
-    height: 360px; 
-    border-radius: var(--radius-lg); 
+  .hero-merged {
+    height: 400px;
   }
-  .hero-content { padding-top: 56px; }
 
-  .popular-trips { margin: 0 0 0rem 1rem; }
-  .city-row { gap: 16px; }
-  .city-card { flex: 0 0 240px !important; }
-  .city-card img { height: 140px; }
+  .hero-content {
+    padding: 70px 20px 20px;
+  }
 
-  .scroll-btn { width: 36px; height: 36px; }
-  .scroll-btn.left  { left: -20px; }
-  .scroll-btn.right { right: -10px; }
-
-  .chat-options {
-    grid-template-columns: 1fr;
-    gap: 2rem;
+  .popular-trips {
     padding: 0 1rem;
   }
-  .chat-card { padding: 3rem 2rem; }
-  .chat-card h3 { font-size: 1.6rem; }
 
-  .modal-content { width: min(680px, 92vw); }
-  .expiry-cvv { grid-template-columns: 1fr 1fr; }
-  .modal-btns { flex-direction: column; }
-
-  .floating-support-btn { bottom: 16px; right: 16px; }
-}
-
-/* Tablet tweaks (landscape: 821–1024px) */
-@media (min-width: 821px) and (max-width: 1024px) {
-  .trips-page { 
-    max-width: 1100px; 
-    padding: 0 1.25rem; 
+  .city-row {
+    gap: 20px;
   }
 
-  .hero-merged { height: 400px; }
-  .hero-content { padding-top: 64px; }
+  .city-card {
+    flex: 0 0 220px;
+  }
 
-  .popular-trips { margin-left: 1.5rem; }
-  .city-row { gap: 18px; }
-  .city-card { flex: 0 0 240px !important; }
-  .city-card img { height: 150px; }
+  .city-card img {
+    height: 130px;
+  }
 
-  .scroll-btn { width: 40px; height: 40px; }
-  .scroll-btn.left  { left: -30px; }
-  .scroll-btn.right { right: -20px; }
+  .scroll-btn {
+    width: 40px;
+    height: 40px;
+  }
+
+  .scroll-btn.left {
+    left: -25px;
+  }
+
+  .scroll-btn.right {
+    right: -25px;
+  }
 
   .chat-options {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 3rem;
+  }
+
+  .chat-card {
+    padding: 3rem 2.25rem;
+  }
+
+  .modal-content {
+    width: 80vw;
+    max-width: 700px;
+  }
+
+  .expiry-cvv {
     grid-template-columns: 1fr 1fr;
-    gap: 2.5rem;
-    padding: 0 1rem;
   }
-  .chat-card { padding: 3.5rem 2.25rem; }
-
-  .modal-content { width: min(760px, 90vw); }
-  .modal-btns { flex-direction: row; gap: 12px; }
 }
 
-/* Touch Improvements */
-@media (max-width: 768px) {
+/* Desktop (1025px and up) */
+@media (min-width: 1025px) {
+  .trips-page {
+    padding: 0 1rem;
+  }
+
+  .hero-merged {
+    height: 475px;
+  }
+
+  .popular-trips {
+    margin: 0 0 2rem 2rem;
+  }
+
+  .scroll-btn.left {
+    left: -50px;
+  }
+
+  .scroll-btn.right {
+    right: -40px;
+  }
+
+  .chat-options {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 4rem;
+  }
+
+  .chat-card {
+    padding: 4rem 2.5rem;
+  }
+
+  .modal-content {
+    width: 70vw;
+    max-width: 800px;
+  }
+}
+
+/* Large Desktop (1200px and up) */
+@media (min-width: 1200px) {
+  .trips-page {
+    max-width: 1300px;
+    padding: 0 1rem;
+  }
+
+  .popular-trips {
+    margin: 0 0 2rem 3rem;
+  }
+
+  .scroll-btn.left {
+    left: -60px;
+  }
+
+  .scroll-btn.right {
+    right: -50px;
+  }
+
+  .chat-options {
+    gap: 5.5rem;
+  }
+
+  .chat-card {
+    padding: 4.8rem 2.5rem;
+  }
+}
+
+/* Touch Improvements for all touch devices */
+@media (hover: none) and (pointer: coarse) {
   .btn, 
   .modal-btn, 
-  .icon-block .icon { 
+  .city-card,
+  .trip-card,
+  .chat-card,
+  .floating-support-btn { 
     min-height: 44px; 
-    min-width: 44px; 
+    min-width: 44px;
+    touch-action: manipulation;
   }
   
   .city-row, 
@@ -994,23 +1171,15 @@ footer, .footer {
   .chat-card { 
     user-select: none; 
   }
-}
 
-/* Helpful for touch devices (tablets) to avoid "hover jump" */
-@media (hover: none) {
-  .city-card:hover { 
-    transform: none; 
-    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-  }
-  
-  .trip-card:hover {
+  /* Remove hover effects on touch devices */
+  .city-card:hover,
+  .trip-card:hover,
+  .chat-card:hover,
+  .btn:hover,
+  .modal-btn:hover {
     transform: none;
-    box-shadow: var(--shadow-sm);
-  }
-  
-  .chat-card:hover {
-    transform: none;
-    box-shadow: var(--shadow-sm);
+    box-shadow: initial;
   }
 }
 
@@ -1020,5 +1189,67 @@ footer, .footer {
     animation-duration: 0.01ms !important; 
     animation-iteration-count: 1 !important; 
     transition-duration: 0.01ms !important; 
+  }
+  
+  .city-row {
+    scroll-behavior: auto;
+  }
+}
+
+/* High DPI displays */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  .city-card img,
+  .modal-city-image,
+  .trip-card img {
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: crisp-edges;
+  }
+}
+
+/* Landscape orientation adjustments for small screens */
+@media (max-height: 500px) and (orientation: landscape) {
+  .hero-merged {
+    height: 250px;
+  }
+  
+  .hero-content {
+    padding: 30px 20px 20px;
+  }
+  
+  .hero-content h1 {
+    font-size: clamp(18px, 4vw, 24px);
+  }
+  
+  .hero-content p {
+    font-size: clamp(12px, 2vw, 14px);
+  }
+  
+  .modal-overlay {
+    align-items: flex-start;
+    padding: 10px;
+  }
+  
+  .modal-content {
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+}
+
+/* Print styles */
+@media print {
+  .floating-support-btn,
+  .scroll-btn,
+  .modal-overlay {
+    display: none !important;
+  }
+  
+  .trips-page {
+    max-width: none;
+    padding: 0;
+  }
+  
+  .hero-merged {
+    height: auto;
+    min-height: 200px;
   }
 }
