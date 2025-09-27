@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import "../assets/styles/AuthForm.css";
 
 // Import your API_BASE configuration
-import { API_BASE } from "../src/api.js"; // Adjust the path
+import { API_BASE } from "..api.js"; // Adjust the path
 
 const AuthForm = ({ isLogin }) => {
     const navigate = useNavigate();
