@@ -54,7 +54,7 @@ const PORT = process.env.PORT || 4000;
 // FIXED: Allow your static site domain
 app.use(cors({
   origin: [
-    'https://pathmakers-server-site.onrender.com',  // Verify this URL is correct
+    'https://pathmakers-web-app.onrender.com',  // Verify this URL is correct
     'http://localhost:3000',
     'http://localhost:5173'
   ],
