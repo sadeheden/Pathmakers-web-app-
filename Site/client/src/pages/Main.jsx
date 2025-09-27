@@ -1,11 +1,9 @@
-// Main.jsx - עם בחירת תאריכים
-
 import React, { useState, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import "../assets/styles/main.css";
 import flag from "../assets/images/flag.jpg";
-import { API_BASE } from "../config/api";
+import { API_BASE } from "../api.js";
 
 // React icons
 import { FiChevronLeft, FiChevronRight } from "react-icons/fi";
