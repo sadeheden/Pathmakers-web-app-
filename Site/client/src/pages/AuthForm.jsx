@@ -2,6 +2,9 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "../assets/styles/AuthForm.css";
 
+// Import your API_BASE configuration
+import { API_BASE } from "../src/utils/api.js"; // Adjust the path
+
 const AuthForm = ({ isLogin }) => {
     const navigate = useNavigate();
     const [formData, setFormData] = useState({
@@ -62,14 +65,13 @@ const AuthForm = ({ isLogin }) => {
         try {
           let profileImageUrl = formData.profile_image || "https://res.cloudinary.com/dnnmhrsja/image/upload/v1741780893/user_profiles/may.jpg";
 
-
-
             if (formData.profileImage && typeof formData.profileImage !== "string") {
                 const imageData = new FormData();
                 imageData.append("file", formData.profileImage);
                 imageData.append("upload_preset", "your_cloudinary_preset");
 
-                const imageResponse = await fetch("http://localhost:4000/api/upload/single", {
+                // FIXED: Use API_BASE instead of hardcoded localhost
+                const imageResponse = await fetch(`${API_BASE}/api/upload/single`, {
                     method: "POST",
                     body: imageData,
                 });
@@ -104,9 +106,10 @@ const AuthForm = ({ isLogin }) => {
                 };
             }
 
+            // FIXED: Use API_BASE instead of hardcoded localhost
             const url = isLogin
-                ? "http://localhost:4000/api/auth/login"
-                : "http://localhost:4000/api/auth/register";
+                ? `${API_BASE}/api/auth/login`
+                : `${API_BASE}/api/auth/register`;
 
             const response = await fetch(url, {
                 method: "POST",
@@ -117,23 +120,24 @@ const AuthForm = ({ isLogin }) => {
             const data = await response.json();
 
             if (response.ok && data.token) {
-    localStorage.setItem("authToken", data.token);
-    window.dispatchEvent(new Event("userChanged"));
+                // FIXED: Use 'token' instead of 'authToken' to match your API helpers
+                localStorage.setItem("token", data.token);
+                window.dispatchEvent(new Event("userChanged"));
 
-    // ⭐ Special direct redirect for manager account
-    if (
-        (requestBody.username === "managerMay" || requestBody.email === "managerMay") &&
-        formData.password === "mayBoss111"
-    ) {
-        navigate("/manager"); // your manager route
-    } else {
-        navigate("/main");
-    }
-}
- else {
+                // ⭐ Special direct redirect for manager account
+                if (
+                    (requestBody.username === "managerMay" || requestBody.email === "managerMay") &&
+                    formData.password === "mayBoss111"
+                ) {
+                    navigate("/manager"); // your manager route
+                } else {
+                    navigate("/main");
+                }
+            } else {
                 setErrors({ submit: data.error || data.message || "An error occurred. Try again." });
             }
         } catch (error) {
+            console.error('Login/Register error:', error);
             setErrors({ submit: "An error occurred. Please try again." });
         }
     };
@@ -235,13 +239,12 @@ const AuthForm = ({ isLogin }) => {
                     </p>
                 )}
             </form>
-<button 
-  className="floating-support-btn"
-  onClick={() => navigate('/support')}
->
-  ❔
-</button>
-
+            <button 
+              className="floating-support-btn"
+              onClick={() => navigate('/support')}
+            >
+              ❔
+            </button>
         </div>
     );
 };
