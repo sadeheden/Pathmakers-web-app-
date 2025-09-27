@@ -51,18 +51,45 @@ const app = express();
 const PORT = process.env.PORT || 4000;
 
 // ---------- Middleware ----------
-// FIXED: Allow your static site domain
+// Enhanced CORS with logging
+app.use((req, res, next) => {
+  console.log(`🌐 ${new Date().toISOString()} - ${req.method} ${req.path} - Origin: ${req.get('Origin') || 'none'}`);
+  next();
+});
+
 app.use(cors({
   origin: [
-    'https://pathmakers-web-app.onrender.com',  // Verify this URL is correct
+    'https://pathmakers-web-app.onrender.com',  // Your static site
     'http://localhost:3000',
     'http://localhost:5173'
   ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin', 'X-Requested-With']
 }));
+
 app.use(express.json());
+
+// Add health check endpoint
+app.get('/api/health', (req, res) => {
+  console.log('🏥 Health check requested');
+  res.json({ 
+    status: 'OK', 
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV || 'development',
+    port: PORT
+  });
+});
+
+// Test endpoint to check CORS
+app.get('/api/test', (req, res) => {
+  console.log('🧪 Test endpoint called');
+  res.json({ 
+    message: 'CORS test successful',
+    origin: req.get('Origin'),
+    timestamp: new Date().toISOString()
+  });
+});
 
 // ---------- Hugging Face chat (robust) ----------
 app.post('/api/chat', async (req, res) => {
@@ -230,14 +257,15 @@ if (distPath) {
   });
 }
 
-// 🛑 404 for API routes only (this won't be reached due to * route above)
-app.use('/api/*', (req, res) => {
-  res.status(404).json({ error: '🔍 API route not found', path: req.originalUrl });
-});
-
 // ---------- Error handler ----------
-app.use((err, _req, res, _next) => {
+app.use((err, req, res, next) => {
   console.error('🔥 Error:', err.stack);
+  console.error('🔥 Request details:', {
+    method: req.method,
+    url: req.url,
+    origin: req.get('Origin'),
+    userAgent: req.get('User-Agent')
+  });
   res.status(500).json({ error: 'Something broke!' });
 });
 
@@ -245,6 +273,8 @@ app.use((err, _req, res, _next) => {
 app.listen(PORT, () => {
   console.log(`🚀 Server listening at: http://localhost:${PORT}`);
   console.log(`📡 API available at: http://localhost:${PORT}/api/`);
+  console.log(`🏥 Health check: http://localhost:${PORT}/api/health`);
+  console.log(`🧪 CORS test: http://localhost:${PORT}/api/test`);
   if (distPath) {
     console.log(`📁 Static files served from: ${distPath}`);
   } else {
