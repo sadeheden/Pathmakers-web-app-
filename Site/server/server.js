@@ -256,7 +256,21 @@ if (distPath) {
     }
   });
 }
-
+// Add this to your server.js after your health check
+app.get('/api/db-test', async (req, res) => {
+  try {
+    // Replace with your actual database connection test
+    // This depends on how you're connecting to MongoDB
+    const result = await testDatabaseConnection(); // Your DB test function
+    res.json({ status: 'Database connected', result });
+  } catch (error) {
+    console.error('Database connection failed:', error);
+    res.status(500).json({ 
+      status: 'Database connection failed', 
+      error: error.message 
+    });
+  }
+});
 // ---------- Error handler ----------
 app.use((err, req, res, next) => {
   console.error('🔥 Error:', err.stack);
