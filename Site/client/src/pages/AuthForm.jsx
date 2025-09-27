@@ -7,7 +7,7 @@ const API_BASE = typeof window !== "undefined" &&
   (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1")
     ? "http://localhost:4000"
     : "https://pathmakers-server-site.onrender.com";
-    
+
 const AuthForm = ({ isLogin }) => {
     const navigate = useNavigate();
     const [formData, setFormData] = useState({
@@ -111,8 +111,8 @@ const AuthForm = ({ isLogin }) => {
 
             // FIXED: Use API_BASE instead of hardcoded localhost
             const url = isLogin
-                ? `${API_BASE}/api/auth/login`
-                : `${API_BASE}/api/auth/register`;
+                ? `${API_BASE}/api/login`
+                : `${API_BASE}/api/register`;
 
             const response = await fetch(url, {
                 method: "POST",
