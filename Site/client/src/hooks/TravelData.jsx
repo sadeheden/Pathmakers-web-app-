@@ -9,7 +9,7 @@ export const useTravelData = (userResponses) => {
     useEffect(() => {
         async function fetchCities() {
             try {
-                const response = await fetch("http://localhost:4000/api/cities");
+                const response = await fetch("https://pathmakers-server-site.onrender.com/api/cities");
                 if (!response.ok) {
                     throw new Error(`Failed to fetch cities, status: ${response.status}`);
                 }
@@ -24,7 +24,7 @@ export const useTravelData = (userResponses) => {
             if (!city) return;
             const cityName = city.name || city;
             try {
-                const response = await fetch(`http://localhost:4000/api/flights/city/${encodeURIComponent(cityName)}`);
+                const response = await fetch(`https://pathmakers-server-site.onrender.com//api/flights/city/${encodeURIComponent(cityName)}`);
                 if (!response.ok) {
                     throw new Error(`Failed to fetch flights for ${cityName}, status: ${response.status}`);
                 }
@@ -39,7 +39,7 @@ export const useTravelData = (userResponses) => {
             if (!city) return;
             const cityName = city.name || city;
             try {
-                const response = await fetch(`http://localhost:4000/api/hotels/city/${encodeURIComponent(cityName)}`);
+                const response = await fetch(`https://pathmakers-server-site.onrender.com/api/hotels/city/${encodeURIComponent(cityName)}`);
                 if (response.status === 404) {
                     setLoadedHotels([]);
                     return;
@@ -58,7 +58,7 @@ export const useTravelData = (userResponses) => {
             if (!city) return;
             const cityName = city.name || city;
             try {
-                const response = await fetch(`http://localhost:4000/api/attractions/city/${encodeURIComponent(cityName)}`);
+                const response = await fetch(`https://pathmakers-server-site.onrender.com/api/attractions/city/${encodeURIComponent(cityName)}`);
                 if (!response.ok) {
                     throw new Error(`Failed to fetch attractions for ${cityName}, status: ${response.status}`);
                 }
