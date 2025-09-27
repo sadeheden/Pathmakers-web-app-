@@ -2,9 +2,12 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "../assets/styles/AuthForm.css";
 
-// Import your API_BASE configuration
-import { API_BASE } from "../api";// Adjust the path
-
+// Temporary fix - hardcode the API URL
+const API_BASE = typeof window !== "undefined" && 
+  (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1")
+    ? "http://localhost:4000"
+    : "https://pathmakers-server-site.onrender.com";
+    
 const AuthForm = ({ isLogin }) => {
     const navigate = useNavigate();
     const [formData, setFormData] = useState({
