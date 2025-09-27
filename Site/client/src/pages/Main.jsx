@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import "../assets/styles/main.css";
 import flag from "../assets/images/flag.jpg";
-import { API_BASE } from "../src/api.js";
+import { API_BASE } from "../api.js";
 
 
 // React icons
