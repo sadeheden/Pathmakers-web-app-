@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "../assets/styles/AuthForm.css";
 
-// Temporary fix - hardcode the API URL
+// Consistent API URL detection
 const API_BASE = typeof window !== "undefined" && 
   (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1")
     ? "http://localhost:4000"
@@ -66,14 +66,13 @@ const AuthForm = ({ isLogin }) => {
         }
 
         try {
-          let profileImageUrl = formData.profile_image || "https://res.cloudinary.com/dnnmhrsja/image/upload/v1741780893/user_profiles/may.jpg";
+            let profileImageUrl = formData.profile_image || "https://res.cloudinary.com/dnnmhrsja/image/upload/v1741780893/user_profiles/may.jpg";
 
             if (formData.profileImage && typeof formData.profileImage !== "string") {
                 const imageData = new FormData();
                 imageData.append("file", formData.profileImage);
                 imageData.append("upload_preset", "your_cloudinary_preset");
 
-                // FIXED: Use API_BASE instead of hardcoded localhost
                 const imageResponse = await fetch(`${API_BASE}/api/upload/single`, {
                     method: "POST",
                     body: imageData,
@@ -109,7 +108,6 @@ const AuthForm = ({ isLogin }) => {
                 };
             }
 
-            // FIXED: Use API_BASE instead of hardcoded localhost
             const url = isLogin
                 ? `${API_BASE}/api/auth/login`
                 : `${API_BASE}/api/auth/register`;
@@ -123,16 +121,16 @@ const AuthForm = ({ isLogin }) => {
             const data = await response.json();
 
             if (response.ok && data.token) {
-                // FIXED: Use 'token' instead of 'authToken' to match your API helpers
-                localStorage.setItem("token", data.token);
+                // 🔥 FIXED: Use consistent token key 'authToken'
+                localStorage.setItem("authToken", data.token);
                 window.dispatchEvent(new Event("userChanged"));
 
-                // ⭐ Special direct redirect for manager account
+                // Special direct redirect for manager account
                 if (
                     (requestBody.username === "managerMay" || requestBody.email === "managerMay") &&
                     formData.password === "mayBoss111"
                 ) {
-                    navigate("/manager"); // your manager route
+                    navigate("/manager");
                 } else {
                     navigate("/main");
                 }
