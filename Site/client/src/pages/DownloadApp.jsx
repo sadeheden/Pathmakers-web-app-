@@ -1,12 +1,10 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import QRCode from 'react-qr-code';
-import { ChevronLeft, ChevronRight, Download, Map, Calendar, Users, Camera, Settings, Navigation, Book, MessageCircle, Ticket, HelpCircle, Cloud, Coins } from 'lucide-react';
+import { Download, Map, Calendar, Users, Camera, Settings, Navigation, Book } from 'lucide-react';
 import '../assets/styles/DownloadApp.css';
-import part1Video from '../assets/images/part1.mp4';
 
 const DownloadApp = () => {
-  const [currentVideo, setCurrentVideo] = useState(0);
   const navigate = useNavigate();
 
   const iosLink = 'https://apps.apple.com/app/pathmakers/id123456789';
@@ -15,73 +13,6 @@ const DownloadApp = () => {
   const handleDownload = (url) => {
     window.open(url, '_blank');
   };
-
-  // Updated videos array with your specified tutorials
-  const videos = [
-    {
-      id: 1,
-      title: "Getting Started",
-      description: "Learn how to login and set up your account for the first time. Simple and quick setup process.",
-      icon: <Settings className="w-5 h-5" />,
-      videoUrl: "part1Video" // Replace with your actual video URL or file path
-    },
-    {
-      id: 2,
-      title: "Chat with AI",
-      description: "Discover how to interact with our AI assistant for personalized travel recommendations and support.",
-      icon: <MessageCircle className="w-5 h-5" />,
-      videoUrl: "YOUR_VIDEO_URL_HERE" // Replace with your actual video URL or file path
-    },
-    {
-      id: 3,
-      title: "Schedule an Organized Trip",
-      description: "Plan and organize your complete travel itinerary with our smart scheduling features.",
-      icon: <Calendar className="w-5 h-5" />,
-      videoUrl: "YOUR_VIDEO_URL_HERE" // Replace with your actual video URL or file path
-    },
-    {
-      id: 4,
-      title: "Purchase a Ticket for Event",
-      description: "Book tickets for attractions, events, and experiences directly through the app.",
-      icon: <Ticket className="w-5 h-5" />,
-      videoUrl: "YOUR_VIDEO_URL_HERE" // Replace with your actual video URL or file path
-    },
-    {
-      id: 5,
-      title: "Calendar",
-      description: "Manage your travel schedule and important dates with the integrated calendar feature.",
-      icon: <Calendar className="w-5 h-5" />,
-      videoUrl: "YOUR_VIDEO_URL_HERE" // Replace with your actual video URL or file path
-    },
-    {
-      id: 6,
-      title: "Personal Area",
-      description: "Access and manage your personal details, account settings, and preferences.",
-      icon: <Settings className="w-5 h-5" />,
-      videoUrl: "YOUR_VIDEO_URL_HERE" // Replace with your actual video URL or file path
-    },
-    {
-      id: 7,
-      title: "Create Support Message",
-      description: "Learn how to contact our support team and get help when you need it.",
-      icon: <HelpCircle className="w-5 h-5" />,
-      videoUrl: "YOUR_VIDEO_URL_HERE" // Replace with your actual video URL or file path
-    },
-    {
-      id: 8,
-      title: "Weather",
-      description: "Check weather conditions for your destinations and plan accordingly.",
-      icon: <Cloud className="w-5 h-5" />,
-      videoUrl: "YOUR_VIDEO_URL_HERE" // Replace with your actual video URL or file path
-    },
-    {
-      id: 9,
-      title: "Coin Converter",
-      description: "Convert currencies and manage your travel budget with real-time exchange rates.",
-      icon: <Coins className="w-5 h-5" />,
-      videoUrl: "YOUR_VIDEO_URL_HERE" // Replace with your actual video URL or file path
-    }
-  ];
 
   const features = [
     { 
@@ -115,14 +46,6 @@ const DownloadApp = () => {
       text: "Seamless integration with popular navigation apps for easy routing." 
     }
   ];
-
-  const nextVideo = () => {
-    setCurrentVideo((prev) => (prev + 1) % videos.length);
-  };
-
-  const prevVideo = () => {
-    setCurrentVideo((prev) => (prev - 1 + videos.length) % videos.length);
-  };
 
   const handleSupportClick = () => {
     navigate('/support');
@@ -166,108 +89,6 @@ const DownloadApp = () => {
             <Download className="w-6 h-6" />
             Download for Android
           </button>
-        </div>
-      </div>
-
-      {/* Video Tutorial Section */}
-      <div className="video-section">
-        <div className="video-container">
-          <div className="video-header">
-            <h2 className="video-title">
-              Learn How to Use PathMakers
-            </h2>
-            <p className="video-subtitle">
-              Watch our comprehensive video tutorials to get the most out of your travel experience with PathMakers app.
-            </p>
-          </div>
-
-          {/* Video Player and Navigation */}
-          <div className="video-grid">
-            {/* Main Video Player */}
-            <div>
-              <div className="video-player-container">
-                {/* Check if it's a YouTube URL or local file */}
-                {videos[currentVideo].videoUrl.includes('youtube.com') || videos[currentVideo].videoUrl.includes('youtu.be') ? (
-                  <iframe
-                    src={videos[currentVideo].videoUrl}
-                    title={videos[currentVideo].title}
-                    className="video-iframe"
-                    frameBorder="0"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
-                  ></iframe>
-                ) : (
-                  <video
-                    className="video-iframe"
-                    controls
-                    key={videos[currentVideo].videoUrl} // Force re-render when video changes
-                  >
-                    <source src={videos[currentVideo].videoUrl} type="video/mp4" />
-                    Your browser does not support the video tag.
-                  </video>
-                )}
-                
-                {/* Video Navigation */}
-                <div className="video-controls">
-                  <button onClick={prevVideo} className="video-nav-btn">
-                    <ChevronLeft className="w-5 h-5" />
-                  </button>
-                  
-                  <div className="video-counter">
-                    {currentVideo + 1} / {videos.length}
-                  </div>
-                  
-                  <button onClick={nextVideo} className="video-nav-btn">
-                    <ChevronRight className="w-5 h-5" />
-                  </button>
-                </div>
-              </div>
-
-              {/* Current Video Info */}
-              <div className="current-video-info">
-                <div className="current-video-header">
-                  <div className="current-video-icon">{videos[currentVideo].icon}</div>
-                  <h3 className="current-video-title">
-                    {videos[currentVideo].title}
-                  </h3>
-                </div>
-                <p className="current-video-description">
-                  {videos[currentVideo].description}
-                </p>
-              </div>
-            </div>
-
-            {/* Video List */}
-            <div className="video-list-container">
-              <h4 className="video-list-title">All Tutorials</h4>
-              <div className="video-list">
-                {videos.map((video, index) => (
-                  <button
-                    key={video.id}
-                    onClick={() => setCurrentVideo(index)}
-                    className={`video-item ${index === currentVideo ? 'active' : ''}`}
-                  >
-                    <div className="video-item-content">
-                      <div className="video-item-icon">
-                        {video.icon}
-                      </div>
-                      <div className="video-item-text">
-                        <h5 className="video-item-title">
-                          {video.title}
-                        </h5>
-                        <p className="video-item-description">
-                          {video.description}
-                        </p>
-                      </div>
-                      <div className="video-item-number">
-                        {index + 1}
-                      </div>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
         </div>
       </div>
 
