@@ -5,7 +5,6 @@ import "../assets/styles/Header.css";
 
 const DEFAULT_PROFILE_IMAGE = "https://res.cloudinary.com/dnnmhrsja/image/upload/v1741780893/user_profiles/may.jpg";
 
-
 const Header = () => {
     const [user, setUser] = useState(null);
     const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -15,14 +14,14 @@ const Header = () => {
 
     // Fetch user session from backend using token stored in localStorage
     const fetchUser = async () => {
-        const token = localStorage.getItem("token");
+        const token = localStorage.getItem("authToken");
         if (!token) {
             setUser(null);
-            
             return;
         }
         try {
-           const res = await fetch("https://pathmakers-server-site.onrender.com/api/auth/user", {
+            const res = await fetch("http://localhost:4000/api/auth/user", {
+                method: "GET",
                 headers: {
                     Authorization: `Bearer ${token}`,
                     "Content-Type": "application/json"
@@ -48,55 +47,60 @@ const Header = () => {
     };
 
     // Call fetchUser once on mount
-  // Listen for "userChanged" events (after login/register)
-useEffect(() => {
-    fetchUser(); // Call it immediately on mount
+    // Listen for "userChanged" events (after login/register)
+    useEffect(() => {
+        fetchUser(); // Call it immediately on mount
 
-    const handleUserChange = () => {
-        fetchUser();
-    };
+        const handleUserChange = () => {
+            fetchUser();
+        };
 
-    window.addEventListener("userChanged", handleUserChange);
-    return () => {
-        window.removeEventListener("userChanged", handleUserChange);
-    };
-}, []);
-
+        window.addEventListener("userChanged", handleUserChange);
+        return () => {
+            window.removeEventListener("userChanged", handleUserChange);
+        };
+    }, []);
 
     // Handle logout
-// Handle logout
-const handleLogout = async () => {
-  const token = localStorage.getItem("token");
-  try {
-   const response = await fetch("https://pathmakers-server-site.onrender.com/api/auth/logout", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-    });
-    if (!response.ok) throw new Error(`Logout failed: ${response.statusText}`);
+    const handleLogout = async () => {
+        const token = localStorage.getItem("authToken");
+        try {
+            const response = await fetch("http://localhost:4000/api/auth/logout", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`,
+                },
+            });
+            if (!response.ok) throw new Error(`Logout failed: ${response.statusText}`);
 
-    // 🧹 clear ALL chat/order memory
-    localStorage.removeItem("currentStep");
-    localStorage.removeItem("userResponses");
-    sessionStorage.removeItem("orderSaved");
-    sessionStorage.removeItem("lastOrderId");
-    localStorage.removeItem("authToken");
-    sessionStorage.removeItem("hasLoggedIn");
+            // 🧹 clear ALL chat/order memory
+            localStorage.removeItem("currentStep");
+            localStorage.removeItem("userResponses");
+            sessionStorage.removeItem("orderSaved");
+            sessionStorage.removeItem("lastOrderId");
+            localStorage.removeItem("authToken");
+            sessionStorage.removeItem("hasLoggedIn");
 
-    // notify both Header and Chat
-    window.dispatchEvent(new Event("userChanged"));
-    window.dispatchEvent(new Event("app:logout")); // 👈 added
+            // notify both Header and Chat
+            window.dispatchEvent(new Event("userChanged"));
+            window.dispatchEvent(new Event("app:logout")); // 👈 added
 
+            localStorage.setItem("app:logout", String(Date.now()));
+            navigate("/login", { replace: true });
+        } catch (error) {
+            console.error("⚠️ Logout error:", error);
+        }
+    };
 
-     localStorage.setItem("app:logout", String(Date.now()));
-    navigate("/login", { replace: true });
-  } catch (error) {
-    console.error("⚠️ Logout error:", error);
-  }
-};
-
+    // Handle protected route clicks
+    const handleProtectedRouteClick = (e, path) => {
+        if (!user) {
+            e.preventDefault();
+            alert("Please log in to access this page.");
+            navigate("/login");
+        }
+    };
 
     // Define pages to disable the menu
     const disabledPages = ["/", "/signup", "/login"];
@@ -105,10 +109,9 @@ const handleLogout = async () => {
     return (
         <header className="header">
             {/* Logo and Navbar */}
-          <div className="logo" onClick={() => navigate(user ? "/main" : "/login")}>
-  <img src={logo} alt="Logo" style={{ cursor: "pointer" }} />
-</div>
-
+            <div className="logo" onClick={() => navigate(user ? "/main" : "/login")}>
+                <img src={logo} alt="Logo" style={{ cursor: "pointer" }} />
+            </div>
 
             {!isDisabledPage && user && (
                 <nav className={`navbar ${isMenuOpen ? "show" : ""}`}>
@@ -116,7 +119,7 @@ const handleLogout = async () => {
                     <Link to="/about">About</Link>
                     <Link to="/video">Video</Link>
                     <Link to="/DownloadApp">Download App</Link>
-                     {/* רק אם המשתמש הוא מנהל */}
+                    {/* רק אם המשתמש הוא מנהל */}
                     {user?.isAdmin && <Link to="/manager">Manager</Link>}
                 </nav>
             )}
@@ -124,17 +127,16 @@ const handleLogout = async () => {
             <div className="profile-section">
                 {user ? (
                     <>
-                       <img
-  src={user.profile_image}
-  alt="User"
-  className="profile-image"
-  onClick={() => setIsProfileOpen(!isProfileOpen)}
-  onError={(e) => {
-    e.target.onerror = null;
-    e.target.src = DEFAULT_PROFILE_IMAGE;
-  }}
-/>
-
+                        <img
+                            src={user.profile_image}
+                            alt="User"
+                            className="profile-image"
+                            onClick={() => setIsProfileOpen(!isProfileOpen)}
+                            onError={(e) => {
+                                e.target.onerror = null;
+                                e.target.src = DEFAULT_PROFILE_IMAGE;
+                            }}
+                        />
 
                         {isProfileOpen && (
                             <div className="profile-popup">
