@@ -58,17 +58,12 @@ app.use((req, res, next) => {
 });
 
 app.use(cors({
-  origin: [
-    'https://pathmakers-web-app.onrender.com',  // Your static site
-    'http://localhost:3000',
-    'http://localhost:5173'
-  ],
-  credentials: true, // Allow cookies
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], // Allowed methods
-  allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin', 'X-Requested-With'] // Allowed headers
+  origin: ['http://localhost:5173', 'https://pathmakers-server-site.onrender.com'],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin', 'X-Requested-With', 'x-request-id']
 }));
 
-app.use(express.json());
 
 // Add health check endpoint
 app.get('/api/health', (req, res) => {

@@ -24,7 +24,7 @@ export const useTravelData = (userResponses) => {
             if (!city) return;
             const cityName = city.name || city;
             try {
-                const response = await fetch(`https://pathmakers-server-site.onrender.com//api/flights/city/${encodeURIComponent(cityName)}`);
+                const response = await fetch(`https://pathmakers-server-site.onrender.com/api/flights/city/${encodeURIComponent(cityName)}`);
                 if (!response.ok) {
                     throw new Error(`Failed to fetch flights for ${cityName}, status: ${response.status}`);
                 }
