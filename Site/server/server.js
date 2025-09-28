@@ -51,18 +51,34 @@ const app = express();
 const PORT = process.env.PORT || 4000;
 
 // ---------- Middleware ----------
-// Enhanced CORS with logging
+// ---------- Middleware ----------
+// Log origin
 app.use((req, res, next) => {
   console.log(`🌐 ${new Date().toISOString()} - ${req.method} ${req.path} - Origin: ${req.get('Origin') || 'none'}`);
   next();
 });
 
+
+
 app.use(cors({
-  origin: ['http://localhost:5173', 'https://pathmakers-server-site.onrender.com'],
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin', 'X-Requested-With', 'x-request-id']
+  origin: '*',   // allow all origins
+  methods: ['GET','POST','PUT','DELETE','OPTIONS'],
+  allowedHeaders: ['Content-Type','Authorization','Accept','Origin','X-Requested-With','idempotency-key'],
+  credentials: true
 }));
+
+
+// 🔑 Force headers so preflight always passes
+app.use((req, res, next) => {
+  res.header(
+    'Access-Control-Allow-Headers',
+    'Content-Type, Authorization, Accept, Origin, X-Requested-With, idempotency-key'
+  );
+  next();
+});
+
+// ✅ Needed for JSON POST bodies
+app.use(express.json());
 
 
 // Add health check endpoint
