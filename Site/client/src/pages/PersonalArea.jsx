@@ -1,6 +1,6 @@
 // src/pages/PersonalArea.jsx
 import React, { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate,useLocation  } from "react-router-dom";
 import "../assets/styles/PersonalArea.css";
 
 const API_BASE =
@@ -483,7 +483,15 @@ const CancelConfirmationPopup = ({ isVisible, onClose, onConfirm, orderDetails, 
 /* ---------- Main Component ---------- */
 const PersonalArea = () => {
   const navigate = useNavigate();
-  
+   const location = useLocation();
+
+  // Authentication check
+  useEffect(() => {
+    const token = localStorage.getItem("authToken");
+    if (!token || token === "null" || token === "undefined") {
+      navigate("/login", { replace: true, state: { from: location } });
+    }
+  }, [navigate, location]);
   // State variables
   const [activeTab, setActiveTab] = useState("userInfo");
   const [user, setUser] = useState(null);

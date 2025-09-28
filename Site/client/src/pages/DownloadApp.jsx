@@ -1,11 +1,20 @@
-import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { useNavigate,useLocation  } from 'react-router-dom';
 import QRCode from 'react-qr-code';
 import { Download, Map, Calendar, Users, Camera, Settings, Navigation, Book } from 'lucide-react';
 import '../assets/styles/DownloadApp.css';
 
 const DownloadApp = () => {
-  const navigate = useNavigate();
+ const navigate = useNavigate();
+  const location = useLocation();
+
+  // Authentication check
+  useEffect(() => {
+    const token = localStorage.getItem("authToken");
+    if (!token || token === "null" || token === "undefined") {
+      navigate("/login", { replace: true, state: { from: location } });
+    }
+  }, [navigate, location])
 
   const iosLink = 'https://apps.apple.com/app/pathmakers/id123456789';
   const androidLink = 'https://play.google.com/store/apps/details?id=com.pathmakers.app';

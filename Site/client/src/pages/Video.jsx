@@ -1,11 +1,19 @@
-import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { useNavigate,useLocation  } from 'react-router-dom';
 import '../assets/styles/Video.css';
 import ph from "../assets/images/Pathmakers-VEED.mp4"; // Importing video
 
 const VideoExplanation = () => {
     const navigate = useNavigate();
+  const location = useLocation();
 
+  // Authentication check
+  useEffect(() => {
+    const token = localStorage.getItem("authToken");
+    if (!token || token === "null" || token === "undefined") {
+      navigate("/login", { replace: true, state: { from: location } });
+    }
+  }, [navigate, location]);
     const handleContinue = () => {
         navigate('/chat');
     };

@@ -1,11 +1,21 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import Markdown from "react-markdown";
 import "../assets/styles/realChat.css";
-
+import { useNavigate, useLocation } from 'react-router-dom';
 // Read base URL from env, fallback to localhost
 const API_BASE = (import.meta?.env?.VITE_API_BASE || "http://localhost:4000").replace(/\/$/, "");
 
 export default function RealChat() {
+    const navigate = useNavigate();
+  const location = useLocation();
+
+  // Authentication check
+  useEffect(() => {
+    const token = localStorage.getItem("authToken");
+    if (!token || token === "null" || token === "undefined") {
+      navigate("/login", { replace: true, state: { from: location } });
+    }
+  }, [navigate, location]);
   // state
   const [text, setText] = useState("");
   const [messages, setMessages] = useState([

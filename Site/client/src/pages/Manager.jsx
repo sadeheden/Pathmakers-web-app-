@@ -9,7 +9,7 @@ import {
   LineChart,
   Line,
 } from "recharts";
-
+import { useNavigate, useLocation } from 'react-router-dom';
 const sidebarItems = [
   "Dashboard",
   "Trips",
@@ -615,7 +615,17 @@ const styles = {
 const Manager = () => {
   const [activeItem, setActiveItem] = useState("Dashboard");
   const [statusMessage, setStatusMessage] = useState(null);
-  
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // Authentication check
+  useEffect(() => {
+    const token = localStorage.getItem("authToken");
+    if (!token || token === "null" || token === "undefined") {
+      navigate("/login", { replace: true, state: { from: location } });
+    }
+  }, [navigate, location]);
+
   const [dashboardData, setDashboardData] = useState({
     totalOrders: 0,
     totalRevenue: 0,

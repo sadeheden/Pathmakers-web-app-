@@ -1,11 +1,21 @@
 // AboutPage.jsx
-import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import '../assets/styles/AboutPage.css';
+
 
 const AboutPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
 
+  // Authentication check
+  useEffect(() => {
+    const token = localStorage.getItem("authToken");
+    if (!token || token === "null" || token === "undefined") {
+      // Optionally, store the page they tried to visit
+      navigate("/login", { replace: true, state: { from: location } });
+    }
+  }, [navigate, location]);
   return (
     <div>
       {/* Page Header */}
