@@ -389,8 +389,9 @@ footer, .footer {
 .modal-btns {
   padding: 20px 0 0;
   display: flex;
-  gap: 12px;
+  gap: 16px; /* Increased from 12px */
   flex-wrap: wrap;
+  justify-content: center; /* Center the buttons */
 }
 
 .modal-btn {
@@ -405,16 +406,18 @@ footer, .footer {
   transition: all 0.2s ease;
   min-height: 44px;
   touch-action: manipulation;
-  /* Use app.css button styling */
   padding: var(--btn-pad-y) var(--btn-pad-x);
   font-size: var(--btn-font-size);
   font-weight: 600;
+  min-width: 120px; /* Ensure minimum button width */
+  max-width: 200px; /* Prevent buttons from getting too wide */
 }
 
 .modal-btn.btn-primary {
   color: #fff;
   background: var(--brand);
   box-shadow: var(--shadow-sm);
+  margin: 2%;
 }
 
 .modal-btn.btn-primary:hover {
@@ -588,9 +591,14 @@ footer, .footer {
 
   .modal-btns {
     flex-direction: column;
-    gap: 8px;
+    gap: 12px; /* Vertical spacing on mobile */
+    align-items: stretch; /* Full width buttons on mobile */
   }
-
+ .modal-btn {
+    flex: none;
+    min-width: auto;
+    max-width: none;
+  }
   .expiry-cvv {
     grid-template-columns: 1fr;
     gap: 8px;
@@ -629,6 +637,9 @@ footer, .footer {
   .modal-content {
     width: calc(100vw - 32px);
     max-width: 500px;
+  }
+  .modal-btns {
+    gap: 14px;
   }
 }
 
