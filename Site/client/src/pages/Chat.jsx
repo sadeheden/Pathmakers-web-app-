@@ -17,6 +17,13 @@ const API_BASE =
 const TravelPlannerApp = () => {
   const location = useLocation();
   const navigate = useNavigate();
+
+    useEffect(() => {
+    const token = localStorage.getItem("authToken");
+    if (!token || token === "null" || token === "undefined") {
+      navigate("/login", { replace: true });
+    }
+  }, [navigate]);
 // Chat.jsx
 const savingOrderRef = useRef(false);
 

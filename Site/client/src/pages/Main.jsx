@@ -4,7 +4,7 @@ import axios from "axios";
 import "../assets/styles/main.css";
 import flag from "../assets/images/flag.jpg";
 import { API_BASE } from "../api.js";
-
+import { useEffect } from "react"; // Make sure useEffect is imported
 
 // React icons
 import { FiChevronLeft, FiChevronRight } from "react-icons/fi";
@@ -356,6 +356,13 @@ const [conflictInfo, setConflictInfo] = useState(null);
   message: ''
 });
 
+  // Add this authentication check
+  useEffect(() => {
+    const token = localStorage.getItem("authToken");
+    if (!token || token === "null" || token === "undefined") {
+      navigate("/login", { replace: true });
+    }
+  }, [navigate]);
   // תאריכי טיול - מתחילים עם תאריכים ברירת מחדל
   const [tripDate, setTripDate] = useState("");
  const [returnDate, setReturnDate] = useState("");
