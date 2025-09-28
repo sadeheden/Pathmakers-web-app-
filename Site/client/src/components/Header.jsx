@@ -20,7 +20,7 @@ const Header = () => {
             return;
         }
         try {
-            const res = await fetch("http://localhost:4000/api/auth/user", {
+            const res = await fetch("https://pathmakers-server-site.onrender.com/api/auth/user", {
                 method: "GET",
                 headers: {
                     Authorization: `Bearer ${token}`,
@@ -65,7 +65,7 @@ const Header = () => {
     const handleLogout = async () => {
         const token = localStorage.getItem("authToken");
         try {
-            const response = await fetch("http://localhost:4000/api/auth/logout", {
+            const response = await fetch("https://pathmakers-server-site.onrender.com/api/auth/logout", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
