@@ -15,6 +15,7 @@ const toUsd = (n) =>
     Number(n ?? 0)
   );
 
+
 // Convert many possible shapes into a real Date (or null)
 const toDateObj = (v) => {
   if (!v) return null;
@@ -479,7 +480,16 @@ const CancelConfirmationPopup = ({ isVisible, onClose, onConfirm, orderDetails, 
     </div>
   );
 };
-
+const isManagerMay = (user) => {
+  if (!user) return false;
+  const username = user.username?.toLowerCase();
+  const email = user.email?.toLowerCase();
+  
+  return username === "managermay" || 
+         email === "managermay" ||
+         user.role === "manager" ||
+         user.isManager === true;
+};
 /* ---------- Main Component ---------- */
 const PersonalArea = () => {
   const navigate = useNavigate();
@@ -523,7 +533,7 @@ const PersonalArea = () => {
   const [showCancelPopup, setShowCancelPopup] = useState(false);
   const [orderToCancel, setOrderToCancel] = useState(null);
   const [isCancelling, setIsCancelling] = useState(false);
-
+const userIsManager = isManagerMay(user);
   /* ---------- API Functions ---------- */
   const fetchUser = async () => {
     try {
@@ -1079,17 +1089,22 @@ const PersonalArea = () => {
         )}
 
         {/* Orders Tab */}
-        {activeTab === "orders" && (
-          <>
-            <h2 className="heading">Your Previous Orders</h2>
+      {activeTab === "orders" && (
+  <>
+    <h2 className="heading">Your Previous Orders</h2>
 
-            {apiError && (
-              <div style={{ color: "crimson", marginBottom: 12 }}>{apiError}</div>
-            )}
+    {apiError && (
+      <div style={{ color: "crimson", marginBottom: 12 }}>{apiError}</div>
+    )}
 
-            {isOrdersLoading ? (
-              <LoadingSpinner size="large" message="Loading previous orders..." />
-            ) : (
+    {/* Check if user is manager */}
+    {userIsManager ? (
+      <div style={{ textAlign: "center", padding: "2rem", color: "#666" }}>
+        <h3>The manager can't make orders</h3>
+      </div>
+    ) : isOrdersLoading ? (
+      <LoadingSpinner size="large" message="Loading previous orders..." />
+    ) : (
               <>
                 {/* Date + sort filters */}
                 <div className="orders-filters">
