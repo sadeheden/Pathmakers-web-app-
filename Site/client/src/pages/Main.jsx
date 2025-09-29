@@ -55,8 +55,6 @@ const candidates = [
     // your current route
     `${API_BASE}/api/attractions/city/${encodeURIComponent(cityName)}`,
     // slug version
-    `${API_BASE}/api/attractions/city/${encodeURIComponent(slugifyCity(cityName))}`,
-    // query-string fallback
     `${API_BASE}/api/attractions?city=${encodeURIComponent(cityName)}`,
   ];
 
@@ -394,44 +392,48 @@ const [conflictInfo, setConflictInfo] = useState(null);
 // Local-only conflict check — blocks on ANY overlapping order by default.
 // Replace your existing checkOrderConflict function with this corrected version:
 
+// Replace your checkOrderConflict function with this version that properly handles auth:
+
 async function checkOrderConflict({ destination, tripDate, returnDate }) {
-  const token =
-    localStorage.getItem("token") ||
-    localStorage.getItem("authToken") ||
-    localStorage.getItem("jwt") ||
-    localStorage.getItem("access_token") ||
-    localStorage.getItem("userToken");
+  // Use the same token getter that works elsewhere in your app
+  const token = getAuthToken(); // This uses your existing getAuthToken helper
 
   if (!token) {
+    console.warn('No authentication token found');
     return { conflict: false, _error: "NO_TOKEN" };
   }
 
   try {
     console.log('Checking for conflicts:', { destination, tripDate, returnDate });
 
-    // Use the dedicated conflict checking endpoint instead of fetching all orders
     const params = new URLSearchParams({
       destination: destination,
       tripDate: tripDate,
       returnDate: returnDate
     });
 
-    const response = await fetch(`${API_BASE}/api/orders2/conflicts?${params}`, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
-    });
+ const response = await fetch(`${API_BASE}/api/orders2/conflicts?${params}`, {
+  method: 'GET',
+  headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
+});
+
 
     if (!response.ok) {
       console.error('Conflict check failed:', response.status, response.statusText);
       
-      // If the conflicts endpoint doesn't exist, fall back to client-side checking
-      if (response.status === 404) {
-        console.warn('Conflict endpoint not found, falling back to client-side check');
-        return await checkOrderConflictFallback({ destination, tripDate, returnDate, token });
+      // If 401, token is invalid - redirect to login
+      if (response.status === 401) {
+        console.warn('Token expired or invalid, redirecting to login');
+        localStorage.clear(); // Clear all auth data
+        window.location.href = '/login';
+        return { conflict: false, _error: 'AUTH_EXPIRED' };
       }
+      
+      // If the conflicts endpoint doesn't exist, fall back to client-side checking
+       if (response.status === 404) {
+    // fallback to client-side
+    return await checkOrderConflictFallback({ destination, tripDate, returnDate, token });
+  }
       
       return { 
         conflict: false, 
@@ -937,7 +939,7 @@ const handleReturnDateChange = (newDate) => {
                 </div>
               )}
 
-           {tripDate && returnDate && !dateError && (
+         {tripDate && returnDate && !dateError && !conflictCheck.hasConflict && (
   <div style={{ marginTop: '10px' }}>
     <div style={{ 
       padding: '10px', 
@@ -1168,11 +1170,7 @@ const handleReturnDateChange = (newDate) => {
                 {
                   headers: {
                     Authorization: `Bearer ${token}`,
-                    "Content-Type": "application/json",
-                    "Idempotency-Key": idemKey,
-                    "X-Request-ID": (globalThis.crypto?.randomUUID?.()
-                      ?? `${Date.now()}-${Math.random()}`),
-                    "X-Source-Component": "Main.jsx",
+
                   },
                 }
               );

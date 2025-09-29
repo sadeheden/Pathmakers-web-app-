@@ -1,6 +1,5 @@
 // server.js
 import express from 'express';
-import cors from 'cors';
 import dotenv from 'dotenv';
 import { HfInference } from '@huggingface/inference';
 import path from 'path';
@@ -50,37 +49,43 @@ const hf = new HfInference(process.env.HF_TOKEN);
 const app = express();
 const PORT = process.env.PORT || 4000;
 
-// ---------- Middleware ----------
-// ---------- Middleware ----------
-// Log origin
-app.use((req, res, next) => {
-  console.log(`🌐 ${new Date().toISOString()} - ${req.method} ${req.path} - Origin: ${req.get('Origin') || 'none'}`);
-  next();
-});
+
+import cors from 'cors';
 
 
+const allowedOrigins = [
+  'http://localhost:5173',
+  'https://pathmakers-web-app.onrender.com'
+];
+
+const allowedHeaders = [
+  'Content-Type',
+  'Authorization',
+  'Accept',
+  'Origin',
+  'X-Requested-With',
+  'Idempotency-Key',
+  'X-Request-ID',
+  'X-Source-Component'
+];
 
 app.use(cors({
-  origin: '*',   // allow all origins
+  origin: allowedOrigins,
   methods: ['GET','POST','PUT','DELETE','OPTIONS'],
-  allowedHeaders: ['Content-Type','Authorization','Accept','Origin','X-Requested-With','idempotency-key'],
-  credentials: true
+  allowedHeaders,
+  credentials: true,
+}));
+
+// Preflight handler
+app.options('*', cors({
+  origin: allowedOrigins,
+  methods: ['GET','POST','PUT','DELETE','OPTIONS'],
+  allowedHeaders,
+  credentials: true,
 }));
 
 
-// 🔑 Force headers so preflight always passes
-app.use((req, res, next) => {
-  res.header(
-    'Access-Control-Allow-Headers',
-    'Content-Type, Authorization, Accept, Origin, X-Requested-With, idempotency-key'
-  );
-  next();
-});
-
-// ✅ Needed for JSON POST bodies
-app.use(express.json());
-
-
+// Rest of your code continues here...
 // Add health check endpoint
 app.get('/api/health', (req, res) => {
   console.log('🏥 Health check requested');
