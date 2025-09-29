@@ -246,10 +246,10 @@ app.use('/api/manager', managerRoutes);
 app.use('/api/travel/cities', travelRoutes);
 app.use('/api/newsletter', newsletterRouter);
 app.use('/api/travel', travelRoutes);
-app.use('/api/order', orderCancellationRoutes);
 app.use('/api/order', ordersRouter);
 app.use('/api/orders2', orders2Router);
 app.use('/api/support', supportRouter);
+app.use('/api/order', orderCancellationRoutes);
 
 
 // MOVED: Serve static files AFTER API routes (only if found)
