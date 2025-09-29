@@ -1,4 +1,4 @@
-// orderCancellation.routes.js - Enhanced with debugging
+// orderCancellation.routes.js - Add POST support
 import express from 'express';
 import { 
   cancelOrder, 
@@ -25,7 +25,17 @@ router.use((req, res, next) => {
  * @access Private
  */
 router.patch('/:orderId/cancel', authenticateToken, (req, res, next) => {
-  console.log(`🎯 Hit cancel route for orderId: ${req.params.orderId}`);
+  console.log(`🎯 Hit cancel route (PATCH) for orderId: ${req.params.orderId}`);
+  next();
+}, cancelOrder);
+
+/**
+ * @route POST /:orderId/cancel
+ * @desc Cancel a specific order (alternative method for CORS compatibility)
+ * @access Private
+ */
+router.post('/:orderId/cancel', authenticateToken, (req, res, next) => {
+  console.log(`🎯 Hit cancel route (POST) for orderId: ${req.params.orderId}`);
   next();
 }, cancelOrder);
 
@@ -54,7 +64,8 @@ router.get('/test-cancel-routes', (req, res) => {
   res.json({ 
     success: true, 
     message: "Order cancellation routes are working!",
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
+    supportedMethods: ['GET', 'POST', 'PATCH']
   });
 });
 

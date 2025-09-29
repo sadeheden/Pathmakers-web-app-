@@ -707,50 +707,65 @@ const userIsManager = isManagerMay(user);
     setShowCancelPopup(true);
   };
 
-  const confirmCancelOrder = async () => {
-    if (!orderToCancel) return;
+  // Replace the confirmCancelOrder function in PersonalArea.jsx (around line 710)
 
-    setIsCancelling(true);
-    try {
-      const token = localStorage.getItem("authToken");
-      if (!token) {
-        throw new Error("Authentication token not found");
-      }
+// Replace the confirmCancelOrder function in PersonalArea.jsx (around line 710)
 
-      const response = await fetch(`${API_BASE}/api/order/${orderToCancel.id}/cancel`, {
-        method: "PATCH",
-        headers: {
-          "Authorization": `Bearer ${token}`,
-          "Content-Type": "application/json"
-        }
-      });
+// Replace the confirmCancelOrder function in PersonalArea.jsx (around line 710)
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || `Failed to cancel order (${response.status})`);
-      }
+const confirmCancelOrder = async () => {
+  if (!orderToCancel) return;
 
-      // Update the orders list to reflect the cancellation
-      setOrders(prevOrders => 
-        prevOrders.map(order => 
-          order.id === orderToCancel.id 
-            ? { ...order, isCancelled: true, cancelledAt: new Date().toISOString(), raw: { ...order.raw, status: "cancelled", cancelled_at: new Date() } }
-            : order
-        )
-      );
-
-      setShowCancelPopup(false);
-      setOrderToCancel(null);
-      showSuccessMessage("Order cancelled successfully! Your refund will be processed within a few days.");
-
-    } catch (error) {
-      console.error("Cancel order error:", error);
-      alert(`Failed to cancel order: ${error.message}`);
-    } finally {
-      setIsCancelling(false);
+  setIsCancelling(true);
+  try {
+    const token = localStorage.getItem("authToken");
+    if (!token) {
+      throw new Error("Authentication token not found");
     }
-  };
 
+    const response = await fetch(`${API_BASE}/api/order/${orderToCancel.id}/cancel`, {
+      method: "PATCH",
+      headers: {
+        "Authorization": `Bearer ${token}`,
+        "Content-Type": "application/json"
+      }
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || `Failed to cancel order (${response.status})`);
+    }
+
+    // Update the orders list to reflect the cancellation
+    setOrders(prevOrders => 
+      prevOrders.map(order => 
+        order.id === orderToCancel.id 
+          ? { 
+              ...order, 
+              isCancelled: true, 
+              cancelledAt: new Date().toISOString(), 
+              raw: { 
+                ...order.raw, 
+                status: "cancelled", 
+                cancelled: true,
+                cancelled_at: new Date() 
+              } 
+            }
+          : order
+      )
+    );
+
+    setShowCancelPopup(false);
+    setOrderToCancel(null);
+    showSuccessMessage("Order cancelled successfully! Your refund will be processed within a few days.");
+
+  } catch (error) {
+    console.error("Cancel order error:", error);
+    alert(`Failed to cancel order: ${error.message}`);
+  } finally {
+    setIsCancelling(false);
+  }
+};
   const handleSubscribe = async () => {
     if (!email.trim()) {
       alert("Please enter a valid email.");
@@ -760,8 +775,7 @@ const userIsManager = isManagerMay(user);
     try {
       const res = await fetch(`${API_BASE}/api/newsletter`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
+        headers: { "Content-Type": "application/json" }
       });
 
       if (!res.ok) {
