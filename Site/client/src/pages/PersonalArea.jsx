@@ -722,14 +722,13 @@ const confirmCancelOrder = async () => {
     if (!token) {
       throw new Error("Authentication token not found");
     }
-
-    const response = await fetch(`${API_BASE}/api/order/${orderToCancel.id}/cancel`, {
-      method: "PATCH",
-      headers: {
-        "Authorization": `Bearer ${token}`,
-        "Content-Type": "application/json"
-      }
-    });
+const response = await fetch(`${API_BASE}/api/order/cancel?id=${orderToCancel.id}`, {
+  method: "POST",
+  headers: {
+    "Authorization": `Bearer ${token}`,
+    "Content-Type": "application/json"
+  }
+});
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));

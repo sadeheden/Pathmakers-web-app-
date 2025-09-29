@@ -6,42 +6,20 @@ import {
   updateAttraction,
   deleteAttraction,
   getAttractionsByCity,
-    resolveAttractionNames  
+  resolveAttractionNames  
 } from './att.controller.js';
 
 const router = Router();
 
 router
-.post('/resolve-names', resolveAttractionNames) // <— NEW
-  .get('/city/:city', getAttractionsByCity)
+  .post('/resolve-names', resolveAttractionNames)
+  .get('/city/:city', getAttractionsByCity)  // This is the correct one
   .get('/', getAttractions)
   .get('/:id', getAttractionById)
   .post('/', addAttraction)
   .put('/:id', updateAttraction)
   .delete('/:id', deleteAttraction);
-// in attractions.routes.js
-app.get('/api/attractions/city/:slug', attractionsController.getByCity);
 
-// // attractions.routes.js
-// router.get('/city/:slug', async (req, res) => {
-//   try {
-//     const slug = req.params.slug.toLowerCase();
-//     const city = await Cities.findOne({ slug });
-
-//     if (!city) {
-//       return res.status(404).json({ success: false, message: "City not found" });
-//     }
-
-//     res.json({
-//       success: true,
-//       city: city.name,
-//       attractions: city.attractions
-//     });
-//   } catch (err) {
-//     res.status(500).json({ success: false, message: "Server error", error: err.message });
-//   }
-// });
-
-
+// Remove this broken line and the commented code below it
 
 export default router;
