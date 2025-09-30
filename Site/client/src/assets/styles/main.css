@@ -1,6 +1,6 @@
 /* ===========================
    main.css - Mobile/Tablet Responsive
-   Works with app.css variables
+   Updated to match DownloadApp.css aesthetic
    =========================== */
 
 /* Reset and base setup */
@@ -8,23 +8,33 @@
   box-sizing: border-box;
 }
 
+/* Apply background to entire page */
+body {
+  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+  min-height: 100vh;
+}
+
 /* Component-specific variables that extend app.css */
 .trips-page {
-  --radius-lg: calc(var(--radius-pill, 10px) * 1.6);
-  --radius-xl: calc(var(--radius-lg) * 2);
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
   --bg-card: #fff;
-  --bg-page: #f9fafb;
-  --card-pad-x: 1.25rem;
-  --card-pad-y: 1.25rem;
+  --bg-page: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+  --card-pad-x: 1.5rem;
+  --card-pad-y: 1.5rem;
+  --shadow-card: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  --shadow-card-hover: 0 10px 25px -3px rgba(0, 0, 0, 0.1);
 }
 
 /* Page wrapper */
 .trips-page {
   max-width: 1300px;
   margin: 0 auto;
-  padding: 0 1rem;
+  padding: 2rem 1rem;
   width: 100%;
   overflow-x: hidden;
+  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+  min-height: 100vh;
 }
 
 /* Remove footer margin conflicts */
@@ -41,16 +51,17 @@ footer, .footer {
   border-radius: var(--radius-xl);
   background-size: cover;
   background-position: center;
-  margin: 20px 0;
+  margin: 0 0 3rem 0;
   overflow: hidden;
   width: 100%;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
 }
 
 .hero-overlay {
   position: absolute;
   pointer-events: none;
   inset: 0;
-  background: rgba(0, 0, 0, 0.35);
+  background: linear-gradient(135deg, rgba(0, 0, 0, 0.4) 0%, rgba(0, 0, 0, 0.2) 100%);
 }
 
 .hero-content {
@@ -67,20 +78,23 @@ footer, .footer {
 }
 
 .hero-content h1 {
-  font-size: clamp(24px, 5vw, 48px);
-  margin-bottom: 10px;
-  font-weight: 800;
+  font-size: clamp(2rem, 5vw, 3rem);
+  margin-bottom: 1.5rem;
+  font-weight: 700;
   color: #fff;
   max-width: 90%;
-  line-height: 1.2;
+  line-height: 1.1;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
 }
 
 .hero-content p {
-  font-size: clamp(14px, 2vw, 18px);
-  margin-bottom: 20px;
+  font-size: clamp(1rem, 2vw, 1.25rem);
+  margin-bottom: 2rem;
   color: #fff;
   opacity: 0.95;
-  max-width: 90%;
+  max-width: 48rem;
+  line-height: 1.6;
+  text-shadow: 0 1px 5px rgba(0, 0, 0, 0.2);
 }
 
 .hero-buttons {
@@ -98,7 +112,7 @@ footer, .footer {
 .trip-options {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 1rem;
+  gap: 1.5rem;
   margin-bottom: 4rem;
   padding: 0;
 }
@@ -106,18 +120,18 @@ footer, .footer {
 .trip-card {
   background: var(--bg-card);
   border-radius: var(--radius-lg);
-  padding: 1.3rem 0.7rem;
+  padding: 1.5rem;
   text-align: center;
-  box-shadow: var(--shadow-sm);
-  transition: transform 0.3s, box-shadow 0.3s;
+  box-shadow: var(--shadow-card);
+  transition: all 0.3s ease;
   width: 100%;
   max-width: 480px;
   margin: 0 auto;
 }
 
 .trip-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-card-hover);
 }
 
 .trip-card img {
@@ -129,13 +143,14 @@ footer, .footer {
 }
 
 .trip-card h3 { 
-  font-size: 1.5rem; 
+  font-size: 1.5rem;
+  font-weight: 700;
   margin-bottom: 0.75rem; 
-  color: var(--text);
+  color: #1e293b;
 }
 
 .trip-card p { 
-  color: var(--muted); 
+  color: #64748b;
   margin-bottom: 1.5rem; 
   line-height: 1.6; 
 }
@@ -149,17 +164,20 @@ footer, .footer {
 }
 
 .popular-trips h2 {
-  font-size: clamp(1.25rem, 3vw, 1.5rem);
+  font-size: clamp(1.875rem, 3vw, 2.25rem);
   margin-bottom: 2rem;
   text-align: left;
-  letter-spacing: -1px;
-  color: var(--text);
+  font-weight: 700;
+  color: #1e293b;
+  letter-spacing: -0.5px;
 }
 
 /* City cards horizontal scroll */
 .city-scroll-wrapper {
   position: relative;
-  width: 100%;
+  width: 95%;
+  overflow: visible; /* allow buttons to be visible outside */
+  padding: 0 40px;   /* space for buttons so they don’t cover cards */
 }
 
 .city-row {
@@ -179,18 +197,18 @@ footer, .footer {
 
 .city-card {
   flex: 0 0 240px;
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
   overflow: hidden;
   background: #fff;
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--shadow-card);
   cursor: pointer;
-  transition: transform .18s ease, box-shadow .18s ease;
+  transition: all 0.3s ease;
   scroll-snap-align: start;
 }
 
 .city-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-card-hover);
 }
 
 .city-card img {
@@ -198,7 +216,12 @@ footer, .footer {
   height: 120px;
   object-fit: cover;
   display: block;
-  filter: grayscale(50%) brightness(0.95);
+  filter: brightness(0.9);
+  transition: filter 0.3s ease;
+}
+
+.city-card:hover img {
+  filter: brightness(1);
 }
 
 .city-card-text {
@@ -206,14 +229,15 @@ footer, .footer {
 }
 
 .city-card-text h3 {
-  font-size: 16px; 
-  margin: 0 0 4px; 
-  color: var(--text);
+  font-size: 1.125rem;
+  font-weight: 700;
+  margin: 0 0 4px;
+  color: #1e293b;
 }
 
-.city-card-text .muted { 
-  font-size: 13px; 
-  color: var(--muted);
+.city-card-text .muted {
+  font-size: 0.875rem;
+  color: #64748b;
 }
 
 /* Navigation arrows */
@@ -226,18 +250,19 @@ footer, .footer {
   height: 40px;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.9);
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--shadow-card);
   display: grid;
   place-items: center;
   cursor: pointer;
   transition: all 0.2s ease;
-  color: var(--text);
+  color: #1e293b;
   z-index: 2;
 }
 
 .scroll-btn:hover {
   background: rgba(255, 255, 255, 1);
   transform: translateY(-50%) scale(1.05);
+  box-shadow: var(--shadow-card-hover);
 }
 
 .scroll-btn.left { left: -20px; }
@@ -260,30 +285,27 @@ footer, .footer {
   border-radius: var(--radius-lg);
   padding: 2.5rem 2rem;
   text-align: center;
-  box-shadow: var(--shadow-sm);
-  transition: transform 0.25s, box-shadow 0.25s;
+  box-shadow: var(--shadow-card);
+  transition: all 0.3s ease;
   width: 100%;
 }
 
 .chat-card:hover {
   transform: translateY(-4px);
-  box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+  box-shadow: var(--shadow-card-hover);
 }
 
 .chat-card h3 {
   font-size: clamp(1.5rem, 3vw, 1.9rem);
   margin-bottom: 0.75rem;
-  background: var(--brand);
-  background-clip: text;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  color: #1772ce; /* fallback */
+  font-weight: 700;
+  color: #1e293b;
 }
 
 .chat-card p {
-  color: var(--muted);
+  color: #64748b;
   margin-bottom: 1.2rem;
-  line-height: 1.4;
+  line-height: 1.6;
 }
 
 /* ===========================
@@ -306,15 +328,15 @@ footer, .footer {
 
 .modal-content {
   background: white;
-  border-radius: 16px;
+  border-radius: var(--radius-lg);
   width: 90vw;
   max-width: 600px;
   max-height: 90vh;
   overflow: auto;
   -webkit-overflow-scrolling: touch;
-  padding: var(--card-pad-y) var(--card-pad-x);
+  padding: 2rem;
   position: relative;
-  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
   margin: auto;
 }
 
@@ -333,7 +355,7 @@ footer, .footer {
   color: #dc2626; 
   font-size: 18px; 
   font-weight: 800;
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--shadow-card);
   transition: all 0.2s ease;
   touch-action: manipulation;
 }
@@ -345,27 +367,23 @@ footer, .footer {
 
 /* Modal content styling */
 .modal-content h2 {
-  margin: 0 0 20px 0;
-  padding: 24px 0 0;
-  font-size: clamp(20px, 4vw, 28px);
-  font-weight: 800;
+  margin: 0 0 1.5rem 0;
+  padding: 0;
+  font-size: clamp(1.5rem, 4vw, 2rem);
+  font-weight: 700;
   text-align: center;
-  background: var(--brand);
-  background-clip: text;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  color: #1772ce; /* fallback */
+  color: #1e293b;
 }
 
 .modal-content p {
-  margin: 0 0 16px 0;
+  margin: 0 0 1rem 0;
   color: #475569;
   line-height: 1.6;
-  font-size: 15px;
+  font-size: 1rem;
 }
 
 .modal-content p strong {
-  color: var(--text);
+  color: #1e293b;
   font-weight: 700;
 }
 
@@ -381,17 +399,17 @@ footer, .footer {
   max-width: 390px; 
   height: 190px; 
   object-fit: cover;
-  border-radius: 16px;
-  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
 }
 
 /* Modal buttons */
 .modal-btns {
   padding: 20px 0 0;
   display: flex;
-  gap: 16px; /* Increased from 12px */
+  gap: 16px;
   flex-wrap: wrap;
-  justify-content: center; /* Center the buttons */
+  justify-content: center;
 }
 
 .modal-btn {
@@ -401,64 +419,68 @@ footer, .footer {
   justify-content: center;
   gap: 8px; 
   border: 0; 
-  border-radius: var(--radius-pill); 
+  border-radius: var(--radius-lg);
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.3s ease;
   min-height: 44px;
   touch-action: manipulation;
-  padding: var(--btn-pad-y) var(--btn-pad-x);
-  font-size: var(--btn-font-size);
+  padding: 1rem 2rem;
+  font-size: 1rem;
   font-weight: 600;
-  min-width: 120px; /* Ensure minimum button width */
-  max-width: 200px; /* Prevent buttons from getting too wide */
+  min-width: 120px;
+  max-width: 200px;
 }
 
 .modal-btn.btn-primary {
   color: #fff;
-  background: var(--brand);
-  box-shadow: var(--shadow-sm);
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  box-shadow: var(--shadow-card);
   margin: 2%;
 }
 
 .modal-btn.btn-primary:hover {
-  background: var(--brand-hover);
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
   transform: translateY(-2px);
+  box-shadow: var(--shadow-card-hover);
 }
 
 .modal-btn.secondary {
   background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
   color: #475569;
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--shadow-card);
 }
 
 .modal-btn.secondary:hover {
-  transform: translateY(-1px);
+  transform: translateY(-2px);
   background: linear-gradient(135deg, #ffffff 0%, #f1f5f9 100%);
+  box-shadow: var(--shadow-card-hover);
 }
 
 /* Form inputs */
 .modal-content label { 
   display: block; 
-  font-size: 0.85rem; 
-  color: var(--muted); 
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #475569;
   margin: 12px 0 6px; 
 }
 
 .modal-content input {
   width: 100%;
   padding: 12px 14px;
-  border-radius: var(--radius-pill); 
+  border-radius: var(--radius-lg);
   border: 1px solid #e5e7eb; 
   outline: none;
   font-size: 14px;
-  transition: border-color 0.2s ease;
+  transition: all 0.2s ease;
   min-height: 44px;
   box-sizing: border-box;
+  background: #fff;
 }
 
 .modal-content input:focus {
-  border-color: #1772ce;
-  box-shadow: 0 0 0 3px rgba(23, 114, 206, 0.1);
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
 .expiry-cvv { 
@@ -473,7 +495,7 @@ footer, .footer {
   border: 1px solid #fecaca;
   color: #dc2626;
   padding: 12px;
-  border-radius: var(--radius-pill);
+  border-radius: var(--radius-lg);
   margin: 12px 0;
   font-size: 14px;
   line-height: 1.4;
@@ -488,12 +510,12 @@ footer, .footer {
   .trips-page {
     --card-pad-x: 0.75rem;
     --card-pad-y: 1rem;
-    padding: 0 0.5rem;
+    padding: 1rem 0.5rem;
   }
 
   .hero-merged {
     height: 250px;
-    margin: 8px 0 16px;
+    margin: 0 0 2rem 0;
     border-radius: 12px;
   }
 
@@ -528,7 +550,7 @@ footer, .footer {
   }
 
   .popular-trips h2 {
-    font-size: 1.2rem;
+    font-size: 1.5rem;
     text-align: center;
   }
 
@@ -550,7 +572,7 @@ footer, .footer {
   }
 
   .city-card-text h3 {
-    font-size: 0.85rem;
+    font-size: 0.875rem;
   }
 
   .city-card-text .muted {
@@ -579,6 +601,7 @@ footer, .footer {
     width: calc(100vw - 16px);
     margin: 20px 0;
     border-radius: 12px;
+    padding: 1.5rem;
   }
 
   .modal-close-x {
@@ -591,14 +614,16 @@ footer, .footer {
 
   .modal-btns {
     flex-direction: column;
-    gap: 12px; /* Vertical spacing on mobile */
-    align-items: stretch; /* Full width buttons on mobile */
+    gap: 12px;
+    align-items: stretch;
   }
- .modal-btn {
+  
+  .modal-btn {
     flex: none;
     min-width: auto;
     max-width: none;
   }
+  
   .expiry-cvv {
     grid-template-columns: 1fr;
     gap: 8px;
@@ -609,7 +634,7 @@ footer, .footer {
 @media (min-width: 481px) and (max-width: 600px) {
   .hero-merged {
     height: 300px;
-    border-radius: 16px;
+    border-radius: var(--radius-lg);
   }
 
   .hero-content {
@@ -638,6 +663,7 @@ footer, .footer {
     width: calc(100vw - 32px);
     max-width: 500px;
   }
+  
   .modal-btns {
     gap: 14px;
   }
