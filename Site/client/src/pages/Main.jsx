@@ -395,8 +395,7 @@ const [conflictInfo, setConflictInfo] = useState(null);
 // Replace your checkOrderConflict function with this version that properly handles auth:
 
 async function checkOrderConflict({ destination, tripDate, returnDate }) {
-  // Use the same token getter that works elsewhere in your app
-  const token = getAuthToken(); // This uses your existing getAuthToken helper
+  const token = getAuthToken();
 
   if (!token) {
     console.warn('No authentication token found');
@@ -407,16 +406,18 @@ async function checkOrderConflict({ destination, tripDate, returnDate }) {
     console.log('Checking for conflicts:', { destination, tripDate, returnDate });
 
     const params = new URLSearchParams({
-      destination: destination,
-      tripDate: tripDate,
-      returnDate: returnDate
+      destination: String(destination).trim(),
+      tripDate: String(tripDate).trim(),
+      returnDate: String(returnDate).trim()
     });
 
- const response = await fetch(`${API_BASE}/api/orders2/conflicts?${params}`, {
-  method: 'GET',
-  headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
-});
-
+    const response = await fetch(`${API_BASE}/api/orders2/conflicts?${params}`, {
+      method: 'GET',
+      headers: { 
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
 
     if (!response.ok) {
       console.error('Conflict check failed:', response.status, response.statusText);
@@ -424,16 +425,16 @@ async function checkOrderConflict({ destination, tripDate, returnDate }) {
       // If 401, token is invalid - redirect to login
       if (response.status === 401) {
         console.warn('Token expired or invalid, redirecting to login');
-        localStorage.clear(); // Clear all auth data
+        localStorage.clear();
         window.location.href = '/login';
         return { conflict: false, _error: 'AUTH_EXPIRED' };
       }
       
-      // If the conflicts endpoint doesn't exist, fall back to client-side checking
-       if (response.status === 404) {
-    // fallback to client-side
-    return await checkOrderConflictFallback({ destination, tripDate, returnDate, token });
-  }
+      // If the conflicts endpoint doesn't exist (404 or 405), fall back to client-side checking
+      if (response.status === 404 || response.status === 405) {
+        console.warn('Conflicts endpoint not available, using fallback');
+        return await checkOrderConflictFallback({ destination, tripDate, returnDate, token });
+      }
       
       return { 
         conflict: false, 
@@ -469,7 +470,6 @@ async function checkOrderConflict({ destination, tripDate, returnDate }) {
     return await checkOrderConflictFallback({ destination, tripDate, returnDate, token });
   }
 }
-
 // Fallback function (your original logic) - only used if the main endpoint fails
 async function checkOrderConflictFallback({ destination, tripDate, returnDate, token }) {
   try {
@@ -604,11 +604,15 @@ const performConflictCheck = async (city, departure, returnD) => {
     });
 
     if (result._error) {
+      if (result._error === 'AUTH_EXPIRED') {
+        // User will be redirected, no need to show message
+        return;
+      }
       console.warn('Conflict check failed:', result._error);
       setConflictCheck({
         checking: false,
         hasConflict: false,
-        message: 'Could not verify conflicts right now.',
+        message: '',
       });
       return;
     }
@@ -631,10 +635,11 @@ const performConflictCheck = async (city, departure, returnD) => {
     setConflictCheck({
       checking: false,
       hasConflict: false,
-      message: 'Error checking for conflicts.',
+      message: '',
     });
   }
 };
+
   // פונקציה לבדיקת תקינות תאריכים
 const validateDates = (departure, returnD) => {
   const depDate = new Date(departure);
@@ -1034,18 +1039,35 @@ const handleReturnDateChange = (newDate) => {
         returnDate 
       });
 
+      // Clear loading state
       setConflictCheck({ checking: false, hasConflict: false, message: '' });
 
-      if (result._error) {
-        console.warn('Conflict check failed:', result._error);
-        // If conflict check fails, warn user but allow them to proceed
+      // Handle authentication errors
+      if (result._error === 'AUTH_EXPIRED') {
+        // User will be redirected automatically
+        return;
+      }
+
+      if (result._error === 'NO_TOKEN') {
+        setOrderError("Please log in to continue.");
+        navigate('/login');
+        return;
+      }
+
+      if (result._error && !result._error.includes('CONFLICT_CHECK_FAILED')) {
+        // Non-critical error - warn but allow proceeding
         const proceed = window.confirm(
           "Could not verify if you have existing trips on these dates. Would you like to proceed anyway?"
         );
         if (!proceed) return;
       } else if (result.conflict) {
-        // Conflict found - show error and prevent proceeding
+        // Conflict found - block and show error
         setOrderError(result.message || "You already have a trip during these dates. Please choose different dates.");
+        setConflictCheck({
+          checking: false,
+          hasConflict: true,
+          message: result.message || "Conflict detected"
+        });
         return;
       }
 
@@ -1056,7 +1078,7 @@ const handleReturnDateChange = (newDate) => {
       console.error('Error during conflict check:', error);
       setConflictCheck({ checking: false, hasConflict: false, message: '' });
       
-      // On error, ask user if they want to proceed
+      // On unexpected error, ask user if they want to proceed
       const proceed = window.confirm(
         "Could not verify conflicts due to a network error. Would you like to proceed anyway?"
       );
@@ -1065,7 +1087,7 @@ const handleReturnDateChange = (newDate) => {
       }
     }
   }}
-  disabled={!tripDate || !returnDate || conflictCheck.checking}
+  disabled={!tripDate || !returnDate || !!dateError || conflictCheck.checking}
 >
   {conflictCheck.checking ? "Checking for conflicts..." : "Continue to Payment"}
 </button>
