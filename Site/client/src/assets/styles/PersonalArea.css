@@ -1373,7 +1373,7 @@ small {
 
 .newsletter-input {
   flex: 1;
-  padding: 1rem 1.5rem;
+  padding: 0.1rem 0.5rem;
   border: 2px solid #e2e8f0;
   border-radius: 12px;
   font-size: 1rem;

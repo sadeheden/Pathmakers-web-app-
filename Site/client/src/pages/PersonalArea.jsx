@@ -1293,13 +1293,7 @@ const response = await fetch(`${API_BASE}/api/order/cancel?id=${orderToCancel.id
                       <p>24-hour lightning deals on popular destinations</p>
                     </div>
                   </div>
-                  <div className="benefit-item">
-                    <span className="benefit-icon">🎯</span>
-                    <div className="benefit-content">
-                      <h4>Personalized Picks</h4>
-                      <p>Curated recommendations based on your travel style</p>
-                    </div>
-                  </div>
+                 
                 </div>
               </div>
 
