@@ -647,7 +647,7 @@ const isUpcomingOrder = (order) => {
               <View style={styles.sectionTitleUnderline} />
               <View style={{ alignItems: 'center', marginTop: 6 }}>
                 <Text style={{ fontSize: 12, color: '#d84228ff' }}>
-                  Showing trips starting today and in the future — see website for all trips.
+                 For more info visit our website.
                 </Text>
               </View>
             </View>
