@@ -216,6 +216,28 @@ const TravelPlannerApp = () => {
         return;
       }
 
+  const toDate = (v) => {
+    if (!v) return null;
+    const raw = (v && typeof v === "object" && v.$d instanceof Date) ? v.$d : v;
+    if (raw instanceof Date && !Number.isNaN(raw)) return raw;
+    if (typeof raw === "string") {
+      const d = new Date(raw);
+      return !Number.isNaN(+d) ? d : null;
+    }
+    return null;
+  };
+
+  const start = toDate(startDate);
+  const end = toDate(endDate);
+
+  if (start && end && end <= start) {
+    setDateWarning({
+      show: true,
+      message: "End date must be later than start date.",
+    });
+    return;
+  }
+
       const toYMD = (v) => {
         if (!v) return null;
         const raw = (v && typeof v === "object" && v.$d instanceof Date) ? v.$d : v;
