@@ -367,7 +367,7 @@
 
 .modal-header {
   background: linear-gradient(90deg, var(--brand), var(--brand-2));
-  color: #0b0404 !important; /* Force white text */
+  color: #fff !important; /* Force white text */
   padding: 20px;
   font-weight: 900;
   font-size: 1.35rem;
@@ -928,8 +928,6 @@ small {
   font-size: 32px;
   font-weight: bold;
   -webkit-backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
   backdrop-filter: blur(10px);
   border: 3px solid rgba(255, 255, 255, 0.3);
 }
@@ -1159,8 +1157,8 @@ small {
   max-width: 1200px;
   margin: 0 auto;
   padding: 2rem 1rem;
-  background: linear-gradient(135deg, #7f829092 0%, #6f7278 100%);
-  border-radius: 20px;
+ background: rgba(60, 71, 101, 0.555);
+  border: 1px solid rgba(0, 0, 0, 0.05);
   color: white;
   position: relative;
   overflow: hidden;
