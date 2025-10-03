@@ -280,7 +280,7 @@ const TravelPlannerApp = () => {
         if (data?.conflict) {
           const first = Array.isArray(data.overlaps) && data.overlaps[0];
           const msg = first
-            ? `You already have a trip${first.destination ? ` to ${first.destination}` : ""} from ${new Date(first.start).toLocaleDateString()} to ${new Date(first.end).toLocaleDateString()}.`
+            ? `You can't do this purchase. You already have a trip${first.destination ? ` to ${first.destination}` : ""} from ${new Date(first.start).toLocaleDateString()} to ${new Date(first.end).toLocaleDateString()}.`
             : (data.message || "You already have a trip on these dates.");
           
           setDateWarning({ show: true, message: msg });
