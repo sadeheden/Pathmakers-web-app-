@@ -12,34 +12,30 @@ import Stepper from "../components/Stepper.jsx";
 
 const API_BASE =
   (import.meta?.env?.VITE_API_BASE && import.meta.env.VITE_API_BASE.replace(/\/$/, "")) ||
-  "https://pathmakers-server-site.onrender.com"; // change if you have a Vite proxy
+  "https://pathmakers-server-site.onrender.com";
 
 const TravelPlannerApp = () => {
   const location = useLocation();
   const navigate = useNavigate();
 
-    useEffect(() => {
+  useEffect(() => {
     const token = localStorage.getItem("authToken");
     if (!token || token === "null" || token === "undefined") {
       navigate("/login", { replace: true });
     }
   }, [navigate]);
-// Chat.jsx
-const savingOrderRef = useRef(false);
 
-const [toast, setToast] = useState(null); // { type: 'success' | 'error', text: string }
-// Chat.jsx
-const [isPlacingOrder, setIsPlacingOrder] = useState(false);
-// Chat.jsx
-const [conflictModal, setConflictModal] = useState({ open: false, message: "" });
+  const savingOrderRef = useRef(false);
+  const [toast, setToast] = useState(null);
+  const [isPlacingOrder, setIsPlacingOrder] = useState(false);
+  const [conflictModal, setConflictModal] = useState({ open: false, message: "" });
+  const [dateWarning, setDateWarning] = useState({ show: false, message: "" });
 
-  // progress
   const [currentStep, setCurrentStep] = useState(() => {
     const savedStep = localStorage.getItem("currentStep");
     return savedStep ? parseInt(savedStep, 10) : 0;
   });
 
-  // responses
   const [userResponses, setUserResponses] = useState(() => {
     const savedResponses = localStorage.getItem("userResponses");
     return savedResponses ? JSON.parse(savedResponses) : {};
@@ -47,27 +43,22 @@ const [conflictModal, setConflictModal] = useState({ open: false, message: "" })
 
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [paymentCompleted, setPaymentCompleted] = useState(false);
- 
-  // Start Over: clear answers and jump to step 1
-const restartTrip = React.useCallback(() => {
-  try {
-    setIsPaymentModalOpen(false);
-    setPaymentCompleted(false);
-    setUserResponses({});
-    setCurrentStep(0);
 
-    // clear persisted progress
-    localStorage.removeItem("currentStep");
-    localStorage.removeItem("userResponses");
-    sessionStorage.removeItem("orderSaved");
-  } finally {
-    // bring user back to top
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  }
-}, []);
+  const restartTrip = React.useCallback(() => {
+    try {
+      setIsPaymentModalOpen(false);
+      setPaymentCompleted(false);
+      setUserResponses({});
+      setCurrentStep(0);
+      setDateWarning({ show: false, message: "" });
+      localStorage.removeItem("currentStep");
+      localStorage.removeItem("userResponses");
+      sessionStorage.removeItem("orderSaved");
+    } finally {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  }, []);
 
-
-  // base data from hook
   const {
     loadedCities = [],
     loadedFlights = [],
@@ -75,48 +66,40 @@ const restartTrip = React.useCallback(() => {
     loadedAttractions = [],
   } = useTravelData(userResponses) || {};
 
-  // live hotels from API (by chosen destination)
   const [hotelsFromApi, setHotelsFromApi] = useState([]);
-// Chat.jsx
-useEffect(() => {
-  const onAppLogout = () => {
-    // reset all in-memory chat state
-    setIsPaymentModalOpen(false);
-    setPaymentCompleted(false);
-    setUserResponses({});
-    setCurrentStep(0);
-
-    // double-sure: wipe persisted progress
-    localStorage.removeItem("currentStep");
-    localStorage.removeItem("userResponses");
-    sessionStorage.removeItem("orderSaved");
-    sessionStorage.removeItem("lastOrderId");
-
-    // scroll to top (optional)
-    try { window.scrollTo({ top: 0, behavior: "smooth" }); } catch {}
-  };
-
-window.addEventListener("app:logout", onAppLogout);
-// cross-tab support
-const onStorage = (e) => {
-  if (e.key === "app:logout") onAppLogout();
-};
-window.addEventListener("storage", onStorage);
-
-return () => {
-  window.removeEventListener("app:logout", onAppLogout);
-  window.removeEventListener("storage", onStorage);
-};
-}, []);
 
   useEffect(() => {
-    // pick any token the app uses (optional header)
+    const onAppLogout = () => {
+      setIsPaymentModalOpen(false);
+      setPaymentCompleted(false);
+      setUserResponses({});
+      setCurrentStep(0);
+      setDateWarning({ show: false, message: "" });
+      localStorage.removeItem("currentStep");
+      localStorage.removeItem("userResponses");
+      sessionStorage.removeItem("orderSaved");
+      sessionStorage.removeItem("lastOrderId");
+      try { window.scrollTo({ top: 0, behavior: "smooth" }); } catch {}
+    };
+
+    window.addEventListener("app:logout", onAppLogout);
+    const onStorage = (e) => {
+      if (e.key === "app:logout") onAppLogout();
+    };
+    window.addEventListener("storage", onStorage);
+
+    return () => {
+      window.removeEventListener("app:logout", onAppLogout);
+      window.removeEventListener("storage", onStorage);
+    };
+  }, []);
+
+  useEffect(() => {
     const token =
       localStorage.getItem("authToken") ||
       localStorage.getItem("token") ||
       localStorage.getItem("jwt");
 
-    // destination from responses (id or name/slug)
     const dstId =
       userResponses?.destination_city_id || userResponses?.destinationCityId;
     const dstName =
@@ -136,13 +119,10 @@ return () => {
       try {
         const key = dstId || dstName;
         const url = `${API_BASE}/api/hotels/city/${encodeURIComponent(key)}`;
-
-     const headers = { "Content-Type": "application/json" };
-if (token) {
-  headers.Authorization = `Bearer ${token}`;
-}
-
-
+        const headers = { "Content-Type": "application/json" };
+        if (token) {
+          headers.Authorization = `Bearer ${token}`;
+        }
 
         const res = await fetch(url, { headers, signal: controller.signal });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -154,7 +134,6 @@ if (token) {
           ? data.data.hotels
           : [];
 
-        // normalize price from Extended JSON if present
         const normPrice = (p) =>
           typeof p === "object" && p
             ? Number(p.$numberInt ?? p.$numberDouble ?? p.value ?? 0)
@@ -185,12 +164,12 @@ if (token) {
     userResponses?.citySlug,
   ]);
 
-  // initial setup (reset if not logged in)
   useEffect(() => {
     const token = localStorage.getItem("authToken");
     if (!token) {
       setCurrentStep(0);
       setUserResponses({});
+      setDateWarning({ show: false, message: "" });
       localStorage.removeItem("currentStep");
       localStorage.removeItem("userResponses");
       sessionStorage.removeItem("orderSaved");
@@ -198,7 +177,6 @@ if (token) {
     }
   }, []);
 
-  // build steps (prefer API hotels)
   const mergedHotels = hotelsFromApi.length ? hotelsFromApi : loadedHotels;
   const steps = createSteps(
     userResponses,
@@ -208,7 +186,6 @@ if (token) {
     loadedAttractions
   );
 
-  // handle "payment only" deep link
   useEffect(() => {
     if (location.state?.onlyPayment) {
       const paymentStepIndex = steps.findIndex((s) => s.label === "Payment");
@@ -218,7 +195,6 @@ if (token) {
     }
   }, [location.state, steps]);
 
-  // persist progress & responses
   useEffect(() => {
     localStorage.setItem("currentStep", currentStep);
   }, [currentStep]);
@@ -227,7 +203,77 @@ if (token) {
     localStorage.setItem("userResponses", JSON.stringify(userResponses));
   }, [userResponses]);
 
-  // UI helpers
+  useEffect(() => {
+    const checkDateConflict = async () => {
+      const START_KEY = "Select trip start date";
+      const END_KEY = "Select trip end date";
+      
+      const startDate = userResponses?.[START_KEY];
+      const endDate = userResponses?.[END_KEY];
+      
+      if (!startDate || !endDate) {
+        setDateWarning({ show: false, message: "" });
+        return;
+      }
+
+      const toYMD = (v) => {
+        if (!v) return null;
+        const raw = (v && typeof v === "object" && v.$d instanceof Date) ? v.$d : v;
+        if (raw instanceof Date && !Number.isNaN(raw)) {
+          const y = raw.getUTCFullYear();
+          const m = String(raw.getUTCMonth() + 1).padStart(2, "0");
+          const d = String(raw.getUTCDate()).padStart(2, "0");
+          return `${y}-${m}-${d}`;
+        }
+        if (typeof raw === "string") {
+          const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+          if (ISO_DATE_RE.test(raw.trim())) return raw.trim();
+          const d = new Date(raw);
+          if (!Number.isNaN(+d)) return toYMD(d);
+        }
+        return null;
+      };
+
+      const tripStartYMD = toYMD(startDate);
+      const tripEndYMD = toYMD(endDate);
+
+      if (!tripStartYMD || !tripEndYMD) return;
+
+      try {
+        const token =
+          localStorage.getItem("authToken") ||
+          localStorage.getItem("token") ||
+          localStorage.getItem("jwt");
+
+        const headers = { "Content-Type": "application/json" };
+        if (token) headers.Authorization = `Bearer ${token}`;
+
+        const res = await fetch(
+          `${API_BASE}/api/order/conflicts?start=${encodeURIComponent(tripStartYMD)}&end=${encodeURIComponent(tripEndYMD)}`,
+          { headers }
+        );
+        
+        const data = await res.json().catch(() => ({}));
+        
+        if (data?.conflict) {
+          const first = Array.isArray(data.overlaps) && data.overlaps[0];
+          const msg = first
+            ? `You already have a trip${first.destination ? ` to ${first.destination}` : ""} from ${new Date(first.start).toLocaleDateString()} to ${new Date(first.end).toLocaleDateString()}.`
+            : (data.message || "You already have a trip on these dates.");
+          
+          setDateWarning({ show: true, message: msg });
+        } else {
+          setDateWarning({ show: false, message: "" });
+        }
+      } catch (error) {
+        console.warn("Date conflict check failed:", error);
+        setDateWarning({ show: false, message: "" });
+      }
+    };
+
+    checkDateConflict();
+  }, [userResponses?.["Select trip start date"], userResponses?.["Select trip end date"]]);
+
   const renderProgressBar = () => (
     <div className="progress-bar">
       <div
@@ -244,15 +290,14 @@ if (token) {
     }
     if (step.label === "Trip Summary") {
       return (
-      <TripSummary
-  userResponses={userResponses}
-  setUserResponses={setUserResponses}
-  setCurrentStep={setCurrentStep}
-  setPaymentCompleted={setPaymentCompleted}
-  onRestart={restartTrip}                 // <-- this makes the button work
-  personalAreaPath="/personal-area"       // adjust if your route is different
-/>
-
+        <TripSummary
+          userResponses={userResponses}
+          setUserResponses={setUserResponses}
+          setCurrentStep={setCurrentStep}
+          setPaymentCompleted={setPaymentCompleted}
+          onRestart={restartTrip}
+          personalAreaPath="/personal-area"
+        />
       );
     }
     return (
@@ -280,483 +325,498 @@ if (token) {
         </header>
 
         {renderStepContent()}
-{conflictModal.open && (
-  <div
-    role="dialog"
-    aria-modal="true"
-    aria-labelledby="conflict-title"
-    style={{
-      position: "fixed",
-      inset: 0,
-      background: "rgba(0,0,0,0.45)",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      zIndex: 10000
-    }}
-    onClick={(e) => {
-      // Close when clicking backdrop, and restart
-      if (e.target === e.currentTarget) {
-        setConflictModal({ open: false, message: "" });
-        restartTrip(); // resets everything to step 0
-      }
-    }}
-  >
-    <div
-      style={{
-        background: "#fff",
-        width: "min(92vw, 520px)",
-        borderRadius: 16,
-        boxShadow: "0 24px 60px rgba(0,0,0,0.25)",
-        border: "1px solid rgba(0,0,0,0.06)",
-        padding: "22px 20px 16px",
-        position: "relative"
-      }}
-      onClick={(e) => e.stopPropagation()}
-    >
-      <button
-        aria-label="Close"
-        onClick={() => {
-          setConflictModal({ open: false, message: "" });
-          restartTrip(); // start from beginning on close
-        }}
-        style={{
-          position: "absolute",
-          insetInlineEnd: 10,
-          top: 10,
-          width: 36,
-          height: 36,
-          borderRadius: 10,
-          border: "1px solid #e5e7eb",
-          background: "#fff",
-          fontSize: 20,
-          lineHeight: "20px",
-          cursor: "pointer"
-        }}
-      >
-        ×
-      </button>
 
-      <h3 id="conflict-title" style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "#111827" }}>
-        Trip Date Conflict
-      </h3>
+        {dateWarning.show && (
+          <div
+            role="alert"
+            style={{
+              position: "fixed",
+              top: 80,
+              left: "50%",
+              transform: "translateX(-50%)",
+              zIndex: 9998,
+              background: "linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%)",
+              border: "2px solid #ffc107",
+              borderRadius: 12,
+              padding: "16px 20px",
+              maxWidth: "min(90vw, 600px)",
+              boxShadow: "0 8px 24px rgba(255, 193, 7, 0.25)",
+              animation: "slideDown 0.3s ease-out"
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
+              <span style={{ fontSize: 24, lineHeight: 1 }}>⚠️</span>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 700, color: "#856404", marginBottom: 4 }}>
+                  Date Conflict Warning
+                </div>
+                <div style={{ fontSize: 14, color: "#856404" }}>
+                  {dateWarning.message}
+                </div>
+              </div>
+              <button
+                onClick={() => setDateWarning({ show: false, message: "" })}
+                style={{
+                  background: "transparent",
+                  border: "none",
+                  fontSize: 24,
+                  lineHeight: 1,
+                  cursor: "pointer",
+                  color: "#856404",
+                  padding: 0,
+                  width: 24,
+                  height: 24
+                }}
+                aria-label="Dismiss warning"
+              >
+                ×
+              </button>
+            </div>
+            <style>{`
+              @keyframes slideDown {
+                from {
+                  opacity: 0;
+                  transform: translateX(-50%) translateY(-20px);
+                }
+                to {
+                  opacity: 1;
+                  transform: translateX(-50%) translateY(0);
+                }
+              }
+            `}</style>
+          </div>
+        )}
 
-      <p style={{ marginTop: 10, marginBottom: 18, color: "#334155" }}>
-        {conflictModal.message}
-      </p>
+        {conflictModal.open && (
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="conflict-title"
+            style={{
+              position: "fixed",
+              inset: 0,
+              background: "rgba(0,0,0,0.45)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 10000
+            }}
+            onClick={(e) => {
+              if (e.target === e.currentTarget) {
+                setConflictModal({ open: false, message: "" });
+                restartTrip();
+              }
+            }}
+          >
+            <div
+              style={{
+                background: "#fff",
+                width: "min(92vw, 520px)",
+                borderRadius: 16,
+                boxShadow: "0 24px 60px rgba(0,0,0,0.25)",
+                border: "1px solid rgba(0,0,0,0.06)",
+                padding: "22px 20px 16px",
+                position: "relative"
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                aria-label="Close"
+                onClick={() => {
+                  setConflictModal({ open: false, message: "" });
+                  restartTrip();
+                }}
+                style={{
+                  position: "absolute",
+                  insetInlineEnd: 10,
+                  top: 10,
+                  width: 36,
+                  height: 36,
+                  borderRadius: 10,
+                  border: "1px solid #e5e7eb",
+                  background: "#fff",
+                  fontSize: 20,
+                  lineHeight: "20px",
+                  cursor: "pointer"
+                }}
+              >
+                ×
+              </button>
 
-      <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-        <button
-          onClick={() => {
-            setConflictModal({ open: false, message: "" });
-            restartTrip(); // also restart from here
+              <h3 id="conflict-title" style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "#111827" }}>
+                Trip Date Conflict
+              </h3>
+
+              <p style={{ marginTop: 10, marginBottom: 18, color: "#334155" }}>
+                {conflictModal.message}
+              </p>
+
+              <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+                <button
+                  onClick={() => {
+                    setConflictModal({ open: false, message: "" });
+                    restartTrip();
+                  }}
+                  style={{
+                    padding: "10px 14px",
+                    borderRadius: 10,
+                    border: "1px solid #e5e7eb",
+                    background: "#fff",
+                    fontWeight: 600,
+                    cursor: "pointer"
+                  }}
+                >
+                  Start Over
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <PaymentModal
+          isOpen={isPaymentModalOpen}
+          onClose={() => !isPlacingOrder && setIsPaymentModalOpen(false)}
+          busy={isPlacingOrder}
+          total={calculateTotalPrice(userResponses)}
+          totalAmount={calculateTotalPrice(userResponses)}
+          onPaymentSuccess={async ({ attractionIds, attractionNames } = {}) => {
+            setIsPaymentModalOpen(false);
+            setIsPlacingOrder(true);
+            
+            if (sessionStorage.getItem("orderSaved") === "1") {
+              setToast({ type: "success", text: "Order already saved." });
+              setTimeout(() => setToast(null), 2000);
+              setIsPlacingOrder(false);
+              return;
+            }
+            
+            if (savingOrderRef.current) return;
+            savingOrderRef.current = true;
+
+            try {
+              const token =
+                localStorage.getItem("authToken") ||
+                localStorage.getItem("token") ||
+                localStorage.getItem("jwt");
+
+              if (!token) {
+                alert("You must be logged in to save the order.");
+                return;
+              }
+
+              const headers = { "Content-Type": "application/json" };
+              if (token) headers.Authorization = `Bearer ${token}`;
+              
+              const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+              const toYMD = (v) => {
+                if (!v) return null;
+                const raw = (v && typeof v === "object" && v.$d instanceof Date) ? v.$d : v;
+                if (raw instanceof Date && !Number.isNaN(raw)) {
+                  const y = raw.getUTCFullYear();
+                  const m = String(raw.getUTCMonth() + 1).padStart(2, "0");
+                  const d = String(raw.getUTCDate()).padStart(2, "0");
+                  return `${y}-${m}-${d}`;
+                }
+                if (typeof raw === "string") {
+                  if (ISO_DATE_RE.test(raw.trim())) return raw.trim();
+                  const d = new Date(raw);
+                  if (!Number.isNaN(+d)) return toYMD(d);
+                }
+                return null;
+              };
+
+              const pickDate = (preferredKeys = []) => {
+                for (const k of preferredKeys) {
+                  const ymd = toYMD(getVal(k));
+                  if (ymd) return ymd;
+                }
+                for (const v of Object.values(userResponses || {})) {
+                  const ymd = toYMD(v);
+                  if (ymd) return ymd;
+                }
+                return null;
+              };
+
+              const getVal = (prompt) => userResponses?.[prompt];
+              const START_KEY = "Select trip start date";
+              const END_KEY = "Select trip end date";
+              const tripStartYMD = pickDate([START_KEY, "Trip start date", "Start date", "From"]);
+              const tripEndYMD = pickDate([END_KEY, "Trip end date", "End date", "To"]);
+
+              console.log("📅 Dates before save:", {
+                start: getVal(START_KEY),
+                end: getVal(END_KEY),
+              });
+
+              if (!tripStartYMD || !tripEndYMD) {
+                setToast({ type: "error", text: "Please select trip start and end dates." });
+                setTimeout(() => setToast(null), 3000);
+                setIsPlacingOrder(false);
+                savingOrderRef.current = false;
+                return;
+              }
+
+              try {
+                const r0 = await fetch(`${API_BASE}/api/order/conflicts?start=${encodeURIComponent(tripStartYMD)}&end=${encodeURIComponent(tripEndYMD)}`, { headers });
+                const j0 = await r0.json().catch(() => ({}));
+                if (j0?.conflict) {
+                  const first = Array.isArray(j0.overlaps) && j0.overlaps[0];
+                  const msg = first
+                    ? `You already have a trip ${first.destination ? `to ${first.destination} ` : ""}from ${new Date(first.start).toLocaleDateString()} to ${new Date(first.end).toLocaleDateString()}.`
+                    : (j0.message || "You already have a trip on these dates.");
+
+                  setConflictModal({ open: true, message: `⚠️ ${msg}` });
+                }
+              } catch (e) {
+                console.warn("Conflict preflight failed:", e);
+              }
+
+              const looksLikeObjectId = (v) => typeof v === "string" && /^[0-9a-fA-F]{24}$/.test(v);
+              
+              let finalAttractionIds = Array.isArray(attractionIds)
+                ? attractionIds.filter(looksLikeObjectId)
+                : [];
+
+              let finalAttractionNames = Array.isArray(attractionNames)
+                ? attractionNames.filter((n) => typeof n === "string" && n.trim())
+                : [];
+
+              if (!finalAttractionIds.length) {
+                const picked = userResponses?.["Select attractions to visit"];
+                const selected = Array.isArray(picked) ? picked.flat(Infinity) : (picked ? [picked] : []);
+                const pool = Array.isArray(loadedAttractions) ? loadedAttractions : [];
+
+                for (const a of selected) {
+                  if (typeof a === "string") {
+                    if (looksLikeObjectId(a)) {
+                      finalAttractionIds.push(a);
+                    } else {
+                      const hit = pool.find((x) =>
+                        [x?.name, x?.title, x?.label]
+                          .map((s) => (s || "").trim().toLowerCase())
+                          .includes(a.trim().toLowerCase())
+                      );
+                      const id = String(hit?._id || hit?.id || "");
+                      if (looksLikeObjectId(id)) finalAttractionIds.push(id);
+                      else finalAttractionNames.push(a);
+                    }
+                  } else if (a && typeof a === "object") {
+                    const id = String(a._id || a.id || "").trim();
+                    if (looksLikeObjectId(id)) finalAttractionIds.push(id);
+                    else if (a.name) finalAttractionNames.push(a.name);
+                  }
+                }
+              }
+
+              finalAttractionIds = [...new Set(finalAttractionIds)];
+              finalAttractionNames = [...new Set(finalAttractionNames)];
+
+              const getCityName = (city, list = []) => {
+                if (!city) return "";
+                if (typeof city === "string") {
+                  if (!looksLikeObjectId(city)) return city.trim();
+                  const hit = Array.isArray(list)
+                    ? list.find((c) => String(c._id || c.id) === city)
+                    : null;
+                  return (
+                    (hit?.city || hit?.name || hit?.label || hit?.title || "").trim()
+                  );
+                }
+                return (
+                  city.city ||
+                  city.name ||
+                  city.cityName ||
+                  city.label ||
+                  city.title ||
+                  city.slug ||
+                  ""
+                ).trim();
+              };
+
+              const getCityId = (city) => {
+                if (!city || typeof city !== "object") return null;
+                const s = String(city._id || city.id || "").trim();
+                return looksLikeObjectId(s) ? s : null;
+              };
+
+              const extractFlightValue = (flight) => {
+                if (!flight) return "";
+                if (typeof flight === "string") return flight.trim();
+                return (
+                  flight.compoundId ||
+                  flight.code ||
+                  flight.name ||
+                  flight.airline ||
+                  flight.id ||
+                  flight._id ||
+                  ""
+                );
+              };
+
+              const extractHotelValue = (hotel) => {
+                if (!hotel) return "";
+                if (typeof hotel === "string") return hotel.trim();
+                return (
+                  hotel.compoundId ||
+                  hotel._id ||
+                  hotel.id ||
+                  hotel.name ||
+                  hotel.hotelName ||
+                  hotel.label ||
+                  hotel.title ||
+                  ""
+                );
+              };
+
+              const getDisplayName = (data) => {
+                if (typeof data === "string") return data;
+                return (
+                  data?.name ||
+                  data?.city ||
+                  data?.title ||
+                  data?.airline ||
+                  data?.label ||
+                  data?.hotelName ||
+                  data?.cityName ||
+                  ""
+                );
+              };
+
+              const dep = getVal("What is your departure city?");
+              const dst = getVal("What is your destination city?");
+              const flt = getVal("Select your flight");
+              const htl = getVal("Select your hotel");
+
+              const depName = getCityName(dep, loadedCities);
+              const dstName = getCityName(dst, loadedCities);
+
+              const resolveBody = {
+                departure: depName,
+                destination: dstName,
+                departureCityId: getCityId(dep) || undefined,
+                destinationCityId: getCityId(dst) || undefined,
+                flight: extractFlightValue(flt),
+                hotel: extractHotelValue(htl),
+              };
+
+              if (!resolveBody.departure || !resolveBody.destination) {
+                throw new Error("Missing departure or destination city. Please select cities.");
+              }
+
+              const r1 = await fetch(`${API_BASE}/api/order/resolve`, {
+                method: "POST",
+                headers,
+                body: JSON.stringify(resolveBody),
+              });
+              
+              if (!r1.ok) {
+                const text = await r1.text();
+                try {
+                  const j = JSON.parse(text);
+                  throw new Error(j.message || `Resolve failed (${r1.status})`);
+                } catch {
+                  throw new Error(`Resolve failed (${r1.status}): ${text}`);
+                }
+              }
+              
+              const { ids } = await r1.json();
+
+              if (sessionStorage.getItem("orderSaved") === "1") {
+                setToast({ type: "success", text: "Order already saved." });
+                setTimeout(() => setToast(null), 2000);
+                return;
+              }
+
+              const payMethodRaw = getVal("Select payment method");
+              const paymentMethod =
+                typeof payMethodRaw === "string"
+                  ? payMethodRaw
+                  : payMethodRaw?.name || payMethodRaw?.id || "Unknown";
+
+              const transportation =
+                getVal("Select your mode of transportation") || "—";
+              const totalPrice = calculateTotalPrice(userResponses);
+
+              const payload = {
+                departureCityId: ids.departureCityId,
+                destinationCityId: ids.destinationCityId,
+                flightId: ids.flightId,
+                hotelId: ids.hotelId,
+                selectAllCityAttractions: finalAttractionIds.length === 0,
+                attractionNames: finalAttractionNames,
+                attractions: finalAttractionIds,
+                flightName: getDisplayName(flt) || null,
+                hotelName: getDisplayName(htl) || null,
+                transportation,
+                paymentMethod,
+                totalPrice,
+                tripStartDate: tripStartYMD,
+                tripEndDate: tripEndYMD,
+              };
+
+              const r2 = await fetch(`${API_BASE}/api/order`, {
+                method: "POST",
+                headers,
+                body: JSON.stringify(payload),
+              });
+
+              if (r2.status === 409) {
+                const j = await r2.json().catch(() => ({}));
+                const msg =
+                  j?.message ||
+                  (j?.conflict ? "You already have a trip on these dates." : "Conflict.");
+                setToast({ type: "error", text: `❌ ${msg}` });
+                setTimeout(() => setToast(null), 4500);
+                setIsPlacingOrder(false);
+                savingOrderRef.current = false;
+                return;
+              }
+
+              if (!r2.ok) {
+                const text = await r2.text();
+                try {
+                  const j = JSON.parse(text);
+                  throw new Error(j.message || `Create failed (${r2.status})`);
+                } catch {
+                  throw new Error(`Create failed (${r2.status}): ${text}`);
+                }
+              }
+
+              const result = await r2.json();
+              sessionStorage.setItem("orderSaved", "1");
+              if (result?._id) {
+                sessionStorage.setItem("lastOrderId", result._id);
+                setUserResponses(prev => ({ ...prev, orderId: result._id }));
+              }
+              
+              setPaymentCompleted(true);
+              setCurrentStep((prev) => prev + 1);
+              setToast({ type: "success", text: "✅ Order saved!" });
+              setTimeout(() => setToast(null), 3000);
+            } catch (err) {
+              console.error("❌ Payment success error:", err);
+              setToast({ type: "error", text: String(err.message || err) });
+              setTimeout(() => setToast(null), 4000);
+            } finally {
+              setIsPlacingOrder(false);
+              savingOrderRef.current = false;
+            }
           }}
-          style={{
-            padding: "10px 14px",
-            borderRadius: 10,
-            border: "1px solid #e5e7eb",
-            background: "#fff",
-            fontWeight: 600,
-            cursor: "pointer"
-          }}
-        >
-          Start Over
-        </button>
-      </div>
-    </div>
-  </div>
-)}
+        />
 
-   <PaymentModal
-  isOpen={isPaymentModalOpen}
-   onClose={() => !isPlacingOrder && setIsPaymentModalOpen(false)}
- busy={isPlacingOrder}
-  total={calculateTotalPrice(userResponses)}
-  totalAmount={calculateTotalPrice(userResponses)}
-// FIXED Payment Success Handler in Chat.jsx
-onPaymentSuccess={async ({ attractionIds, attractionNames } = {}) => {
-  setIsPaymentModalOpen(false);        // ← close the modal right away
-  setIsPlacingOrder(true);
-  // prevent duplicate saves in the same session
-  if (sessionStorage.getItem("orderSaved") === "1") {
-    setToast({ type: "success", text: "Order already saved." });
-    setTimeout(() => setToast(null), 2000);
-    setIsPlacingOrder(false);
-    return;
-  }
-  // prevent concurrent double-clicks
-  if (savingOrderRef.current) return;
-  savingOrderRef.current = true;
-
-  try {
-    const token =
-      localStorage.getItem("authToken") ||
-      localStorage.getItem("token") ||
-      localStorage.getItem("jwt");
-
-    if (!token) {
-      alert("You must be logged in to save the order.");
-      return;
-    }
-
-    const headers = { "Content-Type": "application/json" };
-    if (token) headers.Authorization = `Bearer ${token}`;
-const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
-
-const toYMD = (v) => {
-  if (!v) return null;
-  const raw = (v && typeof v === "object" && v.$d instanceof Date) ? v.$d : v;
-  if (raw instanceof Date && !Number.isNaN(raw)) {
-    const y = raw.getUTCFullYear();
-    const m = String(raw.getUTCMonth() + 1).padStart(2, "0");
-    const d = String(raw.getUTCDate()).padStart(2, "0");
-    return `${y}-${m}-${d}`;
-  }
-  if (typeof raw === "string") {
-    if (ISO_DATE_RE.test(raw.trim())) return raw.trim();
-    const d = new Date(raw);
-    if (!Number.isNaN(+d)) return toYMD(d);
-  }
-  return null;
-};
-
-const pickDate = (preferredKeys = []) => {
-  for (const k of preferredKeys) {
-    const ymd = toYMD(getVal(k));
-    if (ymd) return ymd;
-  }
-  for (const v of Object.values(userResponses || {})) {
-    const ymd = toYMD(v);
-    if (ymd) return ymd;
-  }
-  return null;
-};
-
-    const getVal = (prompt) => userResponses?.[prompt];
-const START_KEY = "Select trip start date";
-const END_KEY   = "Select trip end date";
-const tripStartYMD = pickDate([START_KEY, "Trip start date", "Start date", "From"]);
-const tripEndYMD   = pickDate([END_KEY,   "Trip end date",   "End date",   "To"]);
-
-console.log("📅 Dates before save:", {
-  start: getVal(START_KEY),
-  end: getVal(END_KEY),
-});
-// === PREVENT OVERLAPPING TRIPS (frontend preflight) ===
-if (!tripStartYMD || !tripEndYMD) {
-  setToast({ type: "error", text: "Please select trip start and end dates." });
-  setTimeout(() => setToast(null), 3000);
-  setIsPlacingOrder(false);
-  savingOrderRef.current = false;
-  return;
-}
-
-// Ask backend if these dates collide
-try {
-const r0 = await fetch(`${API_BASE}/api/order/conflicts?start=${encodeURIComponent(tripStartYMD)}&end=${encodeURIComponent(tripEndYMD)}`, { headers });
-  const j0 = await r0.json().catch(() => ({}));
-if (j0?.conflict) {
-  const first = Array.isArray(j0.overlaps) && j0.overlaps[0];
-  const msg = first
-    ? `You already have a trip ${first.destination ? `to ${first.destination} ` : ""}from ${new Date(first.start).toLocaleDateString()} to ${new Date(first.end).toLocaleDateString()}.`
-    : (j0.message || "You already have a trip on these dates.");
-
-  setConflictModal({ open: true, message: `❌ ${msg}` });
-  setIsPlacingOrder(false);
-  savingOrderRef.current = false;
-  return; // stop here; do NOT create the order
-}
-
-} catch (e) {
-  console.warn("Conflict preflight failed:", e);
-  // You can choose to block on error, but usually we let server be final guard.
-}
-
-
-    // ---------- helpers (declare BEFORE use) ----------
-   const looksLikeObjectId = (v) => typeof v === "string" && /^[0-9a-fA-F]{24}$/.test(v);
-// --- attractions: build IDs + names (prefer PaymentModal → fall back to chat) ---
-let finalAttractionIds = Array.isArray(attractionIds)
-  ? attractionIds.filter(looksLikeObjectId)
-  : [];
-
-let finalAttractionNames = Array.isArray(attractionNames)
-  ? attractionNames.filter((n) => typeof n === "string" && n.trim())
-  : [];
-
-// Fallback: read from the chat step “Select attractions to visit”
-if (!finalAttractionIds.length) {
-  const picked = userResponses?.["Select attractions to visit"];
-  const selected = Array.isArray(picked) ? picked.flat(Infinity) : (picked ? [picked] : []);
-  const pool = Array.isArray(loadedAttractions) ? loadedAttractions : [];
-
-  for (const a of selected) {
-    if (typeof a === "string") {
-      if (looksLikeObjectId(a)) {
-        finalAttractionIds.push(a);
-      } else {
-        // try match by name against loadedAttractions
-        const hit = pool.find((x) =>
-          [x?.name, x?.title, x?.label]
-            .map((s) => (s || "").trim().toLowerCase())
-            .includes(a.trim().toLowerCase())
-        );
-        const id = String(hit?._id || hit?.id || "");
-        if (looksLikeObjectId(id)) finalAttractionIds.push(id);
-        else finalAttractionNames.push(a);
-      }
-    } else if (a && typeof a === "object") {
-      const id = String(a._id || a.id || "").trim();
-      if (looksLikeObjectId(id)) finalAttractionIds.push(id);
-      else if (a.name) finalAttractionNames.push(a.name);
-    }
-  }
-}
-
-// de-dupe
-finalAttractionIds = [...new Set(finalAttractionIds)];
-finalAttractionNames = [...new Set(finalAttractionNames)];
-   const getCityIdFromAny = (city) => {
-  if (!city) return null;
-  if (typeof city === "string") return looksLikeObjectId(city) ? city : null;
-  const s = String(city._id || city.id || "").trim();
-  return looksLikeObjectId(s) ? s : null;
-};
-
-// returns a displayable city name when you already have one
-const getCityNameFromAny = (city) => {
-  if (!city) return "";
-  if (typeof city === "string") return city.trim();
-  return (
-    city.city || city.name || city.cityName ||
-    city.label || city.title || city.slug || ""
-  ).trim();
-};
-
-// fetch city by name to get its canonical id from your backend
-const fetchCityIdByName = async (name, headers) => {
-  const res = await fetch(`${API_BASE}/api/cities/name/${encodeURIComponent(name)}`, { headers });
-  if (!res.ok) return null; // treat not-found as null; we'll error later if needed
-  const data = await res.json();
-  // adapt this to your controller's payload shape if different
-  const doc = data?.data || data?.city || data; 
-  const id = String(doc?._id || doc?.id || "").trim();
-  return looksLikeObjectId(id) ? id : null;
-};
-    const getCityName = (city, list = []) => {
-      if (!city) return "";
-      if (typeof city === "string") {
-        // plain name => use; objectId-like => map via list
-        if (!looksLikeObjectId(city)) return city.trim();
-        const hit = Array.isArray(list)
-          ? list.find((c) => String(c._id || c.id) === city)
-          : null;
-        return (
-          (hit?.city || hit?.name || hit?.label || hit?.title || "").trim()
-        );
-      }
-      return (
-        city.city ||
-        city.name ||
-        city.cityName ||
-        city.label ||
-        city.title ||
-        city.slug ||
-        ""
-      ).trim();
-    };
-
-    const getCityId = (city) => {
-      if (!city || typeof city !== "object") return null;
-      const s = String(city._id || city.id || "").trim();
-      return looksLikeObjectId(s) ? s : null;
-    };
-
-    const extractFlightValue = (flight) => {
-      if (!flight) return "";
-      if (typeof flight === "string") return flight.trim();
-      return (
-        flight.compoundId ||
-        flight.code ||
-        flight.name ||
-        flight.airline ||
-        flight.id ||
-        flight._id ||
-        ""
-      );
-    };
-
-    const extractHotelValue = (hotel) => {
-      if (!hotel) return "";
-      if (typeof hotel === "string") return hotel.trim();
-      return (
-        hotel.compoundId ||
-        hotel._id ||
-        hotel.id ||
-        hotel.name ||
-        hotel.hotelName ||
-        hotel.label ||
-        hotel.title ||
-        ""
-      );
-    };
-
-    const getDisplayName = (data) => {
-      if (typeof data === "string") return data;
-      return (
-        data?.name ||
-        data?.city ||
-        data?.title ||
-        data?.airline ||
-        data?.label ||
-        data?.hotelName ||
-        data?.cityName ||
-        ""
-      );
-    };
-    // --------------------------------------------------
-
-    // 1) read selections
-    const dep = getVal("What is your departure city?");
-    const dst = getVal("What is your destination city?");
-    const flt = getVal("Select your flight");
-    const htl = getVal("Select your hotel");
-
-    // 2) map to names (backend expects names), include optional ids
-    const depName = getCityName(dep, loadedCities);
-    const dstName = getCityName(dst, loadedCities);
-
-    const resolveBody = {
-      departure: depName,
-      destination: dstName,
-      departureCityId: getCityId(dep) || undefined,
-      destinationCityId: getCityId(dst) || undefined,
-      flight: extractFlightValue(flt),
-      hotel: extractHotelValue(htl),
-    };
-
-    if (!resolveBody.departure || !resolveBody.destination) {
-      throw new Error("Missing departure or destination city. Please select cities.");
-    }
-
-    // 3) resolve ids on server
-    const r1 = await fetch(`${API_BASE}/api/order/resolve`, {
-      method: "POST",
-      headers,
-      body: JSON.stringify(resolveBody),
-    });
-    if (!r1.ok) {
-      const text = await r1.text();
-      try {
-        const j = JSON.parse(text);
-        throw new Error(j.message || `Resolve failed (${r1.status})`);
-      } catch {
-        throw new Error(`Resolve failed (${r1.status}): ${text}`);
-      }
-    }
-    const { ids } = await r1.json();
-
-    // if another tab just saved while we were resolving
-    if (sessionStorage.getItem("orderSaved") === "1") {
-      setToast({ type: "success", text: "Order already saved." });
-      setTimeout(() => setToast(null), 2000);
-      return;
-    }
-
-    // 4) build order payload
-    const payMethodRaw = getVal("Select payment method");
-    const paymentMethod =
-      typeof payMethodRaw === "string"
-        ? payMethodRaw
-        : payMethodRaw?.name || payMethodRaw?.id || "Unknown";
-
-    const transportation =
-      getVal("Select your mode of transportation") || "—";
-    const totalPrice = calculateTotalPrice(userResponses);
-
-    const payload = {
-      departureCityId: ids.departureCityId,
-      destinationCityId: ids.destinationCityId,
-      flightId: ids.flightId,
-      hotelId: ids.hotelId,
-
-      // include all destination attractions server-side
-// NEW
-selectAllCityAttractions: finalAttractionIds.length === 0,
-attractionNames: finalAttractionNames,
-attractions: finalAttractionIds,
-
-
-     flightName: getDisplayName(flt) || null,
-  hotelName: getDisplayName(htl) || null,
-
-      transportation,
-      paymentMethod,
-      totalPrice,
-tripStartDate: tripStartYMD,
-tripEndDate:   tripEndYMD,
-    };
-    // 5) create order
-    const r2 = await fetch(`${API_BASE}/api/order`, {
-      method: "POST",
-      headers,
-      body: JSON.stringify(payload),
-    });
-    // NEW: show a nice toast if backend blocks overlapping dates
-if (r2.status === 409) {
-  const j = await r2.json().catch(() => ({}));
-  const msg =
-    j?.message ||
-    (j?.conflict ? "You already have a trip on these dates." : "Conflict.");
-  setToast({ type: "error", text: `❌ ${msg}` });
-  setTimeout(() => setToast(null), 4500);
-  setIsPlacingOrder(false);
-  savingOrderRef.current = false;
-  return; // stop flow
-}
-
-    if (!r2.ok) {
-      const text = await r2.text();
-      try {
-        const j = JSON.parse(text);
-        throw new Error(j.message || `Create failed (${r2.status})`);
-      } catch {
-        throw new Error(`Create failed (${r2.status}): ${text}`);
-      }
-    }
-
-    const result = await r2.json();
-    sessionStorage.setItem("orderSaved", "1");
-if (result?._id) {
-  sessionStorage.setItem("lastOrderId", result._id);
-  // Also save in userResponses for immediate access
-  setUserResponses(prev => ({ ...prev, orderId: result._id }));
-}
-    setPaymentCompleted(true);
-    setCurrentStep((prev) => prev + 1);
-    setToast({ type: "success", text: "✅ Order saved!" });
-    setTimeout(() => setToast(null), 3000);
-  } catch (err) {
-    console.error("❌ Payment success error:", err);
-    setToast({ type: "error", text: String(err.message || err) });
-    setTimeout(() => setToast(null), 4000);
-  } finally {
-    setIsPlacingOrder(false);
-    savingOrderRef.current = false;
-  }
-}}
-        />{isPlacingOrder && (
-  <div
-    role="alert"
-    aria-live="assertive"
-    aria-busy="true"
-    style={{
-      position: "fixed",
-      inset: 0,
-      background: "rgba(0,0,0,0.35)",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
+        {isPlacingOrder && (
+          <div
+            role="alert"
+            aria-live="assertive"
+            aria-busy="true"
+            style={{
+              position: "fixed",
+              inset: 0,
+              background: "rgba(0,0,0,0.35)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
       zIndex: 9999
     }}
   >

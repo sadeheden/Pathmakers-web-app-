@@ -184,6 +184,7 @@ const StepContent = ({
   paymentCompleted,
   setIsPaymentModalOpen,
   setPaymentCompleted,
+  onFlightDateCheck,
 }) => {
   if (!step || !Array.isArray(step.questions)) {
     return <div style={{ color: "red" }}>Error: Step misconfigured or not found.</div>;
@@ -416,11 +417,18 @@ const StepContent = ({
           onClick={() => {
             const cur = steps[currentStep];
             const isPaymentStep = cur.label === "Payment";
+            const isFlightStep = cur.label === "Flight";
             const selectedMethod = userResponses["Select payment method"];
             const chosenName =
               typeof selectedMethod === "string" ? selectedMethod : selectedMethod?.name;
             const requiresModal = ["Credit Card", "PayPal", "Bank Transfer", "Crypto"].includes(chosenName);
-
+// Check for flight date conflicts before proceeding
+if (isFlightStep && typeof onFlightDateCheck === "function") {
+  onFlightDateCheck(() => {
+    setCurrentStep((prev) => prev + 1);
+  });
+  return;
+}
             if (isPaymentStep && requiresModal && !paymentCompleted) {
               setIsPaymentModalOpen(true);
               return;
