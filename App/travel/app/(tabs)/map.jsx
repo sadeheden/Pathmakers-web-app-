@@ -11,11 +11,12 @@ import {
   Modal,
   ScrollView,
   Animated,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import * as Location from 'expo-location';
 import { Ionicons } from '@expo/vector-icons';
 import { post, get } from '../../utils/api';
-
 const PAGE_LIMIT = 30;
 
 /* =====================
@@ -101,15 +102,25 @@ const PeopleSelectionModal = ({ visible, item, onClose, onConfirm }) => {
 
   if (!item) return null;
 
-  return (
+return (
     <Modal
       visible={visible}
       animationType="slide"
       transparent={true}
       onRequestClose={onClose}
     >
-      <View style={styles.peopleModalOverlay}>
-        <View style={styles.peopleModalContent}>
+      <KeyboardAvoidingView 
+        style={{ flex: 1 }} 
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
+        <ScrollView 
+          contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', padding: 20 }}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+          style={{ flex: 1 }}
+        >
+          <View style={styles.peopleModalOverlay}>
+            <View style={styles.peopleModalContent}>
           {/* Header */}
           <View style={styles.peopleModalHeader}>
             <Text style={styles.peopleModalTitle}>Select Number of People</Text>
@@ -242,8 +253,10 @@ const PeopleSelectionModal = ({ visible, item, onClose, onConfirm }) => {
               </Text>
             </TouchableOpacity>
           </View>
-        </View>
-      </View>
+</View>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </Modal>
   );
 };
@@ -579,15 +592,26 @@ const PaymentModal = ({ visible, item, peopleData, onClose, onConfirm, loading }
 
   if (!item || !peopleData) return null;
 
-  return (
+return (
     <Modal
       visible={visible}
       animationType="slide"
       transparent={true}
       onRequestClose={handleClose}
     >
-      <View style={styles.paymentModalOverlay}>
-        <View style={styles.paymentModalContent}>
+      <KeyboardAvoidingView 
+        style={{ flex: 1 }} 
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+      >
+        <ScrollView 
+          contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', padding: 20 }}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+          style={{ flex: 1 }}
+        >
+          <View style={styles.paymentModalOverlay}>
+            <View style={styles.paymentModalContent}>
           <View style={styles.paymentModalHeader}>
             <Text style={styles.paymentModalTitle}>Payment for {item.name}</Text>
             <TouchableOpacity onPress={handleClose} style={styles.paymentCloseButton}>
@@ -700,8 +724,10 @@ const PaymentModal = ({ visible, item, peopleData, onClose, onConfirm, loading }
               )}
             </TouchableOpacity>
           </View>
-        </View>
-      </View>
+</View>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </Modal>
   );
 };
@@ -1220,8 +1246,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 20,
     padding: 24,
-    margin: 20,
-    width: '90%',
+    width: '99%',
     maxHeight: '80%',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
@@ -1956,7 +1981,7 @@ const styles = StyleSheet.create({
     padding: 20,
     margin: 20,
     width: '90%',
-    maxHeight: '85%',
+    maxHeight: '95%',
   },
   paymentModalHeader: {
     flexDirection: 'row',
