@@ -1056,7 +1056,7 @@ const response = await fetch(`${API_BASE}/api/order/cancel?id=${orderToCancel.id
                   <p><strong>Flight:</strong> {selectedOrder.flight}</p>
                   <p><strong>Hotel:</strong> {selectedOrder.hotel}</p>
 
-                  {/* Attractions */}
+          {/* Attractions */}
                   <p className="full-width">
                     <strong>Attractions:</strong>{" "}
                     {(() => {
@@ -1086,7 +1086,7 @@ const response = await fetch(`${API_BASE}/api/order/cancel?id=${orderToCancel.id
                         );
                       }
 
-                      return "—";
+                      return "Tour guided by season.";
                     })()}
                   </p>
 
