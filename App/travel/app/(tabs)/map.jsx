@@ -514,34 +514,27 @@ const CartModal = ({ visible, purchasedItems, onClose }) => {
               </ScrollView>
 
               {/* Summary Footer – Fixed at bottom */}
+            {/* Summary Footer – Fixed at bottom */}
               <View style={styles.summaryFooter}>
-                <View style={styles.summaryHeader}>
-                  <Text style={styles.summaryTitle}>Booking Summary</Text>
-                </View>
-
-                <View style={styles.summaryGrid}>
-                  <View style={styles.summaryItem}>
-                    <Ionicons name="location-outline" size={20} color="#2ea44f" />
-                    <Text style={styles.summaryLabel}>Cities</Text>
-                    <Text style={styles.summaryValue}>{uniqueCities}</Text>
+                <View style={styles.compactSummaryRow}>
+                  <View style={styles.compactSummaryItem}>
+                    <Ionicons name="location-outline" size={16} color="#2ea44f" />
+                    <Text style={styles.compactSummaryText}>{uniqueCities} cities</Text>
                   </View>
 
-                  <View style={styles.summaryItem}>
-                    <Ionicons name="ticket-outline" size={20} color="#2ea44f" />
-                    <Text style={styles.summaryLabel}>Bookings</Text>
-                    <Text style={styles.summaryValue}>{purchasedItems.length}</Text>
+                  <View style={styles.compactSummaryItem}>
+                    <Ionicons name="ticket-outline" size={16} color="#2ea44f" />
+                    <Text style={styles.compactSummaryText}>{purchasedItems.length} bookings</Text>
                   </View>
 
-                  <View style={styles.summaryItem}>
-                    <Ionicons name="people-outline" size={20} color="#ff6b35" />
-                    <Text style={styles.summaryLabel}>People</Text>
-                    <Text style={styles.summaryValue}>{totalPeople}</Text>
+                  <View style={styles.compactSummaryItem}>
+                    <Ionicons name="people-outline" size={16} color="#ff6b35" />
+                    <Text style={styles.compactSummaryText}>{totalPeople} people</Text>
                   </View>
 
-                  <View style={styles.summaryItem}>
-                    <Ionicons name="card-outline" size={20} color="#1b5e20" />
-                    <Text style={styles.summaryLabel}>Total</Text>
-                    <Text style={styles.summaryValueHighlight}>${totalValue}</Text>
+                  <View style={styles.compactSummaryItem}>
+                    <Ionicons name="card-outline" size={16} color="#1b5e20" />
+                    <Text style={styles.compactSummaryValueText}>${totalValue}</Text>
                   </View>
                 </View>
               </View>
@@ -1799,10 +1792,29 @@ const styles = StyleSheet.create({
   
   // Summary Footer
   summaryFooter: {
-    marginTop: 20,
-    paddingTop: 20,
+    paddingVertical: 12,
     borderTopWidth: 1,
     borderTopColor: '#f0f0f0',
+    backgroundColor: '#fafafa',
+  },
+  compactSummaryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+  },
+   compactSummaryItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },  compactSummaryText: {
+    fontSize: 12,
+    color: '#666',
+    fontWeight: '600',
+  },
+    compactSummaryValueText: {
+    fontSize: 13,
+    color: '#1b5e20',
+    fontWeight: '700',
   },
   summaryHeader: {
     alignItems: 'center',
