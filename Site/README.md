@@ -1,6 +1,7 @@
 # PathMakers (Semester A)
 **A project by May & Eden**
-
+View the project:
+https://pathmakers-web-app.onrender.com
 ## About the Project
 PathMakers is an interactive web and mobile app that helps users plan custom travel itineraries.  
 The system uses dynamic data and a cloud database (MongoDB Atlas) to suggest routes and recommendations based on user preferences, constraints, and selected destinations.
