@@ -41,6 +41,6 @@ Backend: Node.js, Express
 
 Database: MongoDB
 
-AI: LLaMA AI for travel consultation
+AI: LLaMA AI for travel consultation (huggingface)
 
 Design: UX/UI techniques applied for optimal user experience
