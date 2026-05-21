@@ -73,7 +73,7 @@ const styles = {
     fontSize: 16,
   },
   viewButton: {
-  backgroundColor: '#3b82f6',
+  backgroundColor: '#3bf657ff',
   color: '#fff'
 },
 
